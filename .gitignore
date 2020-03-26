@@ -1,0 +1,21 @@
+__pycache__*
+.vscode*
+*~lock*
+*.egg-info
+/build
+/dist
+/venv
+
+.cache
+.eggs
+.tox
+*.swp
+*.pyc
+
+# Temp files (tests etc...)
+
+# Result files
+*/instance_file.txt
+
+# .lp files (created by CPLEX)
+*allocation.lp

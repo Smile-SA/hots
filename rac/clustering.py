@@ -2,6 +2,7 @@
 
 # print(__doc__)
 
+import math
 import scipy.cluster.hierarchy as hac
 import multiprocessing as mp
 import numpy as np
@@ -10,13 +11,13 @@ from numpy.linalg import multi_dot, norm
 from sklearn.cluster import KMeans
 from sklearn.cluster import SpectralClustering
 from sklearn.metrics.pairwise import pairwise_distances
-from scipy.spatial.distance import euclidean, pdist, squareform
+from scipy.spatial.distance import pdist, squareform
 from scipy.linalg.lapack import dsyevr
 from scipy.linalg import fractional_matrix_power
 from tqdm import tqdm
 
 
-### Functions definitions ###
+# Functions definitions #
 # TODO add mem cols
 def matrix_line(args):
     key, data = args
@@ -49,7 +50,8 @@ def build_similarity_matrix(df):
     # dists = pdist(df.T)
     df_euclid = pd.DataFrame(squareform(
         dists), columns=df.index, index=df.index)
-    # df_euclid = pd.DataFrame(1/(1+squareform(dists)), columns=df.index,                       index=df.index)
+    # df_euclid = pd.DataFrame(1/(1+squareform(dists)), columns=df.index,
+    # index=df.index)
     # print(df_euclid)
     sim_matrix = df_euclid.to_numpy()
     print(sim_matrix)
@@ -96,7 +98,7 @@ def perso_spectral_clustering(data, k):
     print(A)
 
     # dsyevr parameters
-    borneinf = 1e-8
+    # borneinf = 1e-8
     drange = 'A'
     eigenvaluesA, eigenvectorsA, _ = dsyevr(A, range=drange)
     print("Valeurs propres de A :")
@@ -137,7 +139,7 @@ def compute_mu_r(W, D, labels_, r, U):
 
 def compute_distance_cluster_r(p, r, mu_r, U, dp):
     # return math.sqrt(pow(
-        # (U[:, p] * pow(dp, -1/2)) - mu_r, 2))
+    # (U[:, p] * pow(dp, -1/2)) - mu_r, 2))
     return norm((U[:, p] * pow(dp, -1/2)) - mu_r)
 
 
@@ -226,7 +228,8 @@ def kMedoids(D, k, tmax=100):
     valid_medoid_inds = set(range(n))
     invalid_medoid_inds = set([])
     rs, cs = np.where(D == 0)  # pylint: disable=unbalanced-tuple-unpacking
-    # the rows, cols must be shuffled because we will keep the first duplicate below
+    # the rows, cols must be shuffled because we will keep the first duplicate
+    # below
     index_shuf = list(range(len(rs)))
     np.random.shuffle(index_shuf)
     rs = rs[index_shuf]
@@ -239,8 +242,9 @@ def kMedoids(D, k, tmax=100):
     valid_medoid_inds = list(valid_medoid_inds - invalid_medoid_inds)
 
     if k > len(valid_medoid_inds):
-        raise Exception('too many medoids (after removing {} duplicate points)'.format(
-            len(invalid_medoid_inds)))
+        raise Exception(
+            'too many medoids (after removing {} duplicate points)'.format(
+                len(invalid_medoid_inds)))
 
     # randomly initialize an array of k medoid indices
     M = np.array(valid_medoid_inds)
@@ -302,7 +306,8 @@ def get_sumCluster_variance(profiles_, vars_):
     for i in range(k):
         for j in range(i+1, k):
             sumProfiles_matrix[i, j] = (
-                (profiles_[i, :]+profiles_[j, :]).var()) / (vars_[i] + vars_[j])
+                (profiles_[i, :]+profiles_[j, :]).var()) / (
+                    vars_[i] + vars_[j])
             sumProfiles_matrix[j, i] = sumProfiles_matrix[i, j]
 
     return sumProfiles_matrix
@@ -324,7 +329,8 @@ def get_distanceCluster(instance, cluster_centers_):
 
 def get_distance_containerCluster(conso_cont, profile):
     """
-    Compute the distance between the container profile and his cluster's mean profile.
+    Compute the distance between the container profile and his cluster's
+    mean profile.
     """
     return np.absolute(profile-conso_cont).mean()/profile.mean()
 
@@ -335,6 +341,8 @@ def check_container_deviation(working_df, labels_, profiles_, dict_id_c):
 
     for c in range(len(labels_)):
         dist = get_distance_containerCluster(
-            working_df.loc[working_df['container_id'] == c]['cpu'].to_numpy(), profiles_[labels_[c]])
+            working_df.loc[
+                working_df['container_id'] == c
+            ]['cpu'].to_numpy(), profiles_[labels_[c]])
         if dist > 0.5:
             print("Deviation of container ", c, dist)

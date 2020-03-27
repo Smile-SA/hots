@@ -2,12 +2,11 @@
 
 # print(__doc__)
 
-from pathlib import Path
 import pandas as pd
 
 # TODO list parameters here, or file to give in argument ?
 
-### Global variables ###
+# Global variables #
 
 # We delete disk for the moment cause, not enough info
 metrics = ['cpu', 'mem']
@@ -24,7 +23,7 @@ input_file_node = f'{problem_dir}/node_usage.csv'
 input_file_node_meta = f'{problem_dir}/node_meta.csv'
 
 
-### Functions definitions ###
+# Functions definitions #
 
 def df_from_csv(filename):
     return pd.read_csv(

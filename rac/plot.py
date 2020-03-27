@@ -4,21 +4,19 @@
 
 import scipy.cluster.hierarchy as hac
 import math
-import numpy as np
 import pandas as pd
-from matplotlib import dates
 from matplotlib import pyplot as plt
 from matplotlib import gridspec as gridspec
-from tqdm import tqdm
 
 # Global variables
 
 colors = ['blue', 'orange', 'green', 'red', 'purple',
-          'brown', 'pink', 'gray', 'olive', 'cyan', 'turquoise', 'chocolate', 'navy', 'lightcoral', 'violet']
+          'brown', 'pink', 'gray', 'olive', 'cyan', 'turquoise',
+          'chocolate', 'navy', 'lightcoral', 'violet']
 
 # TODO factorize x_ (function init in all files ?)
 
-### Functions definitions ###
+# Functions definitions #
 
 
 def plot_clustering(df_clust, metric='cpu'):
@@ -58,7 +56,8 @@ def plot_containers_clustering_together(df_clust, metric='cpu'):
 
 def plot_clustering_containers_byNode(instance, labels_, metric='cpu'):
     """
-    Plot containers consumption grouped by node, one container added above another, with their cluster color
+    Plot containers consumption grouped by node, one container added above
+    another, with their cluster color
     """
     print("Preparing plot containers clustering by Node ...")
     fig_node_usage = plt.figure()
@@ -68,7 +67,8 @@ def plot_clustering_containers_byNode(instance, labels_, metric='cpu'):
     x_ = instance.df_nodes['timestamp'].unique()
     i = 0
 
-    for n, data_n in instance.df_containers.groupby(instance.df_containers['machine_id']):
+    for n, data_n in instance.df_containers.groupby(
+            instance.df_containers['machine_id']):
         agglo_containers = pd.Series(
             data=[0.0]*instance.time, index=x_)
         ax_node_usage = fig_node_usage.add_subplot(
@@ -76,8 +76,6 @@ def plot_clustering_containers_byNode(instance, labels_, metric='cpu'):
 
         for c, data_c in data_n.groupby(data_n['container_id']):
             temp_df = data_c.reset_index(level='container_id', drop=True)
-            c_index = list(myInstance.dict_id_c.keys())[
-                list(myInstance.dict_id_c.values()).index(c)]
             agglo_containers = agglo_containers.add(temp_df[metric])
             ax_node_usage.plot(
                 x_, agglo_containers, colors[labels_[c]])
@@ -87,7 +85,7 @@ def plot_clustering_containers_byNode(instance, labels_, metric='cpu'):
 
 
 def plot_containers_groupby_nodes(df_container):
-    # TODO make metrics generic
+    # TODO make metrics generic
     """
     Plot containers consumption grouped by node
     """
@@ -99,9 +97,11 @@ def plot_containers_groupby_nodes(df_container):
     # ax_cpu = fig.add_subplot(gs[0, 0])
     # ax_mem = fig.add_subplot(gs[1, 0])
     # pvt_cpu = pd.pivot_table(df_container, columns="machine_id",
-    #                          index=df_container["timestamp"], aggfunc="sum", values="cpu")
+    #                          index=df_container["timestamp"],
+    # aggfunc="sum", values="cpu")
     # pvt_mem = pd.pivot_table(df_container, columns="machine_id",
-    #                          index=df_container["timestamp"], aggfunc="sum", values="mem")
+    #                          index=df_container["timestamp"],
+    # aggfunc="sum", values="mem")
 
     # pvt_cpu.plot(ax=ax_cpu)
     # pvt_mem.plot(ax=ax_mem)
@@ -111,7 +111,8 @@ def plot_containers_groupby_nodes(df_container):
     ax.set_ylim([0, 25])
 
     pvt_cpu = pd.pivot_table(df_container, columns="machine_id",
-                             index=df_container["timestamp"], aggfunc="sum", values="cpu")
+                             index=df_container["timestamp"],
+                             aggfunc="sum", values="cpu")
     pvt_cpu.plot(ax=ax, legend=False)
     ax.axvline(x=72, color='red', linestyle='--')
     ax.axhline(y=20, color='red')
@@ -148,10 +149,17 @@ def plot_nodes_wout_containers(instance):
     fig.suptitle("Nodes usage without containers")
 
     print(instance.df_nodes)
-    np_nodes = pd.pivot_table(instance.df_nodes, columns=instance.df_nodes["machine_id"],
-                              index=instance.df_nodes["timestamp"], aggfunc="sum", values="cpu")
-    np_nodes_containers = pd.pivot_table(instance.df_containers, columns=instance.df_containers["machine_id"],
-                                         index=instance.df_containers["timestamp"], aggfunc="sum", values="cpu")
+    np_nodes = pd.pivot_table(
+        instance.df_nodes,
+        columns=instance.df_nodes["machine_id"],
+        index=instance.df_nodes["timestamp"],
+        aggfunc="sum", values="cpu")
+    np_nodes_containers = pd.pivot_table(
+        instance.df_containers,
+        columns=instance.df_containers["machine_id"],
+        index=instance.df_containers["timestamp"],
+        aggfunc="sum",
+        values="cpu")
 
     print(np_nodes)
     print(np_nodes_containers)
@@ -171,7 +179,8 @@ def plot_nodes_wout_containers(instance):
 
 def update_evaluation_plot(fig, ax, df, t):
     pvt_cpu = pd.pivot_table(
-        df, columns=df["container_id"], index=df["timestamp"], aggfunc="sum", values="cpu")
+        df, columns=df["container_id"],
+        index=df["timestamp"], aggfunc="sum", values="cpu")
     ax.plot(pvt_cpu)
     plt.pause(0.5)
 

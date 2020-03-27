@@ -8,7 +8,7 @@ import multiprocessing as mp
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-from clustering import get_cluster_variance
+from .clustering import get_cluster_variance
 
 
 #####################################################################

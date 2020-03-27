@@ -1,9 +1,9 @@
 # coding=utf-8
 
 # print(__doc__)
-import node as nd
-import container
-from init import init_dfs, init_dfs_meta
+from . import node as nd
+from . import container
+from .init import init_dfs, init_dfs_meta
 import math
 
 

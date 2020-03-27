@@ -11,14 +11,14 @@ import multiprocessing as mp
 import time
 
 # Personnal imports
-import instance
-from init import metrics
-import container as ctnr
-import node as nd
-import clustering as clt
-import plot
-import allocation as alloc
-import model
+from . import instance
+from .init import metrics
+from . import container as ctnr
+from . import node as nd
+from . import clustering as clt
+from . import plot
+from . import allocation as alloc
+from . import model
 
 # TODO do an entire loop, only some plot which last in loop
 

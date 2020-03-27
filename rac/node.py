@@ -9,7 +9,7 @@ from matplotlib import pyplot as plt
 from matplotlib import gridspec as gridspec
 from tqdm import tqdm
 
-from init import metrics
+from .init import metrics
 
 
 ### Definition of Node-related functions ###

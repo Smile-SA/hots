@@ -2,9 +2,9 @@
 
 # print(__doc__)
 
-import instance
-from node import get_list_vmr, get_list_mean, get_list_var
-from init import metrics, problem_dir
+from . import instance
+from .node import get_list_vmr, get_list_mean, get_list_var
+from .init import metrics, problem_dir
 import math
 import numpy as np
 import time

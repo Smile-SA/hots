@@ -32,8 +32,9 @@ class Instance:
         self.df_nodes_meta = init_dfs_meta()
         self.time = self.df_containers['timestamp'].nunique()
         self.sep_time = math.ceil(self.time / 2)
-        self.window_duration = self.df_containers.loc[self.df_containers['timestamp']
-                                                      <= self.sep_time]['timestamp'].nunique()
+        self.window_duration = self.df_containers.loc[
+            self.df_containers['timestamp'] <= self.sep_time
+        ]['timestamp'].nunique()
 
         self.nb_nodes = self.df_nodes["machine_id"].nunique()
         self.nb_containers = self.df_containers["container_id"].nunique()
@@ -62,8 +63,8 @@ class Instance:
         # Not useful ?
         # print("%d clusters" % self.nb_clusters)
 
-
     # TODO rewrite with only one f.write
+
     def instance_inFile_before(self, filename):
         f = open(filename, "w")
         f.write("### Problem instance informations ###\n")
@@ -97,4 +98,6 @@ class Instance:
         f.close()
 
     def get_node_from_container(self, container_id):
-        return (self.df_containers.loc[self.df_containers['container_id'] == container_id]['machine_id'].to_numpy()[0])
+        return (self.df_containers.loc[
+            self.df_containers['container_id'] == container_id
+        ]['machine_id'].to_numpy()[0])

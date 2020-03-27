@@ -7,7 +7,7 @@ from matplotlib import pyplot as plt
 from matplotlib import gridspec as gridspec
 
 
-### Definition of Container-related functions ###
+# Definition of Container-related functions #
 
 def plot_specificData_allContainers(df_containers, dataName):
     fig, ax = plt.subplots()

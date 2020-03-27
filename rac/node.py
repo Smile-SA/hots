@@ -12,7 +12,7 @@ from tqdm import tqdm
 from .init import metrics
 
 
-### Definition of Node-related functions ###
+# Definition of Node-related functions #
 
 
 def plot_specificData_allNodes(df_nodes, dataName):
@@ -51,7 +51,8 @@ def plot_allData_allNodes_end(df_nodes, total_time):
 
 def plot_total_usage(df_nodes, title="Total conso on all nodes"):
     """
-    Plot the global resources consumption and return the global maximum usage for each metric
+    Plot the global resources consumption and return the global
+    maximum usage for each metric
     """
     temp_df = df_nodes.reset_index(level='machine_id', drop=True)
     usage_all_nodes = pd.DataFrame(
@@ -72,10 +73,12 @@ def plot_total_usage(df_nodes, title="Total conso on all nodes"):
             ax = fig.add_subplot(gs[1, 0])
         usage_all_nodes.loc[metric, :].plot(ax=ax)
         plt.axvline(
-            x=usage_all_nodes.columns[separation_time], color='red', linestyle='--')
+            x=usage_all_nodes.columns[separation_time],
+            color='red', linestyle='--')
     plt.draw()
 
-    return (usage_all_nodes.loc["cpu", :].max(), usage_all_nodes.loc["mem", :].max())
+    return (usage_all_nodes.loc["cpu", :].max(),
+            usage_all_nodes.loc["mem", :].max())
 
 
 def get_mean_consumption(df_nodes):
@@ -121,7 +124,8 @@ def get_list_var(df_nodes, total_time):
 
 def get_variance_consumption(df_nodes):
     """
-    Compute the variance and standard deviation consumption for each metric in each node and globally
+    Compute the variance and standard deviation consumption for each metric
+    in each node and globally
     """
     for metric in metrics:
         global_variance = 0.0
@@ -188,7 +192,8 @@ def get_list_vmr(df_nodes, total_time):
 
 def get_nodes_variance(df_nodes, total_time, part):
     """
-    Compute the Variance for each metric in each node and return the results in a list
+    Compute the Variance for each metric in each node and return the results
+    in a list
     """
     var = np.zeros(
         (len(metrics), df_nodes['machine_id'].nunique()), dtype=float)

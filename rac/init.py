@@ -13,13 +13,11 @@ import pandas as pd
 metrics = ['cpu', 'mem']
 
 # Paths
-module_dir = Path.cwd().parent
-src_dir = f'{module_dir}/src/'
-data_dir = f'{module_dir}/data/'
+data_dir = './data'
 
 problem_name = 'generated_10'
-problem_dir = f'{data_dir}{problem_name}/'
-# instance_file = f'{data_dir}{problem_name}/instance_file.txt'
+problem_dir = f'{data_dir}/{problem_name}'
+# instance_file = f'{data_dir}/{problem_name}/instance_file.txt'
 
 input_file_container = f'{problem_dir}/container_usage.csv'
 input_file_node = f'{problem_dir}/node_usage.csv'

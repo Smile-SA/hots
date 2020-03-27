@@ -35,8 +35,7 @@ clustering_algo = "hierarchical"
 
 # plt.show()
 
-if __name__ == '__main__':
-
+def main():
     # TODO in priority :
     # - add half period in plot
 
@@ -190,3 +189,9 @@ if __name__ == '__main__':
     # print("Total computing time : %fs" % (time.time() - main_time))
 
     # plt.show()
+
+
+
+if __name__ == '__main__':
+    main()
+

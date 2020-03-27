@@ -2,25 +2,19 @@
 
 # print(__doc__)
 
-import numpy as np
 import pandas as pd
 from matplotlib import pyplot as plt
-from matplotlib import gridspec
-import math
-import multiprocessing as mp
 import time
 
 # Personnal imports
 from . import instance
-from .init import metrics
 from . import container as ctnr
-from . import node as nd
 from . import clustering as clt
 from . import plot
 from . import allocation as alloc
 from . import model
 
-# TODO do an entire loop, only some plot which last in loop
+# TODO do an entire loop, only some plot which last in loop
 
 # Global variables
 # {kmeans, hierarchical, spectral, spectral_perso}
@@ -34,6 +28,7 @@ clustering_algo = "hierarchical"
 #     plt.pause(0.05)
 
 # plt.show()
+
 
 def main():
     # TODO in priority :
@@ -62,7 +57,8 @@ def main():
     #####################################################################
     # Clustering part
     df_containers_clust = clt.build_matrix_indiv_attr(
-        myInstance.df_containers.loc[myInstance.df_containers['timestamp'] <= myInstance.sep_time])
+        myInstance.df_containers.loc[
+            myInstance.df_containers['timestamp'] <= myInstance.sep_time])
 
     clustering_time = time.time()
 
@@ -78,11 +74,13 @@ def main():
     cluster_vars = clt.get_cluster_variance(
         myInstance.nb_clusters, df_containers_clust)
     cluster_profiles = clt.get_cluster_mean_profile(
-        myInstance.nb_clusters, df_containers_clust, myInstance.window_duration)
+        myInstance.nb_clusters,
+        df_containers_clust,
+        myInstance.window_duration)
     cluster_var_matrix = clt.get_sumCluster_variance(
         cluster_profiles, cluster_vars)
-    cluster_distance = clt.get_distanceCluster(
-        myInstance, cluster_profiles)
+    # cluster_distance = clt.get_distanceCluster(
+    #     myInstance, cluster_profiles)
 
     # KMedoids
     # TODO quid kmedoids ?
@@ -105,8 +103,8 @@ def main():
     #####################################################################
     # Allocation
     allocation_time = time.time()
-    containers_grouped = alloc.allocation_distant_pairwise(myInstance, cluster_var_matrix,
-                                                           labels_)
+    containers_grouped = alloc.allocation_distant_pairwise(
+        myInstance, cluster_var_matrix, labels_)
 
     # plot.plot_containers_groupby_nodes(myInstance.df_containers)
 
@@ -154,44 +152,47 @@ def main():
     #####################################################################
     # Evaluation period
 
-    # end = False
-    # fig, ax = plt.subplots()
-    # fig.suptitle("Containers consumption evolution")
-    # ax.set_ylim([0, myInstance.df_containers['cpu'].max()])
-    # ax.set_xlim([0, myInstance.df_containers['timestamp'].max()])
+    end = False
+    fig, ax = plt.subplots()
+    fig.suptitle("Containers consumption evolution")
+    ax.set_ylim([0, myInstance.df_containers['cpu'].max()])
+    ax.set_xlim([0, myInstance.df_containers['timestamp'].max()])
 
-    # fig_clust, ax_clust = plot.init_plot_clustering(df_containers_clust)
+    fig_clust, ax_clust = plot.init_plot_clustering(df_containers_clust)
 
-    # tmin = myInstance.df_containers['timestamp'].min()
-    # tmax = myInstance.sep_time
+    tmin = myInstance.df_containers['timestamp'].min()
+    tmax = myInstance.sep_time
 
-    # pvt = pd.pivot_table(myInstance.df_containers.loc[myInstance.df_containers['timestamp'] <= myInstance.sep_time],
-    #                      columns=myInstance.df_containers['container_id'], index=myInstance.df_containers['timestamp'], aggfunc='sum', values='cpu')
-    # ax.plot(pvt)
-    # ax.axvline(x=myInstance.sep_time, color='red', linestyle='--')
+    pvt = pd.pivot_table(
+        myInstance.df_containers.loc[
+            myInstance.df_containers['timestamp'] <= myInstance.sep_time],
+        columns=myInstance.df_containers['container_id'],
+        index=myInstance.df_containers['timestamp'], aggfunc='sum',
+        values='cpu')
+    ax.plot(pvt)
+    ax.axvline(x=myInstance.sep_time, color='red', linestyle='--')
 
-    # while not end:
-    #     working_df = myInstance.df_containers[(myInstance.df_containers['timestamp'] >= tmin) & (
-    #         myInstance.df_containers['timestamp'] <= tmax)]
-    #     df_clust = clt.build_matrix_indiv_attr(working_df)
-    #     df_clust['cluster'] = labels_
-    #     cluster_profiles = clt.get_cluster_mean_profile(
-    #         myInstance.nb_clusters, df_clust, myInstance.window_duration, tmin)
-    #     plot.update_clustering_plot(fig_clust, ax_clust, df_clust)
-    #     clt.check_container_deviation(
-    #         working_df, labels_, cluster_profiles, myInstance.dict_id_c)
-    #     plot.update_evaluation_plot(fig, ax, working_df, tmax)
-    #     tmin += 1
-    #     tmax += 1
-    #     if tmax >= myInstance.time:
-    #         end = True
+    while not end:
+        working_df = myInstance.df_containers[
+            (myInstance.df_containers['timestamp'] >= tmin) &
+            (myInstance.df_containers['timestamp'] <= tmax)]
+        df_clust = clt.build_matrix_indiv_attr(working_df)
+        df_clust['cluster'] = labels_
+        cluster_profiles = clt.get_cluster_mean_profile(
+            myInstance.nb_clusters, df_clust, myInstance.window_duration, tmin)
+        plot.update_clustering_plot(fig_clust, ax_clust, df_clust)
+        clt.check_container_deviation(
+            working_df, labels_, cluster_profiles, myInstance.dict_id_c)
+        plot.update_evaluation_plot(fig, ax, working_df, tmax)
+        tmin += 1
+        tmax += 1
+        if tmax >= myInstance.time:
+            end = True
 
-    # print("Total computing time : %fs" % (time.time() - main_time))
+    print("Total computing time : %fs" % (time.time() - main_time))
 
     # plt.show()
 
 
-
 if __name__ == '__main__':
     main()
-

@@ -24,16 +24,16 @@ setup(
         'matplotlib',
         'numpy',
         'pandas',
-        'pathlib', # to change ?
+        'pathlib',  # to change ?
         'scipy',
         'sklearn',
         'tqdm',
         # for linting
-        # 'flake8-comprehensions',
-        # 'flake8-docstrings',
-        # 'flake8-import-order',
-        # 'flake8-quotes',
-        # 'flake8',
+        'flake8-comprehensions',
+        'flake8-docstrings',
+        'flake8-import-order',
+        'flake8-quotes',
+        'flake8',
         # 'pep8-naming',
         # 'click',
         # 'click-log',

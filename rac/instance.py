@@ -51,6 +51,7 @@ class Instance:
 
         self.print()
 
+    # TODO rewrite with __str__
     def print(self):
         print("\n")
         print("### Problem instance informations ###")
@@ -61,6 +62,8 @@ class Instance:
         # Not useful ?
         # print("%d clusters" % self.nb_clusters)
 
+
+    # TODO rewrite with only one f.write
     def instance_inFile_before(self, filename):
         f = open(filename, "w")
         f.write("### Problem instance informations ###\n")

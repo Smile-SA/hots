@@ -1,11 +1,11 @@
 all: venv install done
 
 venv:
-	python3.7 -m venv venv
+	python -m venv venv
 
 .PHONY: install
 install: venv
-	./venv/bin/pip install pip==19.1.1 wheel==0.32.3
+	./venv/bin/pip install pip==19.2.3 wheel==0.32.3
 	./venv/bin/pip install --no-deps -r requirements.txt
 	./venv/bin/pip install --no-deps -e .
 

@@ -1,24 +1,33 @@
 # coding=utf-8
+"""
+Main file, entry point of the project.
 
+Functions :
+    - main()
+"""
 # print(__doc__)
 
-import pandas as pd
-from matplotlib import pyplot as plt
 import time
 
+from matplotlib import pyplot as plt
+
+import pandas as pd
+
+
 # Personnal imports
-from . import instance
-from . import container as ctnr
-from . import clustering as clt
-from . import plot
 from . import allocation as alloc
+from . import clustering as clt
+from . import container as ctnr
+from . import instance
 from . import model
+from . import plot
+
 
 # TODO do an entire loop, only some plot which last in loop
 
 # Global variables
 # {kmeans, hierarchical, spectral, spectral_perso}
-clustering_algo = "hierarchical"
+clustering_algo = 'hierarchical'
 
 # Exemple for plot in "real-time"
 # plt.axis([0, 10, 0, 1])
@@ -31,6 +40,7 @@ clustering_algo = "hierarchical"
 
 
 def main():
+    """Perform all things of methodology."""
     # TODO in priority :
     # - add half period in plot
 
@@ -43,8 +53,8 @@ def main():
 
     building_cplex_time = time.time()
     cplex_model = model.CPX_Instance(myInstance)
-    print("CPLEX model imported.")
-    print("Building CPLEX model time : %fs" %
+    print('CPLEX model imported.')
+    print('Building CPLEX model time : %fs' %
           (time.time()-building_cplex_time))
     # TODO fix this method
     # print("Objective of initial placement : ",
@@ -87,7 +97,7 @@ def main():
     # D = clt.p_dist(df_containers_clust, metric='euclidean')
     # M, C = clt.kMedoids(D, 4)
 
-    print("Clustering computing time : %fs" % (time.time() - clustering_time))
+    print('Clustering computing time : %fs' % (time.time() - clustering_time))
 
     #####################################################################
     # Plot clustering
@@ -111,7 +121,7 @@ def main():
     # alloc.allocation_ffd(myInstance, cluster_vars, cluster_var_matrix,
     #                      labels_)
 
-    print("Allocation time : %fs" % (time.time() - allocation_time))
+    print('Allocation time : %fs' % (time.time() - allocation_time))
 
     # TODO make comparison between heuristics
 
@@ -139,10 +149,10 @@ def main():
     cplex_model.set_X_from_df(myInstance)
     # cplex_model.get_obj_value_heuristic(myInstance)
     # cplex_model.print_sol_infos_heur()
-    print("Adding constraints from heuristic ...")
+    print('Adding constraints from heuristic ...')
     cplex_model.add_constraint_heuristic(containers_grouped, myInstance)
 
-    print("Solving linear relaxation ...")
+    print('Solving linear relaxation ...')
     # cplex_model.solve_relax()
     # model.print_all_dual(cplex_model.relax_mdl)
     # cplex_model.get_max_dual()
@@ -154,7 +164,7 @@ def main():
 
     end = False
     fig, ax = plt.subplots()
-    fig.suptitle("Containers consumption evolution")
+    fig.suptitle('Containers consumption evolution')
     ax.set_ylim([0, myInstance.df_containers['cpu'].max()])
     ax.set_xlim([0, myInstance.df_containers['timestamp'].max()])
 
@@ -189,7 +199,7 @@ def main():
         if tmax >= myInstance.time:
             end = True
 
-    print("Total computing time : %fs" % (time.time() - main_time))
+    print('Total computing time : %fs' % (time.time() - main_time))
 
     # plt.show()
 

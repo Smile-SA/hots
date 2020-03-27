@@ -133,7 +133,7 @@ def main():
     # nd.get_mean_consumption(myInstance.df_nodes)
     # nd.get_variance_consumption(myInstance.df_nodes)
 
-    plt.show(False)
+    plt.show(block=True)
 
     #####################################################################
     # CPLEX evaluation part

@@ -1,6 +1,6 @@
-import rac
+from setuptools import find_packages, setup
 
-from setuptools import setup
+import src.rac
 
 PROJECT = 'rac'
 
@@ -11,7 +11,7 @@ except IOError:
 
 setup(
     name=PROJECT,
-    version=rac.version,
+    version=src.rac.version,
 
     description='Resource Allocation via Clustering',
     long_description=long_description,
@@ -40,7 +40,8 @@ setup(
         # 'pytest',
     ],
 
-    packages=['rac'],
+    namespace_packages=['src'],
+    packages=find_packages(),
     include_package_data=True,
 
     entry_points={

@@ -46,7 +46,7 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'rac = rac.main:main'
+            'rac = src.rac.main:main'
         ],
     },
 

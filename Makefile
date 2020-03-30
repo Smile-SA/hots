@@ -5,7 +5,7 @@ venv:
 
 .PHONY: install
 install: venv
-	./venv/bin/pip install pip==19.2.3 wheel==0.32.3
+	./venv/bin/pip install pip==20.0.2 wheel==0.32.3
 	./venv/bin/pip install --no-deps -r requirements.txt
 	./venv/bin/pip install --no-deps -e .
 

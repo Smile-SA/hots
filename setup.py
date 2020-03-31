@@ -29,11 +29,6 @@ setup(
         'sklearn',
         'tqdm',
         # for linting
-        'flake8-comprehensions',
-        'flake8-docstrings',
-        'flake8-import-order',
-        'flake8-quotes',
-        'flake8',
         # 'pep8-naming',
         # 'click',
         # 'click-log',
@@ -50,7 +45,7 @@ setup(
         ],
     },
 
-    # setup_requires=['pytest-runner'],
+     setup_requires=['numpy'],
     # tests_require=['pytest'],
 
     # zip_safe=False,

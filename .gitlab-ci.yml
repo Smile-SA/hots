@@ -1,0 +1,59 @@
+---
+image: docker:stable
+
+services:
+  - docker:dind
+
+.docker_login: &docker_login |
+  echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+
+stages:
+  - test
+  - build
+
+run-tests-py36:
+  stage: test
+  image: python:3.6-slim-buster
+  script:
+    - apt update
+    - apt install -y python-dev build-essential
+    - pip install wheel==0.32.3 tox==3.7.0
+    - tox -e py36,flake8,safety
+
+run-tests-py37:
+  stage: test
+  image: python:3.7-slim-buster
+  script:
+    - apt update
+    - apt install -y python-dev build-essential
+    - pip install wheel==0.32.3 tox==3.7.0
+    - tox -e py37,flake8,safety
+
+run-tests-py38:
+  stage: test
+  image: python:3.8-slim-buster
+  script:
+    - apt update
+    - apt install -y python-dev build-essential
+    - pip install wheel==0.32.3 tox==3.7.0
+    - tox -e py38,flake8,safety
+
+build-master:
+  stage: build
+  script:
+    - *docker_login
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:latest" .
+    - docker push "$CI_REGISTRY_IMAGE"
+  only:
+    refs:
+      - master
+
+build:
+  stage: build
+  script:
+    - *docker_login
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME"
+  except:
+    refs:
+      - master

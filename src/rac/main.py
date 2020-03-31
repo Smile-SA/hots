@@ -45,16 +45,12 @@ def main():
     # print("Objective of initial placement : ",
     #       cplex_model.get_obj_value_heuristic(myInstance))
 
-    # Modifying here
-    # fig, ax = plot.init_containers_plot(
-    #     myInstance.df_containers, myInstance.sep_time)
-
-    # plt.show(block=False)
-    # input('Press any key to continue ...')
-
     # Plot data (containers & nodes consumption)
     ctnr.plot_allData_allContainers(myInstance.df_containers, ['cpu'])
     plot.plot_containers_groupby_nodes(myInstance.df_containers)
+
+    plt.show(block=False)
+    input('Press any key to continue ...')
 
     #####################################################################
     # Clustering part
@@ -154,35 +150,39 @@ def main():
 
     #####################################################################
     # Evaluation period
+    fig_cont, ax_cont = plot.init_containers_plot(
+        myInstance.df_containers, myInstance.sep_time)
+    fig_node, ax_node = plot.init_nodes_plot(
+        myInstance.df_containers, myInstance.sep_time)
+    fig_clust, ax_clust = plot.init_plot_clustering(df_containers_clust)
 
-    # end = False
+    tmin = myInstance.df_containers['timestamp'].min()
+    tmax = myInstance.sep_time
 
-    # fig_clust, ax_clust = plot.init_plot_clustering(df_containers_clust)
+    end = False
 
-    # tmin = myInstance.df_containers['timestamp'].min()
-    # tmax = myInstance.sep_time
-
-    # while not end:
-    #     working_df = myInstance.df_containers[
-    #         (myInstance.df_containers['timestamp'] >= tmin) &
-    #         (myInstance.df_containers['timestamp'] <= tmax)]
-    #     df_clust = clt.build_matrix_indiv_attr(working_df)
-    #     df_clust['cluster'] = labels_
-    #     cluster_profiles = clt.get_cluster_mean_profile(
-    #         myInstance.nb_clusters, df_clust,
-    # myInstance.window_duration, tmin)
-    #     plot.update_clustering_plot(fig_clust, ax_clust, df_clust)
-    #     clt.check_container_deviation(
-    #         working_df, labels_, cluster_profiles, myInstance.dict_id_c)
-    #     plot.update_evaluation_plot(fig, ax, working_df, tmax)
-    #     tmin += 1
-    #     tmax += 1
-    #     if tmax >= myInstance.time:
-    #         end = True
+    while not end:
+        working_df = myInstance.df_containers[
+            (myInstance.df_containers['timestamp'] >= tmin) &
+            (myInstance.df_containers['timestamp'] <= tmax)]
+        df_clust = clt.build_matrix_indiv_attr(working_df)
+        df_clust['cluster'] = labels_
+        cluster_profiles = clt.get_cluster_mean_profile(
+            myInstance.nb_clusters, df_clust,
+            myInstance.window_duration, tmin)
+        plot.update_clustering_plot(fig_clust, ax_clust, df_clust)
+        clt.check_container_deviation(
+            working_df, labels_, cluster_profiles, myInstance.dict_id_c)
+        plot.update_containers_plot(fig_cont, ax_cont, working_df, tmax)
+        plot.update_nodes_plot(fig_cont, ax_cont, working_df, tmax)
+        tmin += 1
+        tmax += 1
+        if tmax >= myInstance.time:
+            end = True
 
     print('Total computing time : %fs' % (time.time() - main_time))
 
-    # plt.show()
+    plt.show()
 
 
 if __name__ == '__main__':

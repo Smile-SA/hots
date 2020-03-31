@@ -108,6 +108,7 @@ def plot_containers_groupby_nodes(df_container):
 
     fig, ax = plt.subplots()
     fig.suptitle("Node CPU consumption")
+    # TODO generic
     ax.set_ylim([0, 25])
 
     pvt_cpu = pd.pivot_table(df_container, columns="machine_id",
@@ -195,9 +196,37 @@ def init_containers_plot(df_containers, sep_time, metric='cpu'):
     return (fig, ax)
 
 
-def update_evaluation_plot(fig, ax, df, t):
+def update_containers_plot(fig, ax, df, t):
     pvt_cpu = pd.pivot_table(
         df, columns=df["container_id"],
+        index=df["timestamp"], aggfunc="sum", values="cpu")
+    ax.plot(pvt_cpu)
+    plt.pause(0.5)
+
+
+# TODO gset generic lim + hline
+def init_nodes_plot(df_containers, sep_time, metric='cpu'):
+    fig, ax = plt.subplots()
+    fig.suptitle('Nodes consumption evolution')
+    ax.set_xlim([0, df_containers['timestamp'].max()])
+    ax.set_ylim([0, 20])
+
+    pvt = pd.pivot_table(
+        df_containers.loc[
+            df_containers['timestamp'] <= sep_time],
+        columns="machine_id",
+        index=df_containers["timestamp"],
+        aggfunc="sum", values="cpu")
+    ax.plot(pvt)
+    ax.axvline(x=sep_time, color='red', linestyle='--')
+    ax.axhline(y=20, color='red')
+
+    return (fig, ax)
+
+
+def update_nodes_plot(fig, ax, df, t):
+    pvt_cpu = pd.pivot_table(
+        df, columns=df["machine_id"],
         index=df["timestamp"], aggfunc="sum", values="cpu")
     ax.plot(pvt_cpu)
     plt.pause(0.5)

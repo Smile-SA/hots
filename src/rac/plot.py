@@ -177,6 +177,24 @@ def plot_nodes_wout_containers(instance):
     plt.show()
 
 
+def init_containers_plot(df_containers, sep_time, metric='cpu'):
+    fig, ax = plt.subplots()
+    fig.suptitle('Containers consumption evolution')
+    ax.set_ylim([0, df_containers['cpu'].max()])
+    ax.set_xlim([0, df_containers['timestamp'].max()])
+
+    pvt = pd.pivot_table(
+        df_containers.loc[
+            df_containers['timestamp'] <= sep_time],
+        columns=df_containers['container_id'],
+        index=df_containers['timestamp'], aggfunc='sum',
+        values='cpu')
+    ax.plot(pvt)
+    ax.axvline(x=sep_time, color='red', linestyle='--')
+
+    return (fig, ax)
+
+
 def update_evaluation_plot(fig, ax, df, t):
     pvt_cpu = pd.pivot_table(
         df, columns=df["container_id"],

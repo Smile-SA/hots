@@ -11,9 +11,6 @@ import time
 
 from matplotlib import pyplot as plt
 
-import pandas as pd
-
-
 # Personnal imports
 from . import allocation as alloc
 from . import clustering as clt
@@ -29,21 +26,9 @@ from . import plot
 # {kmeans, hierarchical, spectral, spectral_perso}
 clustering_algo = 'hierarchical'
 
-# Exemple for plot in "real-time"
-# plt.axis([0, 10, 0, 1])
-# for i in range(10):
-#     y = np.random.random()
-#     plt.scatter(i, y)
-#     plt.pause(0.05)
-
-# plt.show()
-
 
 def main():
     """Perform all things of methodology."""
-    # TODO in priority :
-    # - add half period in plot
-
     #####################################################################
     # Initialization part
     main_time = time.time()
@@ -59,6 +44,13 @@ def main():
     # TODO fix this method
     # print("Objective of initial placement : ",
     #       cplex_model.get_obj_value_heuristic(myInstance))
+
+    # Modifying here
+    # fig, ax = plot.init_containers_plot(
+    #     myInstance.df_containers, myInstance.sep_time)
+
+    # plt.show(block=False)
+    # input('Press any key to continue ...')
 
     # Plot data (containers & nodes consumption)
     ctnr.plot_allData_allContainers(myInstance.df_containers, ['cpu'])
@@ -141,6 +133,7 @@ def main():
     # nd.get_mean_consumption(myInstance.df_nodes)
     # nd.get_variance_consumption(myInstance.df_nodes)
 
+    # plt.show(block=False)
     plt.show(block=True)
 
     #####################################################################
@@ -162,42 +155,30 @@ def main():
     #####################################################################
     # Evaluation period
 
-    end = False
-    fig, ax = plt.subplots()
-    fig.suptitle('Containers consumption evolution')
-    ax.set_ylim([0, myInstance.df_containers['cpu'].max()])
-    ax.set_xlim([0, myInstance.df_containers['timestamp'].max()])
+    # end = False
 
-    fig_clust, ax_clust = plot.init_plot_clustering(df_containers_clust)
+    # fig_clust, ax_clust = plot.init_plot_clustering(df_containers_clust)
 
-    tmin = myInstance.df_containers['timestamp'].min()
-    tmax = myInstance.sep_time
+    # tmin = myInstance.df_containers['timestamp'].min()
+    # tmax = myInstance.sep_time
 
-    pvt = pd.pivot_table(
-        myInstance.df_containers.loc[
-            myInstance.df_containers['timestamp'] <= myInstance.sep_time],
-        columns=myInstance.df_containers['container_id'],
-        index=myInstance.df_containers['timestamp'], aggfunc='sum',
-        values='cpu')
-    ax.plot(pvt)
-    ax.axvline(x=myInstance.sep_time, color='red', linestyle='--')
-
-    while not end:
-        working_df = myInstance.df_containers[
-            (myInstance.df_containers['timestamp'] >= tmin) &
-            (myInstance.df_containers['timestamp'] <= tmax)]
-        df_clust = clt.build_matrix_indiv_attr(working_df)
-        df_clust['cluster'] = labels_
-        cluster_profiles = clt.get_cluster_mean_profile(
-            myInstance.nb_clusters, df_clust, myInstance.window_duration, tmin)
-        plot.update_clustering_plot(fig_clust, ax_clust, df_clust)
-        clt.check_container_deviation(
-            working_df, labels_, cluster_profiles, myInstance.dict_id_c)
-        plot.update_evaluation_plot(fig, ax, working_df, tmax)
-        tmin += 1
-        tmax += 1
-        if tmax >= myInstance.time:
-            end = True
+    # while not end:
+    #     working_df = myInstance.df_containers[
+    #         (myInstance.df_containers['timestamp'] >= tmin) &
+    #         (myInstance.df_containers['timestamp'] <= tmax)]
+    #     df_clust = clt.build_matrix_indiv_attr(working_df)
+    #     df_clust['cluster'] = labels_
+    #     cluster_profiles = clt.get_cluster_mean_profile(
+    #         myInstance.nb_clusters, df_clust,
+    # myInstance.window_duration, tmin)
+    #     plot.update_clustering_plot(fig_clust, ax_clust, df_clust)
+    #     clt.check_container_deviation(
+    #         working_df, labels_, cluster_profiles, myInstance.dict_id_c)
+    #     plot.update_evaluation_plot(fig, ax, working_df, tmax)
+    #     tmin += 1
+    #     tmax += 1
+    #     if tmax >= myInstance.time:
+    #         end = True
 
     print('Total computing time : %fs' % (time.time() - main_time))
 

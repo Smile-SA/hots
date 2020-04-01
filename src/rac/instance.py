@@ -1,6 +1,3 @@
-# coding=utf-8
-
-# print(__doc__)
 import math
 
 from . import container
@@ -9,7 +6,9 @@ from .init import init_dfs
 
 
 class Instance:
-    """Class describing a instance with following attributes :
+    """Class describing a problem instance.
+
+    An instance has the following attributes :
                 - time : total time of dataset
                 - sep_time : time separating analysis and evaluation period
                 - window_duration : duration of time window for clustering

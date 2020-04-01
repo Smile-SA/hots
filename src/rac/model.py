@@ -1,16 +1,14 @@
-# coding=utf-8
-
-# print(__doc__)
-
-from .node import get_list_mean, get_list_var
-from .init import metrics
 import math
-import numpy as np
 import time
 from itertools import combinations
 
 from docplex.mp.model import Model
 from docplex.mp.solution import SolveSolution
+
+import numpy as np
+
+from .init import metrics
+from .node import get_list_mean, get_list_var
 
 
 # TODO add KPIs ?
@@ -18,8 +16,8 @@ from docplex.mp.solution import SolveSolution
 
 class CPX_Instance:
     """
-    Class describing the optimization model given to CPLEX to evaluate
-    our solution.
+    Class describing the optimization model given to CPLEX.
+
     Attributes :
     - mdl : DOCPLEX Model instance
     - relax_mdl : linear relaxation of mdl

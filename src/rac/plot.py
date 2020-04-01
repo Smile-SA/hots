@@ -1,12 +1,11 @@
-# coding=utf-8
+import math
 
-# print(__doc__)
+from matplotlib import gridspec as gridspec
+from matplotlib import pyplot as plt
+
+import pandas as pd
 
 import scipy.cluster.hierarchy as hac
-import math
-import pandas as pd
-from matplotlib import pyplot as plt
-from matplotlib import gridspec as gridspec
 
 # Global variables
 

@@ -46,8 +46,12 @@ def main():
     #       cplex_model.get_obj_value_heuristic(myInstance))
 
     # Plot data (containers & nodes consumption)
-    ctnr.plot_allData_allContainers(myInstance.df_containers, ['cpu'])
-    plot.plot_containers_groupby_nodes(myInstance.df_containers)
+    ctnr.plot_allData_allContainers(
+        myInstance.df_containers, sep_time=myInstance.sep_time)
+    plot.plot_containers_groupby_nodes(
+        myInstance.df_containers,
+        myInstance.df_nodes_meta.cpu.max(),
+        myInstance.sep_time)
 
     plt.show(block=False)
     input('Press any key to continue ...')
@@ -115,7 +119,10 @@ def main():
 
     # Plot node's data
     # nd.plot_allData_allNodes(df_nodes)
-    plot.plot_containers_groupby_nodes(myInstance.df_containers)
+    plot.plot_containers_groupby_nodes(
+        myInstance.df_containers,
+        myInstance.df_nodes_meta.cpu.max(),
+        myInstance.sep_time)
     # nd.plot_allData_allNodes_end(myInstance.df_nodes, myInstance.time)
 
     # Check if sum(nodes.conso) for all tick is same as previous

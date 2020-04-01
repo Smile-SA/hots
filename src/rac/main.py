@@ -9,6 +9,8 @@ Functions :
 
 import time
 
+import click
+
 from matplotlib import pyplot as plt
 
 # Personnal imports
@@ -27,14 +29,19 @@ from . import plot
 clustering_algo = 'hierarchical'
 
 
-def main():
+@click.command()
+@click.option('--data', type=click.Path(exists=True),
+              default='./data/generated_10',
+              help='The path to the data folder.\
+    By default, use a small generated exemple.')
+def main(data):
     """Perform all things of methodology."""
     #####################################################################
     # Initialization part
     main_time = time.time()
 
     # Init containers & nodes data, then Instance
-    myInstance = instance.Instance()
+    myInstance = instance.Instance(data)
 
     building_cplex_time = time.time()
     cplex_model = model.CPX_Instance(myInstance)
@@ -152,8 +159,6 @@ def main():
     # cplex_model.solve_relax()
     # model.print_all_dual(cplex_model.relax_mdl)
     # cplex_model.get_max_dual()
-
-    cplex_model.export_mdls_lp()
 
     #####################################################################
     # Evaluation period

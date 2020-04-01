@@ -1,10 +1,7 @@
-# coding=utf-8
-
-# print(__doc__)
+from matplotlib import gridspec as gridspec
+from matplotlib import pyplot as plt
 
 import pandas as pd
-from matplotlib import pyplot as plt
-from matplotlib import gridspec as gridspec
 
 
 # Definition of Container-related functions #
@@ -20,9 +17,7 @@ def plot_specificData_allContainers(df_containers, dataName):
 
 
 def plot_allData_allContainers(df_containers, metrics=['cpu'], sep_time=72):
-    """
-    Plot all metrics container consumption
-    """
+    """Plot all metrics container consumption."""
     print("Build containers usage plot ...")
     fig = plt.figure()
     fig.suptitle("Resource usage on all containers")

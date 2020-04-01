@@ -1,6 +1,5 @@
-# coding=utf-8
 """
-Main file, entry point of the project.
+RAC : Resource Allocation via Clustering.
 
 Functions :
     - main(data) : data is the folder where we find the files
@@ -8,7 +7,6 @@ Functions :
         x node_meta.csv : describes nodes capacities
         (x node_usage.csv : describes nodes resource consumption)
 """
-# print(__doc__)
 
 import time
 

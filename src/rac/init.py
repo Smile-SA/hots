@@ -1,7 +1,3 @@
-# coding=utf-8
-
-# print(__doc__)
-
 import pandas as pd
 
 # TODO list parameters here, or file to give in argument ?

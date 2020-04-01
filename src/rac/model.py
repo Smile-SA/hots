@@ -3,7 +3,7 @@
 # print(__doc__)
 
 from .node import get_list_mean, get_list_var
-from .init import metrics, problem_dir
+from .init import metrics
 import math
 import numpy as np
 import time
@@ -289,9 +289,10 @@ class CPX_Instance:
         # Update the linear relaxation
         self.relax_mdl = make_relaxed_model(self.mdl)
 
-    def export_mdls_lp(self):
-        self.mdl.export_as_lp(path=problem_dir)
-        self.relax_mdl.export_as_lp(path=problem_dir)
+    # TODO not working since problem_dir deleted
+    # def export_mdls_lp(self):
+    #     self.mdl.export_as_lp(path=problem_dir)
+    #     self.relax_mdl.export_as_lp(path=problem_dir)
 
     # Expr total conso CPU in node at t
     def conso_n_t(self, node, t):

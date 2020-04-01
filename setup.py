@@ -29,8 +29,8 @@ setup(
         'sklearn',
         'tqdm',
         # 'pep8-naming',
-        # 'click',
-        # 'click-log',
+        'click',
+        'click-log',
         # 'pytest',
     ],
 

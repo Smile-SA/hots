@@ -84,7 +84,7 @@ def plot_clustering_containers_byNode(instance, labels_, metric='cpu'):
     plt.draw()
 
 
-def plot_containers_groupby_nodes(df_container):
+def plot_containers_groupby_nodes(df_containers, max_cap, sep_time):
     # TODO make metrics generic
     """
     Plot containers consumption grouped by node
@@ -109,14 +109,14 @@ def plot_containers_groupby_nodes(df_container):
     fig, ax = plt.subplots()
     fig.suptitle("Node CPU consumption")
     # TODO generic
-    ax.set_ylim([0, 25])
+    ax.set_ylim([0, max_cap+(max_cap*0.2)])
 
-    pvt_cpu = pd.pivot_table(df_container, columns="machine_id",
-                             index=df_container["timestamp"],
+    pvt_cpu = pd.pivot_table(df_containers, columns="machine_id",
+                             index=df_containers["timestamp"],
                              aggfunc="sum", values="cpu")
     pvt_cpu.plot(ax=ax, legend=False)
-    ax.axvline(x=72, color='red', linestyle='--')
-    ax.axhline(y=20, color='red')
+    ax.axvline(x=sep_time, color='red', linestyle='--')
+    ax.axhline(y=max_cap, color='red')
 
     plt.draw()
 

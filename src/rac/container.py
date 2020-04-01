@@ -19,7 +19,7 @@ def plot_specificData_allContainers(df_containers, dataName):
     plt.draw()
 
 
-def plot_allData_allContainers(df_containers, metrics, half_period=72):
+def plot_allData_allContainers(df_containers, metrics=['cpu'], sep_time=72):
     """
     Plot all metrics container consumption
     """
@@ -38,7 +38,7 @@ def plot_allData_allContainers(df_containers, metrics, half_period=72):
         pvt = pd.pivot_table(temp_df, columns="container_id",
                              index="timestamp", aggfunc="sum", values=metric)
         pvt.plot(ax=ax_[ai], legend=False)
-        ax_[ai].axvline(x=half_period, color='red', linestyle='--')
+        ax_[ai].axvline(x=sep_time, color='red', linestyle='--')
         ai += 1
 
     fig.align_labels()

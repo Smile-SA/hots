@@ -1,52 +1,11 @@
-from setuptools import find_packages, setup
+"""
+=========
+rac setup
+=========
 
-import src.rac
+Provide packaging operations through ``python setup.py [command]`` and ``pip install options .[...]``
+"""
 
-PROJECT = 'rac'
+from setuptools import setup
 
-try:
-    long_description = open('README.adoc', 'rt').read()
-except IOError:
-    long_description = ''
-
-setup(
-    name=PROJECT,
-    version=src.rac.version,
-
-    description='Resource Allocation via Clustering',
-    long_description=long_description,
-
-    author_email='rnd@alterway.fr',
-
-    install_requires=[
-        'docplex',
-        'docplex',
-        'matplotlib',
-        'numpy',
-        'pandas',
-        'pathlib',  # to change ?
-        'scipy',
-        'sklearn',
-        'tqdm',
-        # for linting
-        # 'pep8-naming',
-        # 'click',
-        # 'click-log',
-        # 'pytest',
-    ],
-
-    namespace_packages=['src'],
-    packages=find_packages(),
-    include_package_data=True,
-
-    entry_points={
-        'console_scripts': [
-            'rac = src.rac.main:main'
-        ],
-    },
-
-     setup_requires=['numpy'],
-    # tests_require=['pytest'],
-
-    # zip_safe=False,
-)
+setup()

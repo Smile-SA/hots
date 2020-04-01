@@ -3,7 +3,10 @@
 Main file, entry point of the project.
 
 Functions :
-    - main()
+    - main(data) : data is the folder where we find the files
+        x container_usage.csv : describes container resource consumption
+        x node_meta.csv : describes nodes capacities
+        (x node_usage.csv : describes nodes resource consumption)
 """
 # print(__doc__)
 
@@ -30,10 +33,7 @@ clustering_algo = 'hierarchical'
 
 
 @click.command()
-@click.option('--data', type=click.Path(exists=True),
-              default='./data/generated_10',
-              help='The path to the data folder.\
-    By default, use a small generated exemple.')
+@click.argument('data', type=click.Path(exists=True))
 def main(data):
     """Perform all things of methodology."""
     #####################################################################

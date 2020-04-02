@@ -1,7 +1,4 @@
-"""
-=========
-hots setup
-=========
+from setuptools import find_packages, setup
 
 import src.rac
 

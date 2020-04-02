@@ -1,14 +1,14 @@
-# coding=utf-8
-
-# print(__doc__)
-from . import node as nd
-from . import container
-from .init import init_dfs, init_dfs_meta
 import math
+
+from . import container
+from . import node as nd
+from .init import init_dfs
 
 
 class Instance:
-    """Class describing a instance with following attributes :
+    """Class describing a problem instance.
+
+    An instance has the following attributes :
                 - time : total time of dataset
                 - sep_time : time separating analysis and evaluation period
                 - window_duration : duration of time window for clustering
@@ -26,10 +26,12 @@ class Instance:
     """
 
     # functions #
-    def __init__(self, nb_clusters=3):
+    def __init__(self, data, nb_clusters=3):
 
-        (self.df_containers, self.df_nodes) = init_dfs()
-        self.df_nodes_meta = init_dfs_meta()
+        (self.df_containers,
+         self.df_nodes,
+         self.df_nodes_meta) = init_dfs(data)
+
         self.time = self.df_containers['timestamp'].nunique()
         self.sep_time = math.ceil(self.time / 2)
         self.window_duration = self.df_containers.loc[

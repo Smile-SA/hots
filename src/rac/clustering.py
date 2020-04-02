@@ -1,20 +1,19 @@
+# coding=utf-8
+
+# print(__doc__)
+
 import math
-import multiprocessing as mp
-
-import numpy as np
-from numpy.linalg import multi_dot, norm
-
-import pandas as pd
-
 import scipy.cluster.hierarchy as hac
-from scipy.linalg import fractional_matrix_power
-from scipy.linalg.lapack import dsyevr
-from scipy.spatial.distance import pdist, squareform
-
+import multiprocessing as mp
+import numpy as np
+import pandas as pd
+from numpy.linalg import multi_dot, norm
 from sklearn.cluster import KMeans
 from sklearn.cluster import SpectralClustering
 from sklearn.metrics.pairwise import pairwise_distances
-
+from scipy.spatial.distance import pdist, squareform
+from scipy.linalg.lapack import dsyevr
+from scipy.linalg import fractional_matrix_power
 from tqdm import tqdm
 
 

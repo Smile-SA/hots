@@ -1,12 +1,12 @@
+# coding=utf-8
+
+# print(__doc__)
+
 import math
-
-from matplotlib import gridspec as gridspec
-from matplotlib import pyplot as plt
-
 import numpy as np
-
 import pandas as pd
-
+from matplotlib import pyplot as plt
+from matplotlib import gridspec as gridspec
 from tqdm import tqdm
 
 from .init import metrics

@@ -1,14 +1,16 @@
+# coding=utf-8
+
+# print(__doc__)
+
+from .node import get_list_mean, get_list_var
+from .init import metrics, problem_dir
 import math
+import numpy as np
 import time
 from itertools import combinations
 
 from docplex.mp.model import Model
 from docplex.mp.solution import SolveSolution
-
-import numpy as np
-
-from .init import metrics
-from .node import get_list_mean, get_list_var
 
 
 # TODO add KPIs ?
@@ -16,8 +18,8 @@ from .node import get_list_mean, get_list_var
 
 class CPX_Instance:
     """
-    Class describing the optimization model given to CPLEX.
-
+    Class describing the optimization model given to CPLEX to evaluate
+    our solution.
     Attributes :
     - mdl : DOCPLEX Model instance
     - relax_mdl : linear relaxation of mdl
@@ -287,10 +289,9 @@ class CPX_Instance:
         # Update the linear relaxation
         self.relax_mdl = make_relaxed_model(self.mdl)
 
-    # TODO not working since problem_dir deleted
-    # def export_mdls_lp(self):
-    #     self.mdl.export_as_lp(path=problem_dir)
-    #     self.relax_mdl.export_as_lp(path=problem_dir)
+    def export_mdls_lp(self):
+        self.mdl.export_as_lp(path=problem_dir)
+        self.relax_mdl.export_as_lp(path=problem_dir)
 
     # Expr total conso CPU in node at t
     def conso_n_t(self, node, t):

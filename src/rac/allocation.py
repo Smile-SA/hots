@@ -1,7 +1,9 @@
+# coding=utf-8
+
+# print(__doc__)
+
 import math
-
 import numpy as np
-
 from tqdm import tqdm
 
 
@@ -10,7 +12,10 @@ from tqdm import tqdm
 
 
 def assign_container_node(node_id, container_id, instance):
-    """Assign container_id to node_id, and remove it from old node."""
+    """
+    Assign container_id to node_id node, and remove it from its old node
+    """
+
     old_id = instance.df_containers.loc[
         instance.df_containers['container_id'] == container_id
     ].machine_id.to_numpy()[0]

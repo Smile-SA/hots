@@ -1,3 +1,12 @@
+"""
+=========
+rac plot
+=========
+
+Provide all plotting methods : different clustering results views,
+containers data, nodes data, continous plot in evaluation step.
+"""
+
 import math
 
 from matplotlib import gridspec as gridspec

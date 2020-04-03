@@ -1,3 +1,15 @@
+"""
+=========
+rac model
+=========
+
+Define the optimization model we have, with its objective, constraints,
+variables, and build it from the ``Instance``. Provide all optim model
+related methods.
+The optimization model description is based on docplex, the Python API of
+CPLEX, own by IBM.
+"""
+
 import math
 import time
 from typing import List

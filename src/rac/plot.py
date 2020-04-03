@@ -1,4 +1,13 @@
-# coding=utf-8
+"""
+=========
+rac plot
+=========
+
+Provide all plotting methods : different clustering results views,
+containers data, nodes data, continous plot in evaluation step.
+"""
+
+import math
 
 # print(__doc__)
 

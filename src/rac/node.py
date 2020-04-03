@@ -1,6 +1,11 @@
-# coding=utf-8
+"""
+=========
+rac node
+=========
 
-# print(__doc__)
+Provide actions specific to nodes (plot nodes data, build dictionnary
+for node IDs, compute different statistic measures ...)
+"""
 
 import math
 from typing import Dict

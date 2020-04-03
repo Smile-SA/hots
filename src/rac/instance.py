@@ -1,4 +1,13 @@
-# coding=utf-8
+"""
+=========
+rac instance
+=========
+
+Define the Instance class, which represents the problem we are facing,
+with its data, information, parameters. Provide Instance-related methods.
+"""
+
+import math
 
 # print(__doc__)
 from . import node as nd

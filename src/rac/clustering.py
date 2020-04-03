@@ -1,3 +1,13 @@
+"""
+=========
+rac clustering
+=========
+
+Provide clustering algorithms and all clustering-related methods.
+Here are the available clustering algorithms : k-means, hierarchical,
+spectral, custom spectral.
+"""
+
 import multiprocessing as mp
 from typing import Callable, Dict, List
 

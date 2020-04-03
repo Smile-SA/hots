@@ -1,6 +1,11 @@
-# coding=utf-8
+"""
+=========
+rac init
+=========
 
-# print(__doc__)
+Provide stuff for initialization step (load DataFrames,
+global variables)
+"""
 
 import pandas as pd
 

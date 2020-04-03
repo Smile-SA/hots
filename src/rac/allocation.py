@@ -1,3 +1,17 @@
+"""
+=========
+rac allocation
+=========
+
+Provide allocation heuristics and all allocation-related methods
+(check capacity, change assignment ...).
+Actually, there are 3 differents allocation techniques :
+    - ``allocation_distant_pairwise`` : try to co-localize containers
+    belonging to ``distant`` clusters ;
+    - ``allocation_ffd`` : based on FFD bin-packing technique
+    - spread : classical spread over nodes technique
+"""
+
 import math
 from typing import List
 

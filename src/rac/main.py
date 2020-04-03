@@ -1,11 +1,16 @@
 """
-RAC : Resource Allocation via Clustering.
+=========
+rac main
+=========
+Entry point of rac module through ``rac data``.
 
-Functions :
-    - main(data) : data is the folder where we find the files
+    - data is the folder where we find the files
         x container_usage.csv : describes container resource consumption
         x node_meta.csv : describes nodes capacities
         (x node_usage.csv : describes nodes resource consumption)
+
+The entire methodology is called from here (initialization, clustering,
+allocation, evaluation, access to optimization model...).
 """
 
 import time

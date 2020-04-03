@@ -1,3 +1,12 @@
+"""
+=========
+rac init
+=========
+
+Provide stuff for initialization step (load DataFrames,
+global variables)
+"""
+
 import pandas as pd
 
 # TODO list parameters here, or file to give in argument ?

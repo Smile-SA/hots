@@ -11,14 +11,13 @@ RUN apt-get -qq update \
     && apt-get clean -y \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-COPY ./requirements.txt /
-
 COPY . /app
 WORKDIR /app
-RUN pip install -r /requirements.txt
 
-RUN pip3 install --no-deps -e .
-
+# shellcheck disable=DL3013
+RUN pip3 install . \
+    && apt -y purge python-dev build-essential \
+    && apt -y autoremove
 
 #ENTRYPOINT ["rac"]
 

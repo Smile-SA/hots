@@ -10,7 +10,7 @@ install: venv
 
 .PHONY: done
 done:
-	@ echo "Installation finished succesfully. Run 'rac' to start the application"
+	@ echo "Installation finished succesfully. Run 'rac /path/to/data/folder' to start the application"
 
 .PHONY: clean
 clean:

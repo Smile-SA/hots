@@ -1,8 +1,11 @@
-# coding=utf-8
+import multiprocessing as mp
+from typing import Callable, Dict, List
 
-# print(__doc__)
+import numpy as np
+from numpy.linalg import multi_dot, norm
 
-import math
+import pandas as pd
+
 import scipy.cluster.hierarchy as hac
 import multiprocessing as mp
 import numpy as np
@@ -16,10 +19,12 @@ from scipy.linalg.lapack import dsyevr
 from scipy.linalg import fractional_matrix_power
 from tqdm import tqdm
 
+from .instance import Instance
+
 
 # Functions definitions #
 # TODO add mem cols
-def matrix_line(args):
+def matrix_line(args: (str, pd.DataFrame)) -> Dict:
     key, data = args
     line = {}
     for row in data.iterrows():
@@ -28,11 +33,11 @@ def matrix_line(args):
     return line
 
 
-def build_matrix_indiv_attr(df):
-    print("Setup for clustering ...")
+def build_matrix_indiv_attr(df: pd.DataFrame) -> pd.DataFrame:
+    print('Setup for clustering ...')
     list_args = list(df.groupby(df['container_id']))
     lines = []
-    pool = mp.Pool(processes=(mp.cpu_count()-1))
+    pool = mp.Pool(processes=(mp.cpu_count() - 1))
     for line in tqdm(pool.imap(matrix_line, list_args), total=len(list_args)):
         lines.append(line)
 
@@ -44,7 +49,7 @@ def build_matrix_indiv_attr(df):
     return df_return
 
 
-def build_similarity_matrix(df):
+def build_similarity_matrix(df: pd.DataFrame) -> np.array:
     print(df)
     dists = pdist(df, 'euclidean')
     # dists = pdist(df.T)
@@ -59,28 +64,29 @@ def build_similarity_matrix(df):
 
 
 # TODO add perso spectral + check error algo
-def perform_clustering(data, algo, k):
-    switcher = {"hierarchical": hierarchical_clustering,
-                "kmeans": k_means,
-                "spectral": spectral_clustering,
-                "spectral_perso": perso_spectral_clustering}
+def perform_clustering(data: pd.DataFrame, algo: str, k: int
+                       ) -> Callable[[pd.DataFrame, int], List]:
+    switcher = {'hierarchical': hierarchical_clustering,
+                'kmeans': k_means,
+                'spectral': spectral_clustering,
+                'spectral_perso': perso_spectral_clustering}
     func = switcher.get(algo)
     return func(data, k)
 
 
-def k_means(data, k):
+def k_means(data: pd.DataFrame, k: int) -> List:
     return KMeans(n_clusters=k).fit(data).labels_
 
 
-def p_dist(data, metric='euclidean'):
+def p_dist(data: pd.DataFrame, metric: str = 'euclidean') -> np.array:
     return pairwise_distances(data, metric=metric)
 
 
-def spectral_clustering(data, k):
+def spectral_clustering(data: pd.DataFrame, k: int) -> List:
     return SpectralClustering(n_clusters=k).fit(data).labels_
 
 
-def hierarchical_clustering(data, k):
+def hierarchical_clustering(data: pd.DataFrame, k: int) -> List:
     Z_all = hac.linkage(data, method='ward', metric='euclidean')
     clusters_all = hac.fcluster(Z_all, k, criterion='distance')
     clusters_all -= 1
@@ -88,10 +94,10 @@ def hierarchical_clustering(data, k):
 
 
 # TODO seems not working correctly => to fix
-def perso_spectral_clustering(data, k):
+def perso_spectral_clustering(data: pd.DataFrame, k: int) -> np.array:
     W = build_similarity_matrix(data)
     D = np.diag(np.sum(W, axis=0))
-    D_min1_2 = fractional_matrix_power(D, -1/2)
+    D_min1_2 = fractional_matrix_power(D, -1 / 2)
     A = multi_dot([D_min1_2, W, D_min1_2])
 
     print(D)
@@ -101,9 +107,9 @@ def perso_spectral_clustering(data, k):
     # borneinf = 1e-8
     drange = 'A'
     eigenvaluesA, eigenvectorsA, _ = dsyevr(A, range=drange)
-    print("Valeurs propres de A :")
+    print('Valeurs propres de A :')
     print(eigenvaluesA)
-    print("Vecteurs propres de A :")
+    print('Vecteurs propres de A :')
     print(eigenvectorsA)
     idxA = eigenvaluesA.argsort()[::-1]
 
@@ -116,34 +122,37 @@ def perso_spectral_clustering(data, k):
     lambda_ = eigenvaluesA[idxA]
     U = eigenvectorsA[idxA]
 
-    print("Valeurs propres de A (> borneinf) :")
+    print('Valeurs propres de A (> borneinf) :')
     print(lambda_)
 
-    print("Vecteurs propres U=(u1, ..., up) :")
+    print('Vecteurs propres U=(u1, ..., up) :')
     print(U)
 
     return(np.asarray(weighted_kmeans(W, D, U, k)))
 
 
-def compute_mu_r(W, D, labels_, r, U):
+def compute_mu_r(W: np.array, D: np.array, labels_: List, r: int, U: np.array
+                 ) -> float:
     p = 0
     mu_r = 0
     d_p = 0
     for p in range(len(labels_)):
         if labels_[p] == r:
-            mu_r += pow(D[p, p], 1/2) * U[:, p]
+            mu_r += pow(D[p, p], 1 / 2) * U[:, p]
             d_p += D[p, p]
 
-    return (mu_r * (1/d_p))
+    return (mu_r * (1 / d_p))
 
 
-def compute_distance_cluster_r(p, r, mu_r, U, dp):
+def compute_distance_cluster_r(p: int, r: int, mu_r: float,
+                               U: np.array, dp: float) -> float:
     # return math.sqrt(pow(
     # (U[:, p] * pow(dp, -1/2)) - mu_r, 2))
-    return norm((U[:, p] * pow(dp, -1/2)) - mu_r)
+    return norm((U[:, p] * pow(dp, -1 / 2)) - mu_r)
 
 
-def weighted_kmeans(W, D, U, k):
+def weighted_kmeans(W: np.array, D: np.array,
+                    U: np.array, k: int) -> List:
     labels_ = [0] * len(W)
     n = 0
     i = 0
@@ -155,7 +164,7 @@ def weighted_kmeans(W, D, U, k):
     nb_loops = 1
     stationnary = False
     while not stationnary:
-        print("Loop number ", nb_loops)
+        print('Loop number ', nb_loops)
         stationnary = True
         r = 0
         mu_ = [0] * k
@@ -178,45 +187,7 @@ def weighted_kmeans(W, D, U, k):
     return labels_
 
 
-# TODO check if ok
-def DTWDistance(s1, s2, w=5):
-    """Compute the Dynamic Time Warping distance between 2 curves"""
-
-    DTW = {}
-
-    w = max(w, abs(len(s1)-len(s2)))
-
-    for i in range(-1, len(s1)):
-        for j in range(-1, len(s2)):
-            DTW[(i, j)] = float('inf')
-    DTW[(-1, -1)] = 0
-
-    for i in range(len(s1)):
-        for j in range(max(0, i-w), min(len(s2), i+w)):
-            dist = (s1[i]-s2[j])**2
-            DTW[(i, j)] = dist + min(DTW[(i-1, j)],
-                                     DTW[(i, j-1)], DTW[(i-1, j-1)])
-
-    return math.sqrt(DTW[len(s1)-1, len(s2)-1])
-
-
-# TODO check if ok
-def LB_Keogh(s1, s2, r):
-    LB_sum = 0
-    for ind, i in enumerate(s1):
-
-        lower_bound = min(s2[(ind-r if ind-r >= 0 else 0):(ind+r)])
-        upper_bound = max(s2[(ind-r if ind-r >= 0 else 0):(ind+r)])
-
-        if i > upper_bound:
-            LB_sum = LB_sum+(i-upper_bound)**2
-        elif i < lower_bound:
-            LB_sum = LB_sum+(i-lower_bound)**2
-
-    return math.sqrt(LB_sum)
-
-
-def kMedoids(D, k, tmax=100):
+def kMedoids(D: np.array, k: int, tmax: int = 100) -> (np.array, Dict):
     # determine dimensions of distance matrix D
     _, n = D.shape
 
@@ -281,7 +252,7 @@ def kMedoids(D, k, tmax=100):
     return M, C
 
 
-def get_cluster_variance(nb_clusters, df_clust):
+def get_cluster_variance(nb_clusters: int, df_clust: pd.DataFrame) -> np.array:
     vars_ = np.zeros((nb_clusters), dtype=float)
 
     for key, data in df_clust.groupby(['cluster']):
@@ -290,31 +261,33 @@ def get_cluster_variance(nb_clusters, df_clust):
     return vars_
 
 
-def get_cluster_mean_profile(nb_clusters, df_clust, total_time, tmin=0):
+def get_cluster_mean_profile(nb_clusters: int, df_clust: pd.DataFrame,
+                             total_time: int, tmin: int = 0) -> np.array:
     profiles_ = np.zeros((nb_clusters, total_time), dtype=float)
 
     for key, data in df_clust.groupby(['cluster']):
         for t in range(total_time):
-            profiles_[key, t] = data[t+tmin].mean()
+            profiles_[key, t] = data[t + tmin].mean()
 
     return profiles_
 
 
-def get_sumCluster_variance(profiles_, vars_):
+def get_sumCluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
     k = len(profiles_)
     sumProfiles_matrix = np.zeros((k, k), dtype=float)
     for i in range(k):
-        for j in range(i+1, k):
+        for j in range(i + 1, k):
             sumProfiles_matrix[i, j] = (
-                (profiles_[i, :]+profiles_[j, :]).var()) / (
+                (profiles_[i, :] + profiles_[j, :]).var()) / (
                     vars_[i] + vars_[j])
             sumProfiles_matrix[j, i] = sumProfiles_matrix[i, j]
 
     return sumProfiles_matrix
 
 
-def get_distanceCluster(instance, cluster_centers_):
-    print("Compute distance between each cluster ...")
+def get_distanceCluster(instance: Instance, cluster_centers_: np.array
+                        ) -> np.array:
+    print('Compute distance between each cluster ...')
     cluster_distance = np.zeros(
         (instance.nb_clusters, instance.nb_clusters), dtype=float)
 
@@ -327,15 +300,18 @@ def get_distanceCluster(instance, cluster_centers_):
     return cluster_distance
 
 
-def get_distance_containerCluster(conso_cont, profile):
+def get_distance_containerCluster(conso_cont: np.array, profile: np.array
+                                  ) -> float:
     """
     Compute the distance between the container profile and his cluster's
     mean profile.
     """
-    return np.absolute(profile-conso_cont).mean()/profile.mean()
+    return np.absolute(profile - conso_cont).mean() / profile.mean()
 
 
-def check_container_deviation(working_df, labels_, profiles_, dict_id_c):
+def check_container_deviation(
+        working_df: pd.DataFrame, labels_: List, profiles_: np.array,
+        dict_id_c: Dict) -> None:
     # print(profiles_)
     # print(labels_)
 
@@ -345,4 +321,4 @@ def check_container_deviation(working_df, labels_, profiles_, dict_id_c):
                 working_df['container_id'] == c
             ]['cpu'].to_numpy(), profiles_[labels_[c]])
         if dist > 0.5:
-            print("Deviation of container ", c, dist)
+            print('Deviation of container ', c, dist)

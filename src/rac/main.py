@@ -40,9 +40,9 @@ def main():
     cplex_model = model.CPX_Instance(myInstance)
     print('CPLEX model imported.')
     print('Building CPLEX model time : %fs' %
-          (time.time()-building_cplex_time))
+          (time.time() - building_cplex_time))
     # TODO fix this method
-    # print("Objective of initial placement : ",
+    # print('Objective of initial placement : ',
     #       cplex_model.get_obj_value_heuristic(myInstance))
 
     # Modifying here
@@ -69,8 +69,8 @@ def main():
     df_containers_clust['cluster'] = labels_
     myInstance.nb_clusters = labels_.max() + 1
 
-    # print("Clustering balance : ",
-    #       df_containers_clust.groupby("cluster").count())
+    # print('Clustering balance : ',
+    #       df_containers_clust.groupby('cluster').count())
 
     # TODO improve this part (distance...)
     cluster_vars = clt.get_cluster_variance(
@@ -124,7 +124,7 @@ def main():
 
     # Check if sum(nodes.conso) for all tick is same as previous
     # (global_max_cpu, global_max_mem) = nd.plot_total_usage(
-    #     myInstance.df_nodes, "Total conso on all nodes after new alloc")
+    #     myInstance.df_nodes, 'Total conso on all nodes after new alloc')
     # print(global_max_cpu, global_max_mem)
 
     # nd.print_vmr(myInstance.df_nodes, myInstance.time, 2)

@@ -7,10 +7,18 @@ from .init import metrics, problem_dir
 import math
 import numpy as np
 import time
+from typing import List
 from itertools import combinations
 
+from docplex.mp.linear import LinearExpr
 from docplex.mp.model import Model
 from docplex.mp.solution import SolveSolution
+
+import numpy as np
+
+from .init import metrics
+from .instance import Instance
+from .node import get_list_mean, get_list_var
 
 
 # TODO add KPIs ?
@@ -36,9 +44,9 @@ class CPX_Instance:
     # functions #
 
     # TODO parallelize all building
-    def __init__(self, myInstance):
+    def __init__(self, myInstance: Instance):
         model_time = time.time()
-        print("Building of cplex model ...")
+        print('Building of cplex model ...')
         self.nb_nodes = myInstance.df_nodes['machine_id'].nunique()
         self.nb_containers = myInstance.df_containers['container_id'].nunique()
 
@@ -59,7 +67,7 @@ class CPX_Instance:
 
         self.mdl.print_information()
 
-        print("Building model time : ", time.time() - model_time)
+        print('Building model time : ', time.time() - model_time)
 
     def build_names(self):
         self.nodes_names = np.arange(self.nb_nodes)
@@ -76,31 +84,31 @@ class CPX_Instance:
         # variables for max diff consumption
         self.mdl.delta = self.mdl.continuous_var(name='delta')
 
-    def build_data(self, myInstance):
+    def build_data(self, myInstance: Instance):
         self.containers_data = {}
         self.nodes_data = {}
         for c in self.containers_names:
             self.containers_data[c] = myInstance.df_containers.loc[
-                myInstance.df_containers["container_id"] ==
+                myInstance.df_containers['container_id'] ==
                 myInstance.dict_id_c[c],
-                ["timestamp", "cpu", "mem"]].to_numpy()
+                ['timestamp', 'cpu', 'mem']].to_numpy()
 
         for n in self.nodes_names:
             self.nodes_data[n] = myInstance.df_nodes_meta.loc[
                 myInstance.df_nodes_meta['machine_id'] ==
                 myInstance.dict_id_n[n]].to_numpy()[0]
 
-    def build_constraints(self, total_time):
+    def build_constraints(self, total_time: int):
         for node in self.nodes_names:
             for t in range(total_time):
                 i = 0
-                for i in range(1, len(metrics)+1):
+                for i in range(1, len(metrics) + 1):
                     # Capacity constraint
                     self.mdl.add_constraint(self.mdl.sum(
-                        self.mdl.x[c, node]*self.containers_data[c][t][i]
+                        self.mdl.x[c, node] * self.containers_data[c][t][i]
                         for c in self.containers_names) <=
                         self.nodes_data[node][i],
-                        metrics[i-1]+'capacity_'+str(node)+'_'+str(t))
+                        metrics[i - 1] + 'capacity_' + str(node) + '_' + str(t))
 
             # Assign constraint (x[c,n] = 1 => a[n] = 1)
             # self.mdl.add_constraint(self.mdl.a[node] >= (self.mdl.sum(
@@ -112,13 +120,13 @@ class CPX_Instance:
             for c in self.containers_names:
                 self.mdl.add_constraint(
                     self.mdl.x[c, node] <= self.mdl.a[node],
-                    'open_a_'+str(node))
+                    'open_a_' + str(node))
 
         # Container assignment constraint (1 and only 1 x[c,_] = 1 for all c)
         for container in self.containers_names:
             self.mdl.add_constraint(self.mdl.sum(
                 self.mdl.x[container, node] for node in self.nodes_names) == 1,
-                'assign_'+str(container))
+                'assign_' + str(container))
 
         # Assign delta to diff cons - mean_cons
         for node in self.nodes_names:
@@ -126,17 +134,17 @@ class CPX_Instance:
             for t in range(total_time):
                 self.mdl.add_constraint(self.conso_n_t(
                     node, t) - expr_n <= self.mdl.delta,
-                    'delta_'+str(node)+'_'+str(t))
+                    'delta_' + str(node) + '_' + str(t))
                 self.mdl.add_constraint(
                     expr_n - self.conso_n_t(node, t) <=
-                    self.mdl.delta, 'inv-delta_'+str(node)+'_'+str(t))
+                    self.mdl.delta, 'inv-delta_' + str(node) + '_' + str(t))
 
         # Constraint the number of open servers
         self.mdl.add_constraint(self.mdl.sum(
             self.mdl.a[n] for n in self.nodes_names) <=
-            self.max_open_nodes, "max_nodes")
+            self.max_open_nodes, 'max_nodes')
 
-    def build_objective(self, myInstance):
+    def build_objective(self, myInstance: Instance):
 
         # Minimize sum of a[n] (number of open nodes)
         # self.mdl.minimize(self.mdl.sum(
@@ -149,12 +157,12 @@ class CPX_Instance:
         # Minimize delta (max(conso_n_t - mean_n))
         self.mdl.minimize(self.mdl.delta)
 
-    def set_X_from_df(self, myInstance):
+    def set_X_from_df(self, myInstance: Instance):
         start_sol = dict()
         for c in self.containers_names:
             node_c_id = myInstance.df_containers.loc[
-                myInstance.df_containers["container_id"] ==
-                myInstance.dict_id_c[c], "machine_id"].to_numpy()[0]
+                myInstance.df_containers['container_id'] ==
+                myInstance.dict_id_c[c], 'machine_id'].to_numpy()[0]
             node_c = list(myInstance.dict_id_n.keys())[list(
                 myInstance.dict_id_n.values()).index(node_c_id)]
             for n in self.nodes_names:
@@ -167,7 +175,7 @@ class CPX_Instance:
         # self.current_sol.print_mst()
         # self.add_constraint_heuristic()
 
-    def get_obj_value_heuristic(self, myInstance):
+    def get_obj_value_heuristic(self, myInstance: Instance):
         # TODO adaptative ... (retrieve expr from obj ?)
         obj_val = 0.0
 
@@ -185,9 +193,9 @@ class CPX_Instance:
             obj_val += dict_var_cpu[n]
 
         self.current_sol.set_objective_value(obj_val)
-        print("Objective function value : ", obj_val)
+        print('Objective function value : ', obj_val)
 
-    def solve(self, my_mdl):
+    def solve(self, my_mdl: Model):
         if not my_mdl.solve(log_output=True):
             print('*** Problem has no solution ***')
         else:
@@ -206,13 +214,13 @@ class CPX_Instance:
             # self.relax_mdl.report_kpis()
 
     def print_heuristic_solution_a(self):
-        print("Values of variables a :")
+        print('Values of variables a :')
         for n in self.nodes_names:
             print(self.mdl.a[n], self.current_sol.get_value(
                 self.mdl.a[n]))
 
-    def print_sol_infos_heur(self, total_time=6):
-        print("Infos about heuristics solution ...")
+    def print_sol_infos_heur(self, total_time: int = 6):
+        print('Infos about heuristics solution ...')
 
         means_ = np.zeros(len(self.nodes_names))
         vars_ = np.zeros(len(self.nodes_names))
@@ -224,7 +232,7 @@ class CPX_Instance:
                     for t in range(total_time):
                         means_[n] += self.containers_data[c][t][1]
             means_[n] = means_[n] / total_time
-            print("Mean of node %d : %f" % (n, means_[n]))
+            print('Mean of node %d : %f' % (n, means_[n]))
 
             # Compute variance in each node
             for t in range(total_time):
@@ -234,7 +242,7 @@ class CPX_Instance:
                         total_t += self.containers_data[c][t][1]
                 vars_[n] += math.pow(total_t - means_[n], 2)
             vars_[n] = vars_[n] / total_time
-            print("Variance of node %d : %f" % (n, vars_[n]))
+            print('Variance of node %d : %f' % (n, vars_[n]))
 
     # We can get dual values only for LP
     def get_max_dual(self):
@@ -251,7 +259,8 @@ class CPX_Instance:
                     dual_max = ct.dual_value
             print(ct_max, dual_max)
 
-    def add_constraint_heuristic(self, container_grouped, instance):
+    def add_constraint_heuristic(self,
+                                 container_grouped: List, instance: Instance):
         # for i_c1 in range(len(self.containers_names)):
         #     c1 = self.containers_names[i_c1]
         #     for i_c2 in range(i_c1+1, len(self.containers_names)):
@@ -284,7 +293,7 @@ class CPX_Instance:
                     for n_i in self.nodes_names:
                         self.mdl.add_constraint(
                             self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] == 0,
-                            'mustLink_'+str(c1)+'_'+str(c2))
+                            'mustLink_' + str(c1) + '_' + str(c2))
 
         # Update the linear relaxation
         self.relax_mdl = make_relaxed_model(self.mdl)
@@ -294,60 +303,54 @@ class CPX_Instance:
         self.relax_mdl.export_as_lp(path=problem_dir)
 
     # Expr total conso CPU in node at t
-    def conso_n_t(self, node, t):
+    def conso_n_t(self, node, t: int) -> LinearExpr:
         return self.mdl.sum(
             (self.mdl.x[c, node] * self.containers_data[c][t][1])
             for c in self.containers_names)
 
     # Expr mean CPU in node
-    def mean(self, node, total_time):
+    def mean(self, node: int, total_time: int) -> LinearExpr:
         return (self.mdl.sum(
             self.conso_n_t(node, t) for t in range(total_time)
         ) / total_time)
 
-    def mean_all_nodes(self, total_time):
+    def mean_all_nodes(self, total_time: int) -> LinearExpr:
         return (self.mdl.sum(
             self.mean(node, total_time)
             for node in self.nodes_names) / self.nb_nodes)
 
     # Expr mean_diff CPU in node
-    def mean_diff(self, node, total_time):
+    def mean_diff(self, node: int, total_time: int) -> LinearExpr:
         return (self.mdl.sum(
             (self.conso_n_t(node, t) - self.mean(node, total_time))
             for t in range(total_time)) / total_time)
 
     # Expr variance CPU in node
-    def var(self, node, total_time):
+    def var(self, node: int, total_time: int) -> LinearExpr:
         return (self.mdl.sum(
             (self.conso_n_t(node, t) - self.mean(node, total_time))**2
             for t in range(total_time)) / total_time)
 
     # Expr max CPU in node
-    def max_n(self, node, total_time):
+    def max_n(self, node: int, total_time: int) -> LinearExpr:
         return (self.mdl.max(
             [self.conso_n_t(node, t) for t in range(total_time)]))
 
-    def created_terms(self):
-        # print(self.mdl.)
-        for v in self.mdl.objective_expr.iter_variables():
-            print(v)
-            # print(self.mdl.contains_var(v))
-        for v in self.mdl.iter_variables():
-            print(v)
 
 # Functions related to CPLEX #
 
-
-def print_constraints(mdl):
+def print_constraints(mdl: Model):
+    """Print all the constraints."""
     for ct in mdl.iter_constraints():
         print(ct)
 
 
-def print_all_dual(mdl, nn_only=True):
+def print_all_dual(mdl: Model, nn_only: bool = True):
+    """Print dual values associated to constraints."""
     if nn_only:
-        print("Display non-zero dual values")
+        print('Display non-zero dual values')
     else:
-        print("Display all dual values")
+        print('Display all dual values')
     for ct in mdl.iter_linear_constraints():
         if not nn_only:
             print(ct, ct.dual_value)
@@ -355,14 +358,15 @@ def print_all_dual(mdl, nn_only=True):
             print(ct, ct.dual_value)
 
 
-def print_non_user_constraint(mdl):
-    print("*** Print non user constraints ***", mdl.name)
+def print_non_user_constraint(mdl: Model):
+    """Print constraints not added by the user."""
+    print('*** Print non user constraints ***', mdl.name)
     for ct in mdl.iter_constraints():
         if not ct.has_user_name():
             print(ct, ct.is_generated())
 
 
-def make_relaxed_model(mdl):
+def make_relaxed_model(mdl: Model) -> Model:
     """ Returns a continuous relaxation of the model.
 
     Variable types are set to continuous (note that semi-xxx variables have
@@ -373,14 +377,12 @@ def make_relaxed_model(mdl):
     :param mdl: the initial model
 
     :return: a new model with continuous relaxation, if possible, else None.
-
-
     """
     if mdl._pwl_counter:
-        mdl.fatal("Model has piecewise-linear expressions, cannot be relaxed")
+        mdl.fatal('Model has piecewise-linear expressions, cannot be relaxed')
     mdl_class = mdl.__class__
     unrelaxables = []
-    relaxed_model = mdl_class(name="lp_"+mdl.name)
+    relaxed_model = mdl_class(name='lp_' + mdl.name)
 
     # transfer kwargs
     relaxed_model._parse_kwargs(mdl._get_kwargs())

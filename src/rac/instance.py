@@ -26,7 +26,11 @@ class Instance:
     """
 
     # functions #
-    def __init__(self, nb_clusters=3):
+    def __init__(self, data: str, nb_clusters: int = 3):
+
+        (self.df_containers,
+         self.df_nodes,
+         self.df_nodes_meta) = init_dfs(data)
 
         (self.df_containers, self.df_nodes) = init_dfs()
         self.df_nodes_meta = init_dfs_meta()
@@ -36,8 +40,8 @@ class Instance:
             self.df_containers['timestamp'] <= self.sep_time
         ]['timestamp'].nunique()
 
-        self.nb_nodes = self.df_nodes["machine_id"].nunique()
-        self.nb_containers = self.df_containers["container_id"].nunique()
+        self.nb_nodes = self.df_nodes['machine_id'].nunique()
+        self.nb_containers = self.df_containers['container_id'].nunique()
         self.nb_clusters = nb_clusters
 
         self.df_nodes.sort_values('timestamp', inplace=True)
@@ -54,50 +58,50 @@ class Instance:
 
     # TODO rewrite with __str__
     def print(self):
-        print("\n")
-        print("### Problem instance informations ###")
-        print("Time considered : %d" % self.time)
-        print("%d nodes" % self.nb_nodes)
-        print("%d containers" % self.nb_containers)
-        print("\n")
+        print('\n')
+        print('### Problem instance informations ###')
+        print('Time considered : %d' % self.time)
+        print('%d nodes' % self.nb_nodes)
+        print('%d containers' % self.nb_containers)
+        print('\n')
         # Not useful ?
-        # print("%d clusters" % self.nb_clusters)
+        # print('%d clusters' % self.nb_clusters)
 
     # TODO rewrite with only one f.write
 
-    def instance_inFile_before(self, filename):
-        f = open(filename, "w")
-        f.write("### Problem instance informations ###\n")
-        f.write("Time considered : %d\n" % self.time)
-        f.write("%d nodes -- " % self.nb_nodes)
-        f.write("%d containers\n" % self.nb_containers)
-        f.write("\n")
+    def instance_inFile_before(self, filename: str):
+        f = open(filename, 'w')
+        f.write('### Problem instance informations ###\n')
+        f.write('Time considered : %d\n' % self.time)
+        f.write('%d nodes -- ' % self.nb_nodes)
+        f.write('%d containers\n' % self.nb_containers)
+        f.write('\n')
 
-        f.write("### Variance before optimization ###\n")
+        f.write('### Variance before optimization ###\n')
         var, global_var = nd.get_nodes_variance(self.df_nodes, self.time, 2)
         f.write(str(var))
-        f.write("\nGlobal variance : %s\n" % str(global_var))
+        f.write('\nGlobal variance : %s\n' % str(global_var))
 
-        f.write("\n### Nodes state at the beginning ###\n")
+        f.write('\n### Nodes state at the beginning ###\n')
 
         # for node in self.nodes_:
         #     node.print_inFile(f, 1)
-        #     f.write("\n")
+        #     f.write('\n')
 
-        f.write("\n")
+        f.write('\n')
         f.close()
 
-    def instance_inFile_after(self, filename):
-        f = open(filename, "a")
+    def instance_inFile_after(self, filename: str):
+        f = open(filename, 'a')
 
-        f.write("\n### Variance after optimization ###\n")
+        f.write('\n### Variance after optimization ###\n')
         var, global_var = nd.get_nodes_variance(self.df_nodes, self.time, 2)
         f.write(str(var))
-        f.write("\nGlobal variance : %s\n" % str(global_var))
+        f.write('\nGlobal variance : %s\n' % str(global_var))
 
         f.close()
 
-    def get_node_from_container(self, container_id):
+    def get_node_from_container(self, container_id: str) -> str:
         return (self.df_containers.loc[
             self.df_containers['container_id'] == container_id
         ]['machine_id'].to_numpy()[0])

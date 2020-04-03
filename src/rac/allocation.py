@@ -3,19 +3,20 @@
 # print(__doc__)
 
 import math
+from typing import List
+
 import numpy as np
 from tqdm import tqdm
+
+from .instance import Instance
 
 
 #####################################################################
 # Functions definitions
 
 
-def assign_container_node(node_id, container_id, instance):
-    """
-    Assign container_id to node_id node, and remove it from its old node
-    """
-
+def assign_container_node(node_id: str, container_id: str, instance: Instance):
+    """Assign container_id to node_id, and remove it from old node."""
     old_id = instance.df_containers.loc[
         instance.df_containers['container_id'] == container_id
     ].machine_id.to_numpy()[0]
@@ -41,14 +42,17 @@ def assign_container_node(node_id, container_id, instance):
     ] = node_id
 
 
-def allocation_distant_pairwise(instance, cluster_var_matrix, labels_, lb=0.0):
+def allocation_distant_pairwise(
+        instance: Instance, cluster_var_matrix: np.array,
+        labels_: List, lb: float = 0.0) -> List:
     """
     First placement heuristic implemented : take two most distant clusters
     (from their mean profile), and assign by pair (one container from each
     cluster) on the first available node, and so on. Take the following node if
     current one has not enough resources.
+    Return a list of containers forced to be grouped together.
     """
-    print("Beginning of allocation ...")
+    print('Beginning of allocation ...')
     stop = False
 
     total_time = instance.sep_time
@@ -221,7 +225,7 @@ def allocation_distant_pairwise(instance, cluster_var_matrix, labels_, lb=0.0):
                                     instance.df_nodes_meta['machine_id'] ==
                                     instance.dict_id_n[n]
                                 ]['cpu'].to_numpy()[0]
-            containers_grouped.append(list_containers_i+list_containers_j)
+            containers_grouped.append(list_containers_i + list_containers_j)
             cluster_var_matrix_copy[i, :] = 0.0
             cluster_var_matrix_copy[:, i] = 0.0
             cluster_var_matrix_copy[j, :] = 0.0
@@ -233,8 +237,9 @@ def allocation_distant_pairwise(instance, cluster_var_matrix, labels_, lb=0.0):
     return containers_grouped
 
 
-def allocation_ffd(instance, cluster_vars, cluster_var_matrix,
-                   labels_, bound_new_node=50):
+def allocation_ffd(instance: Instance,
+                   cluster_vars: np.array, cluster_var_matrix: np.array,
+                   labels_: List, bound_new_node: float = 50):
     """
     Second placement heuristic, based on "first-fit decreasing" bin-packing
     heuristic : order clusters by decreasing variance, place all containers
@@ -370,7 +375,7 @@ def allocation_ffd(instance, cluster_vars, cluster_var_matrix,
 
 # TODO consider 85% usage now ?
 # Try to find minimum number of nodes needed
-def nb_min_nodes(instance, total_time):
+def nb_min_nodes(instance: Instance, total_time: int) -> (float, float):
     max_cpu = 0.0
     max_mem = 0.0
     for t in range(total_time):
@@ -393,9 +398,10 @@ def nb_min_nodes(instance, total_time):
 
 
 # TODO integrate upper bound for considering all clusters sum variance < ub
-def place_opposite_clusters(instance, cluster_vars,
-                            cluster_var_matrix, labels_,
-                            min_nodes, conso_nodes):
+def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
+                            cluster_var_matrix: np.array, labels_: List,
+                            min_nodes: int, conso_nodes: np.array
+                            ) -> (np.array, np.array):
     total_time = instance.sep_time
     lb = 0.0
     valid_idx = np.where(cluster_var_matrix.flatten() > lb)[0]
@@ -447,7 +453,7 @@ def place_opposite_clusters(instance, cluster_vars,
         # we have to place remaining containers
 
         if it < len(list_containers_j):
-            print("Remaining %d containers" % (len(list_containers_j) - it))
+            print('Remaining %d containers' % (len(list_containers_j) - it))
             for it in range(it, len(list_containers_j)):
                 cons_c = instance.df_containers.loc[
                     instance.df_containers['container_id'] ==

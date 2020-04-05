@@ -1,12 +1,14 @@
 # **rac**
 
-Script for testing a hybrid resource allocation method using machine learning and optimization.
+> Application for testing a hybrid resource allocation method using machine learning and optimization.
+
+(**TODO**: describe a **real life** use case for `rac`)
 
 ## Installation
 
 ### Common requirements
 
-Have Python 3.6, 3.7 or 3.8 on an Unix.
+Have Python 3.6, 3.7 or 3.8 on an Unix (Linux, MacOS, ...) with a graphic display.
 
 ### Production
 
@@ -16,12 +18,12 @@ Latest stable version:
 pip install rac
 ```
 
-See `pip`documentation and available versions on PyPI for other options and `rac` versions.
+See `pip` documentation and available versions on PyPI for other options and `rac` versions.
 
 ### Development
 
 We assume you activated a dedicated virtual environment with Python 3.6, 3.7 or 3.8 with whatever
-tool you prefer (venv, pew, pyenv, ...), and you cloned `rac`from its Git repository.
+tool you prefer (virtualenv, venv, pew, pyenv, ...), and you cloned `rac` from its Git repository.
 
 ```bash
 cd /where/you/cloned/rac
@@ -30,18 +32,42 @@ pip install -e .[dev]
 
 The `dev` option adds development / tests tools.
 
-## _Usage_
+### Full documentation
+
+Start as in above **Development** section, then issue the commands:
 
 ```bash
-rac data_folder
+pip install -e .[doc]
+python setup.py build_sphinx
 ```
 
-### _Data_
+You can now open `build/sphinx/index.html` with your favorite Web browser.
 
-At the moment, the data folder must contain the following files :
+## Usage
 
-- container_usage.csv : describes the containers resource consumption ;
-- node_usage.csv : describes the nodes resource consumption ;
-- node_meta.csv : describes the nodes capacities ;
+Display the short instructions with this command:
 
-The repository gives two example datasets in _data_ folder (_generated_10_ and _generated_30_).
+```bash
+rac --help
+```
+
+## Credits
+
+This software is sponsored by [Alter Way](https://www.alterway.fr/).
+
+The team:
+
+- Jonathan Rivalan - Project manager
+- Etienne Leclercq - Software design, lead developer
+- Marco Mariani
+- Gilles Lenfant
+
+## Links
+
+- [Project home](https://git.rnd.alterway.fr/overboard/soft_clustering/rac)
+- [File issues (bugs, ...)](https://git.rnd.alterway.fr/overboard/soft_clustering/rac/-/issues)
+
+## License
+
+This software is provided under the terms of the MIT license you can read in the `LICENSE.txt` file
+of the repository or the package.

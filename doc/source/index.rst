@@ -13,8 +13,11 @@ Contents
    introduction
    usermanual
    installation
+   developer
+   api/index
    legal
    glossary
+   history
 
 Indices and tables
 ==================

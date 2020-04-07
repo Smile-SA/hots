@@ -6,6 +6,7 @@ __pycache__*
 /dist
 /venv
 
+.mypy_cache
 .cache
 .eggs
 .tox

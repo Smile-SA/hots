@@ -25,6 +25,8 @@ command:
 
    rac ~/work
 
+.. todo:: Using the application in a Docker container.
+
 Reading the results
 ===================
 

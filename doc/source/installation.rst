@@ -26,6 +26,8 @@ Production
    If this raises a security error, please prefix the command with ``sudo ...`` or login as "root"
    or system administrator.
 
+.. todo:: Docker image installation
+
 Development
 ===========
 

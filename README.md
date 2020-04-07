@@ -8,7 +8,7 @@
 
 ### Common requirements
 
-Have Python 3.6, 3.7 or 3.8 on an Unix (Linux, MacOS, ...) with a graphic display.
+Have Python 3.6, 3.7 or 3.8 on an Unix box (Linux, MacOS, ...) with a graphic display.
 
 ### Production
 

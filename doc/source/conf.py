@@ -204,6 +204,10 @@ else:
     copyright = f"{creation_year}, Alter Way"
 
 rst_epilog = """
+.. |pep_8| replace:: `"PEP 8 - Style Guide for Python code"`_
+.. _"PEP 8 - Style Guide for Python code": https://www.python.org/dev/peps/pep-0008/
+.. |pep_484| replace:: `"PEP 484 - Type hints"`_
+.. _"PEP 484 - Type hints": https://www.python.org/dev/peps/pep-0484/
 .. |vcs_server| replace:: `rac Git repository`_
 .. _rac Git repository: https://git.rnd.alterway.fr/overboard/soft_clustering/rac
 .. |alterway| replace:: `Alter Way`_
@@ -215,3 +219,17 @@ html_theme = "bizstyle"
 html_logo = "_static/aw_logo.png"
 html_favicon = "_static/aw_favicon.png"
 html_css_files = ["custom.css"]
+
+# sphinx.ext.napoleon settings for Google style docstrings
+# See https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html#configuration
+napoleon_google_docstring = True
+napoleon_numpy_docstring = False
+napoleon_include_init_with_doc = True
+napoleon_include_private_with_doc = False
+napoleon_include_special_with_doc = True
+napoleon_use_admonition_for_examples = True
+napoleon_use_admonition_for_notes = False
+napoleon_use_admonition_for_references = False
+napoleon_use_ivar = False
+napoleon_use_param = True
+napoleon_use_rtype = True

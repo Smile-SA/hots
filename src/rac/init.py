@@ -8,6 +8,7 @@ global variables)
 """
 
 import pandas as pd
+import typing as t
 
 # TODO list parameters here, or file to give in argument ?
 
@@ -39,7 +40,7 @@ def df_from_csv(filename: str) -> pd.DataFrame:
 
 # TODO check if files exist ?
 # TODO optionnal node file ?
-def init_dfs(data: str) -> (pd.DataFrame, pd.DataFrame, pd.DataFrame):
+def init_dfs(data: str) -> t.Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Perform CSV files reading in data folder."""
     return (df_from_csv(f'{data}/container_usage.csv'),
             df_from_csv(f'{data}/node_usage.csv'),

@@ -1,10 +1,10 @@
 """
-=========
-rac instance
-=========
+============
+rac.instance
+============
 
-Define the Instance class, which represents the problem we are facing,
-with its data, information, parameters. Provide Instance-related methods.
+Define the Instance class, which represents the problem we are facing, with its data, information,
+parameters. Provide Instance-related methods.
 """
 
 import math
@@ -17,34 +17,36 @@ import math
 
 
 class Instance:
-    """Class describing a instance with following attributes :
-                - time : total time of dataset
-                - sep_time : time separating analysis and evaluation period
-                - window_duration : duration of time window for clustering
+    """Description of a problem instance.
 
-                - nb_nodes
-                - nb_containers
-                - nb_clusters
-
-                - df_containers
-                - df_nodes
-                - df_nodes_meta
-
-                - dict_id_n
-                - dict_id_c
+    Attributes:
+        time: total time of dataset
+        sep_time: time separating analysis and evaluation period
+        window_duration: duration of time window for clustering
+        nb_nodes: TODO: explain this data
+        nb_containers: TODO: explain this data
+        nb_clusters: TODO: explain this data
+        df_containers: TODO: explain this data
+        df_nodes: TODO: explain this data
+        df_nodes_meta: TODO: explain this data
+        dict_id_n: TODO: explain this data
+        dict_id_c: TODO: explain this data
     """
 
-    # functions #
     def __init__(self, data: str, nb_clusters: int = 3):
+        """Instance initialization
+
+        Args:
+            data: Filesystem path to the input files
+            nb_clusters: WARNING: seems useless !
+        """
 
         (self.df_containers,
          self.df_nodes,
          self.df_nodes_meta) = init_dfs(data)
 
-        (self.df_containers, self.df_nodes) = init_dfs()
-        self.df_nodes_meta = init_dfs_meta()
-        self.time = self.df_containers['timestamp'].nunique()
-        self.sep_time = math.ceil(self.time / 2)
+        self.time: int = self.df_containers['timestamp'].nunique()
+        self.sep_time: float = math.ceil(self.time / 2)
         self.window_duration = self.df_containers.loc[
             self.df_containers['timestamp'] <= self.sep_time
         ]['timestamp'].nunique()

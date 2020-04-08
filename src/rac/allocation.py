@@ -52,6 +52,82 @@ def assign_container_node(node_id: str, container_id: str, instance: Instance):
     ] = node_id
 
 
+def spread_containers(list_containers: List, instance: Instance,
+                      conso_nodes: np.array, total_time: int,
+                      min_nodes: int, pbar: tqdm):
+    """Spread containers from list_containers into nodes."""
+    n = 0
+    for it in list_containers:
+        # place container it and increment node !! TODO
+        cons_c = instance.df_containers.loc[
+            instance.df_containers['container_id'] == it
+        ]['cpu'].to_numpy()[:total_time]
+        cap_node = instance.df_nodes_meta.loc[
+            instance.
+            df_nodes_meta['machine_id'] == instance.dict_id_n[n]
+        ]['cpu'].to_numpy()[0]
+        done = False
+        while not done:
+            # TODO check n <= min_nodes or infeasibility
+            if np.all(np.less((conso_nodes[n] + cons_c), cap_node)):
+                conso_nodes[n] += cons_c
+                done = True
+                assign_container_node(
+                    instance.dict_id_n[n], it, instance)
+                pbar.update(1)
+            else:
+                n = (n + 1) % min_nodes
+                cap_node = instance.df_nodes_meta.loc[
+                    instance.
+                    df_nodes_meta['machine_id'] == instance.dict_id_n[n]
+                ]['cpu'].to_numpy()[0]
+        n = (n + 1) % min_nodes
+
+
+def colocalize_clusters(list_containers_i: List, list_containers_j: List,
+                        instance: Instance, total_time: int, min_nodes: int,
+                        conso_nodes: List, pbar: tqdm, n: int = 0) -> int:
+    """Allocate containers of 2 clusters grouping by pairs."""
+    for it in range(min(len(list_containers_i),
+                        len(list_containers_j))):
+        # allocate 2 containers !! TODO
+        cons_i = instance.df_containers.loc[
+            instance.
+            df_containers['container_id'] == list_containers_i[it]
+        ]['cpu'].to_numpy()[:total_time]
+        cons_j = instance.df_containers.loc[
+            instance.
+            df_containers['container_id'] == list_containers_j[it]
+        ]['cpu'].to_numpy()[:total_time]
+
+        cap_node = instance.df_nodes_meta.loc[
+            instance.
+            df_nodes_meta['machine_id'] == instance.dict_id_n[n]
+        ]['cpu'].to_numpy()[0]
+        done = False
+        while not done:
+            if np.all(np.less(
+                    (conso_nodes[n] + cons_i + cons_j), cap_node)):
+                conso_nodes[n] += cons_i + cons_j
+                done = True
+                assign_container_node(
+                    instance.dict_id_n[n],
+                    list_containers_i[it],
+                    instance)
+                assign_container_node(
+                    instance.dict_id_n[n],
+                    list_containers_j[it],
+                    instance)
+                pbar.update(2)
+            else:
+                n = (n + 1) % min_nodes
+                cap_node = instance.df_nodes_meta.loc[
+                    instance.
+                    df_nodes_meta['machine_id'] == instance.dict_id_n[n]
+                ]['cpu'].to_numpy()[0]
+    return it
+
+
 def allocation_distant_pairwise(
         instance: Instance, cluster_var_matrix: np.array,
         labels_: List, lb: float = 0.0) -> List:
@@ -80,40 +156,21 @@ def allocation_distant_pairwise(
 
     while not stop:
 
+        # no cluster remaining -> stop allocation
         if (c_it == 0):
             stop = True
             break
 
+        # 1 cluster remaining -> spread it TODO
         elif (c_it == 1):
             c = np.where(clusters_done_ == 0)[0][0]
             list_containers = [instance.dict_id_c[u] for u, value in enumerate(
                 labels_) if value == c]
-            for it in list_containers:
-                cons_c = instance.df_containers.loc[
-                    instance.df_containers['container_id'] == it
-                ]['cpu'].to_numpy()[:total_time]
-                cap_node = instance.df_nodes_meta.loc[
-                    instance.df_nodes_meta['machine_id'] ==
-                    instance.dict_id_n[n]
-                ]['cpu'].to_numpy()[0]
-                done = False
-                while not done:
-                    # TODO check n <= min_nodes or infeasibility
-                    if np.all(np.less((conso_nodes[n] + cons_c), cap_node)):
-                        conso_nodes[n] += cons_c
-                        done = True
-                        assign_container_node(
-                            instance.dict_id_n[n], it, instance)
-                        pbar.update(1)
-                    else:
-                        n = (n + 1) % min_nodes
-                        cap_node = instance.df_nodes_meta.loc[
-                            instance.df_nodes_meta['machine_id'] ==
-                            instance.dict_id_n[n]
-                        ]['cpu'].to_numpy()[0]
-                n = (n + 1) % min_nodes
+            spread_containers(list_containers, instance, conso_nodes,
+                              total_time, min_nodes, pbar)
             stop = True
 
+        # > 1 cluster remaining -> co-localize 2 more distant
         else:
             valid_idx = np.where(cluster_var_matrix_copy.flatten() > lb)[0]
             min_idx = valid_idx[cluster_var_matrix_copy.flatten()[
@@ -128,113 +185,24 @@ def allocation_distant_pairwise(
                 instance.dict_id_c[u] for u, value in
                 enumerate(labels_) if value == j]
 
-            for it in range(min(len(list_containers_i),
-                                len(list_containers_j))):
-                cons_i = instance.df_containers.loc[
-                    instance.df_containers['container_id'] ==
-                    list_containers_i[it]
-                ]['cpu'].to_numpy()[:total_time]
-                cons_j = instance.df_containers.loc[
-                    instance.df_containers['container_id'] ==
-                    list_containers_j[it]
-                ]['cpu'].to_numpy()[:total_time]
+            it = colocalize_clusters(list_containers_i, list_containers_j,
+                                     instance, total_time, min_nodes,
+                                     conso_nodes, pbar, n)
 
-                cap_node = instance.df_nodes_meta.loc[
-                    instance.df_nodes_meta['machine_id'] ==
-                    instance.dict_id_n[n]
-                ]['cpu'].to_numpy()[0]
-                done = False
-                while not done:
-                    if np.all(np.less(
-                            (conso_nodes[n] + cons_i + cons_j), cap_node)):
-                        conso_nodes[n] += cons_i + cons_j
-                        done = True
-                        assign_container_node(
-                            instance.dict_id_n[n],
-                            list_containers_i[it],
-                            instance)
-                        assign_container_node(
-                            instance.dict_id_n[n],
-                            list_containers_j[it],
-                            instance)
-                        pbar.update(2)
-                    else:
-                        n = (n + 1) % min_nodes
-                        cap_node = instance.df_nodes_meta.loc[
-                            instance.df_nodes_meta['machine_id'] ==
-                            instance.dict_id_n[n]
-                        ]['cpu'].to_numpy()[0]
             # TODO factorization of container allocation
             if not (len(list_containers_i) == len(list_containers_j)):
                 # we have to place remaining containers
                 it += 1
                 if it < len(list_containers_j):
-                    for it in range(it, len(list_containers_j)):
-                        cons_c = instance.df_containers.loc[
-                            instance.df_containers['container_id'] ==
-                            list_containers_j[it]
-                        ]['cpu'].to_numpy()[:total_time]
-
-                        if n is None:
-                            n = 0
-                        else:
-                            n = (n + 1) % min_nodes
-                        cap_node = instance.df_nodes_meta.loc[
-                            instance.df_nodes_meta['machine_id'] ==
-                            instance.dict_id_n[n]
-                        ]['cpu'].to_numpy()[0]
-                        done = False
-                        while not done:
-                            # TODO check n <= min_nodes or infeasibility
-                            if np.all(np.less(
-                                    (conso_nodes[n] + cons_c), cap_node)):
-                                conso_nodes[n] += cons_c
-                                done = True
-                                assign_container_node(
-                                    instance.dict_id_n[n],
-                                    list_containers_j[it],
-                                    instance)
-                                pbar.update(1)
-                            else:
-                                n = (n + 1) % min_nodes
-                                cap_node = instance.df_nodes_meta.loc[
-                                    instance.df_nodes_meta['machine_id'] ==
-                                    instance.dict_id_n[n]
-                                ]['cpu'].to_numpy()[0]
+                    list_containers = list_containers_j[it:]
+                    spread_containers(list_containers, instance, conso_nodes,
+                                      total_time, min_nodes, pbar)
 
                 elif it < len(list_containers_i):
-                    for it in range(it, len(list_containers_i)):
-                        cons_c = instance.df_containers.loc[
-                            instance.df_containers['container_id'] ==
-                            list_containers_i[it]
-                        ]['cpu'].to_numpy()[:total_time]
+                    list_containers = list_containers_i[it:]
+                    spread_containers(list_containers, instance, conso_nodes,
+                                      total_time, min_nodes, pbar)
 
-                        if n is None:
-                            n = 0
-                        else:
-                            n = (n + 1) % min_nodes
-                        cap_node = instance.df_nodes_meta.loc[
-                            instance.df_nodes_meta['machine_id'] ==
-                            instance.dict_id_n[n]
-                        ]['cpu'].to_numpy()[0]
-                        done = False
-                        while not done:
-                            # TODO check n <= min_nodes or infeasibility
-                            if np.all(np.less(
-                                    (conso_nodes[n] + cons_c), cap_node)):
-                                conso_nodes[n] += cons_c
-                                done = True
-                                assign_container_node(
-                                    instance.dict_id_n[n],
-                                    list_containers_i[it],
-                                    instance)
-                                pbar.update(1)
-                            else:
-                                n = (n + 1) % min_nodes
-                                cap_node = instance.df_nodes_meta.loc[
-                                    instance.df_nodes_meta['machine_id'] ==
-                                    instance.dict_id_n[n]
-                                ]['cpu'].to_numpy()[0]
             containers_grouped.append(list_containers_i + list_containers_j)
             cluster_var_matrix_copy[i, :] = 0.0
             cluster_var_matrix_copy[:, i] = 0.0
@@ -258,7 +226,6 @@ def allocation_ffd(instance: Instance,
     variance. If not possible, place it on the node whose variance increases
     the least.
     """
-
     # TODO add open-nodes system (to run through open nodes only, and open a
     # new one when needed / with criterion)
 
@@ -270,16 +237,17 @@ def allocation_ffd(instance: Instance,
     idx_cluster_vars = np.argsort(cluster_vars)[::-1]
     conso_nodes = np.zeros((min_nodes, total_time))
 
+    pbar = tqdm(total=instance.nb_containers)
+
     # try to place "opposite clusters" first
     conso_nodes, cluster_done = place_opposite_clusters(
         instance, cluster_vars,
         cluster_var_matrix, labels_,
-        min_nodes, conso_nodes)
+        min_nodes, conso_nodes, pbar)
 
     nodes_vars = conso_nodes.var(axis=1)
     idx_nodes_vars = np.argsort(nodes_vars)[::-1]
 
-    pbar = tqdm(total=instance.nb_containers)
     for cluster in np.where(cluster_done == 1)[0]:
         pbar.update(np.count_nonzero(labels_ == cluster))
 
@@ -295,8 +263,8 @@ def allocation_ffd(instance: Instance,
             for container in list_containers:
                 # print("We assign container ", container)
                 consu_cont = instance.df_containers.loc[
-                    instance.df_containers['container_id'] ==
-                    container
+                    instance.
+                    df_containers['container_id'] == container
                 ]['cpu'].to_numpy()[:total_time]
                 idx_node = 0
                 min_var = math.inf
@@ -308,8 +276,8 @@ def allocation_ffd(instance: Instance,
                     # print("We try node ",
                     #       instance.dict_id_n[idx_node], idx_node)
                     cap_node = instance.df_nodes_meta.loc[
-                        instance.df_nodes_meta['machine_id'] ==
-                        instance.dict_id_n[idx_node]
+                        instance.
+                        df_nodes_meta['machine_id'] == instance.dict_id_n[idx_node]
                     ]['cpu'].to_numpy()[0]
                     new_var = (
                         conso_nodes[idx_node] + consu_cont).var()
@@ -386,6 +354,7 @@ def allocation_ffd(instance: Instance,
 # TODO consider 85% usage now ?
 # Try to find minimum number of nodes needed
 def nb_min_nodes(instance: Instance, total_time: int) -> (float, float):
+    """Compute the minimum number of nodes needed to support the load."""
     max_cpu = 0.0
     max_mem = 0.0
     for t in range(total_time):
@@ -410,8 +379,9 @@ def nb_min_nodes(instance: Instance, total_time: int) -> (float, float):
 # TODO integrate upper bound for considering all clusters sum variance < ub
 def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
                             cluster_var_matrix: np.array, labels_: List,
-                            min_nodes: int, conso_nodes: np.array
-                            ) -> (np.array, np.array):
+                            min_nodes: int, conso_nodes: np.array,
+                            pbar: tqdm) -> (np.array, np.array):
+    """Initialize allocation heuristic by co-localizing distant clusters."""
     total_time = instance.sep_time
     lb = 0.0
     valid_idx = np.where(cluster_var_matrix.flatten() > lb)[0]
@@ -425,107 +395,22 @@ def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
     list_containers_j = [instance.dict_id_c[u] for u, value in enumerate(
         labels_) if value == j]
 
-    for it in range(min(len(list_containers_i), len(list_containers_j))):
-        cons_i = instance.df_containers.loc[
-            instance.df_containers['container_id'] ==
-            list_containers_i[it]
-        ]['cpu'].to_numpy()[:total_time]
+    it = colocalize_clusters(list_containers_i, list_containers_j,
+                             instance, total_time, min_nodes,
+                             conso_nodes, pbar)
 
-        cons_j = instance.df_containers.loc[
-            instance.df_containers['container_id'] ==
-            list_containers_j[it]
-        ]['cpu'].to_numpy()[:total_time]
-
-        n = 0
-        cap_node = instance.df_nodes_meta.loc[
-            instance.df_nodes_meta['machine_id'] ==
-            instance.dict_id_n[n]
-        ]['cpu'].to_numpy()[0]
-        done = False
-        while not done:
-            # TODO check n <= min_nodes or infeasibility
-            if np.all(np.less((conso_nodes[n] + cons_i + cons_j), cap_node)):
-                conso_nodes[n] += cons_i + cons_j
-                done = True
-                assign_container_node(
-                    instance.dict_id_n[n], list_containers_i[it], instance)
-                assign_container_node(
-                    instance.dict_id_n[n], list_containers_j[it], instance)
-            else:
-                n = (n + 1) % min_nodes
-                cap_node = instance.df_nodes_meta.loc[
-                    instance.df_nodes_meta['machine_id'] ==
-                    instance.dict_id_n[n]
-                ]['cpu'].to_numpy()[0]
-
-    # TODO factorization of container allocation
     if not (len(list_containers_i) == len(list_containers_j)):
         # we have to place remaining containers
 
         if it < len(list_containers_j):
-            print('Remaining %d containers' % (len(list_containers_j) - it))
-            for it in range(it, len(list_containers_j)):
-                cons_c = instance.df_containers.loc[
-                    instance.df_containers['container_id'] ==
-                    list_containers_j[it]
-                ]['cpu'].to_numpy()[:total_time]
-
-                if n is None:
-                    n = 0
-                else:
-                    n = (n + 1) % min_nodes
-                cap_node = instance.df_nodes_meta.loc[
-                    instance.df_nodes_meta['machine_id'] ==
-                    instance.dict_id_n[n]
-                ]['cpu'].to_numpy()[0]
-                done = False
-                while not done:
-                    # TODO check n <= min_nodes or infeasibility
-                    if np.all(np.less((conso_nodes[n] + cons_c), cap_node)):
-                        conso_nodes[n] += cons_c
-                        done = True
-                        assign_container_node(
-                            instance.dict_id_n[n],
-                            list_containers_j[it],
-                            instance)
-                    else:
-                        n = (n + 1) % min_nodes
-                        cap_node = instance.df_nodes_meta.loc[
-                            instance.df_nodes_meta['machine_id'] ==
-                            instance.dict_id_n[n]
-                        ]['cpu'].to_numpy()[0]
+            list_containers = list_containers_j[it:]
+            spread_containers(list_containers, instance, conso_nodes,
+                              total_time, min_nodes, pbar)
 
         elif it < len(list_containers_i):
-            for it in range(it, len(list_containers_i)):
-                cons_c = instance.df_containers.loc[
-                    instance.df_containers['container_id'] ==
-                    list_containers_i[it]
-                ]['cpu'].to_numpy()[:total_time]
-
-                if n is None:
-                    n = 0
-                else:
-                    n = (n + 1) % min_nodes
-                cap_node = instance.df_nodes_meta.loc[
-                    instance.df_nodes_meta['machine_id'] ==
-                    instance.dict_id_n[n]
-                ]['cpu'].to_numpy()[0]
-                done = False
-                while not done:
-                    # TODO check n <= min_nodes or infeasibility
-                    if np.all(np.less((conso_nodes[n] + cons_c), cap_node)):
-                        conso_nodes[n] += cons_c
-                        done = True
-                        assign_container_node(
-                            instance.dict_id_n[n],
-                            list_containers_i[it],
-                            instance)
-                    else:
-                        n = (n + 1) % min_nodes
-                        cap_node = instance.df_nodes_meta.loc[
-                            instance.df_nodes_meta['machine_id'] ==
-                            instance.dict_id_n[n]
-                        ]['cpu'].to_numpy()[0]
+            list_containers = list_containers_i[it:]
+            spread_containers(list_containers, instance, conso_nodes,
+                              total_time, min_nodes, pbar)
 
     cluster_done[i] = 1
     cluster_done[j] = 1

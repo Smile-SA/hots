@@ -25,7 +25,8 @@ from .init import metrics
 # Definition of Node-related functions #
 
 
-def plot_specificData_allNodes(df_nodes: pd.DataFrame, metric: str):
+def plot_data_all_nodes(df_nodes: pd.DataFrame, metric: str):
+    """Plot specific metric consumption for all nodes."""
     # TODO create temp df is bad...
     fig, ax = plt.subplots()
     temp_df = df_nodes.reset_index(drop=True)
@@ -36,11 +37,12 @@ def plot_specificData_allNodes(df_nodes: pd.DataFrame, metric: str):
     plt.draw()
 
 
-def plot_allData_allNodes_end(df_nodes: pd.DataFrame, total_time: int):
+def plot_all_data_all_nodes_end(df_nodes: pd.DataFrame, total_time: int):
+    """Plot all metrics consumption for all nodes."""
     fig = plt.figure()
     gs = gridspec.GridSpec(len(metrics), 1)
-    filtered_df = df_nodes.loc[df_nodes['timestamp']
-                               > total_time / 2]
+    filtered_df = df_nodes.loc[
+        df_nodes['timestamp'] > total_time / 2]
     x_ = filtered_df['timestamp'].unique()
     ax_ = []
     for ai in range(len(metrics)):
@@ -93,9 +95,7 @@ def plot_total_usage(df_nodes: pd.DataFrame,
 
 
 def get_mean_consumption(df_nodes: pd.DataFrame):
-    """
-    Compute the mean consumption for each metric in each node and globally.
-    """
+    """Compute mean consumption for each metric in each node and globally."""
     for metric in metrics:
         global_mean = 0.0
         print('Mean ', metric)
@@ -107,8 +107,8 @@ def get_mean_consumption(df_nodes: pd.DataFrame):
 
 def get_list_mean(df_nodes: pd.DataFrame, total_time: int) -> (Dict, Dict):
     """Return list of mean for each metric in each node."""
-    dict_mean_cpu = dict()
-    dict_mean_mem = dict()
+    dict_mean_cpu = {}
+    dict_mean_mem = {}
 
     for key, data in df_nodes.groupby(df_nodes['machine_id']):
         dict_mean_cpu[key] = float(data['cpu'].mean())
@@ -119,8 +119,8 @@ def get_list_mean(df_nodes: pd.DataFrame, total_time: int) -> (Dict, Dict):
 
 def get_list_var(df_nodes: pd.DataFrame, total_time: int) -> (Dict, Dict):
     """Return list of variance for each metric in each node."""
-    dict_var_cpu = dict()
-    dict_var_mem = dict()
+    dict_var_cpu = {}
+    dict_var_mem = {}
 
     for key, data in df_nodes.groupby(df_nodes['machine_id']):
         dict_var_cpu[key] = float(data['cpu'].var())
@@ -149,9 +149,7 @@ def get_variance_consumption(df_nodes: pd.DataFrame):
 
 
 def print_vmr(df_nodes: pd.DataFrame, total_time: int, part: int):
-    """
-    Compute the VMR (Variance-to-mean ratio) for each metric in each node.
-    """
+    """Compute VMR (Variance-to-mean ratio) for each metric in each node."""
     for metric in metrics:
         global_mean = 0.0
         global_var = 0.0
@@ -159,15 +157,15 @@ def print_vmr(df_nodes: pd.DataFrame, total_time: int, part: int):
         print('Mean, variance and VMR for ', metric)
         for key, data in df_nodes.groupby(df_nodes['machine_id']):
             if part == 1:
-                mean = float(data.loc[data.timestamp <=
-                                      total_time / 2, [metric]].mean())
-                var = float(data.loc[data.timestamp <=
-                                     total_time / 2, [metric]].var())
+                mean = float(data.loc[
+                    data.timestamp <= total_time / 2, [metric]].mean())
+                var = float(data.loc[
+                    data.timestamp <= total_time / 2, [metric]].var())
             else:
-                mean = float(data.loc[data.timestamp >
-                                      total_time / 2, [metric]].mean())
-                var = float(data.loc[data.timestamp >
-                                     total_time / 2, [metric]].var())
+                mean = float(data.loc[
+                    data.timestamp > total_time / 2, [metric]].mean())
+                var = float(data.loc[
+                    data.timestamp > total_time / 2, [metric]].var())
             print(mean, var, (var / mean))
             global_mean += mean
             global_var += var
@@ -182,11 +180,9 @@ def print_vmr(df_nodes: pd.DataFrame, total_time: int, part: int):
 
 
 def get_list_vmr(df_nodes: pd.DataFrame, total_time: int) -> (Dict, Dict):
-    """
-    Return list of VMR (Variance-to-Mean Ratio) for each metric in each node.
-    """
-    dict_vmr_cpu = dict()
-    dict_vmr_mem = dict()
+    """Return list of VMR (Variance-to-Mean Ratio) each metric each node."""
+    dict_vmr_cpu = {}
+    dict_vmr_mem = {}
 
     for key, data in df_nodes.groupby(df_nodes['machine_id']):
         mean = float(data['cpu'].mean())
@@ -213,11 +209,11 @@ def get_nodes_variance(
         n = 0
         for key, data in df_nodes.groupby(df_nodes['machine_id']):
             if part == 1:
-                var[m, n] = float(data.loc[data.timestamp <=
-                                           total_time / 2, [metric]].var())
+                var[m, n] = float(data.loc[
+                    data.timestamp <= total_time / 2, [metric]].var())
             else:
-                var[m, n] = float(data.loc[data.timestamp >
-                                           total_time / 2, [metric]].var())
+                var[m, n] = float(data.loc[
+                    data.timestamp > total_time / 2, [metric]].var())
             global_var[m] += var[m, n]
             n += 1
         m += 1
@@ -226,7 +222,8 @@ def get_nodes_variance(
 
 
 def build_dict_id_nodes(df_nodes: pd.DataFrame) -> Dict:
-    dict_id_n = dict()
+    """Build dictionnary for corresponding IDs and indexes."""
+    dict_id_n = {}
     i = 0
     for key in df_nodes.machine_id.unique():
         dict_id_n[i] = key
@@ -235,7 +232,7 @@ def build_dict_id_nodes(df_nodes: pd.DataFrame) -> Dict:
     return dict_id_n
 
 
-def plot_allData_allNodes(df_nodes: pd.DataFrame):
+def plot_all_data_all_nodes(df_nodes: pd.DataFrame):
     """Plot all metrics node consumption."""
     print('Build nodes usage plot ...')
     fig = plt.figure()

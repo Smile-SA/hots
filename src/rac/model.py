@@ -13,8 +13,8 @@ CPLEX, own by IBM.
 import math
 import numpy as np
 import time
-from typing import List
 from itertools import combinations
+from typing import Dict, List
 
 from docplex.mp.linear import LinearExpr
 from docplex.mp.model import Model
@@ -30,7 +30,7 @@ from .node import get_list_mean, get_list_var
 # TODO add KPIs ?
 
 
-class CPX_Instance:
+class CPXInstance:
     """
     Class describing the optimization model given to CPLEX to evaluate
     our solution.
@@ -50,61 +50,67 @@ class CPX_Instance:
     # functions #
 
     # TODO parallelize all building
-    def __init__(self, myInstance: Instance):
+    def __init__(self, my_instance: Instance):
+        """Initialize CPXInstance with data in Instance."""
         model_time = time.time()
         print('Building of cplex model ...')
-        self.nb_nodes = myInstance.df_nodes['machine_id'].nunique()
-        self.nb_containers = myInstance.df_containers['container_id'].nunique()
+        self.nb_nodes = my_instance.df_nodes['machine_id'].nunique()
+        self.nb_containers = my_instance.df_containers['container_id'].nunique(
+        )
 
         # Fix max number of nodes (TODO function to evaluate it)
-        self.max_open_nodes = myInstance.nb_nodes
+        self.max_open_nodes = my_instance.nb_nodes
 
         self.mdl = Model(name='allocation')
         self.build_names()
         self.build_variables()
-        self.build_data(myInstance)
-        self.build_constraints(myInstance.sep_time)
-        self.build_objective(myInstance)
+        self.build_data(my_instance)
+        self.build_constraints(my_instance.sep_time)
+        self.build_objective(my_instance)
 
         self.relax_mdl = make_relaxed_model(self.mdl)
 
         # Init solution for mdl with initial placement
-        self.set_X_from_df(myInstance)
+        self.set_x_from_df(my_instance)
 
         self.mdl.print_information()
 
         print('Building model time : ', time.time() - model_time)
 
     def build_names(self):
+        """Build only names variables from nodes and containers."""
         self.nodes_names = np.arange(self.nb_nodes)
         self.containers_names = np.arange(self.nb_containers)
 
     def build_variables(self):
+        """Build all model variables."""
         idx = [(c, n) for c in self.containers_names for n in self.nodes_names]
         self.mdl.x = self.mdl.binary_var_dict(
             idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
 
-        ida = [n for n in self.nodes_names]
+        ida = list(self.nodes_names)
         self.mdl.a = self.mdl.binary_var_dict(ida, name=lambda k: 'a_%d' % k)
 
         # variables for max diff consumption
         self.mdl.delta = self.mdl.continuous_var(name='delta')
 
-    def build_data(self, myInstance: Instance):
+    def build_data(self, my_instance: Instance):
+        """Build all model data from instance."""
         self.containers_data = {}
         self.nodes_data = {}
         for c in self.containers_names:
-            self.containers_data[c] = myInstance.df_containers.loc[
-                myInstance.df_containers['container_id'] ==
-                myInstance.dict_id_c[c],
+            self.containers_data[c] = my_instance.df_containers.loc[
+                my_instance.
+                df_containers['container_id'] == my_instance.dict_id_c[c],
                 ['timestamp', 'cpu', 'mem']].to_numpy()
 
         for n in self.nodes_names:
-            self.nodes_data[n] = myInstance.df_nodes_meta.loc[
-                myInstance.df_nodes_meta['machine_id'] ==
-                myInstance.dict_id_n[n]].to_numpy()[0]
+            self.nodes_data[n] = my_instance.df_nodes_meta.loc[
+                my_instance.
+                df_nodes_meta['machine_id'] == my_instance.dict_id_n[n]].to_numpy()[0]
 
     def build_constraints(self, total_time: int):
+        """Build all model constraints."""
         for node in self.nodes_names:
             for t in range(total_time):
                 i = 0
@@ -112,8 +118,8 @@ class CPX_Instance:
                     # Capacity constraint
                     self.mdl.add_constraint(self.mdl.sum(
                         self.mdl.x[c, node] * self.containers_data[c][t][i]
-                        for c in self.containers_names) <=
-                        self.nodes_data[node][i],
+                        for c in self.
+                        containers_names) <= self.nodes_data[node][i],
                         metrics[i - 1] + 'capacity_' + str(node) + '_' + str(t))
 
             # Assign constraint (x[c,n] = 1 => a[n] = 1)
@@ -142,16 +148,17 @@ class CPX_Instance:
                     node, t) - expr_n <= self.mdl.delta,
                     'delta_' + str(node) + '_' + str(t))
                 self.mdl.add_constraint(
-                    expr_n - self.conso_n_t(node, t) <=
-                    self.mdl.delta, 'inv-delta_' + str(node) + '_' + str(t))
+                    expr_n - self.
+                    conso_n_t(node, t) <= self.mdl.delta,
+                    'inv-delta_' + str(node) + '_' + str(t))
 
         # Constraint the number of open servers
         self.mdl.add_constraint(self.mdl.sum(
-            self.mdl.a[n] for n in self.nodes_names) <=
-            self.max_open_nodes, 'max_nodes')
+            self.mdl.a[n] for n in self.
+            nodes_names) <= self.max_open_nodes, 'max_nodes')
 
-    def build_objective(self, myInstance: Instance):
-
+    def build_objective(self, my_instance: Instance):
+        """Build objective."""
         # Minimize sum of a[n] (number of open nodes)
         # self.mdl.minimize(self.mdl.sum(
         #     self.mdl.a[n] for n in self.nodes_names))
@@ -163,14 +170,16 @@ class CPX_Instance:
         # Minimize delta (max(conso_n_t - mean_n))
         self.mdl.minimize(self.mdl.delta)
 
-    def set_X_from_df(self, myInstance: Instance):
-        start_sol = dict()
+    def set_x_from_df(self, my_instance: Instance):
+        """Add feasible solution from allocation in instance."""
+        start_sol = {}
         for c in self.containers_names:
-            node_c_id = myInstance.df_containers.loc[
-                myInstance.df_containers['container_id'] ==
-                myInstance.dict_id_c[c], 'machine_id'].to_numpy()[0]
-            node_c = list(myInstance.dict_id_n.keys())[list(
-                myInstance.dict_id_n.values()).index(node_c_id)]
+            node_c_id = my_instance.df_containers.loc[
+                my_instance.
+                df_containers['container_id'] == my_instance.
+                dict_id_c[c], 'machine_id'].to_numpy()[0]
+            node_c = list(my_instance.dict_id_n.keys())[list(
+                my_instance.dict_id_n.values()).index(node_c_id)]
             for n in self.nodes_names:
                 start_sol[self.mdl.x[c, n]] = 0
             start_sol[self.mdl.x[c, node_c]] = 1
@@ -181,17 +190,18 @@ class CPX_Instance:
         # self.current_sol.print_mst()
         # self.add_constraint_heuristic()
 
-    def get_obj_value_heuristic(self, myInstance: Instance):
+    def get_obj_value_heuristic(self, my_instance: Instance):
+        """Get objective value of heuristic solution."""
         # TODO adaptative ... (retrieve expr from obj ?)
         obj_val = 0.0
 
         (dict_var_cpu, dict_var_mem) = get_list_var(
-            myInstance.df_nodes, myInstance.time)
+            my_instance.df_nodes, my_instance.time)
 
         print(dict_var_cpu)
 
         (dict_mean_cpu, dict_mean_mem) = get_list_mean(
-            myInstance.df_nodes, myInstance.time)
+            my_instance.df_nodes, my_instance.time)
 
         print(dict_mean_cpu)
 
@@ -202,6 +212,7 @@ class CPX_Instance:
         print('Objective function value : ', obj_val)
 
     def solve(self, my_mdl: Model):
+        """Solve the problem."""
         if not my_mdl.solve(log_output=True):
             print('*** Problem has no solution ***')
         else:
@@ -212,6 +223,7 @@ class CPX_Instance:
             # my_mdl.report_kpis()
 
     def solve_relax(self):
+        """Solve the linear relaxation of the problem."""
         if not self.relax_mdl.solve(log_output=True):
             print('*** Problem has no solution ***')
         else:
@@ -220,12 +232,14 @@ class CPX_Instance:
             # self.relax_mdl.report_kpis()
 
     def print_heuristic_solution_a(self):
+        """Print the heuristic solution (variables a)."""
         print('Values of variables a :')
         for n in self.nodes_names:
             print(self.mdl.a[n], self.current_sol.get_value(
                 self.mdl.a[n]))
 
     def print_sol_infos_heur(self, total_time: int = 6):
+        """Print information about heuristic solution."""
         print('Infos about heuristics solution ...')
 
         means_ = np.zeros(len(self.nodes_names))
@@ -252,6 +266,7 @@ class CPX_Instance:
 
     # We can get dual values only for LP
     def get_max_dual(self):
+        """Get the constraint with the highest dual variable value."""
         if self.relax_mdl is None:
             print("*** Linear Relaxation does not exist : we can't get\
                 dual values ***")
@@ -267,6 +282,7 @@ class CPX_Instance:
 
     def add_constraint_heuristic(self,
                                  container_grouped: List, instance: Instance):
+        """Add constraints from heuristic."""
         # for i_c1 in range(len(self.containers_names)):
         #     c1 = self.containers_names[i_c1]
         #     for i_c2 in range(i_c1+1, len(self.containers_names)):
@@ -310,35 +326,34 @@ class CPX_Instance:
 
     # Expr total conso CPU in node at t
     def conso_n_t(self, node, t: int) -> LinearExpr:
+        """Express the total consumption of node at time t."""
         return self.mdl.sum(
             (self.mdl.x[c, node] * self.containers_data[c][t][1])
             for c in self.containers_names)
 
     # Expr mean CPU in node
     def mean(self, node: int, total_time: int) -> LinearExpr:
+        """Express the mean consumption of node."""
         return (self.mdl.sum(
             self.conso_n_t(node, t) for t in range(total_time)
         ) / total_time)
 
     def mean_all_nodes(self, total_time: int) -> LinearExpr:
+        """Express the mean consumption of all nodes."""
         return (self.mdl.sum(
             self.mean(node, total_time)
             for node in self.nodes_names) / self.nb_nodes)
 
-    # Expr mean_diff CPU in node
-    def mean_diff(self, node: int, total_time: int) -> LinearExpr:
-        return (self.mdl.sum(
-            (self.conso_n_t(node, t) - self.mean(node, total_time))
-            for t in range(total_time)) / total_time)
-
     # Expr variance CPU in node
     def var(self, node: int, total_time: int) -> LinearExpr:
+        """Express the variance of consumption of node."""
         return (self.mdl.sum(
             (self.conso_n_t(node, t) - self.mean(node, total_time))**2
             for t in range(total_time)) / total_time)
 
     # Expr max CPU in node
     def max_n(self, node: int, total_time: int) -> LinearExpr:
+        """Express the maximum consumption of node."""
         return (self.mdl.max(
             [self.conso_n_t(node, t) for t in range(total_time)]))
 
@@ -372,8 +387,41 @@ def print_non_user_constraint(mdl: Model):
             print(ct, ct.is_generated())
 
 
+def transf_vars(mdl: Model, relax_mdl: Model, ctn_map: Dict) -> Dict:
+    """Transfer variables from original model to relaxed model."""
+    var_mapping = {}
+    continuous = relax_mdl.continuous_vartype
+    for v in mdl.iter_variables():
+        if not v.is_generated():
+            # if v has type semixxx, set lB to 0
+            cpx_code = v.vartype.get_cplex_typecode()
+            if cpx_code in {'N', 'S'}:
+                rx_lb = 0
+            else:
+                rx_lb = v.lb
+            copied_var = relax_mdl._var(continuous, rx_lb, v.ub, v.name)
+            var_ctn = v._container
+            if var_ctn:
+                copied_var._container = ctn_map.get(var_ctn)
+            var_mapping[v] = copied_var
+    return var_mapping
+
+
+def transf_constraints(mdl: Model, relax_mdl: Model, var_mapping: Dict) -> List:
+    """Transfer non-logical constraints from original model to relaxed one."""
+    unrelaxables = []
+    for ct in mdl.iter_constraints():
+        if not ct.is_generated():
+            if ct.is_logical():
+                unrelaxables.append(ct)
+            else:
+                copied_ct = ct.copy(relax_mdl, var_mapping)
+                relax_mdl.add(copied_ct)
+    return unrelaxables
+
+
 def make_relaxed_model(mdl: Model) -> Model:
-    """ Returns a continuous relaxation of the model.
+    """Return a continuous relaxation of the model.
 
     Variable types are set to continuous (note that semi-xxx variables have
     their LB set to zero)
@@ -387,44 +435,20 @@ def make_relaxed_model(mdl: Model) -> Model:
     if mdl._pwl_counter:
         mdl.fatal('Model has piecewise-linear expressions, cannot be relaxed')
     mdl_class = mdl.__class__
-    unrelaxables = []
     relaxed_model = mdl_class(name='lp_' + mdl.name)
 
     # transfer kwargs
     relaxed_model._parse_kwargs(mdl._get_kwargs())
 
-    # transfer variable containers
+    # transfer variable containers TODO
     ctn_map = {}
     for ctn in mdl.iter_var_containers():
         copied_ctn = ctn.copy_relaxed(relaxed_model)
         relaxed_model._add_var_container(copied_ctn)
         ctn_map[ctn] = copied_ctn
 
-    # transfer variables
-    var_mapping = {}
-    continuous = relaxed_model.continuous_vartype
-    for v in mdl.iter_variables():
-        if not v.is_generated():
-            # if v has type semixxx, set lB to 0
-            cpx_code = v.vartype.get_cplex_typecode()
-            if cpx_code in {'N', 'S'}:
-                rx_lb = 0
-            else:
-                rx_lb = v.lb
-            copied_var = relaxed_model._var(continuous, rx_lb, v.ub, v.name)
-            var_ctn = v._container
-            if var_ctn:
-                copied_var._container = ctn_map.get(var_ctn)
-            var_mapping[v] = copied_var
-
-    # transfer all non-logical cts
-    for ct in mdl.iter_constraints():
-        if not ct.is_generated():
-            if ct.is_logical():
-                unrelaxables.append(ct)
-            else:
-                copied_ct = ct.copy(relaxed_model, var_mapping)
-                relaxed_model.add(copied_ct)
+    var_mapping = transf_vars(mdl, relaxed_model, ctn_map)
+    unrelaxables = transf_constraints(mdl, relaxed_model, var_mapping)
 
     # clone objective
     relaxed_model.objective_sense = mdl.objective_sense

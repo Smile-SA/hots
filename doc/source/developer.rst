@@ -200,6 +200,9 @@ Example:
            Args:
                value: to be added to the balance (may be < 0)
 
+           Returns:
+               Updated balance
+
            Raises:
                ValueError: if the resulting amount below 0
            """

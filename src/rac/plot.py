@@ -48,7 +48,6 @@ def plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu'):
 
 def plot_containers_clustering_together(df_clust: pd.DataFrame, metric: str = 'cpu'):
     """Plot all containers consumption with their cluster color."""
-    print("Preparing plot containers clustering together ...")
     fig, ax = plt.subplots()
     fig.suptitle('Containers clustering (' + metric + ')')
     for row in df_clust.iterrows():
@@ -58,15 +57,14 @@ def plot_containers_clustering_together(df_clust: pd.DataFrame, metric: str = 'c
     plt.draw()
 
 
-def plot_clustering_containers_byNode(instance, labels_, metric: str = 'cpu'):
+def plot_clustering_contaiers_by_node(instance, labels_, metric: str = 'cpu'):
     """
     Plot containers consumption grouped by node, one container added above
     another, with their cluster color.
     """
-    print("Preparing plot containers clustering by Node ...")
     fig_node_usage = plt.figure()
     fig_node_usage.suptitle(
-        metric + " consumption in each node, containers clustering")
+        metric + ' consumption in each node, containers clustering')
     gs_node_usage = gridspec.GridSpec(math.ceil(instance.nb_nodes / 2), 2)
     x_ = instance.df_nodes['timestamp'].unique()
     i = 0
@@ -123,13 +121,14 @@ def plot_containers_groupby_nodes(df_containers: pd.DataFrame, max_cap, sep_time
     plt.draw()
 
 
-def plot_dendrogram(Z_all, k):
+def plot_dendrogram(z_all, k):
+    """Plot dendrogram for the hierarchical clustering building."""
     plt.figure()
     plt.title('Hierarchical Clustering Dendrogram -- ALL')
     plt.xlabel('sample index')
     plt.ylabel('distance')
     hac.dendrogram(
-        Z_all,
+        z_all,
         leaf_rotation=90.,  # rotates the x axis labels
         leaf_font_size=8.,  # font size for the x axis labels
     )
@@ -137,6 +136,7 @@ def plot_dendrogram(Z_all, k):
 
 
 def plot_cluster_profiles(profiles_):
+    """Plot mean profiles of clusters."""
     fig, ax = plt.subplots()
     fig.suptitle('Cluster profiles (mean of containers in it)')
     k = len(profiles_)
@@ -148,6 +148,7 @@ def plot_cluster_profiles(profiles_):
 
 
 def plot_nodes_wout_containers(instance):
+    """Plot nodes consumption without containers."""
     fig, ax = plt.subplots()
     fig.suptitle('Nodes usage without containers')
 
@@ -181,6 +182,7 @@ def plot_nodes_wout_containers(instance):
 
 
 def init_containers_plot(df_containers, sep_time, metric='cpu'):
+    """Initialize containers consumption plot."""
     fig, ax = plt.subplots()
     fig.suptitle('Containers consumption evolution')
     ax.set_ylim([0, df_containers['cpu'].max()])
@@ -199,6 +201,7 @@ def init_containers_plot(df_containers, sep_time, metric='cpu'):
 
 
 def update_containers_plot(fig, ax, df, t):
+    """Update containers consumption plot with new data."""
     pvt_cpu = pd.pivot_table(
         df, columns=df['container_id'],
         index=df['timestamp'], aggfunc='sum', values='cpu')
@@ -208,6 +211,7 @@ def update_containers_plot(fig, ax, df, t):
 
 # TODO gset generic lim + hline
 def init_nodes_plot(df_containers, sep_time, metric='cpu'):
+    """Initialize nodes consumption plot."""
     fig, ax = plt.subplots()
     fig.suptitle('Nodes consumption evolution')
     ax.set_xlim([0, df_containers['timestamp'].max()])
@@ -227,6 +231,7 @@ def init_nodes_plot(df_containers, sep_time, metric='cpu'):
 
 
 def update_nodes_plot(fig, ax, df, t):
+    """Update nodes consumption plot with new data."""
     pvt_cpu = pd.pivot_table(
         df, columns=df['machine_id'],
         index=df['timestamp'], aggfunc='sum', values='cpu')
@@ -235,6 +240,7 @@ def update_nodes_plot(fig, ax, df, t):
 
 
 def init_plot_clustering(df_clust, metric='cpu'):
+    """Initialize clustering plot."""
     fig = plt.figure()
     fig.suptitle('Clustering evolution')
     gs = gridspec.GridSpec(df_clust.cluster.max() + 1, 1)
@@ -253,6 +259,7 @@ def init_plot_clustering(df_clust, metric='cpu'):
 
 
 def update_clustering_plot(fig, ax_, df_clust, metric='cpu'):
+    """Update clustering plot with new data."""
     for k, data in df_clust.groupby(['cluster']):
         for row in data.drop(labels='cluster', axis=1).iterrows():
             ax_[k].plot(row[1], colors[k])

@@ -33,6 +33,7 @@ from .instance import Instance
 # Functions definitions #
 # TODO add mem cols
 def matrix_line(args: (str, pd.DataFrame)) -> Dict:
+    """Build one line for clustering matrix."""
     key, data = args
     line = {}
     for row in data.iterrows():
@@ -42,6 +43,7 @@ def matrix_line(args: (str, pd.DataFrame)) -> Dict:
 
 
 def build_matrix_indiv_attr(df: pd.DataFrame) -> pd.DataFrame:
+    """Build entire clustering matrix."""
     print('Setup for clustering ...')
     list_args = list(df.groupby(df['container_id']))
     lines = []
@@ -58,6 +60,7 @@ def build_matrix_indiv_attr(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_similarity_matrix(df: pd.DataFrame) -> np.array:
+    """Build a similarity matrix for the clustering."""
     print(df)
     dists = pdist(df, 'euclidean')
     # dists = pdist(df.T)
@@ -74,6 +77,7 @@ def build_similarity_matrix(df: pd.DataFrame) -> np.array:
 # TODO add perso spectral + check error algo
 def perform_clustering(data: pd.DataFrame, algo: str, k: int
                        ) -> Callable[[pd.DataFrame, int], List]:
+    """Call the specified method to perform clustering."""
     switcher = {'hierarchical': hierarchical_clustering,
                 'kmeans': k_means,
                 'spectral': spectral_clustering,
@@ -83,88 +87,96 @@ def perform_clustering(data: pd.DataFrame, algo: str, k: int
 
 
 def k_means(data: pd.DataFrame, k: int) -> List:
+    """Perform the K-means clustering."""
     return KMeans(n_clusters=k).fit(data).labels_
 
 
 def p_dist(data: pd.DataFrame, metric: str = 'euclidean') -> np.array:
+    """Compute distances between each data point pair."""
     return pairwise_distances(data, metric=metric)
 
 
 def spectral_clustering(data: pd.DataFrame, k: int) -> List:
+    """Perform the spectral clustering."""
     return SpectralClustering(n_clusters=k).fit(data).labels_
 
 
 def hierarchical_clustering(data: pd.DataFrame, k: int) -> List:
-    Z_all = hac.linkage(data, method='ward', metric='euclidean')
-    clusters_all = hac.fcluster(Z_all, k, criterion='distance')
+    """Perform the hierarchical ascendant clustering."""
+    z_all = hac.linkage(data, method='ward', metric='euclidean')
+    clusters_all = hac.fcluster(z_all, k, criterion='distance')
     clusters_all -= 1
     return clusters_all
 
 
 # TODO seems not working correctly => to fix
 def perso_spectral_clustering(data: pd.DataFrame, k: int) -> np.array:
-    W = build_similarity_matrix(data)
-    D = np.diag(np.sum(W, axis=0))
-    D_min1_2 = fractional_matrix_power(D, -1 / 2)
-    A = multi_dot([D_min1_2, W, D_min1_2])
+    """Perform a customized version of spectral clustering."""
+    w = build_similarity_matrix(data)
+    d = np.diag(np.sum(w, axis=0))
+    d_min1_2 = fractional_matrix_power(d, -1 / 2)
+    a = multi_dot([d_min1_2, w, d_min1_2])
 
-    print(D)
-    print(A)
+    print(d)
+    print(a)
 
     # dsyevr parameters
     # borneinf = 1e-8
-    drange = 'A'
-    eigenvaluesA, eigenvectorsA, _ = dsyevr(A, range=drange)
-    print('Valeurs propres de A :')
-    print(eigenvaluesA)
-    print('Vecteurs propres de A :')
-    print(eigenvectorsA)
-    idxA = eigenvaluesA.argsort()[::-1]
+    drange = 'a'
+    eigenvalues_a, eigenvectors_a, _ = dsyevr(a, range=drange)
+    print('Valeurs propres de a :')
+    print(eigenvalues_a)
+    print('Vecteurs propres de a :')
+    print(eigenvectors_a)
+    idx_a = eigenvalues_a.argsort()[::-1]
 
     # Get R first eigenvectors (R = k ?)
     # i = 0
-    # while eigenvaluesA[idxA[i]] > borneinf:
+    # while eigenvalues_a[idx_a[i]] > borneinf:
     #     i += 1
     i = k
-    idxA = idxA[:i]
-    lambda_ = eigenvaluesA[idxA]
-    U = eigenvectorsA[idxA]
+    idx_a = idx_a[:i]
+    lambda_ = eigenvalues_a[idx_a]
+    u = eigenvectors_a[idx_a]
 
     print('Valeurs propres de A (> borneinf) :')
     print(lambda_)
 
-    print('Vecteurs propres U=(u1, ..., up) :')
-    print(U)
+    print('Vecteurs propres u=(u1, ..., up) :')
+    print(u)
 
-    return(np.asarray(weighted_kmeans(W, D, U, k)))
+    return(np.asarray(weighted_kmeans(w, d, u, k)))
 
 
-def compute_mu_r(W: np.array, D: np.array, labels_: List, r: int, U: np.array
+def compute_mu_r(w: np.array, d: np.array, labels_: List, r: int, u: np.array
                  ) -> float:
+    """Compute center of cluster r."""
     p = 0
     mu_r = 0
     d_p = 0
     for p in range(len(labels_)):
         if labels_[p] == r:
-            mu_r += pow(D[p, p], 1 / 2) * U[:, p]
-            d_p += D[p, p]
+            mu_r += pow(d[p, p], 1 / 2) * u[:, p]
+            d_p += d[p, p]
 
     return (mu_r * (1 / d_p))
 
 
 def compute_distance_cluster_r(p: int, r: int, mu_r: float,
-                               U: np.array, dp: float) -> float:
+                               u: np.array, dp: float) -> float:
+    """Compute distance between individual p and cluster r."""
     # return math.sqrt(pow(
-    # (U[:, p] * pow(dp, -1/2)) - mu_r, 2))
-    return norm((U[:, p] * pow(dp, -1 / 2)) - mu_r)
+    # (u[:, p] * pow(dp, -1/2)) - mu_r, 2))
+    return norm((u[:, p] * pow(dp, -1 / 2)) - mu_r)
 
 
-def weighted_kmeans(W: np.array, D: np.array,
-                    U: np.array, k: int) -> List:
-    labels_ = [0] * len(W)
+def weighted_kmeans(w: np.array, d: np.array,
+                    u: np.array, k: int) -> List:
+    """Perform K-means algo for custom spectral clustering."""
+    labels_ = [0] * len(w)
     n = 0
     i = 0
-    while n < len(W):
+    while n < len(w):
         labels_[n] = i
         i = (i + 1) % k
         n += 1
@@ -177,15 +189,15 @@ def weighted_kmeans(W: np.array, D: np.array,
         r = 0
         mu_ = [0] * k
         for r in range(k):
-            mu_[r] = compute_mu_r(W, D, labels_, r, U)
+            mu_[r] = compute_mu_r(w, d, labels_, r, u)
         for p in range(len(labels_)):
             dist_min = 1
             dist_r = 0
             r = 0
             for r in range(k):
-                dist_Ar = compute_distance_cluster_r(p, r, mu_[r], U, D[p, p])
-                if dist_Ar < dist_min:
-                    dist_min = dist_Ar
+                dist_ar = compute_distance_cluster_r(p, r, mu_[r], u, d[p, p])
+                if dist_ar < dist_min:
+                    dist_min = dist_ar
                     dist_r = r
             if not labels_[p] == dist_r:
                 labels_[p] = dist_r
@@ -195,72 +207,8 @@ def weighted_kmeans(W: np.array, D: np.array,
     return labels_
 
 
-def kMedoids(D: np.array, k: int, tmax: int = 100) -> (np.array, Dict):
-    # determine dimensions of distance matrix D
-    _, n = D.shape
-
-    if k > n:
-        raise Exception('too many medoids')
-
-    # find a set of valid initial cluster medoid indices since we
-    # can't seed different clusters with two points at the same location
-    valid_medoid_inds = set(range(n))
-    invalid_medoid_inds = set([])
-    rs, cs = np.where(D == 0)  # pylint: disable=unbalanced-tuple-unpacking
-    # the rows, cols must be shuffled because we will keep the first duplicate
-    # below
-    index_shuf = list(range(len(rs)))
-    np.random.shuffle(index_shuf)
-    rs = rs[index_shuf]
-    cs = cs[index_shuf]
-    for r, c in zip(rs, cs):
-        # if there are two points with a distance of 0...
-        # keep the first one for cluster init
-        if r < c and r not in invalid_medoid_inds:
-            invalid_medoid_inds.add(c)
-    valid_medoid_inds = list(valid_medoid_inds - invalid_medoid_inds)
-
-    if k > len(valid_medoid_inds):
-        raise Exception(
-            'too many medoids (after removing {} duplicate points)'.format(
-                len(invalid_medoid_inds)))
-
-    # randomly initialize an array of k medoid indices
-    M = np.array(valid_medoid_inds)
-    np.random.shuffle(M)
-    M = np.sort(M[:k])
-
-    # create a copy of the array of medoid indices
-    Mnew = np.copy(M)
-
-    # initialize a dictionary to represent clusters
-    C = {}
-    for _ in range(tmax):
-        # determine clusters, i. e. arrays of data indices
-        J = np.argmin(D[:, M], axis=1)
-        for kappa in range(k):
-            C[kappa] = np.where(J == kappa)[0]
-        # update cluster medoids
-        for kappa in range(k):
-            J = np.mean(D[np.ix_(C[kappa], C[kappa])], axis=1)
-            j = np.argmin(J)
-            Mnew[kappa] = C[kappa][j]
-        np.sort(Mnew)
-        # check for convergence
-        if np.array_equal(M, Mnew):
-            break
-        M = np.copy(Mnew)
-    else:
-        # final update of cluster memberships
-        J = np.argmin(D[:, M], axis=1)
-        for kappa in range(k):
-            C[kappa] = np.where(J == kappa)[0]
-
-    # return results
-    return M, C
-
-
 def get_cluster_variance(nb_clusters: int, df_clust: pd.DataFrame) -> np.array:
+    """Compute the variance of each cluster."""
     vars_ = np.zeros((nb_clusters), dtype=float)
 
     for key, data in df_clust.groupby(['cluster']):
@@ -271,6 +219,7 @@ def get_cluster_variance(nb_clusters: int, df_clust: pd.DataFrame) -> np.array:
 
 def get_cluster_mean_profile(nb_clusters: int, df_clust: pd.DataFrame,
                              total_time: int, tmin: int = 0) -> np.array:
+    """Compute the mean profile of each cluster."""
     profiles_ = np.zeros((nb_clusters, total_time), dtype=float)
 
     for key, data in df_clust.groupby(['cluster']):
@@ -280,21 +229,23 @@ def get_cluster_mean_profile(nb_clusters: int, df_clust: pd.DataFrame,
     return profiles_
 
 
-def get_sumCluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
+def get_sum_cluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
+    """Compute a matrix of sum of variances of each pair of cluster."""
     k = len(profiles_)
-    sumProfiles_matrix = np.zeros((k, k), dtype=float)
+    sum_profiles_matrix = np.zeros((k, k), dtype=float)
     for i in range(k):
         for j in range(i + 1, k):
-            sumProfiles_matrix[i, j] = (
+            sum_profiles_matrix[i, j] = (
                 (profiles_[i, :] + profiles_[j, :]).var()) / (
                     vars_[i] + vars_[j])
-            sumProfiles_matrix[j, i] = sumProfiles_matrix[i, j]
+            sum_profiles_matrix[j, i] = sum_profiles_matrix[i, j]
 
-    return sumProfiles_matrix
+    return sum_profiles_matrix
 
 
-def get_distanceCluster(instance: Instance, cluster_centers_: np.array
-                        ) -> np.array:
+def get_distance_cluster(instance: Instance, cluster_centers_: np.array
+                         ) -> np.array:
+    """Compute the distance between each cluster."""
     print('Compute distance between each cluster ...')
     cluster_distance = np.zeros(
         (instance.nb_clusters, instance.nb_clusters), dtype=float)
@@ -308,8 +259,8 @@ def get_distanceCluster(instance: Instance, cluster_centers_: np.array
     return cluster_distance
 
 
-def get_distance_containerCluster(conso_cont: np.array, profile: np.array
-                                  ) -> float:
+def get_distance_container_cluster(conso_cont: np.array, profile: np.array
+                                   ) -> float:
     """
     Compute the distance between the container profile and his cluster's
     mean profile.
@@ -320,11 +271,12 @@ def get_distance_containerCluster(conso_cont: np.array, profile: np.array
 def check_container_deviation(
         working_df: pd.DataFrame, labels_: List, profiles_: np.array,
         dict_id_c: Dict) -> None:
+    """Check the deviation of container from its cluster."""
     # print(profiles_)
     # print(labels_)
 
     for c in range(len(labels_)):
-        dist = get_distance_containerCluster(
+        dist = get_distance_container_cluster(
             working_df.loc[
                 working_df['container_id'] == c
             ]['cpu'].to_numpy(), profiles_[labels_[c]])

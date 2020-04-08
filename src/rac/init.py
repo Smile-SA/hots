@@ -7,8 +7,10 @@ Provide stuff for initialization step (load DataFrames,
 global variables)
 """
 
-import pandas as pd
 import typing as t
+from pathlib import Path
+
+import pandas as pd
 
 # TODO list parameters here, or file to give in argument ?
 
@@ -20,16 +22,17 @@ metrics = ['cpu', 'mem']
 # Functions definitions #
 
 
-def df_from_csv(filename: str) -> pd.DataFrame:
+def df_from_csv(file: Path) -> pd.DataFrame:
     """Load DataFrame from CSV file."""
     return pd.read_csv(
-        filename, index_col=False)
+        file, index_col=False)
 
 
 # TODO check if files exist ?
 # TODO optionnal node file ?
 def init_dfs(data: str) -> t.Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Perform CSV files reading in data folder."""
-    return (df_from_csv(f'{data}/container_usage.csv'),
-            df_from_csv(f'{data}/node_usage.csv'),
-            df_from_csv(f'{data}/node_meta.csv'))
+    p_data = Path(data)
+    return (df_from_csv(p_data / 'container_usage.csv'),
+            df_from_csv(p_data / 'node_usage.csv'),
+            df_from_csv(p_data / 'node_meta.csv'))

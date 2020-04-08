@@ -17,7 +17,8 @@ import pandas as pd
 # Definition of Container-related functions #
 
 
-def plot_specificData_allContainers(df_containers: pd.DataFrame, metric: str):
+def plot_data_all_containers(df_containers: pd.DataFrame, metric: str):
+    """Plot a specific metric containers consumption."""
     fig, ax = plt.subplots()
     temp_df = df_containers.reset_index(drop=True)
     pvt = pd.pivot_table(temp_df, columns='container_id',
@@ -27,10 +28,10 @@ def plot_specificData_allContainers(df_containers: pd.DataFrame, metric: str):
     plt.draw()
 
 
-def plot_allData_allContainers(
+def plot_all_data_all_containers(
         df_containers: pd.DataFrame,
         metrics: List[str] = ['cpu'], sep_time: int = 72):
-    """Plot all metrics container consumption."""
+    """Plot all metrics containers consumption."""
     print('Build containers usage plot ...')
     fig = plt.figure()
     fig.suptitle('Resource usage on all containers')
@@ -54,6 +55,7 @@ def plot_allData_allContainers(
 
 
 def build_dict_id_containers(df_containers: pd.DataFrame):
+    """Build dictionnary for corresponding IDs and indexes."""
     dict_id_c = {}
     i = 0
     for key in df_containers.container_id.unique():

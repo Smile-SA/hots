@@ -38,7 +38,6 @@ class Instance:
             data: Filesystem path to the input files
             nb_clusters: WARNING: seems useless !
         """
-
         (self.df_containers,
          self.df_nodes,
          self.df_nodes_meta) = init_dfs(data)
@@ -67,6 +66,7 @@ class Instance:
 
     # TODO rewrite with __str__
     def print(self):
+        """Print Instance information."""
         print('\n')
         print('### Problem instance informations ###')
         print('Time considered : %d' % self.time)
@@ -78,7 +78,8 @@ class Instance:
 
     # TODO rewrite with only one f.write
 
-    def instance_inFile_before(self, filename: str):
+    def instance_in_file_before(self, filename: str):
+        """Write Instance information in file."""
         f = open(filename, 'w')
         f.write('### Problem instance informations ###\n')
         f.write('Time considered : %d\n' % self.time)
@@ -100,7 +101,8 @@ class Instance:
         f.write('\n')
         f.close()
 
-    def instance_inFile_after(self, filename: str):
+    def instance_in_file_after(self, filename: str):
+        """Write Instance information after optimization step."""
         f = open(filename, 'a')
 
         f.write('\n### Variance after optimization ###\n')
@@ -111,6 +113,7 @@ class Instance:
         f.close()
 
     def get_node_from_container(self, container_id: str) -> str:
+        """Get node ID from container ID."""
         return (self.df_containers.loc[
             self.df_containers['container_id'] == container_id
         ]['machine_id'].to_numpy()[0])

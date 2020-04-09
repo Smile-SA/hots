@@ -9,11 +9,35 @@ Preparing data
 
 Input data are provided in 3 CSV files hosted in the same directory:
 
-- :file:`container_usage.csv`
-- :file:`node_meta.csv`
-- :file:`node_usage.csv`
+- :file:`container_usage.csv` : describes containers resource consumption
+- :file:`node_meta.csv` : provides nodes capacities (and other additional data)
+- :file:`node_usage.csv` : describes nodes resource consumption
 
-.. todo:: Describe in details how input data are provided in 3 CSV files
+Each file have the following formats :
+
+- :file:`container_usage.csv` :
+   .. csv-table::
+      :header: "timestamp", "container_id", "metric_1", "metric_2", "machine_id"
+      :widths: 15, 15, 15, 15, 15
+
+      "t1", "c_10", 10, 50, "m_2"
+      "...", "...", "...", "...", "..."
+      "tmax", "c_48", 6.5, 24, "m_5"
+- :file:`node_meta.csv` :
+   .. csv-table::
+      :header: "machine_id", "metric_1", "metric_2"
+      :widths: 15, 15, 15
+
+      "m_2", 30, 150
+      "m_5", 24, 80
+- :file:`container_usage.csv` :
+   .. csv-table::
+      :header: "timestamp", "machine_id", "metric_1", "metric_2"
+      :widths: 15, 15, 15, 15
+
+      "t1", "m_2", 25, 65
+      "...", "...", "...", "..."
+      "tmax", "m_5", 17.5, 52
 
 Running the app
 ===============
@@ -30,6 +54,18 @@ command:
 Reading the results
 ===================
 
-After having analyzed the provided data, I really don't understand what happens ;o)
+When the application is launched, the whole initial data is displayed :
+
+- the container resource usage
+- the node resource usage (based on initial allocation)
+
+The separation time (between the two phases) is plotted by a red line.
+
+Then the first part of the methdology is performed (clustering on first time
+period), and the allocation resulting from heuristic applied. The clustering
+results and new nodes resource usage (based on new allocation) are displayed.
+
+Finally, clustering results, containers and nodes consumptions are plotted and
+updated in time, for the second phase.
 
 .. todo:: Explain what happens and how to read the various figures that raise in new windows.

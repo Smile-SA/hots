@@ -32,9 +32,10 @@ def plot_data_all_containers(df_containers: pd.DataFrame, metric: str):
 
 def plot_all_data_all_containers(
         df_containers: pd.DataFrame,
-        metrics: List[str] = ['cpu'], sep_time: int = 72):
+        metrics: List[str] = None, sep_time: int = 72):
     """Plot all metrics containers consumption."""
     print('Build containers usage plot ...')
+    metrics = metrics or ['cpu']
     fig = plt.figure()
     fig.suptitle('Resource usage on all containers')
     gs = gridspec.GridSpec(len(metrics), 1)

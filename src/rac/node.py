@@ -253,3 +253,11 @@ def plot_all_data_all_nodes(df_nodes: pd.DataFrame):
 
     fig.align_labels()
     plt.draw()
+
+
+def get_mean_consumption_node(df_nodes: pd.DataFrame, node_id: str) -> float:
+    """Get mean consumption of node_id."""
+    return np.mean(
+        df_nodes.loc[
+            df_nodes['machine_id'] == node_id, ['cpu']].to_numpy()
+    )

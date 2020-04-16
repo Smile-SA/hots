@@ -22,7 +22,7 @@ from matplotlib import pyplot as plt
 # Personnal imports
 from . import allocation as alloc
 from . import clustering as clt
-from . import container as ctnr
+# from . import container as ctnr
 from . import instance
 from . import model
 from . import plot
@@ -49,24 +49,19 @@ def main():
     print('CPLEX model imported.')
     print('Building CPLEX model time : %fs' %
           (time.time() - building_cplex_time))
-    # TODO fix this method
-    # print('Objective of initial placement : ',
-    #       cplex_model.get_obj_value_heuristic(my_instance))
+
+    cplex_model.get_obj_value_heuristic(my_instance)
 
     # Plot data (containers & nodes consumption)
-    ctnr.plot_all_data_all_containers(
-        my_instance.df_containers, sep_time=my_instance.sep_time)
-    plot.plot_containers_groupby_nodes(
-        my_instance.df_containers,
-        my_instance.df_nodes_meta.cpu.max(),
-        my_instance.sep_time)
+    # ctnr.plot_all_data_all_containers(
+    #     my_instance.df_containers, sep_time=my_instance.sep_time)
+    # plot.plot_containers_groupby_nodes(
+    #     my_instance.df_containers,
+    #     my_instance.df_nodes_meta.cpu.max(),
+    #     my_instance.sep_time)
 
     # plt.show(block=False)
     # input('Press any key to continue ...')
-
-    # Plot data (containers & nodes consumption)
-    ctnr.plot_allData_allContainers(myInstance.df_containers, ['cpu'])
-    plot.plot_containers_groupby_nodes(myInstance.df_containers)
 
     #####################################################################
     # Clustering part
@@ -75,7 +70,6 @@ def main():
             my_instance.df_containers['timestamp'] <= my_instance.sep_time])
 
     clustering_time = time.time()
-
     labels_ = clt.perform_clustering(
         df_containers_clust, clustering_algo, my_instance.nb_clusters)
     df_containers_clust['cluster'] = labels_
@@ -103,8 +97,9 @@ def main():
     do_plot_clustering = True
     if do_plot_clustering:
         # plot.plot_containers_clustering_together(df_containers_clust)
-        plot.plot_clustering(df_containers_clust)
-        plot.plot_cluster_profiles(cluster_profiles)
+        plot.plot_clustering(df_containers_clust,
+                             title='Clustering on first half part')
+        # plot.plot_cluster_profiles(cluster_profiles)
 
         # plot.plot_clustering_contaiers_by_node(
         #     my_instance, labels_)
@@ -113,7 +108,7 @@ def main():
     # Allocation
     allocation_time = time.time()
     containers_grouped = alloc.allocation_distant_pairwise(
-        my_instance, cluster_var_matrix, labels_)
+        my_instance, cluster_var_matrix, labels_, cplex_model.max_open_nodes)
 
     # plot.plot_containers_groupby_nodes(my_instance.df_containers)
 
@@ -126,10 +121,10 @@ def main():
 
     # Plot node's data
     # nd.plot_all_data_all_nodes(df_nodes)
-    plot.plot_containers_groupby_nodes(
-        my_instance.df_containers,
-        my_instance.df_nodes_meta.cpu.max(),
-        my_instance.sep_time)
+    # plot.plot_containers_groupby_nodes(
+    #     my_instance.df_containers,
+    #     my_instance.df_nodes_meta.cpu.max(),
+    #     my_instance.sep_time)
     # nd.plot_all_data_all_nodes_end(my_instance.df_nodes, my_instance.time)
 
     # Check if sum(nodes.conso) for all tick is same as previous
@@ -143,57 +138,81 @@ def main():
     # nd.get_mean_consumption(my_instance.df_nodes)
     # nd.get_variance_consumption(my_instance.df_nodes)
 
-    # plt.show(block=False)
-    plt.show(block=True)
-
     #####################################################################
     # CPLEX evaluation part
     # Update the solution in CPLEX model
     cplex_model.set_x_from_df(my_instance)
-    # cplex_model.get_obj_value_heuristic(my_instance)
+    cplex_model.get_obj_value_heuristic(my_instance)
     # cplex_model.print_sol_infos_heur()
     print('Adding constraints from heuristic ...')
     cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
 
     print('Solving linear relaxation ...')
-    # cplex_model.solve_relax()
-    # model.print_all_dual(cplex_model.relax_mdl)
+    cplex_model.solve_relax()
+    model.print_all_dual(cplex_model.relax_mdl, True)
     # cplex_model.get_max_dual()
 
-    cplex_model.export_mdls_lp()
+    # plt.show(block=False)
+    plt.show(block=False)
 
+    # containers_grouped = alloc.allocation_distant_pairwise(
+    #     my_instance, cluster_var_matrix, labels_, cplex_model.max_open_nodes - 1)
+
+    # plot.plot_containers_groupby_nodes(
+    #     my_instance.df_containers,
+    #     my_instance.df_nodes_meta.cpu.max(),
+    #     my_instance.sep_time)
+    # cplex_model.set_x_from_df(my_instance)
+    # cplex_model.get_obj_value_heuristic(my_instance)
+
+    # plt.show(block=False)
     #####################################################################
     # Evaluation period
-    fig_cont, ax_cont = plot.init_containers_plot(
-        my_instance.df_containers, my_instance.sep_time)
-    fig_node, ax_node = plot.init_nodes_plot(
-        my_instance.df_containers, my_instance.sep_time)
-    fig_clust, ax_clust = plot.init_plot_clustering(df_containers_clust)
-
-    tmin = my_instance.df_containers['timestamp'].min()
-    tmax = my_instance.sep_time
-
+    # fig_cont, ax_cont = plot.init_containers_plot(
+    #     my_instance.df_containers, my_instance.sep_time)
+    # fig_node, ax_node = plot.init_nodes_plot(
+    #     my_instance.df_containers, my_instance.sep_time)
     # fig_clust, ax_clust = plot.init_plot_clustering(df_containers_clust)
 
-    while not end:
-        working_df = my_instance.df_containers[
-            (my_instance.
-             df_containers['timestamp'] >= tmin) & (my_instance.
-                                                    df_containers['timestamp'] <= tmax)]
-        df_clust = clt.build_matrix_indiv_attr(working_df)
-        df_clust['cluster'] = labels_
-        cluster_profiles = clt.get_cluster_mean_profile(
-            my_instance.nb_clusters, df_clust,
-            my_instance.window_duration, tmin)
-        plot.update_clustering_plot(fig_clust, ax_clust, df_clust)
-        clt.check_container_deviation(
-            working_df, labels_, cluster_profiles, my_instance.dict_id_c)
-        plot.update_containers_plot(fig_cont, ax_cont, working_df, tmax)
-        plot.update_nodes_plot(fig_cont, ax_cont, working_df, tmax)
-        tmin += 1
-        tmax += 1
-        if tmax >= my_instance.time:
-            end = True
+    # tmin = my_instance.df_containers['timestamp'].min()
+    # tmax = my_instance.sep_time
+
+    # end = False
+
+    # while not end:
+    #     working_df = my_instance.df_containers[
+    #         (my_instance.
+    #          df_containers['timestamp'] >= tmin) & (my_instance.
+    #                                                 df_containers['timestamp'] <= tmax)]
+    #     df_clust = clt.build_matrix_indiv_attr(working_df)
+    #     df_clust['cluster'] = labels_
+    #     cluster_profiles = clt.get_cluster_mean_profile(
+    #         my_instance.nb_clusters, df_clust,
+    #         my_instance.window_duration, tmin)
+    #     plot.update_clustering_plot(fig_clust, ax_clust, df_clust)
+    #     # clt.check_container_deviation(
+    #     #     working_df, labels_, cluster_profiles, my_instance.dict_id_c)
+    #     # plot.update_containers_plot(fig_cont, ax_cont, working_df, tmax)
+    #     plot.update_nodes_plot(fig_node, ax_node, working_df, tmax)
+    #     tmin += 1
+    #     tmax += 1
+    #     if tmax >= my_instance.time:
+    #         end = True
+
+    #####################################################################
+    # Clustering part
+    df_containers_clust = clt.build_matrix_indiv_attr(
+        my_instance.df_containers.loc[
+            my_instance.df_containers['timestamp'] >= my_instance.sep_time])
+
+    clustering_time = time.time()
+
+    labels_ = clt.perform_clustering(
+        df_containers_clust, clustering_algo, my_instance.nb_clusters)
+    df_containers_clust['cluster'] = labels_
+    my_instance.nb_clusters = labels_.max() + 1
+    plot.plot_clustering(df_containers_clust,
+                         title='Clustering on second half part')
 
     print('Total computing time : %fs' % (time.time() - main_time))
 

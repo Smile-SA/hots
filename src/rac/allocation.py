@@ -130,7 +130,7 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
 
 def allocation_distant_pairwise(
         instance: Instance, cluster_var_matrix: np.array,
-        labels_: List, lb: float = 0.0) -> List:
+        labels_: List, nb_nodes: int, lb: float = 0.0) -> List:
     """
     First placement heuristic implemented : take two most distant clusters
     (from their mean profile), and assign by pair (one container from each
@@ -143,7 +143,8 @@ def allocation_distant_pairwise(
 
     total_time = instance.sep_time
 
-    min_nodes = nb_min_nodes(instance, total_time)
+    # min_nodes = nb_min_nodes(instance, total_time)
+    min_nodes = nb_nodes  #  test fix number nodes for dual value
     conso_nodes = np.zeros((min_nodes, total_time))
     n = 0
 

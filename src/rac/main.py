@@ -44,13 +44,20 @@ def main():
     # Init containers & nodes data, then Instance
     my_instance = instance.Instance(data)
 
+    working_df_containers = my_instance.df_containers.loc[
+        my_instance.df_containers['timestamp'] < my_instance.sep_time
+    ]
     building_cplex_time = time.time()
-    cplex_model = model.CPXInstance(my_instance)
+    cplex_model = model.CPXInstance(working_df_containers,
+                                    my_instance.df_nodes_meta,
+                                    my_instance.dict_id_c,
+                                    my_instance.dict_id_n)
     print('CPLEX model imported.')
     print('Building CPLEX model time : %fs' %
           (time.time() - building_cplex_time))
 
-    cplex_model.get_obj_value_heuristic(my_instance)
+    cplex_model.get_obj_value_heuristic(my_instance.df_nodes,
+                                        my_instance.dict_id_n)
 
     # Plot data (containers & nodes consumption)
     # ctnr.plot_all_data_all_containers(
@@ -141,8 +148,11 @@ def main():
     #####################################################################
     # CPLEX evaluation part
     # Update the solution in CPLEX model
-    cplex_model.set_x_from_df(my_instance)
-    cplex_model.get_obj_value_heuristic(my_instance)
+    cplex_model.set_x_from_df(my_instance.df_containers,
+                              my_instance.dict_id_c,
+                              my_instance.dict_id_n)
+    cplex_model.get_obj_value_heuristic(my_instance.df_nodes,
+                                        my_instance.dict_id_n)
     # cplex_model.print_sol_infos_heur()
     print('Adding constraints from heuristic ...')
     cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
@@ -199,6 +209,20 @@ def main():
     #     if tmax >= my_instance.time:
     #         end = True
 
+    working_df_containers = my_instance.df_containers.loc[
+        my_instance.df_containers['timestamp'] >= my_instance.sep_time
+    ]
+    building_cplex_time = time.time()
+    cplex_model = model.CPXInstance(working_df_containers,
+                                    my_instance.df_nodes_meta,
+                                    my_instance.dict_id_c,
+                                    my_instance.dict_id_n)
+    print('CPLEX model imported.')
+    print('Building CPLEX model time : %fs' %
+          (time.time() - building_cplex_time))
+
+    cplex_model.get_obj_value_heuristic(my_instance.df_nodes,
+                                        my_instance.dict_id_n)
     #####################################################################
     # Clustering part
     df_containers_clust = clt.build_matrix_indiv_attr(

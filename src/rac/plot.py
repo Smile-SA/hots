@@ -8,13 +8,18 @@ containers data, nodes data, continous plot in evaluation step.
 """
 
 import math
+from typing import List
 
 from matplotlib import gridspec as gridspec
 from matplotlib import pyplot as plt
 
+import numpy as np
+
 import pandas as pd
 
 import scipy.cluster.hierarchy as hac
+
+from .instance import Instance
 
 # Global variables
 
@@ -27,10 +32,14 @@ colors = ['blue', 'orange', 'green', 'red', 'purple',
 # Functions definitions #
 
 
-def plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu'):
+def plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu',
+                    title: str = None):
     """Plot metric containers consumption, grouped by cluster."""
     fig = plt.figure()
-    fig.suptitle(metric + ' consumption of containers grouped by cluster')
+    if title:
+        fig.suptitle(title)
+    else:
+        fig.suptitle(metric + ' consumption of containers grouped by cluster')
     gs = gridspec.GridSpec(df_clust.cluster.max() + 1, 1)
     ax_ = []
     max_cons = df_clust.drop(labels='cluster', axis=1).values.max()
@@ -46,7 +55,8 @@ def plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu'):
     plt.draw()
 
 
-def plot_containers_clustering_together(df_clust: pd.DataFrame, metric: str = 'cpu'):
+def plot_containers_clustering_together(df_clust: pd.DataFrame,
+                                        metric: str = 'cpu'):
     """Plot all containers consumption with their cluster color."""
     fig, ax = plt.subplots()
     fig.suptitle('Containers clustering (' + metric + ')')
@@ -57,7 +67,8 @@ def plot_containers_clustering_together(df_clust: pd.DataFrame, metric: str = 'c
     plt.draw()
 
 
-def plot_clustering_contaiers_by_node(instance, labels_, metric: str = 'cpu'):
+def plot_clustering_contaiers_by_node(instance: Instance, labels_: List,
+                                      metric: str = 'cpu'):
     """
     Plot containers consumption grouped by node, one container added above
     another, with their cluster color.
@@ -86,7 +97,8 @@ def plot_clustering_contaiers_by_node(instance, labels_, metric: str = 'cpu'):
     plt.draw()
 
 
-def plot_containers_groupby_nodes(df_containers: pd.DataFrame, max_cap, sep_time):
+def plot_containers_groupby_nodes(df_containers: pd.DataFrame,
+                                  max_cap: int, sep_time: int):
     # TODO make metrics generic
     """Plot containers consumption grouped by node."""
     # print("Preparing plot containers grouped by nodes ...")
@@ -121,7 +133,7 @@ def plot_containers_groupby_nodes(df_containers: pd.DataFrame, max_cap, sep_time
     plt.draw()
 
 
-def plot_dendrogram(z_all, k):
+def plot_dendrogram(z_all: np.array, k: int):
     """Plot dendrogram for the hierarchical clustering building."""
     plt.figure()
     plt.title('Hierarchical Clustering Dendrogram -- ALL')
@@ -135,7 +147,7 @@ def plot_dendrogram(z_all, k):
     plt.draw()
 
 
-def plot_cluster_profiles(profiles_):
+def plot_cluster_profiles(profiles_: List):
     """Plot mean profiles of clusters."""
     fig, ax = plt.subplots()
     fig.suptitle('Cluster profiles (mean of containers in it)')
@@ -147,7 +159,7 @@ def plot_cluster_profiles(profiles_):
     plt.draw()
 
 
-def plot_nodes_wout_containers(instance):
+def plot_nodes_wout_containers(instance: Instance):
     """Plot nodes consumption without containers."""
     fig, ax = plt.subplots()
     fig.suptitle('Nodes usage without containers')
@@ -181,7 +193,8 @@ def plot_nodes_wout_containers(instance):
     plt.show()
 
 
-def init_containers_plot(df_containers, sep_time, metric='cpu'):
+def init_containers_plot(df_containers: pd.DataFrame,
+                         sep_time: int, metric: str = 'cpu'):
     """Initialize containers consumption plot."""
     fig, ax = plt.subplots()
     fig.suptitle('Containers consumption evolution')
@@ -200,7 +213,7 @@ def init_containers_plot(df_containers, sep_time, metric='cpu'):
     return (fig, ax)
 
 
-def update_containers_plot(fig, ax, df, t):
+def update_containers_plot(fig, ax, df: pd.DataFrame, t: int):
     """Update containers consumption plot with new data."""
     pvt_cpu = pd.pivot_table(
         df, columns=df['container_id'],
@@ -209,8 +222,9 @@ def update_containers_plot(fig, ax, df, t):
     plt.pause(0.5)
 
 
-# TODO gset generic lim + hline
-def init_nodes_plot(df_containers, sep_time, metric='cpu'):
+# TODO set generic lim + hline
+def init_nodes_plot(df_containers: pd.DataFrame,
+                    sep_time: int, metric: str = 'cpu'):
     """Initialize nodes consumption plot."""
     fig, ax = plt.subplots()
     fig.suptitle('Nodes consumption evolution')
@@ -230,7 +244,7 @@ def init_nodes_plot(df_containers, sep_time, metric='cpu'):
     return (fig, ax)
 
 
-def update_nodes_plot(fig, ax, df, t):
+def update_nodes_plot(fig, ax, df: pd.DataFrame, t):
     """Update nodes consumption plot with new data."""
     pvt_cpu = pd.pivot_table(
         df, columns=df['machine_id'],
@@ -239,7 +253,7 @@ def update_nodes_plot(fig, ax, df, t):
     plt.pause(0.5)
 
 
-def init_plot_clustering(df_clust, metric='cpu'):
+def init_plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu'):
     """Initialize clustering plot."""
     fig = plt.figure()
     fig.suptitle('Clustering evolution')
@@ -258,7 +272,8 @@ def init_plot_clustering(df_clust, metric='cpu'):
     return (fig, ax_)
 
 
-def update_clustering_plot(fig, ax_, df_clust, metric='cpu'):
+def update_clustering_plot(fig, ax_,
+                           df_clust: pd.DataFrame, metric: str = 'cpu'):
     """Update clustering plot with new data."""
     for k, data in df_clust.groupby(['cluster']):
         for row in data.drop(labels='cluster', axis=1).iterrows():

@@ -278,7 +278,7 @@ def check_container_deviation(
     for c in range(len(labels_)):
         dist = get_distance_container_cluster(
             working_df.loc[
-                working_df['container_id'] == c
+                working_df['container_id'] == dict_id_c[c]
             ]['cpu'].to_numpy(), profiles_[labels_[c]])
         if dist > 0.5:
             print('Deviation of container ', c, dist)

@@ -21,6 +21,8 @@ from docplex.mp.solution import SolveSolution
 
 import numpy as np
 
+import pandas as pd
+
 from .init import metrics
 from .instance import Instance
 from .node import get_mean_consumption_node
@@ -38,6 +40,7 @@ class CPXInstance:
     - relax_mdl : linear relaxation of mdl
     - nb_nodes :
     - nb_containers :
+    - time_window :
     - nodes_names :
     - containers_names :
     - nodes_data :
@@ -49,28 +52,31 @@ class CPXInstance:
     # functions #
 
     # TODO parallelize all building
-    def __init__(self, my_instance: Instance):
+    def __init__(self, df_containers: pd.DataFrame,
+                 df_nodes_meta: pd.DataFrame,
+                 dict_id_c: Dict, dict_id_n: Dict):
         """Initialize CPXInstance with data in Instance."""
         model_time = time.time()
         print('Building of cplex model ...')
-        self.nb_nodes = my_instance.df_nodes['machine_id'].nunique()
-        self.nb_containers = my_instance.df_containers['container_id'].nunique(
-        )
-
+        self.nb_nodes = df_nodes_meta['machine_id'].nunique()
+        self.nb_containers = df_containers['container_id'].nunique()
+        self.time_window = df_containers['timestamp'].nunique()
+        print('time_window :')
+        print(self.time_window)
         # Fix max number of nodes (TODO function to evaluate it)
-        self.max_open_nodes = my_instance.nb_nodes
+        self.max_open_nodes = self.nb_nodes
 
         self.mdl = Model(name='allocation')
         self.build_names()
         self.build_variables()
-        self.build_data(my_instance)
-        self.build_constraints(my_instance.sep_time)
-        self.build_objective(my_instance)
+        self.build_data(df_containers, df_nodes_meta, dict_id_c, dict_id_n)
+        self.build_constraints()
+        self.build_objective()
 
         self.relax_mdl = make_relaxed_model(self.mdl)
 
         # Init solution for mdl with initial placement
-        self.set_x_from_df(my_instance)
+        self.set_x_from_df(df_containers, dict_id_c, dict_id_n)
 
         self.mdl.print_information()
 
@@ -99,25 +105,25 @@ class CPXInstance:
         self.mdl.delta = self.mdl.continuous_var_dict(
             ida, name=lambda k: 'delta_%d' % k)
 
-    def build_data(self, my_instance: Instance):
+    def build_data(self, df_containers: pd.DataFrame,
+                   df_nodes_meta: pd.DataFrame,
+                   dict_id_c: Dict, dict_id_n: Dict):
         """Build all model data from instance."""
         self.containers_data = {}
         self.nodes_data = {}
         for c in self.containers_names:
-            self.containers_data[c] = my_instance.df_containers.loc[
-                my_instance.
-                df_containers['container_id'] == my_instance.dict_id_c[c],
+            self.containers_data[c] = df_containers.loc[
+                df_containers['container_id'] == dict_id_c[c],
                 ['timestamp', 'cpu', 'mem']].to_numpy()
         for n in self.nodes_names:
-            self.nodes_data[n] = my_instance.df_nodes_meta.loc[
-                my_instance.
-                df_nodes_meta['machine_id'] == my_instance.dict_id_n[n],
+            self.nodes_data[n] = df_nodes_meta.loc[
+                df_nodes_meta['machine_id'] == dict_id_n[n],
                 ['cpu', 'mem']].to_numpy()[0]
 
-    def build_constraints(self, total_time: int):
+    def build_constraints(self):
         """Build all model constraints."""
         for node in self.nodes_names:
-            for t in range(total_time):
+            for t in range(self.time_window):
                 i = 0
                 for i in range(1, len(metrics) + 1):
                     # Capacity constraint
@@ -147,8 +153,8 @@ class CPXInstance:
 
         # Assign delta to diff cons - mean_cons
         for node in self.nodes_names:
-            expr_n = self.mean(node, total_time)
-            for t in range(total_time):
+            expr_n = self.mean(node)
+            for t in range(self.time_window):
                 self.mdl.add_constraint(self.conso_n_t(
                     node, t) - expr_n <= self.mdl.delta[node],
                     'delta_' + str(node) + '_' + str(t))
@@ -162,7 +168,7 @@ class CPXInstance:
             self.mdl.a[n] for n in self.
             nodes_names) == self.max_open_nodes, 'max_nodes')
 
-    def build_objective(self, my_instance: Instance):
+    def build_objective(self):
         """Build objective."""
         # Minimize sum of a[n] (number of open nodes)
         # self.mdl.minimize(self.mdl.sum(
@@ -182,16 +188,16 @@ class CPXInstance:
             ) + self.mdl.sum(self.mdl.a[n] for n in self.nodes_names)
         ))
 
-    def set_x_from_df(self, my_instance: Instance):
+    def set_x_from_df(self, df_containers: pd.DataFrame,
+                      dict_id_c: Dict, dict_id_n: Dict):
         """Add feasible solution from allocation in instance."""
         start_sol = {}
         for c in self.containers_names:
-            node_c_id = my_instance.df_containers.loc[
-                my_instance.
-                df_containers['container_id'] == my_instance.
-                dict_id_c[c], 'machine_id'].to_numpy()[0]
-            node_c = list(my_instance.dict_id_n.keys())[list(
-                my_instance.dict_id_n.values()).index(node_c_id)]
+            node_c_id = df_containers.loc[
+                df_containers['container_id'] == dict_id_c[c], 'machine_id'
+            ].to_numpy()[0]
+            node_c = list(dict_id_n.keys())[list(
+                dict_id_n.values()).index(node_c_id)]
             for n in self.nodes_names:
                 start_sol[self.mdl.x[c, n]] = 0
             start_sol[self.mdl.x[c, node_c]] = 1
@@ -199,10 +205,8 @@ class CPXInstance:
                 start_sol[self.mdl.a[node_c]] = 1
         self.current_sol = SolveSolution(self.mdl, start_sol)
         self.mdl.add_mip_start(self.current_sol)
-        # self.current_sol.print_mst()
-        # self.add_constraint_heuristic()
 
-    def get_obj_value_heuristic(self, my_instance: Instance):
+    def get_obj_value_heuristic(self, df_nodes: pd.DataFrame, dict_id_n: Dict):
         """Get objective value of heuristic solution (max delta)."""
         # TODO adaptative ... (retrieve expr from obj ?)
         obj_val = 0.0
@@ -211,13 +215,8 @@ class CPXInstance:
         for n in self.nodes_names:
             if self.current_sol.get_value(self.mdl.a[n]):
                 max_n = 0.0
-                mean_n = get_mean_consumption_node(
-                    my_instance.df_nodes.loc[
-                        my_instance.df_nodes['timestamp'] <= my_instance.
-                        sep_time
-                    ], my_instance.dict_id_n[n]
-                )
-                for t in range(my_instance.sep_time):
+                mean_n = get_mean_consumption_node(df_nodes, dict_id_n[n])
+                for t in range(self.time_window):
                     total_t = 0.0
                     for c in self.containers_names:
                         if self.current_sol.get_value(self.mdl.x[c, n]):
@@ -352,11 +351,11 @@ class CPXInstance:
             for c in self.containers_names)
 
     # Expr mean CPU in node
-    def mean(self, node: int, total_time: int) -> LinearExpr:
+    def mean(self, node: int) -> LinearExpr:
         """Express the mean consumption of node."""
         return (self.mdl.sum(
-            self.conso_n_t(node, t) for t in range(total_time)
-        ) / total_time)
+            self.conso_n_t(node, t) for t in range(self.time_window)
+        ) / self.time_window)
 
     def mean_all_nodes(self, total_time: int) -> LinearExpr:
         """Express the mean consumption of all nodes."""

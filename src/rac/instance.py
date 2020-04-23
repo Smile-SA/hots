@@ -33,7 +33,7 @@ class Instance:
         dict_id_c: TODO: explain this data
     """
 
-    def __init__(self, data: str, nb_clusters: int = 3):
+    def __init__(self, data: str, nb_clusters: int = 4):
         """Instance initialization
 
         Args:
@@ -45,7 +45,8 @@ class Instance:
          self.df_nodes_meta) = init_dfs(data)
 
         self.time: int = self.df_containers['timestamp'].nunique()
-        self.sep_time: float = math.ceil(self.time / 2)
+        self.sep_time: float = math.ceil(self.time / 2) + self.df_containers[
+            'timestamp'].min()
         self.window_duration = self.df_containers.loc[
             self.df_containers['timestamp'] <= self.sep_time
         ]['timestamp'].nunique()

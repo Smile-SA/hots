@@ -223,7 +223,6 @@ def get_cluster_mean_profile(nb_clusters: int, df_clust: pd.DataFrame,
                              total_time: int, tmin: int = 0) -> np.array:
     """Compute the mean profile of each cluster."""
     profiles_ = np.zeros((nb_clusters, total_time), dtype=float)
-
     for key, data in df_clust.groupby(['cluster']):
         for t in range(total_time):
             profiles_[key, t] = data[t + tmin].mean()

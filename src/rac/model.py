@@ -26,7 +26,6 @@ import pandas as pd
 
 from .init import metrics
 from .instance import Instance
-from .node import get_mean_consumption_node
 
 
 # TODO add KPIs ?
@@ -48,6 +47,7 @@ class CPXInstance:
     - containers_data :
     - current_sol :
     - max_open_nodes :
+    - obj_func :
     """
 
     # functions #
@@ -55,19 +55,20 @@ class CPXInstance:
     # TODO parallelize all building
     def __init__(self, df_containers: pd.DataFrame,
                  df_nodes_meta: pd.DataFrame,
-                 dict_id_c: Dict, dict_id_n: Dict):
+                 dict_id_c: Dict, dict_id_n: Dict,
+                 obj_func: int, nb_nodes: int = None):
         """Initialize CPXInstance with data in Instance."""
         model_time = time.time()
         print('Building of cplex model ...')
         self.nb_nodes = df_nodes_meta['machine_id'].nunique()
         self.nb_containers = df_containers['container_id'].nunique()
         self.time_window = df_containers['timestamp'].nunique()
-        print('time_window :')
-        print(self.time_window)
-        # Fix max number of nodes (TODO function to evaluate it)
-        self.max_open_nodes = self.nb_nodes
+        self.obj_func = obj_func
 
-        self.mdl = Model(name='allocation')
+        # Fix max number of nodes (TODO function to evaluate it)
+        self.max_open_nodes = nb_nodes or self.nb_nodes
+
+        self.mdl = Model(name='allocation', cts_by_name=False)
         self.build_names()
         self.build_variables()
         self.build_data(df_containers, df_nodes_meta, dict_id_c, dict_id_n)
@@ -84,6 +85,7 @@ class CPXInstance:
         print('Building model time : ', time.time() - model_time)
 
         self.mdl.export_as_lp(path='./allocation.lp')
+        self.relax_mdl.export_as_lp(path='./lp_allocation.lp')
 
     def build_names(self):
         """Build only names variables from nodes and containers."""
@@ -167,7 +169,7 @@ class CPXInstance:
         # Constraint the number of open servers
         self.mdl.add_constraint(self.mdl.sum(
             self.mdl.a[n] for n in self.
-            nodes_names) == self.max_open_nodes, 'max_nodes')
+            nodes_names) <= self.max_open_nodes, 'max_nodes')
 
     def build_objective(self):
         """Build objective."""
@@ -183,11 +185,21 @@ class CPXInstance:
         # self.mdl.minimize(self.mdl.delta)
 
         # Minimize sum(delta_n*a_n)
-        self.mdl.minimize((
-            self.mdl.sum(
+        # self.mdl.minimize((
+        #     self.mdl.sum(
+        #         self.mdl.delta[n] for n in self.nodes_names
+        #     ) + self.mdl.sum(self.mdl.a[n] for n in self.nodes_names)
+        # ))
+
+        # Minimize either open nodes or sum(delta_n)
+        if not self.obj_func:
+            self.mdl.minimize(self.mdl.sum(
+                self.mdl.a[n] for n in self.nodes_names
+            ))
+        else:
+            self.mdl.minimize(self.mdl.sum(
                 self.mdl.delta[n] for n in self.nodes_names
-            ) + self.mdl.sum(self.mdl.a[n] for n in self.nodes_names)
-        ))
+            ))
 
     def set_x_from_df(self, df_containers: pd.DataFrame,
                       dict_id_c: Dict, dict_id_n: Dict):
@@ -207,16 +219,15 @@ class CPXInstance:
         self.current_sol = SolveSolution(self.mdl, start_sol)
         self.mdl.add_mip_start(self.current_sol)
 
-    def get_obj_value_heuristic(self, df_nodes: pd.DataFrame, dict_id_n: Dict):
+    def get_obj_value_heuristic(self):
         """Get objective value of heuristic solution (max delta)."""
         # TODO adaptative ... (retrieve expr from obj ?)
         obj_val = 0.0
-        nb_open_nodes = 0
 
         for n in self.nodes_names:
             if self.current_sol.get_value(self.mdl.a[n]):
                 max_n = 0.0
-                mean_n = get_mean_consumption_node(df_nodes, dict_id_n[n])
+                mean_n = 0.0
                 for t in range(self.time_window):
                     total_t = 0.0
                     for c in self.containers_names:
@@ -224,9 +235,9 @@ class CPXInstance:
                             total_t += self.containers_data[c][t][1]
                     if total_t > max_n:
                         max_n = total_t
-                obj_val += max_n - mean_n
-                nb_open_nodes += 1
-        print('Objective value : ', obj_val + nb_open_nodes)
+                    mean_n += total_t
+                obj_val += max_n - (mean_n / self.time_window)
+        print('Objective value : ', obj_val)
 
     def solve(self, my_mdl: Model):
         """Solve the problem."""
@@ -375,6 +386,28 @@ class CPXInstance:
         """Express the maximum consumption of node."""
         return (self.mdl.max(
             [self.conso_n_t(node, t) for t in range(total_time)]))
+
+    def update_max_nodes_ct(self, new_bound: int):
+        """Update the `max_nodes` constraint with the new bound."""
+        self.mdl.remove_constraint('max_nodes')
+        self.relax_mdl.remove_constraint('max_nodes')
+        self.max_open_nodes = new_bound
+        self.mdl.add_constraint(self.mdl.sum(
+            self.mdl.a[n] for n in self.
+            nodes_names) == self.max_open_nodes, 'max_nodes')
+        # TODO iter through vars instead of creating relax from scratch
+        # self.relax_mdl.add_constraint(self.relax_mdl.sum(
+        #     self.relax_mdl.a[n] for n in self.
+        #     nodes_names) == self.max_open_nodes, 'max_nodes')
+        self.relax_mdl = make_relaxed_model(self.mdl)
+
+    def update_obj_function(self, new_obj: int):
+        """Update the objective function with the new code."""
+        if new_obj == 1:
+            self.mdl.minimize(self.mdl.sum(
+                self.mdl.delta[n] for n in self.nodes_names
+            ))
+        self.relax_mdl = make_relaxed_model(self.mdl)
 
 
 # Functions related to CPLEX #

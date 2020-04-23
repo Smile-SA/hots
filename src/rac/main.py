@@ -22,7 +22,7 @@ from matplotlib import pyplot as plt
 # Personnal imports
 from . import allocation as alloc
 from . import clustering as clt
-# from . import container as ctnr
+from . import container as ctnr
 from . import model
 from . import plot
 from .instance import Instance
@@ -32,7 +32,7 @@ from .instance import Instance
 
 # Global variables
 # {kmeans, hierarchical, spectral, spectral_perso}
-clustering_algo = 'hierarchical'
+clustering_algo = 'kmeans'
 
 
 @click.command()
@@ -47,15 +47,15 @@ def main(data):
     my_instance = Instance(data)
 
     # Plot data (containers & nodes consumption)
-    # ctnr.plot_all_data_all_containers(
-    #     my_instance.df_containers, sep_time=my_instance.sep_time)
-    # plot.plot_containers_groupby_nodes(
-    #     my_instance.df_containers,
-    #     my_instance.df_nodes_meta.cpu.max(),
-    #     my_instance.sep_time)
+    ctnr.plot_all_data_all_containers(
+        my_instance.df_containers, sep_time=my_instance.sep_time)
+    plot.plot_containers_groupby_nodes(
+        my_instance.df_containers,
+        my_instance.df_nodes_meta.cpu.max(),
+        my_instance.sep_time)
 
-    # plt.show(block=False)
-    # input('Press any key to continue ...')
+    plt.show(block=False)
+    input('Press any key to continue ...')
 
     # Get dataframe of current part
     working_df_containers = my_instance.df_containers.loc[
@@ -218,7 +218,8 @@ def main(data):
     # fig_cont, ax_cont = plot.init_containers_plot(
     #     my_instance.df_containers, my_instance.sep_time)
     fig_node, ax_node = plot.init_nodes_plot(
-        my_instance.df_containers, my_instance.sep_time)
+        my_instance.df_containers, my_instance.sep_time,
+        my_instance.df_nodes_meta.cpu.max())
     fig_clust, ax_clust = plot.init_plot_clustering(df_containers_clust)
 
     tmin = my_instance.df_containers['timestamp'].min()
@@ -307,6 +308,7 @@ def main(data):
         if tmax >= my_instance.time:
             end = True
 
+    plot.plot_clustering_containers_by_node(my_instance, labels_)
     print('Total computing time : %fs' % (time.time() - main_time))
 
     plt.show()

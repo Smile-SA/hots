@@ -111,29 +111,9 @@ def plot_clustering_containers_by_node(
 def plot_containers_groupby_nodes(df_containers: pd.DataFrame,
                                   max_cap: int, sep_time: int):
     # TODO make metrics generic
-    """
-    Plot containers consumption grouped by node
-    """
-    # print("Preparing plot containers grouped by nodes ...")
-    # fig = plt.figure()
-    # fig.suptitle("Containers CPU & mem consumption grouped by node")
-    # gs = gridspec.GridSpec(2, 1)
-
-    # ax_cpu = fig.add_subplot(gs[0, 0])
-    # ax_mem = fig.add_subplot(gs[1, 0])
-    # pvt_cpu = pd.pivot_table(df_container, columns="machine_id",
-    #                          index=df_container["timestamp"],
-    # aggfunc="sum", values="cpu")
-    # pvt_mem = pd.pivot_table(df_container, columns="machine_id",
-    #                          index=df_container["timestamp"],
-    # aggfunc="sum", values="mem")
-
-    # pvt_cpu.plot(ax=ax_cpu)
-    # pvt_mem.plot(ax=ax_mem)
-
+    """Plot containers consumption grouped by node."""
     fig, ax = plt.subplots()
     fig.suptitle('Node CPU consumption')
-    # TODO generic
     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
 
     pvt_cpu = pd.pivot_table(df_containers, columns='machine_id',
@@ -235,14 +215,13 @@ def update_containers_plot(fig, ax, df: pd.DataFrame, t: int):
     plt.pause(0.5)
 
 
-# TODO set generic lim + hline
-def init_nodes_plot(df_containers: pd.DataFrame,
-                    sep_time: int, metric: str = 'cpu'):
+def init_nodes_plot(df_containers: pd.DataFrame, sep_time: int,
+                    max_cap: int, metric: str = 'cpu'):
     """Initialize nodes consumption plot."""
     fig, ax = plt.subplots()
     fig.suptitle('Nodes consumption evolution')
     ax.set_xlim([0, df_containers['timestamp'].max()])
-    ax.set_ylim([0, 20])
+    ax.set_ylim([0, max_cap + (max_cap * 0.2)])
 
     pvt = pd.pivot_table(
         df_containers.loc[
@@ -252,7 +231,7 @@ def init_nodes_plot(df_containers: pd.DataFrame,
         aggfunc='sum', values='cpu')
     ax.plot(pvt)
     ax.axvline(x=sep_time, color='red', linestyle='--')
-    ax.axhline(y=20, color='red')
+    ax.axhline(y=max_cap, color='red')
 
     return (fig, ax)
 
@@ -272,13 +251,11 @@ def init_plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu'):
     fig.suptitle('Clustering evolution')
     gs = gridspec.GridSpec(df_clust.cluster.max()+1, 1)
     ax_ = []
-    max_cons = df_clust.drop(labels='cluster', axis=1).values.max()
     for k, data in df_clust.groupby(['cluster']):
         ax_.append(fig.add_subplot(gs[k, 0]))
         ax_[k].set_title('Cluster n°%d' % k, pad=k)
         ax_[k].set(xlabel='time (s)', ylabel=metric)
         ax_[k].grid()
-        ax_[k].set_ylim([0, math.ceil(max_cons)])
         for row in data.drop(labels='cluster', axis=1).iterrows():
             ax_[k].plot(row[1], colors[k], label=row[0])
         ax_[k].legend()

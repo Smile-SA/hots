@@ -33,7 +33,7 @@ class Instance:
         dict_id_c: TODO: explain this data
     """
 
-    def __init__(self, data: str, nb_clusters: int = 4):
+    def __init__(self, data: str, nb_clusters: int = 8):
         """Instance initialization
 
         Args:

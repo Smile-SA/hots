@@ -10,6 +10,11 @@
 
 Have Python 3.6, 3.7 or 3.8 on an Unix box (Linux, MacOS, ...) with a graphic display.
 
+Moreover, `rac` module needs `IBM CPLEX` solver to be installed on the machine to
+solve the optimization problem. To see details, visit their website [here](https://www.ibm.com/uk-en/products/ilog-cplex-optimization-studio).
+Once you have `CPLEX` installed on the machine, you have to add in your
+`#PYTHONPATH` the `/path/to/cplex/python/[python-version]/[your-distribution]`.
+
 ### Production
 
 Latest stable version:
@@ -45,7 +50,18 @@ You can now open `build/sphinx/index.html` with your favorite Web browser.
 
 ## Usage
 
-Display the short instructions with this command:
+Basically, start the application with this command :
+
+```bash
+rac /path/to/your/data/folder
+```
+
+Your data folder must provide at least two files :
+
+- `container_usage.csv` provides resource consumption by containers
+- `node_meta.csv` provides nodes capacities for each metric
+
+Display the short instructions with this command :
 
 ```bash
 rac --help

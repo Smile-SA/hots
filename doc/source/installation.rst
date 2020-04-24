@@ -9,6 +9,12 @@ Requirements
 
 :term:`rac` works on any platform with Python 3.6 and up, a graphic display on any OS (\*nix or
 Windows)?
+Moreover, `rac` module needs `IBM CPLEX` solver to be installed on the machine to
+solve the optimization problem. To see details, visit their website_.
+Once you have `CPLEX` installed on the machine, you have to add in your
+``#PYTHONPATH`` the ``/path/to/cplex/python/[python-version]/[your-distribution]``.
+
+.. _website: https://www.ibm.com/uk-en/products/ilog-cplex-optimization-studio
 
 Production
 ==========

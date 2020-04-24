@@ -39,6 +39,9 @@ Each file have the following formats :
       "...", "...", "...", "..."
       "tmax", "m_5", 17.5, 52
 
+Note that the file `node_usage.csv` is not mandatory : if it does not exist in
+the directory, it will be built with `container_usage.csv` data.
+
 Running the app
 ===============
 

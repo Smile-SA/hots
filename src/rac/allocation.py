@@ -95,9 +95,6 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
     for it in range(min(len(list_containers_i),
                         len(list_containers_j))):
         # allocate 2 containers !! TODO
-        print('Colocalize %s (%d) and %s (%d)' % (
-            list_containers_i[it], it, list_containers_j[it], it
-        ))
         cons_i = instance.df_containers.loc[
             instance.
             df_containers['container_id'] == list_containers_i[it]
@@ -182,19 +179,17 @@ def allocation_distant_pairwise(
 
         # > 1 cluster remaining -> co-localize 2 more distant
         else:
-            valid_idx = np.where(cluster_var_matrix_copy.flatten() > lb)[0]
+            valid_idx = np.where(cluster_var_matrix_copy.flatten() >= lb)[0]
             min_idx = valid_idx[cluster_var_matrix_copy.flatten()[
                 valid_idx].argmin()]
             i, j = np.unravel_index(
                 min_idx, cluster_var_matrix_copy.shape)
-
             list_containers_i = [
                 instance.dict_id_c[u] for u, value in
                 enumerate(labels_) if value == i]
             list_containers_j = [
                 instance.dict_id_c[u] for u, value in
                 enumerate(labels_) if value == j]
-
             it = colocalize_clusters(list_containers_i, list_containers_j,
                                      containers_grouped, instance, total_time,
                                      min_nodes, conso_nodes, pbar, n)
@@ -213,10 +208,10 @@ def allocation_distant_pairwise(
                     spread_containers(list_containers, instance, conso_nodes,
                                       total_time, min_nodes, pbar)
 
-            cluster_var_matrix_copy[i, :] = 0.0
-            cluster_var_matrix_copy[:, i] = 0.0
-            cluster_var_matrix_copy[j, :] = 0.0
-            cluster_var_matrix_copy[:, j] = 0.0
+            cluster_var_matrix_copy[i, :] = -1.0
+            cluster_var_matrix_copy[:, i] = -1.0
+            cluster_var_matrix_copy[j, :] = -1.0
+            cluster_var_matrix_copy[:, j] = -1.0
             clusters_done_[i] = 1
             clusters_done_[j] = 1
             c_it = c_it - 2
@@ -438,7 +433,7 @@ def move_container(mvg_cont: int, working_df_container: pd.DataFrame,
             instance.df_nodes['timestamp'] <= tmax
         )
     ]
-    conso_nodes = np.zeros((nb_open_nodes, duration))
+    conso_nodes = np.zeros((working_df_node['machine_id'].nunique(), duration))
     n_int = 0
     for node, data in working_df_node.groupby(working_df_node['machine_id']):
         if n_int >= nb_open_nodes:

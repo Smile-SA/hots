@@ -5,9 +5,15 @@ venv:
 
 .PHONY: install
 install: venv
+	./venv/bin/pip install --upgrade setuptools
 	./venv/bin/pip install -U pip wheel
 	./venv/bin/pip install -e .[dev]
 
+.PHONY: doc
+doc:
+    ./venv/bin/pip install -e .[doc]
+    ./venv/bin/python setup.py build_sphinx
+	
 .PHONY: done
 done:
 	@ echo "Installation finished succesfully. Run 'rac /path/to/data/folder' to start the application"

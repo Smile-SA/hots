@@ -9,7 +9,6 @@ parameters. Provide Instance-related methods.
 
 import math
 
-# print(__doc__)
 from . import node as nd
 from . import container
 from .init import init_dfs, init_dfs_meta
@@ -33,7 +32,7 @@ class Instance:
         dict_id_c: TODO: explain this data
     """
 
-    def __init__(self, data: str, nb_clusters: int = 8):
+    def __init__(self, data: str, nb_clusters: int = 5):
         """Instance initialization
 
         Args:
@@ -45,7 +44,7 @@ class Instance:
          self.df_nodes_meta) = init_dfs(data)
 
         self.time: int = self.df_containers['timestamp'].nunique()
-        self.sep_time: float = math.ceil(self.time / 2) + self.df_containers[
+        self.sep_time: float = math.floor(self.time / 2) + self.df_containers[
             'timestamp'].min()
         self.window_duration = self.df_containers.loc[
             self.df_containers['timestamp'] <= self.sep_time
@@ -63,7 +62,7 @@ class Instance:
             ['timestamp', 'container_id'], inplace=True, drop=False)
 
         self.dict_id_n = nd.build_dict_id_nodes(self.df_nodes)
-        self.dict_id_c = container.build_dict_id_containers(self.df_containers)
+        self.dict_id_c = {}
 
         self.print()
 

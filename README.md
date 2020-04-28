@@ -29,23 +29,27 @@ See `pip` documentation and available versions on PyPI for other options and `ra
 
 ### Development
 
-We assume you activated a dedicated virtual environment with Python 3.6, 3.7 or 3.8 with whatever
-tool you prefer (virtualenv, venv, pew, pyenv, ...), and you cloned `rac` from its Git repository.
+The easiest way to install a `development` version of `rac` is to use `make` :
 
 ```bash
-# Activate the virtual environment
-. venv/bin/activate
+make
+```
+
+As it is created within the `Makefile`, we recommend using a dedicated virtual environment.
+After the install has finished succesfully, don't forget to activate this environment :
+
+```bash
+source venv/bin/activate
 ```
 
 The `dev` option adds development / tests tools.
 
 ### Full documentation
 
-Start as in above **Development** section, then issue the commands:
+As in above **Development** section, the documentation can be built using `make`:
 
 ```bash
-pip install -e .[doc]
-python setup.py build_sphinx
+make doc
 ```
 
 You can now open `build/sphinx/index.html` with your favorite Web browser.
@@ -56,6 +60,13 @@ Basically, start the application with this command :
 
 ```bash
 rac /path/to/your/data/folder
+```
+
+Note that the repository provides some examples datasets in `.tests/data/` folder.
+You can then run, for instance, the `generated_30` example like this :
+
+```bash
+rac tests/data/generated_30
 ```
 
 Your data folder must provide at least two files :

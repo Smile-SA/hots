@@ -34,31 +34,36 @@ from .instance import Instance
 
 # Functions definitions #
 # TODO add mem cols
-def matrix_line(args: (str, pd.DataFrame)) -> Dict:
+def matrix_line(args: (str, pd.DataFrame)) -> (int, Dict):
     """Build one line for clustering matrix."""
     key, data = args
     line = {}
     for row in data.iterrows():
         line[int(row[1]['timestamp'])] = row[1]['cpu']
         line['container_id'] = key
-    return line
+    return (key, line)
 
 
-def build_matrix_indiv_attr(df: pd.DataFrame) -> pd.DataFrame:
+def build_matrix_indiv_attr(df: pd.DataFrame) -> (pd.DataFrame, Dict):
     """Build entire clustering matrix."""
     print('Setup for clustering ...')
     list_args = list(df.groupby(df['container_id']))
     lines = []
+    dict_id_c = {}
+    int_id = 0
     pool = mp.Pool(processes=(mp.cpu_count() - 1))
-    for line in tqdm(pool.imap(matrix_line, list_args), total=len(list_args)):
+    for (key, line) in tqdm(
+            pool.imap(matrix_line, list_args), total=len(list_args)):
         lines.append(line)
+        dict_id_c[int_id] = key
+        int_id += 1
 
     pool.close()
     pool.join()
     df_return = pd.DataFrame(data=lines)
     df_return.fillna(0, inplace=True)
     df_return.set_index('container_id', inplace=True)
-    return df_return
+    return (df_return, dict_id_c)
 
 
 def build_similarity_matrix(df: pd.DataFrame) -> np.array:
@@ -240,7 +245,7 @@ def get_sum_cluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
                 (profiles_[i, :] + profiles_[j, :]).var()) / (
                     vars_[i] + vars_[j])
             sum_profiles_matrix[j, i] = sum_profiles_matrix[i, j]
-
+        sum_profiles_matrix[i, i] = -1.0
     return sum_profiles_matrix
 
 

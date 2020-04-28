@@ -36,8 +36,8 @@ colors = ['blue', 'orange', 'green', 'red', 'purple',
 # Functions definitions #
 
 
-def plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu',
-                    title: str = None):
+def plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
+                    metric: str = 'cpu', title: str = None):
     """Plot metric containers consumption, grouped by cluster."""
     fig = plt.figure()
     if title:
@@ -54,7 +54,8 @@ def plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu',
         ax_[k].grid()
         ax_[k].set_ylim([0, math.ceil(max_cons)])
         for row in data.drop(labels='cluster', axis=1).iterrows():
-            ax_[k].plot(row[1], colors[k], label=row[0])
+            c_int = [key for key, v in dict_id_c.items() if v == row[0]][0]
+            ax_[k].plot(row[1], colors[k], label=c_int)
         ax_[k].legend()
     plt.draw()
 
@@ -85,7 +86,6 @@ def plot_clustering_containers_by_node(
         df_containers['machine_id'].nunique() / 2), 2)
     x_ = df_containers['timestamp'].unique()
     i = 0
-
     for n, data_n in df_containers.groupby(
             df_containers['machine_id']):
         agglo_containers = pd.Series(

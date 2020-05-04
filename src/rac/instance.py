@@ -44,8 +44,10 @@ class Instance:
          self.df_nodes_meta) = init_dfs(data)
 
         self.time: int = self.df_containers['timestamp'].nunique()
-        self.sep_time: float = math.floor(self.time / 2) + self.df_containers[
-            'timestamp'].min()
+        self.sep_time: int = math.floor(self.time / 2) + self.df_containers[
+            'timestamp'].min()  # by default : half of dataset (option?)
+        # self.sep_time: int = math.floor(self.time / 8) + self.df_containers[
+        #     'timestamp'].min()  # for alibaba data : get period
         self.window_duration = self.df_containers.loc[
             self.df_containers['timestamp'] <= self.sep_time
         ]['timestamp'].nunique()

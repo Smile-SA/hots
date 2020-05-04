@@ -102,11 +102,11 @@ class CPXInstance:
         self.mdl.a = self.mdl.binary_var_dict(ida, name=lambda k: 'a_%d' % k)
 
         # variables for max diff consumption (global delta)
-        # self.mdl.delta = self.mdl.continuous_var(name='delta')
+        self.mdl.delta = self.mdl.continuous_var(name='delta')
 
         # variables for max diff consumption (n delta)
-        self.mdl.delta = self.mdl.continuous_var_dict(
-            ida, name=lambda k: 'delta_%d' % k)
+        # self.mdl.delta = self.mdl.continuous_var_dict(
+        #     ida, name=lambda k: 'delta_%d' % k)
 
     def build_data(self, df_containers: pd.DataFrame,
                    df_nodes_meta: pd.DataFrame,
@@ -159,12 +159,19 @@ class CPXInstance:
             expr_n = self.mean(node)
             for t in range(self.time_window):
                 self.mdl.add_constraint(self.conso_n_t(
-                    node, t) - expr_n <= self.mdl.delta[node],
+                    node, t) - expr_n <= self.mdl.delta,
                     'delta_' + str(node) + '_' + str(t))
                 self.mdl.add_constraint(
                     expr_n - self.
-                    conso_n_t(node, t) <= self.mdl.delta[node],
+                    conso_n_t(node, t) <= self.mdl.delta,
                     'inv-delta_' + str(node) + '_' + str(t))
+                # self.mdl.add_constraint(self.conso_n_t(
+                #     node, t) - expr_n <= self.mdl.delta[node],
+                #     'delta_' + str(node) + '_' + str(t))
+                # self.mdl.add_constraint(
+                #     expr_n - self.
+                #     conso_n_t(node, t) <= self.mdl.delta[node],
+                #     'inv-delta_' + str(node) + '_' + str(t))
 
         # Constraint the number of open servers
         self.mdl.add_constraint(self.mdl.sum(
@@ -182,7 +189,7 @@ class CPXInstance:
         #     self.var(n, total_time) for n in self.nodes_names))
 
         # Minimize delta (max(conso_n_t - mean_n))
-        # self.mdl.minimize(self.mdl.delta)
+        self.mdl.minimize(self.mdl.delta)
 
         # Minimize sum(delta_n*a_n)
         # self.mdl.minimize((
@@ -192,14 +199,14 @@ class CPXInstance:
         # ))
 
         # Minimize either open nodes or sum(delta_n)
-        if not self.obj_func:
-            self.mdl.minimize(self.mdl.sum(
-                self.mdl.a[n] for n in self.nodes_names
-            ))
-        else:
-            self.mdl.minimize(self.mdl.sum(
-                self.mdl.delta[n] for n in self.nodes_names
-            ))
+        # if not self.obj_func:
+        #     self.mdl.minimize(self.mdl.sum(
+        #         self.mdl.a[n] for n in self.nodes_names
+        #     ))
+        # else:
+        #     self.mdl.minimize(self.mdl.sum(
+        #         self.mdl.delta[n] for n in self.nodes_names
+        #     ))
 
     def set_x_from_df(self, df_containers: pd.DataFrame,
                       dict_id_c: Dict, dict_id_n: Dict):
@@ -348,9 +355,13 @@ class CPXInstance:
         # Update the linear relaxation
         self.relax_mdl = make_relaxed_model(self.mdl)
 
-    def export_mdls_lp(self):
-        self.mdl.export_as_lp(path=problem_dir)
-        self.relax_mdl.export_as_lp(path=problem_dir)
+        self.mdl.export_as_lp(path='./allocation.lp')
+        self.relax_mdl.export_as_lp(path='./lp_allocation.lp')
+
+    # TODO not working since problem_dir deleted
+    # def export_mdls_lp(self):
+    #     self.mdl.export_as_lp(path=problem_dir)
+    #     self.relax_mdl.export_as_lp(path=problem_dir)
 
     # Expr total conso CPU in node at t
     def conso_n_t(self, node, t: int) -> LinearExpr:

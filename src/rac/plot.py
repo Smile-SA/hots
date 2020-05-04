@@ -31,7 +31,8 @@ colors = ['blue', 'orange', 'green', 'red', 'purple',
           'brown', 'pink', 'gray', 'olive', 'cyan', 'turquoise',
           'chocolate', 'navy', 'lightcoral', 'violet']
 
-# TODO factorize x_ (function init in all files ?)
+other_colors = ['violet', 'lightcoral', 'navy', 'chocolate', 'turquoise']
+
 
 # Functions definitions #
 
@@ -56,6 +57,34 @@ def plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
         for row in data.drop(labels='cluster', axis=1).iterrows():
             c_int = [key for key, v in dict_id_c.items() if v == row[0]][0]
             ax_[k].plot(row[1], colors[k], label=c_int)
+        ax_[k].legend()
+    plt.draw()
+
+
+def plot_clustering_spec_cont(df_clust: pd.DataFrame, dict_id_c: Dict,
+                              containers_toshow: List,
+                              metric: str = 'cpu', title: str = None):
+    """Plot metric containers consumption, grouped by cluster."""
+    fig = plt.figure()
+    if title:
+        fig.suptitle(title)
+    else:
+        fig.suptitle(metric + ' consumption of containers grouped by cluster')
+    gs = gridspec.GridSpec(df_clust.cluster.max() + 1, 1)
+    ax_ = []
+    max_cons = df_clust.drop(labels='cluster', axis=1).values.max()
+    for k, data in df_clust.groupby(['cluster']):
+        ax_.append(fig.add_subplot(gs[k, 0]))
+        ax_[k].set_title('Cluster n°%d' % k, pad=k)
+        ax_[k].set(xlabel='time (s)', ylabel=metric)
+        ax_[k].grid()
+        ax_[k].set_ylim([0, math.ceil(max_cons)])
+        for row in data.drop(labels='cluster', axis=1).iterrows():
+            c_int = [key for key, v in dict_id_c.items() if v == row[0]][0]
+            if c_int in containers_toshow:
+                ax_[k].plot(row[1], other_colors[k], label=c_int)
+            else:
+                ax_[k].plot(row[1], colors[k])
         ax_[k].legend()
     plt.draw()
 
@@ -102,6 +131,47 @@ def plot_clustering_containers_by_node(
             agglo_containers = agglo_containers.add(temp_df[metric])
             ax_node_usage.plot(
                 x_, agglo_containers, colors[labels_[c_int]], label=c_int)
+        ax_node_usage.legend()
+        i += 1
+
+    plt.draw()
+
+
+def plot_clustering_containers_by_node_spec_cont(
+        df_containers: pd.DataFrame, dict_id_c: Dict, labels_: List,
+        containers_toshow: List, metric: str = 'cpu'):
+    """
+    Plot containers consumption grouped by node, one container added above
+    another, with their cluster color.
+    """
+    fig_node_usage = plt.figure()
+    fig_node_usage.suptitle(
+        metric + ' consumption in each node, containers clustering')
+    gs_node_usage = gridspec.GridSpec(math.ceil(
+        df_containers['machine_id'].nunique() / 2), 2)
+    x_ = df_containers['timestamp'].unique()
+    i = 0
+    for n, data_n in df_containers.groupby(
+            df_containers['machine_id']):
+        agglo_containers = pd.Series(
+            data=[0.0] * df_containers['timestamp'].nunique(), index=x_)
+        ax_node_usage = fig_node_usage.add_subplot(
+            gs_node_usage[int(i / 2), int(i % 2)])
+        # ax_node_usage.set_title('Node %d' % dict_id_n[n)
+        ax_node_usage.set(xlabel='time (s)', ylabel=metric)
+        ax_node_usage.grid()
+
+        for c, data_c in data_n.groupby(data_n['container_id']):
+            c_int = [k for k, v in dict_id_c.items() if v == c][0]
+            temp_df = data_c.reset_index(level='container_id', drop=True)
+            agglo_containers = agglo_containers.add(temp_df[metric])
+            if c_int in containers_toshow:
+                ax_node_usage.plot(
+                    x_, agglo_containers,
+                    other_colors[labels_[c_int]], label=c_int)
+            else:
+                ax_node_usage.plot(
+                    x_, agglo_containers, colors[labels_[c_int]])
         ax_node_usage.legend()
         i += 1
 
@@ -245,7 +315,8 @@ def update_nodes_plot(fig, ax, df: pd.DataFrame, t):
     plt.pause(0.5)
 
 
-def init_plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu'):
+def init_plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
+                         metric: str = 'cpu'):
     """Initialize clustering plot."""
     fig = plt.figure()
     fig.suptitle('Clustering evolution')
@@ -257,17 +328,20 @@ def init_plot_clustering(df_clust: pd.DataFrame, metric: str = 'cpu'):
         ax_[k].set(xlabel='time (s)', ylabel=metric)
         ax_[k].grid()
         for row in data.drop(labels='cluster', axis=1).iterrows():
-            ax_[k].plot(row[1], colors[k], label=row[0])
+            c_int = [k for k, v in dict_id_c.items() if v == row[0]][0]
+            ax_[k].plot(row[1], colors[k], label=c_int)
         ax_[k].legend()
     return (fig, ax_)
 
 
 def update_clustering_plot(fig, ax_,
-                           df_clust: pd.DataFrame, metric: str = 'cpu'):
+                           df_clust: pd.DataFrame, dict_id_c: Dict,
+                           metric: str = 'cpu'):
     """Update clustering plot with new data."""
     for k, data in df_clust.groupby(['cluster']):
         for row in data.drop(labels='cluster', axis=1).iterrows():
-            ax_[k].plot(row[1], colors[k], label=row[0])
+            c_int = [k for k, v in dict_id_c.items() if v == row[0]][0]
+            ax_[k].plot(row[1], colors[k], label=c_int)
 
 
 # def plot_nodes_adding_containers(df_containers: pd.DataFrame,

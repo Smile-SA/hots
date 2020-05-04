@@ -422,12 +422,13 @@ def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
 
 
 def move_container(mvg_cont: int, working_df_container: pd.DataFrame,
-                   instance: Instance, nb_open_nodes: int):
+                   instance: Instance):
     """Move `mvg_cont` to another node."""
     print('Moving container :', mvg_cont)
     tmin = working_df_container['timestamp'].min()
     tmax = working_df_container['timestamp'].max()
     duration = tmax - tmin + 1
+    nb_open_nodes = working_df_container['machine_id'].nunique()
     working_df_node = instance.df_nodes.loc[
         (instance.df_nodes['timestamp'] >= tmin) & (
             instance.df_nodes['timestamp'] <= tmax

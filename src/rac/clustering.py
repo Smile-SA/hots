@@ -49,7 +49,10 @@ def build_matrix_indiv_attr(df: pd.DataFrame) -> (pd.DataFrame, Dict):
     lines = []
     dict_id_c = {}
     int_id = 0
-    pool = mp.Pool(processes=(mp.cpu_count() - 1))
+    if mp.cpu_count() > 0:
+        pool = mp.Pool(processes=(mp.cpu_count() - 1))
+    else:
+        pool = mp.Pool(processes=(mp.cpu_count()))
     for (key, line) in tqdm(
             pool.imap(matrix_line, list_args), total=len(list_args)):
         lines.append(line)

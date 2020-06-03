@@ -1,0 +1,13 @@
+{
+  "analysis": {
+    "window_duration": "default",
+    "step": 1
+  },
+  "clustering": {
+    "algo": "hierarchical",
+    "nb_clusters": 4
+  },
+  "heuristic": {
+    "algo": "distant_pairwise"
+  }
+}

@@ -8,6 +8,7 @@ parameters. Provide Instance-related methods.
 """
 
 import math
+from typing import Dict
 
 from . import node as nd
 from .init import init_dfs
@@ -30,7 +31,7 @@ class Instance:
         dict_id_c: TODO: explain this data
     """
 
-    def __init__(self, data: str, nb_clusters: int = 5):
+    def __init__(self, data: str, config: Dict):
         """Instance initialization
 
         Args:
@@ -42,17 +43,20 @@ class Instance:
          self.df_nodes_meta) = init_dfs(data)
 
         self.time: int = self.df_containers['timestamp'].nunique()
-        self.sep_time: int = math.floor(self.time / 2) + self.df_containers[
-            'timestamp'].min()  # by default : half of dataset (option?)
-        # self.sep_time: int = math.floor(self.time / 8) + self.df_containers[
-        #     'timestamp'].min()  # for alibaba data : get period
-        self.window_duration = self.df_containers.loc[
-            self.df_containers['timestamp'] <= self.sep_time
-        ]['timestamp'].nunique()
+        if config['analysis']['window_duration'] == 'default':
+            self.sep_time: int = math.floor(self.time / 2) + self.df_containers[
+                'timestamp'].min()
+            self.window_duration = self.df_containers.loc[
+                self.df_containers['timestamp'] <= self.sep_time
+            ]['timestamp'].nunique()
+        else:
+            self.window_duration = config['analysis']['window_duration']
+            self.sep_time: int = self.df_containers[
+                'timestamp'].min() + self.window_duration - 1
 
         self.nb_nodes = self.df_nodes['machine_id'].nunique()
         self.nb_containers = self.df_containers['container_id'].nunique()
-        self.nb_clusters = nb_clusters
+        self.nb_clusters = config['clustering']['nb_clusters']
 
         self.df_nodes.sort_values('timestamp', inplace=True)
         self.df_containers.sort_values('timestamp', inplace=True)

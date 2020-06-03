@@ -17,7 +17,7 @@ run-tests-py36:
   script:
     - apt update
     - apt install -y python-dev build-essential
-    - pip install wheel==0.32.3 tox==3.7.0
+    - pip install wheel==0.34.2 tox==3.15.0
     - tox -e py36,flake8,safety
 
 run-tests-py37:
@@ -26,7 +26,7 @@ run-tests-py37:
   script:
     - apt update
     - apt install -y python-dev build-essential
-    - pip install wheel==0.32.3 tox==3.7.0
+    - pip install wheel==0.34.2 tox==3.15.0
     - tox -e py37,flake8,safety
 
 run-tests-py38:
@@ -35,7 +35,7 @@ run-tests-py38:
   script:
     - apt update
     - apt install -y python-dev build-essential
-    - pip install wheel==0.32.3 tox==3.7.0
+    - pip install wheel==0.34.2 tox==3.15.0
     - tox -e py38,flake8,safety
 
 build-master:

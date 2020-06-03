@@ -42,15 +42,37 @@ Each file have the following formats :
 Note that the file `node_usage.csv` is not mandatory : if it does not exist in
 the directory, it will be built with `container_usage.csv` data.
 
+Preparing the parameters
+========================
+
+The parameters inputs are provided from a JSON file, which has the following format :
+
+.. code-block:: JSON
+
+   {
+      "analysis": {
+         "window_duration": "default",
+         "step": 1
+      },
+      "clustering": {
+         "algo": "hierarchical",
+         "nb_clusters": 4
+      },
+      "heuristic": {
+         "algo": "distant_pairwise"
+      }
+   }
+
+
 Running the app
 ===============
 
-Having the 3 above mentioned files in an arbitrary directory - say :file:`~/work/`, issue the
-command:
+Having the first 3 above mentioned files in an arbitrary directory - say :file:`~/data/`,
+and the parameter file like :file:`~/params.json` issue the command:
 
 .. code:: console
 
-   rac ~/work
+   rac --data=~/work --params=~/params.json
 
 .. todo:: Using the application in a Docker container.
 

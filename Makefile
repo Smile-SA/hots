@@ -11,12 +11,13 @@ install: venv
 
 .PHONY: doc
 doc:
-    ./venv/bin/pip install -e .[doc]
-    ./venv/bin/python setup.py build_sphinx
+	./venv/bin/pip install -e .[doc]
+	./venv/bin/python setup.py build_sphinx
 	
 .PHONY: done
 done:
-	@ echo "Installation finished succesfully. Run 'rac /path/to/data/folder' to start the application"
+	@ echo "Installation finished succesfully. Run 'rac --data=/path/to/data/folder \
+	--path/path/to/params_file' to start the application"
 
 .PHONY: clean
 clean:

@@ -28,22 +28,26 @@ from . import clustering as clt
 from . import container as ctnr
 from . import model
 from . import plot
+from .init import read_params
 from .instance import Instance
 
 
 # Clustering algorithm
 # {kmeans, hierarchical, spectral, spectral_perso}
-# TODO as option ? + nb_clusters
-clustering_algo = 'hierarchical'
 
-
-def main():
+# TODO add 'help' message
+@click.command()
+@click.option('--data', required=True, type=click.Path(exists=True))
+@click.option('--params', required=True, type=click.Path(exists=True))
+def main(data, params):
     """Perform all things of methodology."""
     # Initialization part
     main_time = time.time()
 
+    config = read_params(params)
+
     # Init containers & nodes data, then Instance
-    my_instance = Instance(data)
+    my_instance = Instance(data, config)
 
     # Plot initial data (containers & nodes consumption)
     ctnr.plot_all_data_all_containers(
@@ -80,7 +84,7 @@ def main():
 
     clustering_time = time.time()
     labels_ = clt.perform_clustering(
-        df_containers_clust, clustering_algo, my_instance.nb_clusters)
+        df_containers_clust, config['clustering']['algo'], my_instance.nb_clusters)
     df_containers_clust['cluster'] = labels_
     my_instance.nb_clusters = labels_.max() + 1
 

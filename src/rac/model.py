@@ -143,10 +143,10 @@ class CPXInstance:
             # ), 'open_a_'+str(node))
 
             # more constraints, but easier
-            for c in self.containers_names:
-                self.mdl.add_constraint(
-                    self.mdl.x[c, node] <= self.mdl.a[node],
-                    'open_a_' + str(node))
+            # for c in self.containers_names:
+            #     self.mdl.add_constraint(
+            #         self.mdl.x[c, node] <= self.mdl.a[node],
+            #         'open_a_' + str(node))
 
         # Container assignment constraint (1 and only 1 x[c,_] = 1 for all c)
         for container in self.containers_names:
@@ -174,9 +174,9 @@ class CPXInstance:
                 #     'inv-delta_' + str(node) + '_' + str(t))
 
         # Constraint the number of open servers
-        self.mdl.add_constraint(self.mdl.sum(
-            self.mdl.a[n] for n in self.
-            nodes_names) <= self.max_open_nodes, 'max_nodes')
+        # self.mdl.add_constraint(self.mdl.sum(
+        #     self.mdl.a[n] for n in self.
+        #     nodes_names) <= self.max_open_nodes, 'max_nodes')
 
     def build_objective(self):
         """Build objective."""

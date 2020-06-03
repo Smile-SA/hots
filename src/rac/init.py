@@ -7,8 +7,9 @@ Provide stuff for initialization step (load DataFrames,
 global variables)
 """
 
-import typing as t
+import json
 from pathlib import Path
+from typing import Dict, Tuple
 
 import pandas as pd
 
@@ -17,7 +18,7 @@ import pandas as pd
 # Global variables #
 
 # We delete disk for the moment cause, not enough info
-metrics = ['cpu', 'mem']
+metrics = ['cpu']
 
 # Paths
 data_dir = './data'
@@ -64,7 +65,7 @@ def df_from_csv(file: Path) -> pd.DataFrame:
 
 # TODO check if files exist ?
 # TODO optionnal node file ?
-def init_dfs(data: str) -> t.Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def init_dfs(data: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Perform CSV files reading in data folder."""
     p_data = Path(data)
 
@@ -80,3 +81,10 @@ def init_dfs(data: str) -> t.Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         return (df_containers,
                 df_nodes,
                 df_from_csv(p_data / 'node_meta.csv'))
+
+
+def read_params(params_file: str) -> Dict:
+    """Get parameters from file and build the Dict config object."""
+    with open(params_file, 'r') as f:
+        config = json.load(f)
+    return config

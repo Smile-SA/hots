@@ -349,7 +349,10 @@ class CPXInstance:
                       dict_id_c.items() if v == c2][0]
                 for n_i in self.nodes_names:
                     self.mdl.add_constraint(
-                        self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] == 0,
+                        self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] >= 0,
+                        'mustLink_' + str(c1) + '_' + str(c2))
+                    self.mdl.add_constraint(
+                        self.mdl.x[c2, n_i] - self.mdl.x[c1, n_i] >= 0,
                         'mustLink_' + str(c1) + '_' + str(c2))
 
         # Update the linear relaxation

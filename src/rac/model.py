@@ -339,20 +339,42 @@ class CPXInstance:
 
         # must-link container-container only for pairwise clusters
         for list_containers in container_grouped:
-            for (c1, c2) in combinations(list_containers, 2):
-                # if instance.get_node_from_container(
-                #         c1) == instance.get_node_from_container(c2):
-                c1 = [k for k, v in instance.
-                      dict_id_c.items() if v == c1][0]
-                c2 = [k for k, v in instance.
-                      dict_id_c.items() if v == c2][0]
-                for n_i in self.nodes_names:
+            for (c1_s, c2_s) in combinations(list_containers, 2):
+                n = instance.get_node_from_container(c1_s)
+                if n == instance.get_node_from_container(c2_s):
+                    n = [k for k, v in instance.
+                         dict_id_n.items() if v == n][0]
+                    c1 = [k for k, v in instance.
+                          dict_id_c.items() if v == c1_s][0]
+                    c2 = [k for k, v in instance.
+                          dict_id_c.items() if v == c2_s][0]
                     self.mdl.add_constraint(
-                        self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] >= 0,
+                        self.mdl.x[c1, n] + self.mdl.x[c2, n] >= 2,
                         'mustLink_' + str(c1) + '_' + str(c2))
-                    self.mdl.add_constraint(
-                        self.mdl.x[c2, n_i] - self.mdl.x[c1, n_i] >= 0,
-                        'mustLink_' + str(c1) + '_' + str(c2))
+
+                # square mustLink equalities
+                # c1 = [k for k, v in instance.
+                #         dict_id_c.items() if v == c1_s][0]
+                # c2 = [k for k, v in instance.
+                #         dict_id_c.items() if v == c2_s][0]
+                # for n_i in self.nodes_names:
+                #     self.mdl.add_constraint(
+                #         (self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i]) * (
+                #             self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i]) == 0,
+                #         'mustLink_' + str(c1) + '_' + str(c2))
+
+                # initial mustLink equalities
+                # c1 = [k for k, v in instance.
+                #         dict_id_c.items() if v == c1_s][0]
+                # c2 = [k for k, v in instance.
+                #         dict_id_c.items() if v == c2_s][0]
+                # for n_i in self.nodes_names:
+                #     self.mdl.add_constraint(
+                #         self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] >= 0,
+                #         'mustLink_' + str(c1) + '_' + str(c2))
+                #     self.mdl.add_constraint(
+                #         self.mdl.x[c2, n_i] - self.mdl.x[c1, n_i] >= 0,
+                #         'mustLink_' + str(c1) + '_' + str(c2))
 
         # Update the linear relaxation
         self.relax_mdl = make_relaxed_model(self.mdl)

@@ -129,6 +129,12 @@ def main(data, params):
     print('Adding constraints from heuristic ...')
     cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
 
+    # Test mustLink constraints removing
+    # print(cplex_model.mdl.find_matching_linear_constraints('mustLink'))
+    # cplex_model.mdl.remove_constraint('mustLink_0_2')
+    # cplex_model.mdl.remove_constraint('mustLink_1_3')
+    # print(cplex_model.mdl.find_matching_linear_constraints('mustLink'))
+
     print('Solving linear relaxation ...')
     cplex_model.solve_relax()
     model.print_all_dual(cplex_model.relax_mdl, True)
@@ -161,7 +167,7 @@ def main(data, params):
             my_instance.df_nodes_meta.cpu.max(),
             my_instance.sep_time)
 
-    plt.show(block=True)
+    plt.show(block=False)
 
     # loop at same time or 'streaming' progress
     streaming = True
@@ -286,6 +292,7 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
             working_df_containers, my_instance.dict_id_c, labels_)
         plt.show(block=False)
         print('Enter the container you want to move')
+        # TODO more than 1 container not working
         moving_container = input()
         if moving_container.isdigit():
             alloc.move_container(int(moving_container), working_df_containers,

@@ -78,7 +78,7 @@ Display the short instructions with this command :
 rac --help
 ```
 
-## Known issues
+## Known issues
 
 - If you have any error (_ really any ? _) with matplotlib, you might have to install the backend
   `tkinter` with :

@@ -78,6 +78,15 @@ Display the short instructions with this command :
 rac --help
 ```
 
+## Known issues
+
+- If you have any error (_ really any ? _) with matplotlib, you might have to install the backend
+  `tkinter` with :
+
+```bash
+sudo apt install python3-tk
+```
+
 ## Credits
 
 This software is sponsored by [Alter Way](https://www.alterway.fr/).

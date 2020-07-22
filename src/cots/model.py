@@ -1,6 +1,6 @@
 """
 =========
-rac model
+cots model
 =========
 
 Define the optimization model we have, with its objective, constraints,
@@ -247,7 +247,7 @@ class CPXInstance:
         print('Objective value : ', obj_val)
 
     def solve(self, my_mdl: Model):
-        """Solve the problem."""
+        """Solve the given problem."""
         if not my_mdl.solve(log_output=True):
             print('*** Problem has no solution ***')
         else:
@@ -256,15 +256,6 @@ class CPXInstance:
             my_mdl.report()
             print(my_mdl.objective_value)
             # my_mdl.report_kpis()
-
-    def solve_relax(self):
-        """Solve the linear relaxation of the problem."""
-        if not self.relax_mdl.solve(log_output=True):
-            print('*** Problem has no solution ***')
-        else:
-            print('*** Model solved as function:')
-            self.relax_mdl.print_solution()
-            # self.relax_mdl.report_kpis()
 
     def print_heuristic_solution_a(self):
         """Print the heuristic solution (variables a)."""
@@ -341,23 +332,20 @@ class CPXInstance:
         # must-link container-container only for pairwise clusters
         for list_containers in container_grouped:
             for (c1_s, c2_s) in combinations(list_containers, 2):
-                n = instance.get_node_from_container(c1_s)
-                if n == instance.get_node_from_container(c2_s):
-                    n = [k for k, v in instance.
-                         dict_id_n.items() if v == n][0]
-                    c1 = [k for k, v in instance.
-                          dict_id_c.items() if v == c1_s][0]
-                    c2 = [k for k, v in instance.
-                          dict_id_c.items() if v == c2_s][0]
-                    self.mdl.add_constraint(
-                        self.mdl.x[c1, n] + self.mdl.x[c2, n] >= 2,
-                        'mustLink_' + str(c1) + '_' + str(c2))
+
+                # adding inequalities (= fixing variables)
+                # n = instance.get_node_from_container(c1_s)
+                # if n == instance.get_node_from_container(c2_s):
+                #     n = [k for k, v in instance.dict_id_n.items() if v == n][0]
+                #     c1 = [k for k, v in instance.dict_id_c.items() if v == c1_s][0]
+                #     c2 = [k for k, v in instance.dict_id_c.items() if v == c2_s][0]
+                #     self.mdl.add_constraint(
+                #         self.mdl.x[c1, n] + self.mdl.x[c2, n] >= 2,
+                #         'mustLink_' + str(c1) + '_' + str(c2))
 
                 # square mustLink equalities
-                # c1 = [k for k, v in instance.
-                #         dict_id_c.items() if v == c1_s][0]
-                # c2 = [k for k, v in instance.
-                #         dict_id_c.items() if v == c2_s][0]
+                # c1 = [k for k, v in instance.dict_id_c.items() if v == c1_s][0]
+                # c2 = [k for k, v in instance.dict_id_c.items() if v == c2_s][0]
                 # for n_i in self.nodes_names:
                 #     self.mdl.add_constraint(
                 #         (self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i]) * (
@@ -365,17 +353,15 @@ class CPXInstance:
                 #         'mustLink_' + str(c1) + '_' + str(c2))
 
                 # initial mustLink equalities
-                # c1 = [k for k, v in instance.
-                #         dict_id_c.items() if v == c1_s][0]
-                # c2 = [k for k, v in instance.
-                #         dict_id_c.items() if v == c2_s][0]
-                # for n_i in self.nodes_names:
-                #     self.mdl.add_constraint(
-                #         self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] >= 0,
-                #         'mustLink_' + str(c1) + '_' + str(c2))
-                #     self.mdl.add_constraint(
-                #         self.mdl.x[c2, n_i] - self.mdl.x[c1, n_i] >= 0,
-                #         'mustLink_' + str(c1) + '_' + str(c2))
+                c1 = [k for k, v in instance.dict_id_c.items() if v == c1_s][0]
+                c2 = [k for k, v in instance.dict_id_c.items() if v == c2_s][0]
+                for n_i in self.nodes_names:
+                    self.mdl.add_constraint(
+                        self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] >= 0,
+                        'mustLink_' + str(c1) + '_' + str(c2))
+                    self.mdl.add_constraint(
+                        self.mdl.x[c2, n_i] - self.mdl.x[c1, n_i] >= 0,
+                        'mustLink_' + str(c1) + '_' + str(c2))
 
         # Update the linear relaxation
         self.relax_mdl = make_relaxed_model(self.mdl)

@@ -1,9 +1,9 @@
 # coding=utf-8
 """
 =========
-rac main
+cots main
 =========
-Entry point of rac module through ``rac data``.
+Entry point of cots module through ``cots --data --params``.
 
     - data is the folder where we find the files
         x container_usage.csv : describes container resource consumption
@@ -75,7 +75,7 @@ def main(data, params):
     # print('Building CPLEX model time : %fs' %
     #       (time.time() - building_cplex_time))
     # cplex_model.get_obj_value_heuristic()
-    # cplex_model.solve_relax()
+    # cplex_model.solve(cplex_model.relax_mdl)
     # model.print_all_dual(cplex_model.relax_mdl, True)
 
     # Clustering part
@@ -136,7 +136,7 @@ def main(data, params):
     # print(cplex_model.mdl.find_matching_linear_constraints('mustLink'))
 
     print('Solving linear relaxation ...')
-    cplex_model.solve_relax()
+    cplex_model.solve(cplex_model.relax_mdl)
     model.print_all_dual(cplex_model.relax_mdl, True)
     cplex_model.get_obj_value_heuristic()
     # cplex_model.get_max_dual()
@@ -210,7 +210,7 @@ def main(data, params):
                                       my_instance.dict_id_n)
             print('Adding constraints from heuristic ...')
             cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
-            cplex_model.solve_relax()
+            cplex_model.solve(cplex_model.relax_mdl)
             model.print_all_dual(cplex_model.relax_mdl, True)
             cplex_model.get_obj_value_heuristic()
 
@@ -264,7 +264,7 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
         cplex_model.add_constraint_heuristic(
             containers_grouped, my_instance)
         print('Solving linear relaxation ...')
-        cplex_model.solve_relax()
+        cplex_model.solve(cplex_model.relax_mdl)
         model.print_all_dual(cplex_model.relax_mdl, True)
         cplex_model.get_obj_value_heuristic()
 

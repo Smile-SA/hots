@@ -1,6 +1,6 @@
 """
 ============
-rac.instance
+cots.instance
 ============
 
 Define the Instance class, which represents the problem we are facing, with its data, information,

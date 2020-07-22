@@ -1,6 +1,6 @@
 """
 =========
-rac clustering
+cots clustering
 =========
 
 Provide clustering algorithms and all clustering-related methods.

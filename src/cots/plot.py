@@ -1,6 +1,6 @@
 """
 =========
-rac plot
+cots plot
 =========
 
 Provide all plotting methods : different clustering results views,

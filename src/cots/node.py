@@ -1,6 +1,6 @@
 """
 =========
-rac node
+cots node
 =========
 
 Provide actions specific to nodes (plot nodes data, build dictionnary

@@ -1,8 +1,8 @@
-# **rac**
+# **cots**
 
 > Application for testing a hybrid resource allocation method using machine learning and optimization.
 
-(**TODO**: describe a **real life** use case for `rac`)
+(**TODO**: describe a **real life** use case for `cots`)
 
 ## Installation
 
@@ -10,7 +10,7 @@
 
 Have Python 3.6, 3.7 or 3.8 on an Unix box (Linux, MacOS, ...) with a graphic display.
 
-Moreover, `rac` module needs `IBM CPLEX` solver to be installed on the machine to
+Moreover, `cots` module needs `IBM CPLEX` solver to be installed on the machine to
 solve the optimization problem. To see details, visit their website [here](https://www.ibm.com/uk-en/products/ilog-cplex-optimization-studio).
 Once you have `CPLEX` installed on the machine, you have to add in your
 `#PYTHONPATH` the `/path/to/cplex/python/[python-version]/[your-distribution]`.
@@ -20,16 +20,14 @@ Once you have `CPLEX` installed on the machine, you have to add in your
 Latest stable version:
 
 ```bash
-# Install dependencies
-python setup.py install
-make
+pip install cots
 ```
 
-See `pip` documentation and available versions on PyPI for other options and `rac` versions.
+See `pip` documentation and available versions on PyPI for other options and `cots` versions.
 
 ### Development
 
-The easiest way to install a `development` version of `rac` is to use `make` :
+The easiest way to install a `development` version of `cots` is to use `make` :
 
 ```bash
 make
@@ -59,14 +57,14 @@ You can now open `build/sphinx/index.html` with your favorite Web browser.
 Basically, start the application with this command :
 
 ```bash
-rac /path/to/your/data/folder
+cots /path/to/your/data/folder
 ```
 
 Note that the repository provides some examples datasets in `.tests/data/` folder.
 You can then run, for instance, the `generated_30` example like this :
 
 ```bash
-rac tests/data/generated_30
+cots tests/data/generated_30
 ```
 
 Your data folder must provide at least two files :
@@ -77,7 +75,7 @@ Your data folder must provide at least two files :
 Display the short instructions with this command :
 
 ```bash
-rac --help
+cots --help
 ```
 
 ## Known issues

@@ -1,6 +1,6 @@
 """
 =========
-rac container
+cots container
 =========
 
 Provide actions specific to containers (plot containers data,

@@ -1,26 +1,26 @@
 .. _introduction:
 
 ===================
-Introduction to rac
+Introduction to cots
 ===================
 
-:term:`rac` is an application for testing a hybrid resource allocation method using machine learning
+:term:`cots` is an application for testing a hybrid resource allocation method using machine learning
 and optimization.
 
 Intended audience
 =================
 
-:term:`rac` is firstly thought for system and network administrators, allowing
+:term:`cots` is firstly thought for system and network administrators, allowing
 them to test new resource allocation techniques for container based hosting systems.
 
 It could be used in the future for other usage (still in resource allocation
 context, or more extended), but at the moment the methodology is not generic
 enough.
 
-What is rac
+What is cots
 ===========
 
-The main goal of :term:`rac` is to optimize the resource usage in the context
+The main goal of :term:`cots` is to optimize the resource usage in the context
 we are. 
 
 The first step is to get historical data of resource usage by individuals (like
@@ -40,7 +40,7 @@ on the clustering evolution.
 Usage example
 =============
 
-For the moment, :term:`rac` is an evaluation of a methodology, then it does
+For the moment, :term:`cots` is an evaluation of a methodology, then it does
 not work with a *real* environment, but with a dataset of historical resource
 usage data. In order to simulate the method, we split the dataset in two,
 based on the time :

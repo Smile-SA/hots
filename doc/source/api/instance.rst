@@ -1,8 +1,8 @@
 .. _instance_module:
 
 ============
-rac.instance
+cots.instance
 ============
 
-.. automodule:: rac.instance
+.. automodule:: cots.instance
    :members:

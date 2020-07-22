@@ -2,7 +2,7 @@
 Glossary
 ========
 
-Words used in this document or in :term:`rac` domain may have a special meaning that differs from
+Words used in this document or in :term:`cots` domain may have a special meaning that differs from
 their usual one. This section explains those terms in details.
 
 .. Terms must appear in alphabetical order.
@@ -11,7 +11,7 @@ their usual one. This section explains those terms in details.
 
   cluster
 
-    In the context of rac application, cluster is used for its *machine-learning* meaning (it could be confused with the meaning related to *infrastructure*). In this context, a cluster is a group of similar individuals, resulting from clustering.
+    In the context of cots application, cluster is used for its *machine-learning* meaning (it could be confused with the meaning related to *infrastructure*). In this context, a cluster is a group of similar individuals, resulting from clustering.
 
   clustering
 
@@ -21,6 +21,6 @@ their usual one. This section explains those terms in details.
 
     A heuristic is a method, used for solving a given problem, that is not guaranteed to be optimal, perfect or rational, but which is nevertheless sufficient for reaching an immediate, short-term goal. It is often used for solving very hard problems, by quickly finding a feasible solution.   
 
-  rac
+  cots
 
-    *rac* is the name given (for the moment) to this application. *rac* comes from *Resource Allocation via Clustering*. It then denotes a methodology that solves a resource allocation problem, using clustering (in addition to a heuristic).
+    *cots* is the name given (for the moment) to this application. *cots* comes from *Resource Allocation via Clustering*. It then denotes a methodology that solves a resource allocation problem, using clustering (in addition to a heuristic).

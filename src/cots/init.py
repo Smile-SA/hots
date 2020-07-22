@@ -1,6 +1,6 @@
 """
 =========
-rac init
+cots init
 =========
 
 Provide stuff for initialization step (load DataFrames,

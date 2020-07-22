@@ -1,6 +1,6 @@
 """
 =========
-rac setup
+cots setup
 =========
 
 Provide packaging operations through ``python setup.py [command]`` and

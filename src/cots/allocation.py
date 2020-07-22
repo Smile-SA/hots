@@ -1,6 +1,6 @@
 """
 =========
-rac allocation
+cots allocation
 =========
 
 Provide allocation heuristics and all allocation-related methods

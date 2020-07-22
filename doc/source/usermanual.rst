@@ -72,7 +72,7 @@ and the parameter file like :file:`~/params.json` issue the command:
 
 .. code:: console
 
-   rac --data=~/work --params=~/params.json
+   cots --data=~/work --params=~/params.json
 
 .. todo:: Using the application in a Docker container.
 

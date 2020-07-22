@@ -19,5 +19,5 @@ RUN pip3 install . \
     && apt -y purge python-dev build-essential \
     && apt -y autoremove
 
-#ENTRYPOINT ["rac"]
+#ENTRYPOINT ["cots"]
 

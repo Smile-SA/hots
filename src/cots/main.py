@@ -27,6 +27,7 @@ from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
 from . import model
+from . import model_small_cplex as msc
 from . import plot
 from .init import read_params
 from .instance import Instance
@@ -52,6 +53,18 @@ def main(data, params):
     # Plot initial data (containers & nodes consumption)
     ctnr.plot_all_data_all_containers(
         my_instance.df_containers, sep_time=my_instance.sep_time)
+
+    # Added part for the small CPLEX use
+    plt.show(block=False)
+
+    cplex_model = msc.SmallCPXInstance(my_instance.df_containers,
+                                       my_instance.df_nodes_meta)
+
+    # cplex_model.solve()
+
+    input('End of small exemple, press to continue.')
+    # End of added part for the small CPLEX use
+
     plot.plot_containers_groupby_nodes(
         my_instance.df_containers,
         my_instance.df_nodes_meta.cpu.max(),

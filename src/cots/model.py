@@ -28,9 +28,6 @@ from .init import metrics
 from .instance import Instance
 
 
-# TODO add KPIs ?
-
-
 class CPXInstance:
     """
     Class describing the optimization model given to CPLEX to evaluate

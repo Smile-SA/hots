@@ -26,7 +26,7 @@ import pandas as pd
 from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
-from . import model
+from . import model_cplex as mc
 from . import model_small_cplex as msc
 from . import plot
 from .init import read_params
@@ -40,7 +40,8 @@ from .instance import Instance
 @click.command()
 @click.option('--data', required=True, type=click.Path(exists=True))
 @click.option('--params', required=True, type=click.Path(exists=True))
-def main(data, params):
+@click.option('--exemple', is_flag=True)
+def main(data, params, exemple):
     """Perform all things of methodology."""
     # Initialization part
     main_time = time.time()
@@ -55,15 +56,14 @@ def main(data, params):
         my_instance.df_containers, sep_time=my_instance.sep_time)
 
     # Added part for the small CPLEX use
-    plt.show(block=False)
+    if exemple:
+        plt.show(block=False)
 
-    cplex_model = msc.SmallCPXInstance(my_instance.df_containers,
-                                       my_instance.df_nodes_meta)
+        cplex_model = msc.SmallCPXInstance(my_instance.df_containers,
+                                           my_instance.df_nodes_meta)
 
-    # cplex_model.solve()
-
-    input('End of small exemple, press to continue.')
-    # End of added part for the small CPLEX use
+        # cplex_model.solve()
+        input('End of small exemple, press to continue.')
 
     plot.plot_containers_groupby_nodes(
         my_instance.df_containers,
@@ -80,7 +80,7 @@ def main(data, params):
 
     # Build optimization model (only if we want initial obj value)
     # building_cplex_time = time.time()
-    # cplex_model = model.CPXInstance(working_df_containers,
+    # cplex_model = mc.CPXInstance(working_df_containers,
     #                                 my_instance.df_nodes_meta,
     #                                 my_instance.dict_id_c,
     #                                 my_instance.dict_id_n, obj_func=1)
@@ -89,7 +89,7 @@ def main(data, params):
     #       (time.time() - building_cplex_time))
     # cplex_model.get_obj_value_heuristic()
     # cplex_model.solve(cplex_model.relax_mdl)
-    # model.print_all_dual(cplex_model.relax_mdl, True)
+    # mc.print_all_dual(cplex_model.relax_mdl, True)
 
     # Clustering part
     (df_containers_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
@@ -131,11 +131,11 @@ def main(data, params):
     ]
 
     # CPLEX evaluation part
-    cplex_model = model.CPXInstance(working_df_containers,
-                                    my_instance.df_nodes_meta,
-                                    my_instance.dict_id_c,
-                                    my_instance.dict_id_n,
-                                    obj_func=1)
+    cplex_model = mc.CPXInstance(working_df_containers,
+                                 my_instance.df_nodes_meta,
+                                 my_instance.dict_id_c,
+                                 my_instance.dict_id_n,
+                                 obj_func=1)
     cplex_model.set_x_from_df(my_instance.df_containers,
                               my_instance.dict_id_c,
                               my_instance.dict_id_n)
@@ -150,7 +150,7 @@ def main(data, params):
 
     print('Solving linear relaxation ...')
     cplex_model.solve(cplex_model.relax_mdl)
-    model.print_all_dual(cplex_model.relax_mdl, True)
+    mc.print_all_dual(cplex_model.relax_mdl, True)
     cplex_model.get_obj_value_heuristic()
     # cplex_model.get_max_dual()
 
@@ -213,18 +213,18 @@ def main(data, params):
             plot.plot_clustering_containers_by_node(
                 working_df_containers, my_instance.dict_id_c, labels_)
             plt.show(block=False)
-            cplex_model = model.CPXInstance(working_df_containers,
-                                            my_instance.df_nodes_meta,
-                                            my_instance.dict_id_c,
-                                            my_instance.dict_id_n,
-                                            obj_func=1)
+            cplex_model = mc.CPXInstance(working_df_containers,
+                                         my_instance.df_nodes_meta,
+                                         my_instance.dict_id_c,
+                                         my_instance.dict_id_n,
+                                         obj_func=1)
             cplex_model.set_x_from_df(working_df_containers,
                                       my_instance.dict_id_c,
                                       my_instance.dict_id_n)
             print('Adding constraints from heuristic ...')
             cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
             cplex_model.solve(cplex_model.relax_mdl)
-            model.print_all_dual(cplex_model.relax_mdl, True)
+            mc.print_all_dual(cplex_model.relax_mdl, True)
             cplex_model.get_obj_value_heuristic()
 
     print('Total computing time : %fs' % (time.time() - main_time))
@@ -264,11 +264,11 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
 
         # evaluate solution from optim model
         # TODO update model from existing one, not creating new one each time
-        cplex_model = model.CPXInstance(working_df_containers,
-                                        my_instance.df_nodes_meta,
-                                        my_instance.dict_id_c,
-                                        my_instance.dict_id_n,
-                                        obj_func=current_obj_func)
+        cplex_model = mc.CPXInstance(working_df_containers,
+                                     my_instance.df_nodes_meta,
+                                     my_instance.dict_id_c,
+                                     my_instance.dict_id_n,
+                                     obj_func=current_obj_func)
         # nb_nodes=current_nb_nodes)
         cplex_model.set_x_from_df(working_df_containers,
                                   my_instance.dict_id_c,
@@ -278,7 +278,7 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
             containers_grouped, my_instance)
         print('Solving linear relaxation ...')
         cplex_model.solve(cplex_model.relax_mdl)
-        model.print_all_dual(cplex_model.relax_mdl, True)
+        mc.print_all_dual(cplex_model.relax_mdl, True)
         cplex_model.get_obj_value_heuristic()
 
         # if not cplex_model.obj_func:

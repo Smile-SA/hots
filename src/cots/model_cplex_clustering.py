@@ -12,7 +12,7 @@ CPLEX, own by IBM.
 
 import math
 import time
-from itertools import combinations
+from itertools import combinations, permutations
 from typing import Dict, List
 
 from docplex.mp.linear import LinearExpr
@@ -68,8 +68,8 @@ class CPXInstance:
         self.build_names()
         self.build_variables()
         self.build_data(df_containers, df_nodes_meta, dict_id_c, dict_id_n)
-        self.build_constraints()
-        self.build_objective()
+        self.build_constraints(nb_clusters)
+        self.build_objective(w, nb_clusters)
 
         self.relax_mdl = make_relaxed_model(self.mdl)
 
@@ -106,6 +106,21 @@ class CPXInstance:
         # self.mdl.delta = self.mdl.continuous_var_dict(
         #     ida, name=lambda k: 'delta_%d' % k)
 
+        # Clustering variables part
+        idy = [(c1, c2) for (c1, c2) in permutations(self.containers_names, 2)]
+        # co-localization variables : if containers c1 and c2 are in same cluster
+        self.mdl.y = self.mdl.binary_var_dict(
+            idy, name=lambda k: 'y_%d,%d' % (k[0], k[1])
+        )
+
+        idc = list(self.containers_names)
+        # representative variables
+        self.mdl.r = self.mdl.binary_var_dict(
+            idc, name=lambda k: 'r_%d' % k
+        )
+
+        # belonging variables : if container c belongs to cluster k
+
     def build_data(self, df_containers: pd.DataFrame,
                    df_nodes_meta: pd.DataFrame,
                    dict_id_c: Dict, dict_id_n: Dict):
@@ -121,8 +136,15 @@ class CPXInstance:
                 df_nodes_meta['machine_id'] == dict_id_n[n],
                 ['cpu', 'mem']].to_numpy()[0]
 
-    def build_constraints(self):
+    def build_constraints(self, nb_clusters):
         """Build all model constraints."""
+        self.placement_constraints()
+        self.clustering_constraints(nb_clusters)
+
+        # Clustering related constraints #
+
+    def placement_constraints(self):
+        """Build the placement problem related constraints."""
         for node in self.nodes_names:
             for t in range(self.time_window):
                 i = 0
@@ -176,7 +198,44 @@ class CPXInstance:
         #     self.mdl.a[n] for n in self.
         #     nodes_names) <= self.max_open_nodes, 'max_nodes')
 
-    def build_objective(self):
+    def clustering_constraints(self, nb_clusters):
+        """Build the clustering related constraints."""
+        # Triangular inequalities
+        for i in self.containers_names:
+            for (j, k) in combinations(self.containers_names, 2):
+                if (j != i) and (k != i) and (j < k):
+                    self.mdl.add_constraint(
+                        self.mdl.y[i, j] + self.mdl.y[i, k] - self.mdl.y[j, k] <= 1,
+                        'triangle_' + str(i) + '_' + str(j) + '_' + str(k)
+                    )
+
+        # TODO force yi,j=yj,i => reduce nb variables
+        for (i, j) in combinations(self.containers_names, 2):
+            self.mdl.add_constraint(
+                self.mdl.y[i, j] - self.mdl.y[j, i] == 0,
+                'fix_' + str(i) + '_' + str(j)
+            )
+        # Representative constraints
+        for i in self.containers_names:
+            self.mdl.add_constraint(self.mdl.r[i] + self.mdl.sum(
+                self.mdl.y[i, j] for j in self.containers_names if j < i) >= 1,
+                'representative_smallest_' + str(i))
+
+        for i in self.containers_names:
+            for j in self.containers_names:
+                if j < i:
+                    self.mdl.add_constraint(
+                        self.mdl.r[i] + self.mdl.y[i, j] <= 1,
+                        'representative_unique_' + str(i) + '_' + str(j)
+                    )
+
+        # Nb clusters
+        self.mdl.add_constraint(self.mdl.sum(
+            self.mdl.r[i] for i in self.containers_names) == nb_clusters,
+            'nb_clusters'
+        )
+
+    def build_objective(self, w, nb_clusters):
         """Build objective."""
         # Minimize sum of a[n] (number of open nodes)
         # self.mdl.minimize(self.mdl.sum(
@@ -187,7 +246,7 @@ class CPXInstance:
         #     self.var(n, total_time) for n in self.nodes_names))
 
         # Minimize delta (max(conso_n_t - mean_n))
-        self.mdl.minimize(self.mdl.delta)
+        # self.mdl.minimize(self.mdl.delta)
 
         # Minimize sum(delta_n*a_n)
         # self.mdl.minimize((
@@ -205,6 +264,15 @@ class CPXInstance:
         #     self.mdl.minimize(self.mdl.sum(
         #         self.mdl.delta[n] for n in self.nodes_names
         #     ))
+
+        # Minimize delta + sum(w*y)
+        self.mdl.minimize(
+            self.mdl.delta + self.mdl.sum(
+                w[i, j] * self.mdl.y[i, j] for (i, j) in combinations(
+                    self.containers_names, 2
+                )
+            ) / nb_clusters
+        )
 
     def set_x_from_df(self, df_containers: pd.DataFrame,
                       dict_id_c: Dict, dict_id_n: Dict):

@@ -26,7 +26,9 @@ import pandas as pd
 from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
-from . import model_cplex as mc
+# TODO set in params
+# from . import model_cplex as mc
+from . import model_cplex_clustering as mc
 from . import model_small_cplex as msc
 from . import plot
 from .init import read_params
@@ -94,6 +96,7 @@ def main(data, params, exemple):
     # Clustering part
     (df_containers_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
         working_df_containers)
+    w = clt.build_similarity_matrix(df_containers_clust)
 
     clustering_time = time.time()
     labels_ = clt.perform_clustering(
@@ -114,6 +117,8 @@ def main(data, params, exemple):
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
 
+    input('End of clustering, press enter to continue ...')
+
     print('Clustering computing time : %fs' % (time.time() - clustering_time))
 
     # Allocation
@@ -133,9 +138,14 @@ def main(data, params, exemple):
     # CPLEX evaluation part
     cplex_model = mc.CPXInstance(working_df_containers,
                                  my_instance.df_nodes_meta,
+                                 my_instance.nb_clusters,
                                  my_instance.dict_id_c,
                                  my_instance.dict_id_n,
-                                 obj_func=1)
+                                 obj_func=1, w=w)
+    # print('Test creation model ...')
+    # print(cplex_model.mdl.x)
+    # print(cplex_model.mdl.y)
+    # input('waiting ...')
     cplex_model.set_x_from_df(my_instance.df_containers,
                               my_instance.dict_id_c,
                               my_instance.dict_id_n)
@@ -151,7 +161,10 @@ def main(data, params, exemple):
     print('Solving linear relaxation ...')
     cplex_model.solve(cplex_model.relax_mdl)
     mc.print_all_dual(cplex_model.relax_mdl, True)
+    cplex_model.solve(cplex_model.mdl)
     cplex_model.get_obj_value_heuristic()
+
+    input('End of optim part, press enter to continue ...')
     # cplex_model.get_max_dual()
 
     # Plot clustering & allocation for 1st part
@@ -255,6 +268,7 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
                 my_instance.df_containers['timestamp'] <= tmax)]
         (df_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
             working_df_containers)
+        w = clt.build_similarity_matrix(df_clust)
         df_clust['cluster'] = labels_
         plot.update_clustering_plot(
             fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
@@ -266,9 +280,10 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
         # TODO update model from existing one, not creating new one each time
         cplex_model = mc.CPXInstance(working_df_containers,
                                      my_instance.df_nodes_meta,
+                                     my_instance.nb_clusters,
                                      my_instance.dict_id_c,
                                      my_instance.dict_id_n,
-                                     obj_func=current_obj_func)
+                                     obj_func=current_obj_func, w=w)
         # nb_nodes=current_nb_nodes)
         cplex_model.set_x_from_df(working_df_containers,
                                   my_instance.dict_id_c,
@@ -279,6 +294,7 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
         print('Solving linear relaxation ...')
         cplex_model.solve(cplex_model.relax_mdl)
         mc.print_all_dual(cplex_model.relax_mdl, True)
+        cplex_model.solve(cplex_model.mdl)
         cplex_model.get_obj_value_heuristic()
 
         # if not cplex_model.obj_func:

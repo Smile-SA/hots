@@ -71,7 +71,6 @@ def build_matrix_indiv_attr(df: pd.DataFrame) -> (pd.DataFrame, Dict):
 
 def build_similarity_matrix(df: pd.DataFrame) -> np.array:
     """Build a similarity matrix for the clustering."""
-    print(df)
     dists = pdist(df, 'euclidean')
     # dists = pdist(df.T)
     df_euclid = pd.DataFrame(squareform(
@@ -80,7 +79,6 @@ def build_similarity_matrix(df: pd.DataFrame) -> np.array:
     # index=df.index)
     # print(df_euclid)
     sim_matrix = df_euclid.to_numpy()
-    print(sim_matrix)
     return sim_matrix
 
 

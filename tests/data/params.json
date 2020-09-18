@@ -9,5 +9,8 @@
   },
   "heuristic": {
     "algo": "distant_pairwise"
+  },
+  "optimization": {
+    "model": "src/cots/model_small_pyomo.py"
   }
 }

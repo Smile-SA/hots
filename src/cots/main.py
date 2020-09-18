@@ -26,6 +26,7 @@ import pandas as pd
 from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
+from . import model
 # TODO set in params
 # from . import model_cplex as mc
 from . import model_cplex_clustering as mc
@@ -53,6 +54,11 @@ def main(data, params, exemple):
     # Init containers & nodes data, then Instance
     my_instance = Instance(data, config)
 
+    inst_model = model.create_model(config['optimization']['model'],
+                                    my_instance)
+    print(inst_model)
+    input()
+
     # Plot initial data (containers & nodes consumption)
     ctnr.plot_all_data_all_containers(
         my_instance.df_containers, sep_time=my_instance.sep_time)
@@ -63,7 +69,6 @@ def main(data, params, exemple):
 
         cplex_model = msc.SmallCPXInstance(my_instance.df_containers,
                                            my_instance.df_nodes_meta)
-
         # cplex_model.solve()
         input('End of small exemple, press to continue.')
 

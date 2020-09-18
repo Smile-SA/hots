@@ -15,6 +15,7 @@ __pycache__*
 *.pyc
 
 # Temp files (tests etc...)
+run.sh
 
 # Result files
 */instance_file.txt

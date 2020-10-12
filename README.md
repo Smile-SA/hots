@@ -57,14 +57,14 @@ You can now open `build/sphinx/index.html` with your favorite Web browser.
 Basically, start the application with this command :
 
 ```bash
-cots /path/to/your/data/folder
+cots --data /path/to/your/data/folder --params /path/to/your/params_file.json
 ```
 
 Note that the repository provides some examples datasets in `.tests/data/` folder.
 You can then run, for instance, the `generated_30` example like this :
 
 ```bash
-cots tests/data/generated_30
+cots --data tests/data/generated_30 --params tests/data/params.json
 ```
 
 Your data folder must provide at least two files :

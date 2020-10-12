@@ -21,4 +21,4 @@ run.sh
 */instance_file.txt
 
 # .lp files (created by CPLEX)
-*allocation.lp
+*allocation*.lp

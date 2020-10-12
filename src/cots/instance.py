@@ -67,7 +67,7 @@ class Instance:
         self.df_containers.set_index(
             ['timestamp', 'container_id'], inplace=True, drop=False)
 
-        self.dict_id_n = nd.build_dict_id_nodes(self.df_nodes)
+        self.dict_id_n = nd.build_dict_id_nodes(self.df_nodes_meta)
         self.dict_id_c = {}
 
         self.print()

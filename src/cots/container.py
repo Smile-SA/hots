@@ -49,8 +49,9 @@ def plot_all_data_all_containers(
         temp_df = df_containers.reset_index(drop=True)
         pvt = pd.pivot_table(temp_df, columns='container_id',
                              index='timestamp', aggfunc='sum', values=metric)
-        pvt.plot(ax=ax_[ai], legend=False)
-        ax_[ai].axvline(x=half_period, color='red', linestyle='--')
+        # pvt.plot(ax=ax_[ai], legend=False)
+        pvt.plot(ax=ax_[ai])
+        ax_[ai].axvline(x=sep_time, color='red', linestyle='--')
         ai += 1
 
     fig.align_labels()

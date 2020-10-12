@@ -12,7 +12,7 @@ CPLEX, own by IBM.
 
 import math
 import time
-from itertools import combinations, permutations
+from itertools import combinations, product
 from typing import Dict, List
 
 from docplex.mp.linear import LinearExpr
@@ -58,23 +58,30 @@ class CPXInstance:
         print('Building of cplex model ...')
         self.nb_nodes = df_nodes_meta['machine_id'].nunique()
         self.nb_containers = df_containers['container_id'].nunique()
+        self.nb_clusters = nb_clusters
         self.time_window = df_containers['timestamp'].nunique()
         self.obj_func = obj_func
 
         # Fix max number of nodes (TODO function to evaluate it)
         self.max_open_nodes = nb_nodes or self.nb_nodes
 
+        # Which problem we build :
+        # - 0 = placement + clustering
+        # - 1 = only placement
+        # - 2 = only clustering
+        self.pb_number = 1
+
         self.mdl = Model(name='allocation', cts_by_name=False)
         self.build_names()
         self.build_variables()
         self.build_data(df_containers, df_nodes_meta, dict_id_c, dict_id_n)
-        self.build_constraints(nb_clusters)
-        self.build_objective(w, nb_clusters)
+        self.build_constraints(w)
+        self.build_objective(w)
 
         self.relax_mdl = make_relaxed_model(self.mdl)
 
         # Init solution for mdl with initial placement
-        self.set_x_from_df(df_containers, dict_id_c, dict_id_n)
+        # self.set_x_from_df(df_containers, dict_id_c, dict_id_n)
 
         self.mdl.print_information()
 
@@ -87,6 +94,9 @@ class CPXInstance:
         """Build only names variables from nodes and containers."""
         self.nodes_names = np.arange(self.nb_nodes)
         self.containers_names = np.arange(self.nb_containers)
+
+        # Add clusters stuff
+        self.clusters_names = np.arange(self.nb_clusters)
 
     def build_variables(self):
         """Build all model variables."""
@@ -106,20 +116,52 @@ class CPXInstance:
         # self.mdl.delta = self.mdl.continuous_var_dict(
         #     ida, name=lambda k: 'delta_%d' % k)
 
-        # Clustering variables part
-        idy = [(c1, c2) for (c1, c2) in permutations(self.containers_names, 2)]
-        # co-localization variables : if containers c1 and c2 are in same cluster
+        idu = [(c1, c2) for (c1, c2) in combinations(self.containers_names, 2)]
+        # coloc variables : if c1 and c2 are in the same node
+        self.mdl.v = self.mdl.binary_var_dict(
+            idu, name=lambda k: 'v_%d,%d' % (k[0], k[1])
+        )
+
+        # specific node coloc variables : if c1 and c2 are in node n
+        idz = [(c1, c2, n) for (c1, c2) in idu for n in self.nodes_names]
+        self.mdl.z = self.mdl.binary_var_dict(
+            idz, name=lambda k: 'z_%d,%d,%d' % (k[0], k[1], k[2])
+        )
+
+        # Clustering variables part 1
+        # idy = [(c1, c2) for (c1, c2) in permutations(self.containers_names, 2)]
+        # # coloc variables : if containers c1 and c2 are in same cluster
+        # self.mdl.y = self.mdl.binary_var_dict(
+        #     idy, name=lambda k: 'y_%d,%d' % (k[0], k[1])
+        # )
+
+        # idc = list(self.containers_names)
+        # # representative variables
+        # self.mdl.r = self.mdl.binary_var_dict(
+        #     idc, name=lambda k: 'r_%d' % k
+        # )
+
+        # Clustering variables part 2
+        idy = [
+            (c, k) for c in self.containers_names for k in self.clusters_names]
+        # assignment variables : if container c is on cluster k
         self.mdl.y = self.mdl.binary_var_dict(
-            idy, name=lambda k: 'y_%d,%d' % (k[0], k[1])
+            idy, name=lambda k: 'y_%d,%d' % (k[0], k[1]))
+
+        idk = list(self.clusters_names)
+        # used cluster variables
+        self.mdl.b = self.mdl.binary_var_dict(
+            idk, name=lambda k: 'b_%d' % k
         )
 
-        idc = list(self.containers_names)
-        # representative variables
-        self.mdl.r = self.mdl.binary_var_dict(
-            idc, name=lambda k: 'r_%d' % k
+        # coloc variables : if containers c1 and c2 are in same cluster
+        self.mdl.u = self.mdl.binary_var_dict(
+            idu, name=lambda k: 'u_%d,%d' % (k[0], k[1])
         )
 
-        # belonging variables : if container c belongs to cluster k
+        # self.mdl.z = self.mdl.binary_var_dict(
+        #     idu, name=lambda k: 'z_%d,%d' % (k[0], k[1])
+        # )
 
     def build_data(self, df_containers: pd.DataFrame,
                    df_nodes_meta: pd.DataFrame,
@@ -136,12 +178,24 @@ class CPXInstance:
                 df_nodes_meta['machine_id'] == dict_id_n[n],
                 ['cpu', 'mem']].to_numpy()[0]
 
-    def build_constraints(self, nb_clusters):
+    def build_constraints(self, w):
         """Build all model constraints."""
-        self.placement_constraints()
-        self.clustering_constraints(nb_clusters)
+        if self.pb_number == 0:
+            self.placement_constraints()
+            self.clustering_constraints_2(self.nb_clusters, w)
+        elif self.pb_number == 1:
+            self.placement_constraints()
+        elif self.pb_number == 2:
+            self.clustering_constraints_2(self.nb_clusters, w)
 
-        # Clustering related constraints #
+        # allocation-clustering related constraints #
+        # for (c1, c2) in combinations(self.containers_names, 2):
+        #     for n in self.nodes_names:
+        #         self.mdl.add_constraint(
+        #             self.mdl.u[c1, c2] + self.mdl.x[c1, n] - self.mdl.x[c2, n]
+        #             <= 1,
+        #             'cannotLink_' + str(c1) + '_' + str(c2)
+        #         )
 
     def placement_constraints(self):
         """Build the placement problem related constraints."""
@@ -168,14 +222,7 @@ class CPXInstance:
             #         self.mdl.x[c, node] <= self.mdl.a[node],
             #         'open_a_' + str(node))
 
-        # Container assignment constraint (1 and only 1 x[c,_] = 1 for all c)
-        for container in self.containers_names:
-            self.mdl.add_constraint(self.mdl.sum(
-                self.mdl.x[container, node] for node in self.nodes_names) == 1,
-                'assign_' + str(container))
-
-        # Assign delta to diff cons - mean_cons
-        for node in self.nodes_names:
+            # Assign delta to diff cons - mean_cons
             expr_n = self.mean(node)
             for t in range(self.time_window):
                 self.mdl.add_constraint(self.conso_n_t(
@@ -185,20 +232,75 @@ class CPXInstance:
                     expr_n - self.
                     conso_n_t(node, t) <= self.mdl.delta,
                     'inv-delta_' + str(node) + '_' + str(t))
-                # self.mdl.add_constraint(self.conso_n_t(
-                #     node, t) - expr_n <= self.mdl.delta[node],
-                #     'delta_' + str(node) + '_' + str(t))
-                # self.mdl.add_constraint(
-                #     expr_n - self.
-                #     conso_n_t(node, t) <= self.mdl.delta[node],
-                #     'inv-delta_' + str(node) + '_' + str(t))
+
+        # Open node
+        for (c, n) in product(self.containers_names, self.nodes_names):
+            self.mdl.add_constraint(
+                self.mdl.x[c, n] <= self.mdl.a[n],
+                'open_node_' + str(c) + '_' + str(n)
+            )
+
+        # Container assignment constraint (1 and only 1 x[c,_] = 1 for all c)
+        for container in self.containers_names:
+            self.mdl.add_constraint(self.mdl.sum(
+                self.mdl.x[container, node] for node in self.nodes_names) == 1,
+                'assign_' + str(container))
 
         # Constraint the number of open servers
         # self.mdl.add_constraint(self.mdl.sum(
         #     self.mdl.a[n] for n in self.
         #     nodes_names) <= self.max_open_nodes, 'max_nodes')
 
-    def clustering_constraints(self, nb_clusters):
+        # Constraints fixing z(i,j,n)
+        # TODO replace because too many variables
+        for(i, j) in combinations(self.containers_names, 2):
+            for n in self.nodes_names:
+                self.mdl.add_constraint(
+                    self.mdl.z[i, j, n] <= self.mdl.x[i, n],
+                    'linear1_z' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                self.mdl.add_constraint(
+                    self.mdl.z[i, j, n] <= self.mdl.x[j, n],
+                    'linear2_z' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                self.mdl.add_constraint(
+                    self.mdl.x[i, n] + self.mdl.x[j, n] - self.mdl.z[i, j, n] <= 1,
+                    'linear3_z' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+
+            # Constraints fixing v
+            self.mdl.add_constraint(
+                self.mdl.v[i, j] == self.mdl.sum(
+                    self.mdl.z[i, j, n] for n in self.nodes_names),
+                'fix_v' + str(i) + '_' + str(j)
+            )
+
+        # self.mdl.add_constraint(
+        #     self.mdl.v[0, 1] == 1
+        # )
+        # self.mdl.add_constraint(
+        #     self.mdl.x[0, 0] - self.mdl.x[1, 0] == 0
+        # )
+        # self.mdl.add_constraint(
+        #     self.mdl.x[0, 1] - self.mdl.x[1, 1] == 0
+        # )
+
+        # Constraints fixing z
+        # for (i, j) in combinations(self.containers_names, 2):
+        #     self.mdl.add_constraint(
+        #         self.mdl.u[i, j] + self.mdl.v[i, j] - self.mdl.z[i, j] <= 1,
+        #         'linear1_z' + str(i) + '_' + str(j)
+        #     )
+        #     self.mdl.add_constraint(
+        #         self.mdl.z[i, j] <= self.mdl.u[i, j],
+        #         'linear2_z' + str(i) + '_' + str(j)
+        #     )
+        #     self.mdl.add_constraint(
+        #         self.mdl.z[i, j] <= self.mdl.v[i, j],
+        #         'linear2_z' + str(i) + '_' + str(j)
+        #     )
+
+    def clustering_constraints_1(self, nb_clusters):
         """Build the clustering related constraints."""
         # Triangular inequalities
         for i in self.containers_names:
@@ -209,23 +311,36 @@ class CPXInstance:
                         'triangle_' + str(i) + '_' + str(j) + '_' + str(k)
                     )
 
+        # Triangular inequalities
+        # temp_containers = self.containers_names
+        # for i in self.containers_names:
+        #     temp_containers = np.delete(temp_containers, 0)
+        #     print(temp_containers)
+        #     for (j, k) in combinations(temp_containers, 2):
+        #         if (j != i) and (k != i) and (j < k):
+        #             self.mdl.add_constraint(
+        #                 self.mdl.y[i, j] + self.mdl.y[i, k] - self.mdl.y[j, k] <= 1,
+        #                 'triangle_' + str(i) + '_' + str(j) + '_' + str(k)
+        #             )
+
         # TODO force yi,j=yj,i => reduce nb variables
         for (i, j) in combinations(self.containers_names, 2):
             self.mdl.add_constraint(
                 self.mdl.y[i, j] - self.mdl.y[j, i] == 0,
                 'fix_' + str(i) + '_' + str(j)
             )
+
         # Representative constraints
         for i in self.containers_names:
             self.mdl.add_constraint(self.mdl.r[i] + self.mdl.sum(
-                self.mdl.y[i, j] for j in self.containers_names if j < i) >= 1,
+                self.mdl.y[j, i] for j in self.containers_names if j < i) >= 1,
                 'representative_smallest_' + str(i))
 
         for i in self.containers_names:
             for j in self.containers_names:
                 if j < i:
                     self.mdl.add_constraint(
-                        self.mdl.r[i] + self.mdl.y[i, j] <= 1,
+                        self.mdl.r[i] + self.mdl.y[j, i] <= 1,
                         'representative_unique_' + str(i) + '_' + str(j)
                     )
 
@@ -235,7 +350,46 @@ class CPXInstance:
             'nb_clusters'
         )
 
-    def build_objective(self, w, nb_clusters):
+    def clustering_constraints_2(self, nb_clusters, w):
+        """Build the clustering related constraints."""
+        # Cluster assignment constraint
+        for c in self.containers_names:
+            self.mdl.add_constraint(self.mdl.sum(
+                self.mdl.y[c, k] for k in self.clusters_names) == 1,
+                'cluster_assign_' + str(c))
+
+        # Open cluster
+        for (c, k) in product(self.containers_names, self.clusters_names):
+            self.mdl.add_constraint(
+                self.mdl.y[c, k] <= self.mdl.b[k],
+                'open_cluster_' + str(c) + '_' + str(k)
+            )
+
+        # Number of clusters
+        self.mdl.add_constraint(self.mdl.sum(
+            self.mdl.b[k] for k in self.clusters_names) <= self.nb_clusters,
+            'nb_clusters'
+        )
+
+        # Fix u[i,j] = y[i,k]y[j,k]
+        for (i, j) in combinations(self.containers_names, 2):
+            for k in self.clusters_names:
+                self.mdl.add_constraint(
+                    self.mdl.y[i, k] + self.mdl.y[j, k] - self.mdl.u[i, j] <= 1,
+                    'linear1_u' + str(i) + '_' + str(j) + '_' + str(k)
+                )
+
+        # for(i, j) in combinations(self.containers_names, 2):
+        #     self.mdl.add_constraint(
+        #         self.mdl.u[i, j] * w[i, j] <= 1,
+        #         'max_dist_' + str(i) + '_' + str(j)
+        #     )
+
+        self.mdl.add_constraint(
+            self.mdl.u[0, 1] == 1
+        )
+
+    def build_objective(self, w):
         """Build objective."""
         # Minimize sum of a[n] (number of open nodes)
         # self.mdl.minimize(self.mdl.sum(
@@ -246,7 +400,7 @@ class CPXInstance:
         #     self.var(n, total_time) for n in self.nodes_names))
 
         # Minimize delta (max(conso_n_t - mean_n))
-        # self.mdl.minimize(self.mdl.delta)
+        self.mdl.minimize(self.mdl.delta)
 
         # Minimize sum(delta_n*a_n)
         # self.mdl.minimize((
@@ -266,13 +420,28 @@ class CPXInstance:
         #     ))
 
         # Minimize delta + sum(w*y)
-        self.mdl.minimize(
-            self.mdl.delta + self.mdl.sum(
-                w[i, j] * self.mdl.y[i, j] for (i, j) in combinations(
-                    self.containers_names, 2
-                )
-            ) / nb_clusters
-        )
+        # self.mdl.minimize(
+        #     self.mdl.delta + (self.mdl.sum(
+        #         w[i, j] * self.mdl.u[i, j] for (i, j) in combinations(
+        #             self.containers_names, 2
+        #         )
+        #     ) / self.nb_clusters) + self.mdl.sum(
+        #         self.mdl.z[i, j] for (i, j) in combinations(
+        #             self.containers_names, 2
+        #         )
+        #         # ) + self.mdl.sum(
+        #         #     (1 - w[i, j]) * self.mdl.v[i, j] for (i, j) in combinations(
+        #         #         self.containers_names, 2
+        #         #     )
+        #     )
+        # )
+
+        # Only clustering
+        # self.mdl.minimize(self.mdl.sum(
+        #     w[i, j] * self.mdl.u[i, j] for (i, j) in combinations(
+        #         self.containers_names, 2
+        #     )
+        # ))
 
     def set_x_from_df(self, df_containers: pd.DataFrame,
                       dict_id_c: Dict, dict_id_n: Dict):
@@ -421,15 +590,29 @@ class CPXInstance:
                 # initial mustLink equalities
                 c1 = [k for k, v in instance.dict_id_c.items() if v == c1_s][0]
                 c2 = [k for k, v in instance.dict_id_c.items() if v == c2_s][0]
-                for n_i in self.nodes_names:
-                    self.mdl.add_constraint(
-                        self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] >= 0,
-                        'mustLink_' + str(c1) + '_' + str(c2))
-                    self.mdl.add_constraint(
-                        self.mdl.x[c2, n_i] - self.mdl.x[c1, n_i] >= 0,
-                        'mustLink_' + str(c1) + '_' + str(c2))
+                # for n_i in self.nodes_names:
+                #     self.mdl.add_constraint(
+                #         self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] >= 0,
+                #         'mustLink_' + str(c1) + '_' + str(c2))
+                #     self.mdl.add_constraint(
+                #         self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] <= 0,
+                #         'mustLink_' + str(c1) + '_' + str(c2))
+                self.mdl.add_constraint(
+                    self.mdl.v[c1, c2] == 1,
+                    'mustLink_' + str(c1) + '_' + str(c2)
+                )
 
-        # Update the linear relaxation
+                # cannot-link equalities (clustering)
+                self.mdl.add_constraint(
+                    self.mdl.u[c1, c2] + self.mdl.u[c2, c1] <= 0,
+                    'cannotLinkClust_' + str(c1) + '_' + str(c2)
+                )
+                # for k in self.clusters_names:
+                #     self.mdl.add_constraint(
+                #         self.mdl.y[c1, k] + self.mdl.y[c2, k] <= 1,
+                #         'cannotLinkClust_' + str(c1) + '_' + str(c2))
+
+                # Update the linear relaxation
         self.relax_mdl = make_relaxed_model(self.mdl)
 
         self.mdl.export_as_lp(path='./allocation.lp')

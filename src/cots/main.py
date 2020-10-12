@@ -26,7 +26,7 @@ import pandas as pd
 from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
-from . import model
+# from . import model
 # TODO set in params
 # from . import model_cplex as mc
 from . import model_cplex_clustering as mc
@@ -54,11 +54,6 @@ def main(data, params, exemple):
     # Init containers & nodes data, then Instance
     my_instance = Instance(data, config)
 
-    inst_model = model.create_model(config['optimization']['model'],
-                                    my_instance)
-    print(inst_model)
-    input()
-
     # Plot initial data (containers & nodes consumption)
     ctnr.plot_all_data_all_containers(
         my_instance.df_containers, sep_time=my_instance.sep_time)
@@ -78,7 +73,7 @@ def main(data, params, exemple):
         my_instance.sep_time)
 
     plt.show(block=False)
-    input('Press enter to continue ...')
+    # input('Press enter to continue ...')
 
     # Get dataframe of current part
     working_df_containers = my_instance.df_containers.loc[
@@ -147,15 +142,11 @@ def main(data, params, exemple):
                                  my_instance.dict_id_c,
                                  my_instance.dict_id_n,
                                  obj_func=1, w=w)
-    # print('Test creation model ...')
-    # print(cplex_model.mdl.x)
-    # print(cplex_model.mdl.y)
-    # input('waiting ...')
-    cplex_model.set_x_from_df(my_instance.df_containers,
-                              my_instance.dict_id_c,
-                              my_instance.dict_id_n)
-    print('Adding constraints from heuristic ...')
-    cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
+    # cplex_model.set_x_from_df(my_instance.df_containers,
+    #                           my_instance.dict_id_c,
+    #                           my_instance.dict_id_n)
+    # print('Adding constraints from heuristic ...')
+    # cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
 
     # Test mustLink constraints removing
     # print(cplex_model.mdl.find_matching_linear_constraints('mustLink'))
@@ -165,12 +156,11 @@ def main(data, params, exemple):
 
     print('Solving linear relaxation ...')
     cplex_model.solve(cplex_model.relax_mdl)
-    mc.print_all_dual(cplex_model.relax_mdl, True)
-    cplex_model.solve(cplex_model.mdl)
-    cplex_model.get_obj_value_heuristic()
+    mc.print_all_dual(cplex_model.relax_mdl, nn_only=True)
+    # cplex_model.solve(cplex_model.mdl)
+    # cplex_model.get_obj_value_heuristic()
 
     input('End of optim part, press enter to continue ...')
-    # cplex_model.get_max_dual()
 
     # Plot clustering & allocation for 1st part
     plot_before_loop = False
@@ -242,8 +232,8 @@ def main(data, params, exemple):
             print('Adding constraints from heuristic ...')
             cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
             cplex_model.solve(cplex_model.relax_mdl)
-            mc.print_all_dual(cplex_model.relax_mdl, True)
-            cplex_model.get_obj_value_heuristic()
+            mc.print_all_dual(cplex_model.relax_mdl, nn_only=True)
+            # cplex_model.get_obj_value_heuristic()
 
     print('Total computing time : %fs' % (time.time() - main_time))
 
@@ -290,17 +280,17 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
                                      my_instance.dict_id_n,
                                      obj_func=current_obj_func, w=w)
         # nb_nodes=current_nb_nodes)
-        cplex_model.set_x_from_df(working_df_containers,
-                                  my_instance.dict_id_c,
-                                  my_instance.dict_id_n)
-        print('Adding constraints from heuristic ...')
-        cplex_model.add_constraint_heuristic(
-            containers_grouped, my_instance)
+        # cplex_model.set_x_from_df(working_df_containers,
+        #                           my_instance.dict_id_c,
+        #                           my_instance.dict_id_n)
+        # print('Adding constraints from heuristic ...')
+        # cplex_model.add_constraint_heuristic(
+        #     containers_grouped, my_instance)
         print('Solving linear relaxation ...')
         cplex_model.solve(cplex_model.relax_mdl)
-        mc.print_all_dual(cplex_model.relax_mdl, True)
-        cplex_model.solve(cplex_model.mdl)
-        cplex_model.get_obj_value_heuristic()
+        mc.print_all_dual(cplex_model.relax_mdl, nn_only=True)
+        # cplex_model.solve(cplex_model.mdl)
+        # cplex_model.get_obj_value_heuristic()
 
         # if not cplex_model.obj_func:
         #     if cplex_model.relax_mdl.get_constraint_by_name(
@@ -338,8 +328,8 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
             print('Not int : we do nothing ...')
 
         input('Press any key to progress in time ...')
-        tmin += 1
-        tmax += 1
+        tmin += 2
+        tmax += 2
         if tmax >= my_instance.time:
             end = True
 

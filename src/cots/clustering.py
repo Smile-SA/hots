@@ -9,6 +9,7 @@ spectral, custom spectral.
 """
 
 import multiprocessing as mp
+from itertools import combinations
 from typing import Callable, Dict, List
 
 import numpy as np
@@ -287,3 +288,13 @@ def check_container_deviation(
             ]['cpu'].to_numpy(), profiles_[labels_[c]])
         if dist > 0.5:
             print('Deviation of container ', c, dist)
+
+
+def build_adjacency_matrix(labels_) -> np.array:
+    """Build the adjacency matrix of clustering."""
+    u = np.zeros((len(labels_), len(labels_)))
+    for (i, j) in combinations(range(len(labels_)), 2):
+        if labels_[i] == labels_[j]:
+            u[i, j] = 1
+            u[j, i] = 1
+    return u

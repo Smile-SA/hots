@@ -103,6 +103,7 @@ def main(data, params, exemple):
         df_containers_clust, config['clustering']['algo'], my_instance.nb_clusters)
     df_containers_clust['cluster'] = labels_
     my_instance.nb_clusters = labels_.max() + 1
+    u = clt.build_adjacency_matrix(labels_)
 
     # print('Clustering balance : ',
     #       df_containers_clust.groupby('cluster').count())
@@ -141,7 +142,7 @@ def main(data, params, exemple):
                                  my_instance.nb_clusters,
                                  my_instance.dict_id_c,
                                  my_instance.dict_id_n,
-                                 obj_func=1, w=w)
+                                 obj_func=1, w=w, u=u, pb_number=3)
     # cplex_model.set_x_from_df(my_instance.df_containers,
     #                           my_instance.dict_id_c,
     #                           my_instance.dict_id_n)
@@ -265,6 +266,7 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
             working_df_containers)
         w = clt.build_similarity_matrix(df_clust)
         df_clust['cluster'] = labels_
+        u = clt.build_adjacency_matrix(labels_)
         plot.update_clustering_plot(
             fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
         # clt.check_container_deviation(
@@ -278,7 +280,8 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
                                      my_instance.nb_clusters,
                                      my_instance.dict_id_c,
                                      my_instance.dict_id_n,
-                                     obj_func=current_obj_func, w=w)
+                                     obj_func=current_obj_func,
+                                     w=w, u=u, pb_number=2)
         # nb_nodes=current_nb_nodes)
         # cplex_model.set_x_from_df(working_df_containers,
         #                           my_instance.dict_id_c,
@@ -286,6 +289,32 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
         # print('Adding constraints from heuristic ...')
         # cplex_model.add_constraint_heuristic(
         #     containers_grouped, my_instance)
+        print('Solving linear relaxation ...')
+        cplex_model.solve(cplex_model.relax_mdl)
+        mc.print_all_dual(cplex_model.relax_mdl, nn_only=True)
+        # cplex_model.solve(cplex_model.mdl)
+        # cplex_model.get_obj_value_heuristic()
+
+        labels_ = clt.perform_clustering(
+            df_clust, 'kmeans', my_instance.nb_clusters)
+        df_clust['cluster'] = labels_
+        my_instance.nb_clusters = labels_.max() + 1
+        u = clt.build_adjacency_matrix(labels_)
+
+        cplex_model = mc.CPXInstance(working_df_containers,
+                                     my_instance.df_nodes_meta,
+                                     my_instance.nb_clusters,
+                                     my_instance.dict_id_c,
+                                     my_instance.dict_id_n,
+                                     obj_func=current_obj_func,
+                                     w=w, u=u, pb_number=3)
+        # nb_nodes=current_nb_nodes)
+        # cplex_model.set_x_from_df(working_df_containers,
+        #                           my_instance.dict_id_c,
+        #                           my_instance.dict_id_n)
+        print('Adding constraints from heuristic ...')
+        cplex_model.add_constraint_heuristic(
+            containers_grouped, my_instance)
         print('Solving linear relaxation ...')
         cplex_model.solve(cplex_model.relax_mdl)
         mc.print_all_dual(cplex_model.relax_mdl, nn_only=True)

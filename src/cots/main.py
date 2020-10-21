@@ -26,7 +26,7 @@ import pandas as pd
 from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
-# from . import model
+from . import model
 # TODO set in params
 # from . import model_cplex as mc
 from . import model_cplex_clustering as mc
@@ -43,8 +43,8 @@ from .instance import Instance
 @click.command()
 @click.option('--data', required=True, type=click.Path(exists=True))
 @click.option('--params', required=True, type=click.Path(exists=True))
-@click.option('--exemple', is_flag=True)
-def main(data, params, exemple):
+@click.option('--example', is_flag=True)
+def main(data, params, example):
     """Perform all things of methodology."""
     # Initialization part
     main_time = time.time()
@@ -58,14 +58,18 @@ def main(data, params, exemple):
     ctnr.plot_all_data_all_containers(
         my_instance.df_containers, sep_time=my_instance.sep_time)
 
+    my_model = model.create_model(config['optimization']['model'], my_instance)
+    model.solve_model(my_model, 'glpk')
+    input('waiting here')
+
     # Added part for the small CPLEX use
-    if exemple:
+    if example:
         plt.show(block=False)
 
         cplex_model = msc.SmallCPXInstance(my_instance.df_containers,
                                            my_instance.df_nodes_meta)
         # cplex_model.solve()
-        input('End of small exemple, press to continue.')
+        input('End of small example, press to continue.')
 
     plot.plot_containers_groupby_nodes(
         my_instance.df_containers,

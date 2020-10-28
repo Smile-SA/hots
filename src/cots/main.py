@@ -26,13 +26,12 @@ import pandas as pd
 from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
-from . import model
+from . import init as it
+# from . import model
 # TODO set in params
 # from . import model_cplex as mc
 from . import model_cplex_clustering as mc
-from . import model_small_cplex as msc
 from . import plot
-from .init import read_params
 from .instance import Instance
 
 
@@ -43,288 +42,216 @@ from .instance import Instance
 @click.command()
 @click.option('--data', required=True, type=click.Path(exists=True))
 @click.option('--params', required=True, type=click.Path(exists=True))
-@click.option('--example', is_flag=True)
-def main(data, params, example):
+def main(data, params):
     """Perform all things of methodology."""
     # Initialization part
     main_time = time.time()
 
-    config = read_params(params)
+    config = it.read_params(params)
+    it.define_fields(config['data'])
 
     # Init containers & nodes data, then Instance
     my_instance = Instance(data, config)
 
+    # Use pyomo model => to be fully applied after tests
+    # my_model = model.create_model(config['optimization']['model'], my_instance)
+    # model.solve_model(my_model, 'glpk')
+    # input('waiting here')
+
     # Plot initial data (containers & nodes consumption)
     ctnr.plot_all_data_all_containers(
-        my_instance.df_containers, sep_time=my_instance.sep_time)
-
-    my_model = model.create_model(config['optimization']['model'], my_instance)
-    model.solve_model(my_model, 'glpk')
-    input('waiting here')
-
-    # Added part for the small CPLEX use
-    if example:
-        plt.show(block=False)
-
-        cplex_model = msc.SmallCPXInstance(my_instance.df_containers,
-                                           my_instance.df_nodes_meta)
-        # cplex_model.solve()
-        input('End of small example, press to continue.')
+        my_instance.df_indiv, sep_time=my_instance.sep_time)
 
     plot.plot_containers_groupby_nodes(
-        my_instance.df_containers,
-        my_instance.df_nodes_meta.cpu.max(),
+        my_instance.df_indiv,
+        my_instance.df_host_meta.cpu.max(),
         my_instance.sep_time)
 
     plt.show(block=False)
     # input('Press enter to continue ...')
 
     # Get dataframe of current part
-    working_df_containers = my_instance.df_containers.loc[
-        my_instance.df_containers['timestamp'] <= my_instance.sep_time
+    working_df_indiv = my_instance.df_indiv.loc[
+        my_instance.df_indiv[it.tick_field] <= my_instance.sep_time
     ]
 
-    # Build optimization model (only if we want initial obj value)
-    # building_cplex_time = time.time()
-    # cplex_model = mc.CPXInstance(working_df_containers,
-    #                                 my_instance.df_nodes_meta,
-    #                                 my_instance.dict_id_c,
-    #                                 my_instance.dict_id_n, obj_func=1)
-    # print('CPLEX model imported.')
-    # print('Building CPLEX model time : %fs' %
-    #       (time.time() - building_cplex_time))
-    # cplex_model.get_obj_value_heuristic()
-    # cplex_model.solve(cplex_model.relax_mdl)
-    # mc.print_all_dual(cplex_model.relax_mdl, True)
-
     # Clustering part
-    (df_containers_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-        working_df_containers)
-    w = clt.build_similarity_matrix(df_containers_clust)
+    (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
+        working_df_indiv)
 
     clustering_time = time.time()
     labels_ = clt.perform_clustering(
-        df_containers_clust, config['clustering']['algo'], my_instance.nb_clusters)
-    df_containers_clust['cluster'] = labels_
+        df_indiv_clust, config['clustering']['algo'], my_instance.nb_clusters)
+    df_indiv_clust['cluster'] = labels_
     my_instance.nb_clusters = labels_.max() + 1
-    u = clt.build_adjacency_matrix(labels_)
-
-    # print('Clustering balance : ',
-    #       df_containers_clust.groupby('cluster').count())
 
     # TODO improve this part (distance...)
     cluster_vars = clt.get_cluster_variance(
-        my_instance.nb_clusters, df_containers_clust)
+        my_instance.nb_clusters, df_indiv_clust)
     cluster_profiles = clt.get_cluster_mean_profile(
         my_instance.nb_clusters,
-        df_containers_clust,
-        working_df_containers['timestamp'].nunique())
+        df_indiv_clust,
+        working_df_indiv[it.tick_field].nunique())
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
 
-    input('End of clustering, press enter to continue ...')
+    # input('End of clustering, press enter to continue ...')
 
-    print('Clustering computing time : %fs' % (time.time() - clustering_time))
+    print('Clustering computing time : %fs\n' % (time.time() - clustering_time))
 
     # Allocation
     allocation_time = time.time()
     containers_grouped = alloc.allocation_distant_pairwise(
         my_instance, cluster_var_matrix, labels_)
 
-    # alloc.allocation_ffd(my_instance, cluster_vars, cluster_var_matrix,
-    #                      labels_)
-
-    print('Allocation time : %fs' % (time.time() - allocation_time))
-
-    working_df_containers = my_instance.df_containers.loc[
-        my_instance.df_containers['timestamp'] <= my_instance.sep_time
-    ]
-
-    # CPLEX evaluation part
-    cplex_model = mc.CPXInstance(working_df_containers,
-                                 my_instance.df_nodes_meta,
-                                 my_instance.nb_clusters,
-                                 my_instance.dict_id_c,
-                                 my_instance.dict_id_n,
-                                 obj_func=1, w=w, u=u, pb_number=3)
-    # cplex_model.set_x_from_df(my_instance.df_containers,
-    #                           my_instance.dict_id_c,
-    #                           my_instance.dict_id_n)
-    # print('Adding constraints from heuristic ...')
-    # cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
-
-    # Test mustLink constraints removing
-    # print(cplex_model.mdl.find_matching_linear_constraints('mustLink'))
-    # cplex_model.mdl.remove_constraint('mustLink_0_2')
-    # cplex_model.mdl.remove_constraint('mustLink_1_3')
-    # print(cplex_model.mdl.find_matching_linear_constraints('mustLink'))
-
-    print('Solving linear relaxation ...')
-    cplex_model.solve(cplex_model.relax_mdl)
-    mc.print_all_dual(cplex_model.relax_mdl, nn_only=True)
-    # cplex_model.solve(cplex_model.mdl)
-    # cplex_model.get_obj_value_heuristic()
-
-    input('End of optim part, press enter to continue ...')
+    print('Allocation time : %fs\n' % (time.time() - allocation_time))
 
     # Plot clustering & allocation for 1st part
-    plot_before_loop = False
+    plot_before_loop = True
     if plot_before_loop:
         spec_containers = False
         if spec_containers:
-            print('Enter list of containers to show separated by a comma :')
-            containers_input = input()
-            containers_toshow = [int(s) for s in containers_input.split(',')]
-            plot.plot_clustering_containers_by_node_spec_cont(
-                working_df_containers, my_instance.dict_id_c,
-                labels_, containers_toshow
-            )
-            plot.plot_clustering_spec_cont(df_containers_clust,
-                                           my_instance.dict_id_c,
-                                           containers_toshow,
-                                           title='Clustering on first half part')
-        else:
+            ctnr.show_specific_containers(working_df_indiv, df_indiv_clust,
+                                          my_instance, labels_)
+        show_clustering = False
+        if show_clustering:
             plot.plot_clustering_containers_by_node(
-                working_df_containers, my_instance.dict_id_c, labels_)
-            plot.plot_clustering(df_containers_clust, my_instance.dict_id_c,
+                working_df_indiv, my_instance.dict_id_c, labels_)
+            plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
                                  title='Clustering on first half part')
         plot.plot_containers_groupby_nodes(
-            my_instance.df_containers,
-            my_instance.df_nodes_meta.cpu.max(),
+            my_instance.df_indiv,
+            my_instance.df_host_meta.cpu.max(),
             my_instance.sep_time)
 
     plt.show(block=False)
 
-    # loop at same time or 'streaming' progress
-    streaming = True
-    if streaming:
-        streaming_eval(my_instance, df_containers_clust, labels_, containers_grouped)
-    else:
-        # loop to test alloc changes for same time
-        while True:
-            print('Enter the container you want to move')
-            moving_container = input()
+    input('\nEnd of first part, press enter to enter loop ...\n')
 
-            if moving_container.isdigit():
-                alloc.move_container(int(moving_container), working_df_containers,
-                                     my_instance)
-                for pair in containers_grouped:
-                    if my_instance.dict_id_c[int(moving_container)] in pair:
-                        containers_grouped.remove(pair)
-            else:
-                print('Not int : we do nothing ...')
+    # loop 'streaming' progress
+    streaming_eval(my_instance, df_indiv_clust, labels_,
+                   containers_grouped, config['loop']['tick'],
+                   config['loop']['constraints_dual'],
+                   config['loop']['tol_dual_clust'],
+                   config['loop']['tol_dual_place'])
 
-            # working_df_containers = my_instance.df_containers.loc[
-            #     (my_instance.df_containers['timestamp'] >= 4) & (
-            #         my_instance.df_containers['timestamp'] <= 10
-            #     )
-            # ]
-            working_df_containers = my_instance.df_containers.loc[
-                my_instance.df_containers['timestamp'] <= my_instance.sep_time
-            ]
-
-            plot.plot_clustering_containers_by_node(
-                working_df_containers, my_instance.dict_id_c, labels_)
-            plt.show(block=False)
-            cplex_model = mc.CPXInstance(working_df_containers,
-                                         my_instance.df_nodes_meta,
-                                         my_instance.dict_id_c,
-                                         my_instance.dict_id_n,
-                                         obj_func=1)
-            cplex_model.set_x_from_df(working_df_containers,
-                                      my_instance.dict_id_c,
-                                      my_instance.dict_id_n)
-            print('Adding constraints from heuristic ...')
-            cplex_model.add_constraint_heuristic(containers_grouped, my_instance)
-            cplex_model.solve(cplex_model.relax_mdl)
-            mc.print_all_dual(cplex_model.relax_mdl, nn_only=True)
-            # cplex_model.get_obj_value_heuristic()
+    # Plot after the loop
+    plot.plot_containers_groupby_nodes(
+        my_instance.df_indiv,
+        my_instance.df_host_meta.cpu.max(),
+        my_instance.sep_time)
 
     print('Total computing time : %fs' % (time.time() - main_time))
 
     plt.show()
 
 
-def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
-                   labels_: List, containers_grouped: List):
+def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
+                   labels_: List, containers_grouped: List, tick: int,
+                   constraints_dual: List,
+                   tol_clust: float, tol_place: float):
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
-        my_instance.df_containers, my_instance.sep_time,
-        my_instance.df_nodes_meta.cpu.max())
+        my_instance.df_indiv, my_instance.sep_time,
+        my_instance.df_host_meta.cpu.max())
     fig_clust, ax_clust = plot.init_plot_clustering(
-        df_containers_clust, my_instance.dict_id_c)
+        df_indiv_clust, my_instance.dict_id_c)
 
-    tmin = my_instance.df_containers['timestamp'].min()
+    tmin = my_instance.df_indiv[it.tick_field].min()
     tmax = my_instance.sep_time
     current_obj_func = 1
     # current_nb_nodes = my_instance.nb_nodes
+    max_dual_clust = None
+    constraints_dual_values = {}
 
     end = False
 
     while not end:
-        working_df_containers = my_instance.df_containers[
+        working_df_indiv = my_instance.df_indiv[
             (my_instance.
-                df_containers['timestamp'] >= tmin) & (
-                my_instance.df_containers['timestamp'] <= tmax)]
+                df_indiv[it.tick_field] >= tmin) & (
+                my_instance.df_indiv[it.tick_field] <= tmax)]
         (df_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-            working_df_containers)
+            working_df_indiv)
         w = clt.build_similarity_matrix(df_clust)
         df_clust['cluster'] = labels_
         u = clt.build_adjacency_matrix(labels_)
+
+        # update clustering & node consumption plot
         plot.update_clustering_plot(
             fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
-        # clt.check_container_deviation(
-        #     working_df_containers, labels_,
-        # cluster_profiles, my_instance.dict_id_c)
+        plot.update_nodes_plot(fig_node, ax_node, working_df_indiv, tmax)
+        # TODO not very practical
+        # plot.plot_clustering_containers_by_node(
+        #     working_df_indiv, my_instance.dict_id_c, labels_)
+        plt.show(block=False)
 
-        # evaluate solution from optim model
+        print('\n')
+
+        # evaluate clustering solution from optim model
         # TODO update model from existing one, not creating new one each time
-        cplex_model = mc.CPXInstance(working_df_containers,
-                                     my_instance.df_nodes_meta,
+        cplex_model = mc.CPXInstance(working_df_indiv,
+                                     my_instance.df_host_meta,
                                      my_instance.nb_clusters,
                                      my_instance.dict_id_c,
                                      my_instance.dict_id_n,
                                      obj_func=current_obj_func,
                                      w=w, u=u, pb_number=2)
-        # nb_nodes=current_nb_nodes)
-        # cplex_model.set_x_from_df(working_df_containers,
-        #                           my_instance.dict_id_c,
-        #                           my_instance.dict_id_n)
-        # print('Adding constraints from heuristic ...')
-        # cplex_model.add_constraint_heuristic(
-        #     containers_grouped, my_instance)
+        print('\n')
         print('Solving linear relaxation ...')
         cplex_model.solve(cplex_model.relax_mdl)
-        mc.print_all_dual(cplex_model.relax_mdl, nn_only=True)
-        # cplex_model.solve(cplex_model.mdl)
-        # cplex_model.get_obj_value_heuristic()
+        # TODO only mustlink constraints
+        mc.print_all_dual(cplex_model.relax_mdl,
+                          nn_only=True, names=constraints_dual)
 
-        labels_ = clt.perform_clustering(
-            df_clust, 'kmeans', my_instance.nb_clusters)
-        df_clust['cluster'] = labels_
-        my_instance.nb_clusters = labels_.max() + 1
-        u = clt.build_adjacency_matrix(labels_)
+        if max_dual_clust is None:
+            print('We have not evaluated the model yet...\n')
+            max_dual_clust = mc.get_max_dual(
+                cplex_model.relax_mdl, constraints_dual)
+        else:
+            if mc.dual_changed(cplex_model.relax_mdl, constraints_dual,
+                               max_dual_clust, tol_clust):
+                print('Performing new clustering ...\n')
+                labels_ = clt.perform_clustering(
+                    df_clust, 'kmeans', my_instance.nb_clusters)
+                df_clust['cluster'] = labels_
+                my_instance.nb_clusters = labels_.max() + 1
+                u = clt.build_adjacency_matrix(labels_)
+                cplex_model = mc.CPXInstance(working_df_indiv,
+                                             my_instance.df_host_meta,
+                                             my_instance.nb_clusters,
+                                             my_instance.dict_id_c,
+                                             my_instance.dict_id_n,
+                                             obj_func=current_obj_func,
+                                             w=w, u=u, pb_number=2)
+                print('\n')
+                print('Solving linear relaxation ...')
+                cplex_model.solve(cplex_model.relax_mdl)
+            else:
+                print('Clustering seems still right\n')
+            max_dual_clust = mc.get_max_dual(
+                cplex_model.relax_mdl, constraints_dual)
 
-        cplex_model = mc.CPXInstance(working_df_containers,
-                                     my_instance.df_nodes_meta,
-                                     my_instance.nb_clusters,
-                                     my_instance.dict_id_c,
-                                     my_instance.dict_id_n,
-                                     obj_func=current_obj_func,
-                                     w=w, u=u, pb_number=3)
-        # nb_nodes=current_nb_nodes)
-        # cplex_model.set_x_from_df(working_df_containers,
-        #                           my_instance.dict_id_c,
-        #                           my_instance.dict_id_n)
-        print('Adding constraints from heuristic ...')
-        cplex_model.add_constraint_heuristic(
-            containers_grouped, my_instance)
-        print('Solving linear relaxation ...')
-        cplex_model.solve(cplex_model.relax_mdl)
-        mc.print_all_dual(cplex_model.relax_mdl, nn_only=True)
-        # cplex_model.solve(cplex_model.mdl)
-        # cplex_model.get_obj_value_heuristic()
+        # Trigger manually new clustering
+        # new_clustering = input('Do we perform new clustering ? (Y/N)')
 
+        # if new_clustering.lower() == 'y':
+        #     print('Performing new clustering ...\n')
+        #     labels_ = clt.perform_clustering(
+        #         df_clust, 'kmeans', my_instance.nb_clusters)
+        #     df_clust['cluster'] = labels_
+        #     my_instance.nb_clusters = labels_.max() + 1
+        #     u = clt.build_adjacency_matrix(labels_)
+        # elif new_clustering.lower() == 'n':
+        #     print('We keep the same clustering\n')
+        # else:
+        #     print('Wrong answer : we keep the same clustering\n')
+
+        # TODO improve this part (use cluster profiles)
+        dv = ctnr.build_var_delta_matrix(
+            working_df_indiv, my_instance.dict_id_c)
+
+        # TODO Evaluate this possibility
         # if not cplex_model.obj_func:
         #     if cplex_model.relax_mdl.get_constraint_by_name(
         #             'max_nodes').dual_value > 0:
@@ -343,26 +270,60 @@ def streaming_eval(my_instance: Instance, df_containers_clust: pd.DataFrame,
         #         cplex_model.update_obj_function(1)
         #         current_obj_func += 1
 
-        # update node consumption plot
-        plot.update_nodes_plot(fig_node, ax_node, working_df_containers, tmax)
-        plot.plot_clustering_containers_by_node(
-            working_df_containers, my_instance.dict_id_c, labels_)
-        plt.show(block=False)
-        print('Enter the container you want to move')
-        # TODO more than 1 container not working
-        moving_container = input()
-        if moving_container.isdigit():
-            alloc.move_container(int(moving_container), working_df_containers,
-                                 my_instance)
-            for pair in containers_grouped:
-                if my_instance.dict_id_c[int(moving_container)] in pair:
-                    containers_grouped.remove(pair)
-        else:
-            print('Not int : we do nothing ...')
+        # evaluate placement
+        cplex_model = mc.CPXInstance(working_df_indiv,
+                                     my_instance.df_host_meta,
+                                     my_instance.nb_clusters,
+                                     my_instance.dict_id_c,
+                                     my_instance.dict_id_n,
+                                     obj_func=current_obj_func,
+                                     w=w, u=u, dv=dv, pb_number=3)
+        print('\n')
+        print('Adding constraints from heuristic ...\n')
+        cplex_model.add_constraint_heuristic(
+            containers_grouped, my_instance)
+        print('Solving linear relaxation ...')
+        cplex_model.solve(cplex_model.relax_mdl)
+        mc.print_all_dual(cplex_model.relax_mdl,
+                          nn_only=True, names=constraints_dual)
 
-        input('Press any key to progress in time ...')
-        tmin += 2
-        tmax += 2
+        moving_containers = []
+        if len(constraints_dual_values) == 0:
+            print('Placement problem not evaluated yet\n')
+            constraints_dual_values = mc.fill_constraints_dual_values(
+                cplex_model.relax_mdl, constraints_dual
+            )
+        else:
+            print('Checking for changes in dual values ...')
+            print(constraints_dual_values)
+            moving_containers = mc.get_moving_containers(
+                cplex_model.relax_mdl, constraints_dual_values, tol_place)
+            print(moving_containers)
+
+        # Move containers by hand
+        # print('Enter the containers you want to move')
+        # moving_containers = []
+        # while True:
+        #     moving_container = input(
+        #         'Enter a container you want to move, or press Enter')
+        #     if moving_container.isdigit():
+        #         moving_containers.append(int(moving_container))
+        #         for pair in containers_grouped:
+        #             if my_instance.dict_id_c[int(moving_container)] in pair:
+        #                 containers_grouped.remove(pair)
+        #     else:
+        #         print('End of input.')
+        #         break
+        if len(moving_containers) >= 1:
+            alloc.move_list_containers(moving_containers,
+                                       working_df_indiv, my_instance)
+
+        else:
+            print('No container to move : we do nothing ...\n')
+
+        input('\nPress any key to progress in time ...\n')
+        tmin += tick
+        tmax += tick
         if tmax >= my_instance.time:
             end = True
 

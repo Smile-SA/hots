@@ -17,8 +17,11 @@ import numpy as np
 
 import pandas as pd
 
+import plotly.express as px
+
 import scipy.cluster.hierarchy as hac
 
+from . import init as it
 from .instance import Instance
 
 # Global variables
@@ -98,7 +101,7 @@ def plot_containers_clustering_together(df_clust: pd.DataFrame,
 
 
 def plot_clustering_containers_by_node(
-        df_containers: pd.DataFrame, dict_id_c: Dict, labels_: List,
+        df_indiv: pd.DataFrame, dict_id_c: Dict, labels_: List,
         metric: str = 'cpu'):
     """
     Plot containers consumption grouped by node, one container added above
@@ -108,22 +111,22 @@ def plot_clustering_containers_by_node(
     fig_node_usage.suptitle(
         metric + ' consumption in each node, containers clustering')
     gs_node_usage = gridspec.GridSpec(math.ceil(
-        df_containers['machine_id'].nunique() / 2), 2)
-    x_ = df_containers['timestamp'].unique()
+        df_indiv[it.host_field].nunique() / 2), 2)
+    x_ = df_indiv[it.tick_field].unique()
     i = 0
-    for n, data_n in df_containers.groupby(
-            df_containers['machine_id']):
+    for n, data_n in df_indiv.groupby(
+            df_indiv[it.host_field]):
         agglo_containers = pd.Series(
-            data=[0.0] * df_containers['timestamp'].nunique(), index=x_)
+            data=[0.0] * df_indiv[it.tick_field].nunique(), index=x_)
         ax_node_usage = fig_node_usage.add_subplot(
             gs_node_usage[int(i / 2), int(i % 2)])
         # ax_node_usage.set_title('Node %d' % dict_id_n[n)
         ax_node_usage.set(xlabel='time (s)', ylabel=metric)
         ax_node_usage.grid()
 
-        for c, data_c in data_n.groupby(data_n['container_id']):
+        for c, data_c in data_n.groupby(data_n[it.indiv_field]):
             c_int = [k for k, v in dict_id_c.items() if v == c][0]
-            temp_df = data_c.reset_index(level='container_id', drop=True)
+            temp_df = data_c.reset_index(level=it.indiv_field, drop=True)
             agglo_containers = agglo_containers.add(temp_df[metric])
             ax_node_usage.plot(
                 x_, agglo_containers, colors[labels_[c_int]], label=c_int)
@@ -134,7 +137,7 @@ def plot_clustering_containers_by_node(
 
 
 def plot_clustering_containers_by_node_spec_cont(
-        df_containers: pd.DataFrame, dict_id_c: Dict, labels_: List,
+        df_indiv: pd.DataFrame, dict_id_c: Dict, labels_: List,
         containers_toshow: List, metric: str = 'cpu'):
     """
     Plot containers consumption grouped by node, one container added above
@@ -144,22 +147,22 @@ def plot_clustering_containers_by_node_spec_cont(
     fig_node_usage.suptitle(
         metric + ' consumption in each node, containers clustering')
     gs_node_usage = gridspec.GridSpec(math.ceil(
-        df_containers['machine_id'].nunique() / 2), 2)
-    x_ = df_containers['timestamp'].unique()
+        df_indiv[it.host_field].nunique() / 2), 2)
+    x_ = df_indiv[it.tick_field].unique()
     i = 0
-    for n, data_n in df_containers.groupby(
-            df_containers['machine_id']):
+    for n, data_n in df_indiv.groupby(
+            df_indiv[it.host_field]):
         agglo_containers = pd.Series(
-            data=[0.0] * df_containers['timestamp'].nunique(), index=x_)
+            data=[0.0] * df_indiv[it.tick_field].nunique(), index=x_)
         ax_node_usage = fig_node_usage.add_subplot(
             gs_node_usage[int(i / 2), int(i % 2)])
         # ax_node_usage.set_title('Node %d' % dict_id_n[n)
         ax_node_usage.set(xlabel='time (s)', ylabel=metric)
         ax_node_usage.grid()
 
-        for c, data_c in data_n.groupby(data_n['container_id']):
+        for c, data_c in data_n.groupby(data_n[it.indiv_field]):
             c_int = [k for k, v in dict_id_c.items() if v == c][0]
-            temp_df = data_c.reset_index(level='container_id', drop=True)
+            temp_df = data_c.reset_index(level=it.indiv_field, drop=True)
             agglo_containers = agglo_containers.add(temp_df[metric])
             if c_int in containers_toshow:
                 ax_node_usage.plot(
@@ -174,7 +177,7 @@ def plot_clustering_containers_by_node_spec_cont(
     plt.draw()
 
 
-def plot_containers_groupby_nodes(df_containers: pd.DataFrame,
+def plot_containers_groupby_nodes(df_indiv: pd.DataFrame,
                                   max_cap: int, sep_time: int):
     # TODO make metrics generic
     """Plot containers consumption grouped by node."""
@@ -182,8 +185,8 @@ def plot_containers_groupby_nodes(df_containers: pd.DataFrame,
     fig.suptitle('Node CPU consumption')
     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
 
-    pvt_cpu = pd.pivot_table(df_containers, columns='machine_id',
-                             index=df_containers['timestamp'],
+    pvt_cpu = pd.pivot_table(df_indiv, columns=it.host_field,
+                             index=df_indiv[it.tick_field],
                              aggfunc='sum', values='cpu')
     pvt_cpu.plot(ax=ax, legend=False)
     ax.axvline(x=sep_time, color='red', linestyle='--')
@@ -223,16 +226,16 @@ def plot_nodes_wout_containers(instance: Instance):
     fig, ax = plt.subplots()
     fig.suptitle('Nodes usage without containers')
 
-    print(instance.df_nodes)
+    print(instance.df_host)
     np_nodes = pd.pivot_table(
-        instance.df_nodes,
-        columns=instance.df_nodes['machine_id'],
-        index=instance.df_nodes['timestamp'],
+        instance.df_host,
+        columns=instance.df_host[it.host_field],
+        index=instance.df_host[it.tick_field],
         aggfunc='sum', values='cpu')
     np_nodes_containers = pd.pivot_table(
-        instance.df_containers,
-        columns=instance.df_containers['machine_id'],
-        index=instance.df_containers['timestamp'],
+        instance.df_indiv,
+        columns=instance.df_indiv[it.host_field],
+        index=instance.df_indiv[it.tick_field],
         aggfunc='sum',
         values='cpu')
 
@@ -252,19 +255,19 @@ def plot_nodes_wout_containers(instance: Instance):
     plt.show()
 
 
-def init_containers_plot(df_containers: pd.DataFrame,
+def init_containers_plot(df_indiv: pd.DataFrame,
                          sep_time: int, metric: str = 'cpu'):
     """Initialize containers consumption plot."""
     fig, ax = plt.subplots()
     fig.suptitle('Containers consumption evolution')
-    ax.set_ylim([0, df_containers['cpu'].max()])
-    ax.set_xlim([0, df_containers['timestamp'].max()])
+    ax.set_ylim([0, df_indiv['cpu'].max()])
+    ax.set_xlim([0, df_indiv[it.tick_field].max()])
 
     pvt = pd.pivot_table(
-        df_containers.loc[
-            df_containers['timestamp'] <= sep_time],
-        columns=df_containers['container_id'],
-        index=df_containers['timestamp'], aggfunc='sum',
+        df_indiv.loc[
+            df_indiv[it.tick_field] <= sep_time],
+        columns=df_indiv[it.indiv_field],
+        index=df_indiv[it.tick_field], aggfunc='sum',
         values='cpu')
     ax.plot(pvt)
     ax.axvline(x=sep_time, color='red', linestyle='--')
@@ -275,25 +278,25 @@ def init_containers_plot(df_containers: pd.DataFrame,
 def update_containers_plot(fig, ax, df: pd.DataFrame, t: int):
     """Update containers consumption plot with new data."""
     pvt_cpu = pd.pivot_table(
-        df, columns=df['container_id'],
-        index=df['timestamp'], aggfunc='sum', values='cpu')
+        df, columns=df[it.indiv_field],
+        index=df[it.tick_field], aggfunc='sum', values='cpu')
     ax.plot(pvt_cpu)
     plt.pause(0.5)
 
 
-def init_nodes_plot(df_containers: pd.DataFrame, sep_time: int,
+def init_nodes_plot(df_indiv: pd.DataFrame, sep_time: int,
                     max_cap: int, metric: str = 'cpu'):
     """Initialize nodes consumption plot."""
     fig, ax = plt.subplots()
     fig.suptitle('Nodes consumption evolution')
-    ax.set_xlim([0, df_containers['timestamp'].max()])
+    ax.set_xlim([0, df_indiv[it.tick_field].max()])
     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
 
     pvt = pd.pivot_table(
-        df_containers.loc[
-            df_containers['timestamp'] <= sep_time],
-        columns='machine_id',
-        index=df_containers['timestamp'],
+        df_indiv.loc[
+            df_indiv[it.tick_field] <= sep_time],
+        columns=it.host_field,
+        index=df_indiv[it.tick_field],
         aggfunc='sum', values='cpu')
     ax.plot(pvt)
     ax.axvline(x=sep_time, color='red', linestyle='--')
@@ -305,8 +308,8 @@ def init_nodes_plot(df_containers: pd.DataFrame, sep_time: int,
 def update_nodes_plot(fig, ax, df: pd.DataFrame, t):
     """Update nodes consumption plot with new data."""
     pvt_cpu = pd.pivot_table(
-        df, columns=df['machine_id'],
-        index=df['timestamp'], aggfunc='sum', values='cpu')
+        df, columns=df[it.host_field],
+        index=df[it.tick_field], aggfunc='sum', values='cpu')
     ax.plot(pvt_cpu)
     plt.pause(0.5)
 
@@ -340,10 +343,18 @@ def update_clustering_plot(fig, ax_,
             ax_[k].plot(row[1], colors[k], label=c_int)
 
 
-# def plot_nodes_adding_containers(df_containers: pd.DataFrame,
+# def plot_nodes_adding_containers(df_indiv: pd.DataFrame,
 #                                   max_cap: int, sep_time: int):
 #     """Plot nodes consumption showing allocated containers."""
 #     fig, ax = plt.subplots()
 #     fig.suptitle('Node CPU consumption')
 #     # TODO generic
 #     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
+
+def plot_plotly(df_indiv: pd.DataFrame):
+    """Test of plotting with plotly."""
+    fig = px.line(df_indiv, x=it.tick_field, y=it.metrics[0],
+                  color=it.host_field,
+                  line_group=it.indiv_field, hover_name=it.indiv_field,
+                  line_shape='spline', render_mode='svg')
+    fig.show()

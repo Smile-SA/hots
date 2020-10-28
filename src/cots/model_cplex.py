@@ -23,7 +23,7 @@ import numpy as np
 
 import pandas as pd
 
-from .init import metrics
+from . import init as it
 from .instance import Instance
 
 
@@ -49,16 +49,16 @@ class CPXInstance:
     # functions #
 
     # TODO parallelize all building
-    def __init__(self, df_containers: pd.DataFrame,
-                 df_nodes_meta: pd.DataFrame, nb_clusters: int,
+    def __init__(self, df_indiv: pd.DataFrame,
+                 df_host_meta: pd.DataFrame, nb_clusters: int,
                  dict_id_c: Dict, dict_id_n: Dict,
                  obj_func: int, w: np.array = None, nb_nodes: int = None):
         """Initialize CPXInstance with data in Instance."""
         model_time = time.time()
         print('Building of cplex model ...')
-        self.nb_nodes = df_nodes_meta['machine_id'].nunique()
-        self.nb_containers = df_containers['container_id'].nunique()
-        self.time_window = df_containers['timestamp'].nunique()
+        self.nb_nodes = df_host_meta[it.host_field].nunique()
+        self.nb_containers = df_indiv[it.indiv_field].nunique()
+        self.time_window = df_indiv[it.tick_field].nunique()
         self.obj_func = obj_func
 
         # Fix max number of nodes (TODO function to evaluate it)
@@ -67,14 +67,14 @@ class CPXInstance:
         self.mdl = Model(name='allocation', cts_by_name=False)
         self.build_names()
         self.build_variables()
-        self.build_data(df_containers, df_nodes_meta, dict_id_c, dict_id_n)
+        self.build_data(df_indiv, df_host_meta, dict_id_c, dict_id_n)
         self.build_constraints()
         self.build_objective()
 
         self.relax_mdl = make_relaxed_model(self.mdl)
 
         # Init solution for mdl with initial placement
-        self.set_x_from_df(df_containers, dict_id_c, dict_id_n)
+        self.set_x_from_df(df_indiv, dict_id_c, dict_id_n)
 
         self.mdl.print_information()
 
@@ -106,19 +106,19 @@ class CPXInstance:
         # self.mdl.delta = self.mdl.continuous_var_dict(
         #     ida, name=lambda k: 'delta_%d' % k)
 
-    def build_data(self, df_containers: pd.DataFrame,
-                   df_nodes_meta: pd.DataFrame,
+    def build_data(self, df_indiv: pd.DataFrame,
+                   df_host_meta: pd.DataFrame,
                    dict_id_c: Dict, dict_id_n: Dict):
         """Build all model data from instance."""
         self.containers_data = {}
         self.nodes_data = {}
         for c in self.containers_names:
-            self.containers_data[c] = df_containers.loc[
-                df_containers['container_id'] == dict_id_c[c],
-                ['timestamp', 'cpu', 'mem']].to_numpy()
+            self.containers_data[c] = df_indiv.loc[
+                df_indiv[it.indiv_field] == dict_id_c[c],
+                [it.tick_field, 'cpu', 'mem']].to_numpy()
         for n in self.nodes_names:
-            self.nodes_data[n] = df_nodes_meta.loc[
-                df_nodes_meta['machine_id'] == dict_id_n[n],
+            self.nodes_data[n] = df_host_meta.loc[
+                df_host_meta[it.host_field] == dict_id_n[n],
                 ['cpu', 'mem']].to_numpy()[0]
 
     def build_constraints(self):
@@ -126,13 +126,14 @@ class CPXInstance:
         for node in self.nodes_names:
             for t in range(self.time_window):
                 i = 0
-                for i in range(1, len(metrics) + 1):
+                for i in range(1, len(it.metrics) + 1):
                     # Capacity constraint
                     self.mdl.add_constraint(self.mdl.sum(
                         self.mdl.x[c, node] * self.containers_data[c][t][i]
                         for c in self.
                         containers_names) <= self.nodes_data[node][i - 1],
-                        metrics[i - 1] + 'capacity_' + str(node) + '_' + str(t))
+                        it.metrics[i - 1] + 'capacity_' + str(node)
+                        + '_' + str(t))
 
             # Assign constraint (x[c,n] = 1 => a[n] = 1)
             # self.mdl.add_constraint(self.mdl.a[node] >= (self.mdl.sum(
@@ -206,13 +207,13 @@ class CPXInstance:
         #         self.mdl.delta[n] for n in self.nodes_names
         #     ))
 
-    def set_x_from_df(self, df_containers: pd.DataFrame,
+    def set_x_from_df(self, df_indiv: pd.DataFrame,
                       dict_id_c: Dict, dict_id_n: Dict):
         """Add feasible solution from allocation in instance."""
         start_sol = {}
         for c in self.containers_names:
-            node_c_id = df_containers.loc[
-                df_containers['container_id'] == dict_id_c[c], 'machine_id'
+            node_c_id = df_indiv.loc[
+                df_indiv[it.indiv_field] == dict_id_c[c], it.host_field
             ].to_numpy()[0]
             node_c = list(dict_id_n.keys())[list(
                 dict_id_n.values()).index(node_c_id)]

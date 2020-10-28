@@ -5,7 +5,15 @@
   },
   "clustering": {
     "algo": "hierarchical",
-    "nb_clusters": 4
+    "nb_clusters": 2
+  },
+  "data": {
+    "individuals_file": "container_usage.csv",
+    "hosts_meta_file": "node_meta.csv",
+    "individual_field": "container_id",
+    "host_field": "machine_id",
+    "tick_field": "timestamp",
+    "metrics": ["cpu"]
   },
   "heuristic": {
     "algo": "distant_pairwise"
@@ -13,5 +21,11 @@
   "optimization": {
     "model": "src/cots/model_small_pyomo.py",
     "solver": "glpk"
+  },
+  "loop": {
+    "tick": 2,
+    "constraints_dual": ["mustLink"],
+    "tol_dual_clust": 0.5,
+    "tol_dual_place": 0.5
   }
 }

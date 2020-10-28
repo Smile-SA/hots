@@ -21,6 +21,7 @@ import pandas as pd
 
 from tqdm import tqdm
 
+from . import init as it
 from .instance import Instance
 
 
@@ -28,31 +29,38 @@ from .instance import Instance
 # Functions definitions
 
 
-def assign_container_node(node_id: str, container_id: str, instance: Instance):
+def assign_container_node(node_id: str, container_id: str, instance: Instance,
+                          remove: bool = True):
     """Assign container_id to node_id, and remove it from old node."""
-    old_id = instance.df_containers.loc[
-        instance.df_containers['container_id'] == container_id
+    old_id = instance.df_indiv.loc[
+        instance.df_indiv[it.indiv_field] == container_id
     ].machine_id.to_numpy()[0]
 
-    instance.df_nodes.loc[
-        instance.df_nodes['machine_id'] == node_id, ['cpu', 'mem']
-    ] = instance.df_nodes.loc[
-        instance.df_nodes['machine_id'] == node_id, ['cpu', 'mem']
-    ].to_numpy() + instance.df_containers.loc[
-        instance.df_containers['container_id'] == container_id, ['cpu', 'mem']
+    instance.df_host.loc[
+        instance.df_host[it.host_field] == node_id, ['cpu', 'mem']
+    ] = instance.df_host.loc[
+        instance.df_host[it.host_field] == node_id, ['cpu', 'mem']
+    ].to_numpy() + instance.df_indiv.loc[
+        instance.df_indiv[it.indiv_field] == container_id, ['cpu', 'mem']
     ].to_numpy()
 
-    instance.df_nodes.loc[
-        instance.df_nodes['machine_id'] == old_id, ['cpu', 'mem']
-    ] = instance.df_nodes.loc[
-        instance.df_nodes['machine_id'] == old_id, ['cpu', 'mem']
-    ].to_numpy() - instance.df_containers.loc[
-        instance.df_containers['container_id'] == container_id, ['cpu', 'mem']
-    ].to_numpy()
+    if remove:
+        remove_container_node(old_id, container_id, instance)
 
-    instance.df_containers.loc[
-        instance.df_containers['container_id'] == container_id, ['machine_id']
+    instance.df_indiv.loc[
+        instance.df_indiv[it.indiv_field] == container_id, [it.host_field]
     ] = node_id
+
+
+def remove_container_node(node_id: str, container_id: str, instance: Instance):
+    """Remove container from node."""
+    instance.df_host.loc[
+        instance.df_host[it.host_field] == node_id, ['cpu', 'mem']
+    ] = instance.df_host.loc[
+        instance.df_host[it.host_field] == node_id, ['cpu', 'mem']
+    ].to_numpy() - instance.df_indiv.loc[
+        instance.df_indiv[it.indiv_field] == container_id, ['cpu', 'mem']
+    ].to_numpy()
 
 
 def spread_containers(list_containers: List, instance: Instance,
@@ -60,14 +68,14 @@ def spread_containers(list_containers: List, instance: Instance,
                       min_nodes: int, pbar: tqdm):
     """Spread containers from list_containers into nodes."""
     n = 0
-    for it in list_containers:
-        # place container it and increment node !! TODO
-        cons_c = instance.df_containers.loc[
-            instance.df_containers['container_id'] == it
+    for c in list_containers:
+        # place container c and increment node !! TODO
+        cons_c = instance.df_indiv.loc[
+            instance.df_indiv[it.indiv_field] == c
         ]['cpu'].to_numpy()[:total_time]
-        cap_node = instance.df_nodes_meta.loc[
+        cap_node = instance.df_host_meta.loc[
             instance.
-            df_nodes_meta['machine_id'] == instance.dict_id_n[n]
+            df_host_meta[it.host_field] == instance.dict_id_n[n]
         ]['cpu'].to_numpy()[0]
         done = False
         while not done:
@@ -76,13 +84,13 @@ def spread_containers(list_containers: List, instance: Instance,
                 conso_nodes[n] += cons_c
                 done = True
                 assign_container_node(
-                    instance.dict_id_n[n], it, instance)
+                    instance.dict_id_n[n], c, instance)
                 pbar.update(1)
             else:
                 n = (n + 1) % min_nodes
-                cap_node = instance.df_nodes_meta.loc[
+                cap_node = instance.df_host_meta.loc[
                     instance.
-                    df_nodes_meta['machine_id'] == instance.dict_id_n[n]
+                    df_host_meta[it.host_field] == instance.dict_id_n[n]
                 ]['cpu'].to_numpy()[0]
         n = (n + 1) % min_nodes
 
@@ -92,47 +100,53 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
                         total_time: int, min_nodes: int, conso_nodes: List,
                         pbar: tqdm, n: int = 0) -> int:
     """Allocate containers of 2 clusters grouping by pairs."""
-    for it in range(min(len(list_containers_i),
-                        len(list_containers_j))):
+    for c in range(min(len(list_containers_i),
+                       len(list_containers_j))):
         # allocate 2 containers !! TODO
-        cons_i = instance.df_containers.loc[
+        cons_i = instance.df_indiv.loc[
             instance.
-            df_containers['container_id'] == list_containers_i[it]
+            df_indiv[it.indiv_field] == list_containers_i[c]
         ]['cpu'].to_numpy()[:total_time]
-        cons_j = instance.df_containers.loc[
+        cons_j = instance.df_indiv.loc[
             instance.
-            df_containers['container_id'] == list_containers_j[it]
+            df_indiv[it.indiv_field] == list_containers_j[c]
         ]['cpu'].to_numpy()[:total_time]
 
-        cap_node = instance.df_nodes_meta.loc[
+        cap_node = instance.df_host_meta.loc[
             instance.
-            df_nodes_meta['machine_id'] == instance.dict_id_n[n]
+            df_host_meta[it.host_field] == instance.dict_id_n[n]
         ]['cpu'].to_numpy()[0]
         done = False
+        i_n = 0
         while not done:
             if np.all(np.less(
                     (conso_nodes[n] + cons_i + cons_j), cap_node)):
                 conso_nodes[n] += cons_i + cons_j
                 assign_container_node(
                     instance.dict_id_n[n],
-                    list_containers_i[it],
+                    list_containers_i[c],
                     instance)
                 assign_container_node(
                     instance.dict_id_n[n],
-                    list_containers_j[it],
+                    list_containers_j[c],
                     instance)
                 containers_grouped.append([
-                    list_containers_i[it], list_containers_j[it]])
+                    list_containers_i[c], list_containers_j[c]])
                 done = True
                 pbar.update(2)
             else:
-                n = (n + 1) % min_nodes
-                cap_node = instance.df_nodes_meta.loc[
+                i_n += 1
+                if i_n >= min_nodes:
+                    min_nodes += 1
+                    n = i_n
+                else:
+                    n = (n + 1) % min_nodes
+                cap_node = instance.df_host_meta.loc[
                     instance.
-                    df_nodes_meta['machine_id'] == instance.dict_id_n[n]
+                    df_host_meta[it.host_field] == instance.dict_id_n[n]
                 ]['cpu'].to_numpy()[0]
         n = (n + 1) % min_nodes
-    return it
+    return c
 
 
 def allocation_distant_pairwise(
@@ -151,7 +165,7 @@ def allocation_distant_pairwise(
     total_time = instance.sep_time
 
     min_nodes = nb_nodes or nb_min_nodes(instance, total_time)
-    conso_nodes = np.zeros((min_nodes, total_time))
+    conso_nodes = np.zeros((instance.nb_nodes, total_time))
     n = 0
 
     cluster_var_matrix_copy = np.copy(cluster_var_matrix)
@@ -266,9 +280,9 @@ def allocation_ffd(instance: Instance,
             # We browse containers in cluster i
             for container in list_containers:
                 # print("We assign container ", container)
-                consu_cont = instance.df_containers.loc[
+                consu_cont = instance.df_indiv.loc[
                     instance.
-                    df_containers['container_id'] == container
+                    df_indiv[it.indiv_field] == container
                 ]['cpu'].to_numpy()[:total_time]
                 idx_node = 0
                 min_var = math.inf
@@ -279,9 +293,9 @@ def allocation_ffd(instance: Instance,
                 for idx_node in idx_nodes_vars:
                     # print("We try node ",
                     #       instance.dict_id_n[idx_node], idx_node)
-                    cap_node = instance.df_nodes_meta.loc[
+                    cap_node = instance.df_host_meta.loc[
                         instance.
-                        df_nodes_meta['machine_id'] == instance.dict_id_n[idx_node]
+                        df_host_meta[it.host_field] == instance.dict_id_n[idx_node]
                     ]['cpu'].to_numpy()[0]
                     new_var = (
                         conso_nodes[idx_node] + consu_cont).var()
@@ -362,10 +376,10 @@ def nb_min_nodes(instance: Instance, total_time: int) -> (float, float):
     max_cpu = 0.0
     max_mem = 0.0
     for t in range(total_time):
-        max_t_cpu = instance.df_containers[
-            instance.df_containers['timestamp'] == t]['cpu'].sum()
-        max_t_mem = instance.df_containers[
-            instance.df_containers['timestamp'] == t]['mem'].sum()
+        max_t_cpu = instance.df_indiv[
+            instance.df_indiv[it.tick_field] == t]['cpu'].sum()
+        max_t_mem = instance.df_indiv[
+            instance.df_indiv[it.tick_field] == t]['mem'].sum()
 
         if max_t_cpu > max_cpu:
             max_cpu = max_t_cpu
@@ -373,8 +387,8 @@ def nb_min_nodes(instance: Instance, total_time: int) -> (float, float):
             max_mem = max_t_mem
 
     # TODO consider nodes with different capacities
-    cap_cpu = instance.df_nodes_meta['cpu'].to_numpy()[0]
-    cap_mem = instance.df_nodes_meta['mem'].to_numpy()[0]
+    cap_cpu = instance.df_host_meta['cpu'].to_numpy()[0]
+    cap_mem = instance.df_host_meta['mem'].to_numpy()[0]
     min_nodes_cpu = math.ceil(max_cpu / cap_cpu)
     min_nodes_mem = math.ceil(max_mem / cap_mem)
     return max(min_nodes_cpu, min_nodes_mem)
@@ -421,22 +435,36 @@ def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
     return conso_nodes, cluster_done
 
 
-def move_container(mvg_cont: int, working_df_container: pd.DataFrame,
+def move_list_containers(mvg_conts: List, working_df_indiv: pd.DataFrame,
+                         instance: Instance):
+    """Move the list of containers to move."""
+    # Remove all moving containers from nodes first
+    for mvg_cont in mvg_conts:
+        old_id = working_df_indiv.loc[
+            working_df_indiv[it.indiv_field] == instance.dict_id_c[mvg_cont]
+        ].machine_id.to_numpy()[0]
+        remove_container_node(old_id, instance.dict_id_c[mvg_cont], instance)
+    # Assign them to a new node
+    for mvg_cont in mvg_conts:
+        move_container(mvg_cont, working_df_indiv, instance)
+
+
+def move_container(mvg_cont: int, working_df_indiv: pd.DataFrame,
                    instance: Instance):
     """Move `mvg_cont` to another node."""
     print('Moving container :', mvg_cont)
-    tmin = working_df_container['timestamp'].min()
-    tmax = working_df_container['timestamp'].max()
+    tmin = working_df_indiv[it.tick_field].min()
+    tmax = working_df_indiv[it.tick_field].max()
     duration = tmax - tmin + 1
-    nb_open_nodes = working_df_container['machine_id'].nunique()
-    working_df_node = instance.df_nodes.loc[
-        (instance.df_nodes['timestamp'] >= tmin) & (
-            instance.df_nodes['timestamp'] <= tmax
+    nb_open_nodes = working_df_indiv[it.host_field].nunique()
+    working_df_node = instance.df_host.loc[
+        (instance.df_host[it.tick_field] >= tmin) & (
+            instance.df_host[it.tick_field] <= tmax
         )
     ]
-    conso_nodes = np.zeros((working_df_node['machine_id'].nunique(), duration))
+    conso_nodes = np.zeros((working_df_node[it.host_field].nunique(), duration))
     n_int = 0
-    for node, data in working_df_node.groupby(working_df_node['machine_id']):
+    for node, data in working_df_node.groupby(working_df_node[it.host_field]):
         if n_int >= nb_open_nodes:
             break
         n = [k for k, v in instance.
@@ -444,19 +472,19 @@ def move_container(mvg_cont: int, working_df_container: pd.DataFrame,
         conso_nodes[n] = data['cpu'].to_numpy()
         n_int += 1
 
-    cons_c = working_df_container.loc[
-        working_df_container[
-            'container_id'] == instance.dict_id_c[mvg_cont]
+    cons_c = working_df_indiv.loc[
+        working_df_indiv[
+            it.indiv_field] == instance.dict_id_c[mvg_cont]
     ]['cpu'].to_numpy()
-    n = working_df_container.loc[
-        working_df_container[
-            'container_id'] == instance.dict_id_c[mvg_cont]
-    ]['machine_id'].to_numpy()[0]
+    n = working_df_indiv.loc[
+        working_df_indiv[
+            it.indiv_field] == instance.dict_id_c[mvg_cont]
+    ][it.host_field].to_numpy()[0]
     n_int = ([k for k, v in instance.
               dict_id_n.items() if v == n][0] + 1) % nb_open_nodes
     print('He was on %s' % n)
-    cap_node = instance.df_nodes_meta.loc[
-        instance.df_nodes_meta['machine_id'] == n
+    cap_node = instance.df_host_meta.loc[
+        instance.df_host_meta[it.host_field] == n
     ]['cpu'].to_numpy()[0]
     done = False
     while not done:
@@ -469,8 +497,8 @@ def move_container(mvg_cont: int, working_df_container: pd.DataFrame,
             done = True
         else:
             n_int = (n_int + 1) % nb_open_nodes
-            cap_node = instance.df_nodes_meta.loc[
+            cap_node = instance.df_host_meta.loc[
                 instance.
-                df_nodes_meta['machine_id'] == instance.dict_id_n[n_int]
+                df_host_meta[it.host_field] == instance.dict_id_n[n_int]
             ]['cpu'].to_numpy()[0]
     print('He can go on %s' % instance.dict_id_n[n_int])

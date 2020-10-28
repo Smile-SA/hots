@@ -17,32 +17,29 @@ import pandas as pd
 
 # Global variables #
 
-# We delete disk for the moment cause, not enough info
-metrics = ['cpu']
-
 # Functions definitions #
 
 
-def build_df_from_containers(df_containers: pd.DataFrame) -> pd.DataFrame:
-    """Build the `df_nodes` from containers df."""
-    df_nodes = pd.DataFrame(data=None)
-    for time in df_containers['timestamp'].unique():
-        for node in df_containers['machine_id'].unique():
-            df_nodes = df_nodes.append(
+def build_df_from_containers(df_indiv: pd.DataFrame) -> pd.DataFrame:
+    """Build the `df_host` from containers df."""
+    df_host = pd.DataFrame(data=None)
+    for time in df_indiv[tick_field].unique():
+        for node in df_indiv[host_field].unique():
+            df_host = df_host.append(
                 {
-                    'timestamp': time,
-                    'machine_id': node,
-                    'cpu': df_containers.loc[
-                        (df_containers['timestamp'] == time) & (
-                            df_containers['machine_id'] == node)
+                    tick_field: time,
+                    host_field: node,
+                    'cpu': df_indiv.loc[
+                        (df_indiv[tick_field] == time) & (
+                            df_indiv[host_field] == node)
                     ]['cpu'].sum(),
-                    'mem': df_containers.loc[
-                        (df_containers['timestamp'] == time) & (
-                            df_containers['machine_id'] == node)
+                    'mem': df_indiv.loc[
+                        (df_indiv[tick_field] == time) & (
+                            df_indiv[host_field] == node)
                     ]['mem'].sum()
                 }, ignore_index=True
             )
-    return df_nodes
+    return df_host
 
 
 def df_from_csv(file: Path) -> pd.DataFrame:
@@ -63,11 +60,11 @@ def init_dfs(data: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 df_from_csv(p_data / 'node_meta.csv'))
     else:
         print('We need to build node usage from containers ...')
-        df_containers = df_from_csv(p_data / 'container_usage.csv')
-        df_nodes = build_df_from_containers(df_containers)
-        df_nodes.to_csv(p_data / 'node_usage.csv', index=False)
-        return (df_containers,
-                df_nodes,
+        df_indiv = df_from_csv(p_data / 'container_usage.csv')
+        df_host = build_df_from_containers(df_indiv)
+        df_host.to_csv(p_data / 'node_usage.csv', index=False)
+        return (df_indiv,
+                df_host,
                 df_from_csv(p_data / 'node_meta.csv'))
 
 
@@ -76,3 +73,16 @@ def read_params(params_file: str) -> Dict:
     with open(params_file, 'r') as f:
         config = json.load(f)
     return config
+
+
+def define_fields(config_data: Dict):
+    """Define the fields, as global variables, from config."""
+    global indiv_field
+    global host_field
+    global tick_field
+    global metrics
+
+    indiv_field = config_data['individual_field']
+    host_field = config_data['host_field']
+    tick_field = config_data['tick_field']
+    metrics = config_data['metrics']

@@ -72,8 +72,8 @@ def load_model_file(model_file: str):
 def create_model(model_file: str, my_instance: Instance):
     """Create the pyomo model to work with."""
     spec_model = load_model_file(model_file)
-    model = spec_model.Model(my_instance.df_containers,
-                             my_instance.df_nodes_meta)
+    model = spec_model.Model(my_instance.df_indiv,
+                             my_instance.df_host_meta)
 
     if not issubclass(spec_model.Model, ModelInterface):
         raise NameError('The user model is not a ModelInterface instance')

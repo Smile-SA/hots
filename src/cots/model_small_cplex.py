@@ -19,7 +19,7 @@ from docplex.mp.model import Model
 
 import pandas as pd
 
-# from .init import metrics
+from . import init as it
 # from .instance import Instance
 
 
@@ -33,23 +33,23 @@ class SmallCPXInstance:
     - containers_names : names of containers related variables
     """
 
-    def __init__(self, df_containers: pd.DataFrame,
-                 df_nodes_meta: pd.DataFrame):
+    def __init__(self, df_indiv: pd.DataFrame,
+                 df_host_meta: pd.DataFrame):
         """Initialize Small_CPXInstance with data in Instance."""
         print('Building of small CPLEX model ...')
-        self.time_window = df_containers['timestamp'].nunique()
+        self.time_window = df_indiv[it.tick_field].nunique()
 
         # Build the basis object "Model"
         self.mdl = Model(name='small_allocation', cts_by_name=False)
 
         # Prepare the variables names depending on data we have
-        self.build_names(df_nodes_meta, df_containers)
+        self.build_names(df_host_meta, df_indiv)
 
         # Build CPLEX variables with their names
         self.build_variables()
 
         # Build data as dict for easy use by CPLEX
-        self.build_data(df_containers, df_nodes_meta)
+        self.build_data(df_indiv, df_host_meta)
 
         # Build the constraints describing our small allocation problem
         self.build_constraints()
@@ -60,10 +60,10 @@ class SmallCPXInstance:
         # We export the model to a LP file (standard in Optimization)
         self.mdl.export_as_lp(path='./small_allocation.lp')
 
-    def build_names(self, df_nodes_meta, df_containers):
+    def build_names(self, df_host_meta, df_indiv):
         """Build only names variables from nodes and containers."""
-        self.nodes_names = df_nodes_meta['machine_id'].unique()
-        self.containers_names = df_containers['container_id'].unique()
+        self.nodes_names = df_host_meta[it.host_field].unique()
+        self.containers_names = df_indiv[it.indiv_field].unique()
 
     def build_variables(self):
         """Build all model variables."""
@@ -74,19 +74,19 @@ class SmallCPXInstance:
         self.mdl.x = self.mdl.binary_var_dict(
             idx, name=lambda k: 'x_%s,%s' % (k[0], k[1]))
 
-    def build_data(self, df_containers: pd.DataFrame,
-                   df_nodes_meta: pd.DataFrame):
+    def build_data(self, df_indiv: pd.DataFrame,
+                   df_host_meta: pd.DataFrame):
         """Build all model data from instance."""
         self.containers_data = {}
         self.nodes_data = {}
         for n in self.nodes_names:
-            self.nodes_data[n] = df_nodes_meta.loc[
-                df_nodes_meta['machine_id'] == n,
+            self.nodes_data[n] = df_host_meta.loc[
+                df_host_meta[it.host_field] == n,
                 ['cpu']].to_numpy()[0]
         for c in self.containers_names:
-            self.containers_data[c] = df_containers.loc[
-                df_containers['container_id'] == c,
-                ['timestamp', 'cpu']].to_numpy()
+            self.containers_data[c] = df_indiv.loc[
+                df_indiv[it.indiv_field] == c,
+                [it.tick_field, 'cpu']].to_numpy()
 
     def build_constraints(self):
         """Build all model constraints."""

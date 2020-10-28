@@ -11,6 +11,7 @@ CPLEX, own by IBM.
 """
 
 import math
+import re
 import time
 from itertools import combinations, product
 from typing import Dict, List
@@ -23,7 +24,7 @@ import numpy as np
 
 import pandas as pd
 
-from .init import metrics
+from . import init as it
 from .instance import Instance
 
 
@@ -49,18 +50,19 @@ class CPXInstance:
     # functions #
 
     # TODO parallelize all building
-    def __init__(self, df_containers: pd.DataFrame,
-                 df_nodes_meta: pd.DataFrame, nb_clusters: int,
+    def __init__(self, df_indiv: pd.DataFrame,
+                 df_host_meta: pd.DataFrame, nb_clusters: int,
                  dict_id_c: Dict, dict_id_n: Dict,
                  obj_func: int, w: np.array = None, u: np.array = None,
-                 nb_nodes: int = None, pb_number: int = None):
+                 dv: np.array = None, nb_nodes: int = None,
+                 pb_number: int = None):
         """Initialize CPXInstance with data in Instance."""
         model_time = time.time()
         print('Building of cplex model ...')
-        self.nb_nodes = df_nodes_meta['machine_id'].nunique()
-        self.nb_containers = df_containers['container_id'].nunique()
+        self.nb_nodes = df_host_meta[it.host_field].nunique()
+        self.nb_containers = df_indiv[it.indiv_field].nunique()
         self.nb_clusters = nb_clusters
-        self.time_window = df_containers['timestamp'].nunique()
+        self.time_window = df_indiv[it.tick_field].nunique()
         self.obj_func = obj_func
 
         # Fix max number of nodes (TODO function to evaluate it)
@@ -76,21 +78,20 @@ class CPXInstance:
         self.mdl = Model(name='allocation', cts_by_name=False)
         self.build_names()
         self.build_variables()
-        self.build_data(df_containers, df_nodes_meta, dict_id_c, dict_id_n)
+        self.build_data(df_indiv, df_host_meta, dict_id_c, dict_id_n)
         self.build_constraints(w, u)
-        self.build_objective(w, u)
+        self.build_objective(w, u, dv)
 
         self.relax_mdl = make_relaxed_model(self.mdl)
 
         # Init solution for mdl with initial placement
-        # self.set_x_from_df(df_containers, dict_id_c, dict_id_n)
+        # self.set_x_from_df(df_indiv, dict_id_c, dict_id_n)
 
         self.mdl.print_information()
 
         print('Building model time : ', time.time() - model_time)
 
-        self.mdl.export_as_lp(path='./allocation.lp')
-        self.relax_mdl.export_as_lp(path='./lp_allocation.lp')
+        self.write_infile()
 
     def build_names(self):
         """Build only names variables from nodes and containers."""
@@ -182,19 +183,19 @@ class CPXInstance:
             idyu, name=lambda k: 'yu_%d,%d,%d' % (k[0], k[1], k[2])
         )
 
-    def build_data(self, df_containers: pd.DataFrame,
-                   df_nodes_meta: pd.DataFrame,
+    def build_data(self, df_indiv: pd.DataFrame,
+                   df_host_meta: pd.DataFrame,
                    dict_id_c: Dict, dict_id_n: Dict):
         """Build all model data from instance."""
         self.containers_data = {}
         self.nodes_data = {}
         for c in self.containers_names:
-            self.containers_data[c] = df_containers.loc[
-                df_containers['container_id'] == dict_id_c[c],
-                ['timestamp', 'cpu', 'mem']].to_numpy()
+            self.containers_data[c] = df_indiv.loc[
+                df_indiv[it.indiv_field] == dict_id_c[c],
+                [it.tick_field, 'cpu', 'mem']].to_numpy()
         for n in self.nodes_names:
-            self.nodes_data[n] = df_nodes_meta.loc[
-                df_nodes_meta['machine_id'] == dict_id_n[n],
+            self.nodes_data[n] = df_host_meta.loc[
+                df_host_meta[it.host_field] == dict_id_n[n],
                 ['cpu', 'mem']].to_numpy()[0]
 
     def build_constraints(self, w, u):
@@ -238,13 +239,14 @@ class CPXInstance:
         for node in self.nodes_names:
             for t in range(self.time_window):
                 i = 0
-                for i in range(1, len(metrics) + 1):
+                for i in range(1, len(it.metrics) + 1):
                     # Capacity constraint
                     self.mdl.add_constraint(self.mdl.sum(
                         self.mdl.x[c, node] * self.containers_data[c][t][i]
                         for c in self.
                         containers_names) <= self.nodes_data[node][i - 1],
-                        metrics[i - 1] + 'capacity_' + str(node) + '_' + str(t))
+                        it.metrics[i - 1] + 'capacity_' + str(node)
+                        + '_' + str(t))
 
             # Assign constraint (x[c,n] = 1 => a[n] = 1)
             # self.mdl.add_constraint(self.mdl.a[node] >= (self.mdl.sum(
@@ -374,7 +376,8 @@ class CPXInstance:
         for (c1, c2) in combinations(self.containers_names, 2):
             if u[c1, c2]:
                 self.mdl.add_constraint(
-                    self.mdl.u[c1, c2] == 1
+                    self.mdl.u[c1, c2] == 1,
+                    'mustLink_' + str(c2) + '_' + str(c1)
                 )
 
     def clustering_constraints_representative(self, nb_clusters):
@@ -427,7 +430,7 @@ class CPXInstance:
             'nb_clusters'
         )
 
-    def build_objective(self, w, u):
+    def build_objective(self, w, u, dv):
         """Build objective."""
         # Minimize sum of a[n] (number of open nodes)
         # self.mdl.minimize(self.mdl.sum(
@@ -501,16 +504,21 @@ class CPXInstance:
                     u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
                         self.containers_names, 2
                     )
+                ) + self.mdl.sum(
+                    (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
+                    for (i, j) in combinations(
+                        self.containers_names, 2
+                    )
                 )
             )
 
-    def set_x_from_df(self, df_containers: pd.DataFrame,
+    def set_x_from_df(self, df_indiv: pd.DataFrame,
                       dict_id_c: Dict, dict_id_n: Dict):
         """Add feasible solution from allocation in instance."""
         start_sol = {}
         for c in self.containers_names:
-            node_c_id = df_containers.loc[
-                df_containers['container_id'] == dict_id_c[c], 'machine_id'
+            node_c_id = df_indiv.loc[
+                df_indiv[it.indiv_field] == dict_id_c[c], it.host_field
             ].to_numpy()[0]
             node_c = list(dict_id_n.keys())[list(
                 dict_id_n.values()).index(node_c_id)]
@@ -542,14 +550,15 @@ class CPXInstance:
                 obj_val += max_n - (mean_n / self.time_window)
         print('Objective value : ', obj_val)
 
-    def solve(self, my_mdl: Model):
+    def solve(self, my_mdl: Model, verbose: bool = False):
         """Solve the given problem."""
-        if not my_mdl.solve(log_output=True):
+        if not my_mdl.solve(log_output=verbose):
             print('*** Problem has no solution ***')
         else:
             print('*** Model solved as function:')
-            my_mdl.print_solution()
-            my_mdl.report()
+            if verbose:
+                my_mdl.print_solution()
+                my_mdl.report()
             print(my_mdl.objective_value)
             # my_mdl.report_kpis()
 
@@ -658,10 +667,16 @@ class CPXInstance:
                 #     self.mdl.add_constraint(
                 #         self.mdl.x[c1, n_i] - self.mdl.x[c2, n_i] <= 0,
                 #         'mustLink_' + str(c1) + '_' + str(c2))
-                self.mdl.add_constraint(
-                    self.mdl.v[c1, c2] == 1,
-                    'mustLink_' + str(c1) + '_' + str(c2)
-                )
+                if c2 < c1:
+                    self.mdl.add_constraint(
+                        self.mdl.v[c2, c1] == 1,
+                        'mustLink_' + str(c2) + '_' + str(c1)
+                    )
+                else:
+                    self.mdl.add_constraint(
+                        self.mdl.v[c1, c2] == 1,
+                        'mustLink_' + str(c1) + '_' + str(c2)
+                    )
 
                 # cannot-link equalities (clustering)
                 # self.mdl.add_constraint(
@@ -739,6 +754,21 @@ class CPXInstance:
             ))
         self.relax_mdl = make_relaxed_model(self.mdl)
 
+    def write_infile(self):
+        """Write the problem in LP file."""
+        if self.pb_number == 0:
+            self.mdl.export_as_lp(path='./place_w_clust.lp')
+            self.relax_mdl.export_as_lp(path='./lp_place_w_clust.lp')
+        elif self.pb_number == 1:
+            self.mdl.export_as_lp(path='./placement.lp')
+            self.relax_mdl.export_as_lp(path='./lp_placement.lp')
+        elif self.pb_number == 2:
+            self.mdl.export_as_lp(path='./clustering.lp')
+            self.relax_mdl.export_as_lp(path='./lp_clustering.lp')
+        elif self.pb_number == 3:
+            self.mdl.export_as_lp(path='./place_f_clust.lp')
+            self.relax_mdl.export_as_lp(path='./lp_place_f_clust.lp')
+
 
 # Functions related to CPLEX #
 
@@ -748,7 +778,8 @@ def print_constraints(mdl: Model):
         print(ct)
 
 
-def print_all_dual(mdl: Model, nn_only: bool = True):
+def print_all_dual(mdl: Model, nn_only: bool = True,
+                   names: List = None):
     """Print dual values associated to constraints."""
     if nn_only:
         print('Display non-zero dual values')
@@ -757,8 +788,59 @@ def print_all_dual(mdl: Model, nn_only: bool = True):
     for ct in mdl.iter_linear_constraints():
         if not nn_only:
             print(ct, ct.dual_value)
-        elif ct.dual_value > 0 and nn_only:
+        elif ct.dual_value > 0 and nn_only and names is None:
             print(ct, ct.dual_value)
+        elif ct.dual_value > 0 and True in (name in ct.name for name in names):
+            print(ct, ct.dual_value)
+
+
+def fill_constraints_dual_values(mdl: Model, names: List) -> Dict:
+    """Fill specific constraints with their dual values."""
+    constraints_dual_values = {}
+    for ct in mdl.iter_linear_constraints():
+        if True in (name in ct.name for name in names):
+            constraints_dual_values[ct.name] = ct.dual_value
+    return constraints_dual_values
+
+
+def get_max_dual(mdl: Model, names: List = None):
+    """Get the max dual value associated to some constraints."""
+    max_dual = 0.0
+    for ct in mdl.iter_linear_constraints():
+        if (ct.dual_value > max_dual) and (
+            (True in (name in ct.name for name in names)) or (
+                names is None)):
+            max_dual = ct.dual_value
+    return max_dual
+
+
+def dual_changed(mdl: Model, names: List,
+                 prev_dual: float, tol: float) -> bool:
+    """Check if dual values increase since last eval."""
+    for ct in mdl.iter_linear_constraints():
+        if (ct.dual_value > (prev_dual + tol * prev_dual)) and True in (
+                name in ct.name for name in names):
+            return True
+    return False
+
+
+# TODO to improve : very low dual values can change easily
+def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
+                          tol: float) -> List:
+    """Get the list of moving containers from constraints dual values."""
+    mvg_containers = []
+    for ct in mdl.iter_linear_constraints():
+        if ct.name in constraints_dual_values:
+            if ct.dual_value > (
+                    constraints_dual_values[ct.name]
+                    + tol * constraints_dual_values[ct.name]):
+                indiv = re.search(r'\d+$', ct.name)
+                # print(indiv, indiv.group(),
+                #       constraints_dual_values[ct.name],
+                #       constraints_dual_values[ct.name]
+                #       + tol * constraints_dual_values[ct.name])
+                mvg_containers.append(int(indiv.group()))
+    return mvg_containers
 
 
 def print_non_user_constraint(mdl: Model):

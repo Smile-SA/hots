@@ -30,6 +30,7 @@ from scipy.linalg.lapack import dsyevr
 from scipy.linalg import fractional_matrix_power
 from tqdm import tqdm
 
+from . import init as it
 from .instance import Instance
 
 
@@ -40,15 +41,15 @@ def matrix_line(args: (str, pd.DataFrame)) -> (int, Dict):
     key, data = args
     line = {}
     for row in data.iterrows():
-        line[int(row[1]['timestamp'])] = row[1]['cpu']
-        line['container_id'] = key
+        line[int(row[1][it.tick_field])] = row[1]['cpu']
+        line[it.indiv_field] = key
     return (key, line)
 
 
 def build_matrix_indiv_attr(df: pd.DataFrame) -> (pd.DataFrame, Dict):
     """Build entire clustering matrix."""
     print('Setup for clustering ...')
-    list_args = list(df.groupby(df['container_id']))
+    list_args = list(df.groupby(df[it.indiv_field]))
     lines = []
     dict_id_c = {}
     int_id = 0
@@ -66,7 +67,7 @@ def build_matrix_indiv_attr(df: pd.DataFrame) -> (pd.DataFrame, Dict):
     pool.join()
     df_return = pd.DataFrame(data=lines)
     df_return.fillna(0, inplace=True)
-    df_return.set_index('container_id', inplace=True)
+    df_return.set_index(it.indiv_field, inplace=True)
     return (df_return, dict_id_c)
 
 
@@ -286,7 +287,7 @@ def check_container_deviation(
     for c in range(len(labels_)):
         dist = get_distance_container_cluster(
             working_df.loc[
-                working_df['container_id'] == dict_id_c[c]
+                working_df[it.indiv_field] == dict_id_c[c]
             ]['cpu'].to_numpy(), profiles_[labels_[c]])
         if dist > 0.5:
             print('Deviation of container ', c, dist)
@@ -300,3 +301,9 @@ def build_adjacency_matrix(labels_) -> np.array:
             u[i, j] = 1
             u[j, i] = 1
     return u
+
+
+def get_cluster_balance(df_clust: pd.DataFrame):
+    """Display size of each cluster."""
+    print('Clustering balance : ',
+          df_clust.groupby('cluster').count())

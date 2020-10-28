@@ -11,6 +11,8 @@ import pandas as pd
 
 from pyomo import environ as pe
 
+from . import init as it
+
 
 class Model:
     """
@@ -20,8 +22,8 @@ class Model:
     - mdl : pyomo Model (Abstract) Instance (basis)
     """
 
-    def __init__(self, df_containers: pd.DataFrame,
-                 df_nodes_meta: pd.DataFrame):
+    def __init__(self, df_indiv: pd.DataFrame,
+                 df_host_meta: pd.DataFrame):
         """Initialize Small_CPXInstance with data in Instance."""
         print('Building of small pyomo model ...')
 
@@ -41,7 +43,7 @@ class Model:
         self.build_objective()
 
         # Put data in attribute
-        self.create_data(df_containers, df_nodes_meta)
+        self.create_data(df_indiv, df_host_meta)
 
         # Create the instance by feeding the model with the data
         self.instance_model = self.mdl.create_instance(self.data)
@@ -88,24 +90,24 @@ class Model:
         """Build the objective."""
         self.mdl.obj = pe.Objective(rule=open_nodes_)
 
-    def create_data(self, df_containers, df_nodes_meta):
+    def create_data(self, df_indiv, df_host_meta):
         """Create data from dataframe."""
         cap = {}
-        for n, n_data in df_nodes_meta.groupby(['machine_id']):
+        for n, n_data in df_host_meta.groupby([it.host_field]):
             cap.update({n: n_data['cpu'].values[0]})
         cons = {}
-        df_containers.reset_index(drop=True, inplace=True)
-        for key, c_data in df_containers.groupby(['container_id', 'timestamp']):
+        df_indiv.reset_index(drop=True, inplace=True)
+        for key, c_data in df_indiv.groupby([it.indiv_field, it.tick_field]):
             cons.update({key: c_data['cpu'].values[0]})
 
         self.data = {None: {
-            'n': {None: df_containers['machine_id'].nunique()},
-            'c': {None: df_containers['container_id'].nunique()},
-            't': {None: df_containers['timestamp'].nunique()},
-            'N': {None: df_containers['machine_id'].unique().tolist()},
-            'C': {None: df_containers['container_id'].unique().tolist()},
+            'n': {None: df_indiv[it.host_field].nunique()},
+            'c': {None: df_indiv[it.indiv_field].nunique()},
+            't': {None: df_indiv[it.tick_field].nunique()},
+            'N': {None: df_indiv[it.host_field].unique().tolist()},
+            'C': {None: df_indiv[it.indiv_field].unique().tolist()},
             'cap': cap,
-            'T': {None: df_containers['timestamp'].unique().tolist()},
+            'T': {None: df_indiv[it.tick_field].unique().tolist()},
             'cons': cons,
         }}
 

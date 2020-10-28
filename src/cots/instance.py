@@ -10,10 +10,8 @@ parameters. Provide Instance-related methods.
 import math
 from typing import Dict
 
+from . import init as it
 from . import node as nd
-from . import container
-from .init import init_dfs, init_dfs_meta
-import math
 
 
 class Instance:
@@ -26,9 +24,9 @@ class Instance:
         nb_nodes: TODO: explain this data
         nb_containers: TODO: explain this data
         nb_clusters: TODO: explain this data
-        df_containers: TODO: explain this data
-        df_nodes: TODO: explain this data
-        df_nodes_meta: TODO: explain this data
+        df_indiv: TODO: explain this data
+        df_host: TODO: explain this data
+        df_host_meta: TODO: explain this data
         dict_id_n: TODO: explain this data
         dict_id_c: TODO: explain this data
     """
@@ -40,34 +38,40 @@ class Instance:
             data: Filesystem path to the input files
             nb_clusters: WARNING: seems useless !
         """
-        (self.df_containers,
-         self.df_nodes,
-         self.df_nodes_meta) = init_dfs(data)
+        (self.df_indiv,
+         self.df_host,
+         self.df_host_meta) = it.init_dfs(data)
 
-        self.time: int = self.df_containers['timestamp'].nunique()
+        # self.indiv_field = config['data']['individual_field']
+        # self.host_field = config['data']['host_field']
+        # self.tick_field = config['data']['tick_field']
+        # self.metrics = config['data']['metrics']
+        print(it.indiv_field)
+
+        self.time: int = self.df_indiv[it.tick_field].nunique()
         if config['analysis']['window_duration'] == 'default':
-            self.sep_time: int = math.floor(self.time / 2) + self.df_containers[
-                'timestamp'].min()
-            self.window_duration = self.df_containers.loc[
-                self.df_containers['timestamp'] <= self.sep_time
-            ]['timestamp'].nunique()
+            self.sep_time: int = math.floor(self.time / 2) + self.df_indiv[
+                it.tick_field].min()
+            self.window_duration = self.df_indiv.loc[
+                self.df_indiv[it.tick_field] <= self.sep_time
+            ][it.tick_field].nunique()
         else:
             self.window_duration = config['analysis']['window_duration']
-            self.sep_time: int = self.df_containers[
-                'timestamp'].min() + self.window_duration - 1
+            self.sep_time: int = self.df_indiv[
+                it.tick_field].min() + self.window_duration - 1
 
-        self.nb_nodes = self.df_nodes['machine_id'].nunique()
-        self.nb_containers = self.df_containers['container_id'].nunique()
+        self.nb_nodes = self.df_host_meta[it.host_field].nunique()
+        self.nb_containers = self.df_indiv[it.indiv_field].nunique()
         self.nb_clusters = config['clustering']['nb_clusters']
 
-        self.df_nodes.sort_values('timestamp', inplace=True)
-        self.df_containers.sort_values('timestamp', inplace=True)
-        self.df_nodes.set_index(
-            ['timestamp', 'machine_id'], inplace=True, drop=False)
-        self.df_containers.set_index(
-            ['timestamp', 'container_id'], inplace=True, drop=False)
+        self.df_host.sort_values(it.tick_field, inplace=True)
+        self.df_indiv.sort_values(it.tick_field, inplace=True)
+        self.df_host.set_index(
+            [it.tick_field, it.host_field], inplace=True, drop=False)
+        self.df_indiv.set_index(
+            [it.tick_field, it.indiv_field], inplace=True, drop=False)
 
-        self.dict_id_n = nd.build_dict_id_nodes(self.df_nodes_meta)
+        self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.dict_id_c = {}
 
         self.print()
@@ -96,7 +100,7 @@ class Instance:
         f.write('\n')
 
         f.write('### Variance before optimization ###\n')
-        var, global_var = nd.get_nodes_variance(self.df_nodes, self.time, 2)
+        var, global_var = nd.get_nodes_variance(self.df_host, self.time, 2)
         f.write(str(var))
         f.write('\nGlobal variance : %s\n' % str(global_var))
 
@@ -114,7 +118,7 @@ class Instance:
         f = open(filename, 'a')
 
         f.write('\n### Variance after optimization ###\n')
-        var, global_var = nd.get_nodes_variance(self.df_nodes, self.time, 2)
+        var, global_var = nd.get_nodes_variance(self.df_host, self.time, 2)
         f.write(str(var))
         f.write('\nGlobal variance : %s\n' % str(global_var))
 
@@ -122,6 +126,6 @@ class Instance:
 
     def get_node_from_container(self, container_id: str) -> str:
         """Get node ID from container ID."""
-        return (self.df_containers.loc[
-            self.df_containers['container_id'] == container_id
-        ]['machine_id'].to_numpy()[0])
+        return (self.df_indiv.loc[
+            self.df_indiv[it.indiv_field] == container_id
+        ][it.host_field].to_numpy()[0])

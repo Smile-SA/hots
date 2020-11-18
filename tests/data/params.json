@@ -1,7 +1,6 @@
 {
   "analysis": {
-    "window_duration": "default",
-    "step": 1
+    "window_duration": "default"
   },
   "clustering": {
     "algo": "hierarchical",
@@ -27,5 +26,8 @@
     "constraints_dual": ["mustLink"],
     "tol_dual_clust": 0.5,
     "tol_dual_place": 0.5
+  },
+  "plot": {
+    "renderer": "chromium"
   }
 }

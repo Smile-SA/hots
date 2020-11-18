@@ -42,12 +42,6 @@ class Instance:
          self.df_host,
          self.df_host_meta) = it.init_dfs(data)
 
-        # self.indiv_field = config['data']['individual_field']
-        # self.host_field = config['data']['host_field']
-        # self.tick_field = config['data']['tick_field']
-        # self.metrics = config['data']['metrics']
-        print(it.indiv_field)
-
         self.time: int = self.df_indiv[it.tick_field].nunique()
         if config['analysis']['window_duration'] == 'default':
             self.sep_time: int = math.floor(self.time / 2) + self.df_indiv[

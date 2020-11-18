@@ -18,6 +18,8 @@ import numpy as np
 import pandas as pd
 
 import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 import scipy.cluster.hierarchy as hac
 
@@ -178,21 +180,40 @@ def plot_clustering_containers_by_node_spec_cont(
 
 
 def plot_containers_groupby_nodes(df_indiv: pd.DataFrame,
-                                  max_cap: int, sep_time: int):
-    # TODO make metrics generic
+                                  max_cap: int, sep_time: int,
+                                  title: str = None, metrics: List[str] = None):
     """Plot containers consumption grouped by node."""
+    metrics = metrics or it.metrics
+    title = title or 'Node CPU consumption'
     fig, ax = plt.subplots()
-    fig.suptitle('Node CPU consumption')
+    fig.suptitle(title)
     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
 
     pvt_cpu = pd.pivot_table(df_indiv, columns=it.host_field,
                              index=df_indiv[it.tick_field],
-                             aggfunc='sum', values='cpu')
+                             aggfunc='sum', values=metrics[0])
     pvt_cpu.plot(ax=ax, legend=False)
     ax.axvline(x=sep_time, color='red', linestyle='--')
     ax.axhline(y=max_cap, color='red')
 
     plt.draw()
+
+
+def plot_containers_groupby_nodes_px(df_indiv: pd.DataFrame,
+                                     max_cap: int, sep_time: int,
+                                     metrics: List[str] = None):
+    """Plot containers consumption grouped by node."""
+    # TODO several metrics ?
+    # TODO line_shape in params
+    metrics = metrics or it.metrics
+    pvt = pd.pivot_table(df_indiv, columns=it.host_field,
+                         index=df_indiv[it.tick_field],
+                         aggfunc='sum', values=metrics[0])
+    fig = px.line(pvt, line_shape='spline',
+                  title='Host CPU consumption')
+    fig.add_hline(max_cap, line={'color': 'red'})
+    fig.add_vline(sep_time, line={'color': 'red', 'dash': 'dashdot'})
+    fig.show(it.renderer)
 
 
 def plot_dendrogram(z_all: np.array, k: int):
@@ -285,8 +306,9 @@ def update_containers_plot(fig, ax, df: pd.DataFrame, t: int):
 
 
 def init_nodes_plot(df_indiv: pd.DataFrame, sep_time: int,
-                    max_cap: int, metric: str = 'cpu'):
+                    max_cap: int, metric: str = None):
     """Initialize nodes consumption plot."""
+    metric = metric or it.metrics[0]
     fig, ax = plt.subplots()
     fig.suptitle('Nodes consumption evolution')
     ax.set_xlim([0, df_indiv[it.tick_field].max()])
@@ -297,7 +319,7 @@ def init_nodes_plot(df_indiv: pd.DataFrame, sep_time: int,
             df_indiv[it.tick_field] <= sep_time],
         columns=it.host_field,
         index=df_indiv[it.tick_field],
-        aggfunc='sum', values='cpu')
+        aggfunc='sum', values=metric)
     ax.plot(pvt)
     ax.axvline(x=sep_time, color='red', linestyle='--')
     ax.axhline(y=max_cap, color='red')
@@ -305,18 +327,65 @@ def init_nodes_plot(df_indiv: pd.DataFrame, sep_time: int,
     return (fig, ax)
 
 
-def update_nodes_plot(fig, ax, df: pd.DataFrame, t):
+def init_nodes_plot_px(df_indiv: pd.DataFrame, sep_time: int,
+                       max_cap: int, metric: str = None):
+    """Initialize nodes consumption plot."""
+    metric = metric or it.metrics[0]
+    pvt = pd.pivot_table(
+        df_indiv.loc[
+            df_indiv[it.tick_field] <= sep_time],
+        columns=it.host_field,
+        index=df_indiv[it.tick_field],
+        aggfunc='sum', values=metric)
+    fig = px.line(pvt, line_shape='spline',
+                  title='Host CPU consumption')
+    fig.add_hline(max_cap, line={'color': 'red'})
+    fig.add_vline(sep_time, line={'color': 'red', 'dash': 'dashdot'})
+    fig.show(it.renderer)
+    return fig
+
+
+def update_nodes_plot(fig, ax, df: pd.DataFrame, metric: str = None):
     """Update nodes consumption plot with new data."""
+    metric = metric or it.metrics[0]
     pvt_cpu = pd.pivot_table(
         df, columns=df[it.host_field],
-        index=df[it.tick_field], aggfunc='sum', values='cpu')
+        index=df[it.tick_field], aggfunc='sum', values=metric)
     ax.plot(pvt_cpu)
     plt.pause(0.5)
 
 
+def update_nodes_plot_px(fig, df: pd.DataFrame, metric: str = None):
+    """Update nodes consumption plot with new data."""
+    # TODO not open new tab each loop...
+    metric = metric or it.metrics[0]
+    pvt = pd.pivot_table(
+        df, columns=df[it.host_field],
+        index=df[it.tick_field], aggfunc='sum', values=metric)
+    for i, col in enumerate(fig.data):
+        fig.data[i]['y'] = pvt[pvt.columns[i]]
+        fig.data[i]['x'] = pvt.index
+    fig.show(it.renderer)
+
+
 def init_plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
-                         metric: str = 'cpu'):
+                         metric: str = None):
     """Initialize clustering plot."""
+    # TODO add title, same scale, smooth curves..
+    metric = metric or it.metrics[0]
+    fig, ax = plt.subplots()
+    fig.suptitle('Clustering evolution')
+    for row in df_clust.iterrows():
+        cluster = row[1]['cluster']
+        values = row[1].drop(labels='cluster')
+        ax.plot(values, colors[cluster], label=row[0])
+    return (fig, ax)
+
+
+def init_plot_clustering_axes(df_clust: pd.DataFrame, dict_id_c: Dict,
+                              metric: str = 'cpu'):
+    """Initialize clustering plot."""
+    # TODO add title, same scale, smooth curves..
     fig = plt.figure()
     fig.suptitle('Clustering evolution')
     gs = gridspec.GridSpec(df_clust.cluster.max() + 1, 1)
@@ -325,17 +394,45 @@ def init_plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
         ax_.append(fig.add_subplot(gs[k, 0]))
         ax_[k].set_title('Cluster n°%d' % k, pad=k)
         ax_[k].set(xlabel='time (s)', ylabel=metric)
-        ax_[k].grid()
+        # ax_[k].grid()
         for row in data.drop(labels='cluster', axis=1).iterrows():
             c_int = [k for k, v in dict_id_c.items() if v == row[0]][0]
-            ax_[k].plot(row[1], colors[k], label=c_int)
+            # ax_[k].plot(row[1], colors[k], label=c_int)
+            ax_[k].plot(row[1], label=c_int)
         ax_[k].legend()
     return (fig, ax_)
 
 
-def update_clustering_plot(fig, ax_,
-                           df_clust: pd.DataFrame, dict_id_c: Dict,
-                           metric: str = 'cpu'):
+def init_plot_clustering_px(df_clust: pd.DataFrame, dict_id_c: Dict,
+                            metric: str = None):
+    """Initialize clustering plot."""
+    metric = metric or it.metrics[0]
+    fig = make_subplots(rows=int(df_clust.cluster.max() + 1),
+                        shared_xaxes=True, cols=1)
+    for k, data in df_clust.groupby(['cluster']):
+        for row in data.drop(labels='cluster', axis=1).iterrows():
+            fig.append_trace(go.Scatter(
+                x=row[1].index,
+                y=row[1].values,
+                name=row[0]
+            ), row=k + 1, col=1)
+    fig.show(it.renderer)
+    return fig
+
+
+def update_clustering_plot(fig, ax, df_clust: pd.DataFrame,
+                           dict_id_c: Dict, metric: str = None):
+    """Update clustering plot with new data."""
+    metric = metric or it.metrics[0]
+    for row in df_clust.iterrows():
+        cluster = row[1]['cluster']
+        values = row[1].drop(labels='cluster')
+        ax.plot(values, colors[cluster], label=row[0])
+
+
+def update_clustering_plot_axes(fig, ax_,
+                                df_clust: pd.DataFrame, dict_id_c: Dict,
+                                metric: str = 'cpu'):
     """Update clustering plot with new data."""
     for k, data in df_clust.groupby(['cluster']):
         for row in data.drop(labels='cluster', axis=1).iterrows():
@@ -343,18 +440,33 @@ def update_clustering_plot(fig, ax_,
             ax_[k].plot(row[1], colors[k], label=c_int)
 
 
-# def plot_nodes_adding_containers(df_indiv: pd.DataFrame,
-#                                   max_cap: int, sep_time: int):
-#     """Plot nodes consumption showing allocated containers."""
-#     fig, ax = plt.subplots()
-#     fig.suptitle('Node CPU consumption')
-#     # TODO generic
-#     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
+def update_clustering_plot_px(
+        fig, df_clust: pd.DataFrame, dict_id_c: Dict, tick: int = 1,
+        metric: str = None):
+    """Update clustering plot with new data."""
+    pass
+    # for k, data in df_clust.groupby(['cluster']):
+    # for row in data.drop(labels='cluster', axis=1).iterrows():
 
-def plot_plotly(df_indiv: pd.DataFrame):
-    """Test of plotting with plotly."""
-    fig = px.line(df_indiv, x=it.tick_field, y=it.metrics[0],
-                  color=it.host_field,
-                  line_group=it.indiv_field, hover_name=it.indiv_field,
-                  line_shape='spline', render_mode='svg')
-    fig.show()
+    # for i, col in enumerate(fig.data):
+    # c = fig.data[i]['name']
+    # c_df = df_clust.loc[c]
+    # c_clust = df_clust.loc[c, 'cluster']
+    # c_df = c_df.drop(labels='cluster', axis=0)
+    # print(fig.data[i], i)
+    # if fig.data[i]['row'] != c_clust:
+    #     fig.data[i]['row'] = c_clust
+    #     print('je change')
+
+    # fig.data[i]['y'] = np.append(fig.data[i]['y'], c_df.values[-tick:])
+    # fig.data[i]['x'] = np.append(fig.data[i]['x'], c_df.index[-tick:])
+
+    # fig.show(it.renderer)
+
+    # def plot_nodes_adding_containers(df_indiv: pd.DataFrame,
+    #                                   max_cap: int, sep_time: int):
+    #     """Plot nodes consumption showing allocated containers."""
+    #     fig, ax = plt.subplots()
+    #     fig.suptitle('Node CPU consumption')
+    #     # TODO generic
+    #     ax.set_ylim([0, max_cap + (max_cap * 0.2)])

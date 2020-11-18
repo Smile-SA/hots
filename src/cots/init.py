@@ -13,10 +13,6 @@ from typing import Dict, Tuple
 
 import pandas as pd
 
-# TODO list parameters here, or file to give in argument ?
-
-# Global variables #
-
 # Functions definitions #
 
 
@@ -75,14 +71,18 @@ def read_params(params_file: str) -> Dict:
     return config
 
 
-def define_fields(config_data: Dict):
+def define_globals(config: Dict):
     """Define the fields, as global variables, from config."""
     global indiv_field
     global host_field
     global tick_field
     global metrics
 
-    indiv_field = config_data['individual_field']
-    host_field = config_data['host_field']
-    tick_field = config_data['tick_field']
-    metrics = config_data['metrics']
+    global renderer
+
+    indiv_field = config['data']['individual_field']
+    host_field = config['data']['host_field']
+    tick_field = config['data']['tick_field']
+    metrics = config['data']['metrics']
+
+    renderer = config['plot']['renderer']

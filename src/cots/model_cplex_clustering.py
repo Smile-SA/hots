@@ -52,8 +52,8 @@ class CPXInstance:
     # TODO parallelize all building
     def __init__(self, df_indiv: pd.DataFrame,
                  df_host_meta: pd.DataFrame, nb_clusters: int,
-                 dict_id_c: Dict, dict_id_n: Dict,
-                 obj_func: int, w: np.array = None, u: np.array = None,
+                 dict_id_c: Dict, dict_id_n: Dict, obj_func: int,
+                 w: np.array = None, u: np.array = None, v: np.array = None,
                  dv: np.array = None, nb_nodes: int = None,
                  pb_number: int = None):
         """Initialize CPXInstance with data in Instance."""
@@ -79,7 +79,7 @@ class CPXInstance:
         self.build_names()
         self.build_variables()
         self.build_data(df_indiv, df_host_meta, dict_id_c, dict_id_n)
-        self.build_constraints(w, u)
+        self.build_constraints(w, u, v)
         self.build_objective(w, u, dv)
 
         self.relax_mdl = make_relaxed_model(self.mdl)
@@ -198,7 +198,7 @@ class CPXInstance:
                 df_host_meta[it.host_field] == dict_id_n[n],
                 ['cpu', 'mem']].to_numpy()[0]
 
-    def build_constraints(self, w, u):
+    def build_constraints(self, w, u, v):
         """Build all model constraints."""
         if self.pb_number == 0:
             self.placement_constraints()
@@ -207,9 +207,10 @@ class CPXInstance:
             self.placement_constraints()
         elif self.pb_number == 2:
             self.clustering_constraints(self.nb_clusters, w)
-            self.add_adjacency_constraints(u)
+            self.add_adjacency_clust_constraints(u)
         elif self.pb_number == 3:
             self.placement_constraints()
+            self.add_adjacency_place_constraints(v)
             # Constraints fixing z
             # for (i, j) in combinations(self.containers_names, 2):
             #     self.mdl.add_constraint(
@@ -371,13 +372,22 @@ class CPXInstance:
         #         'max_dist_' + str(i) + '_' + str(j)
         #     )
 
-    def add_adjacency_constraints(self, u):
+    def add_adjacency_clust_constraints(self, u):
         """Add constraints fixing u variables from adjacency matrice."""
         for (c1, c2) in combinations(self.containers_names, 2):
             if u[c1, c2]:
                 self.mdl.add_constraint(
                     self.mdl.u[c1, c2] == 1,
-                    'mustLink_' + str(c2) + '_' + str(c1)
+                    'mustLinkC_' + str(c2) + '_' + str(c1)
+                )
+
+    def add_adjacency_place_constraints(self, v):
+        """Add constraints fixing v variables from adjacency matrice."""
+        for (c1, c2) in combinations(self.containers_names, 2):
+            if v[c1, c2]:
+                self.mdl.add_constraint(
+                    self.mdl.v[c1, c2] == 1,
+                    'mustLinkP_' + str(c2) + '_' + str(c1)
                 )
 
     def clustering_constraints_representative(self, nb_clusters):
@@ -529,26 +539,6 @@ class CPXInstance:
                 start_sol[self.mdl.a[node_c]] = 1
         self.current_sol = SolveSolution(self.mdl, start_sol)
         self.mdl.add_mip_start(self.current_sol)
-
-    def get_obj_value_heuristic(self):
-        """Get objective value of heuristic solution (max delta)."""
-        # TODO adaptative ... (retrieve expr from obj ?)
-        obj_val = 0.0
-
-        for n in self.nodes_names:
-            if self.current_sol.get_value(self.mdl.a[n]):
-                max_n = 0.0
-                mean_n = 0.0
-                for t in range(self.time_window):
-                    total_t = 0.0
-                    for c in self.containers_names:
-                        if self.current_sol.get_value(self.mdl.x[c, n]):
-                            total_t += self.containers_data[c][t][1]
-                    if total_t > max_n:
-                        max_n = total_t
-                    mean_n += total_t
-                obj_val += max_n - (mean_n / self.time_window)
-        print('Objective value : ', obj_val)
 
     def solve(self, my_mdl: Model, verbose: bool = False):
         """Solve the given problem."""
@@ -772,6 +762,37 @@ class CPXInstance:
 
 # Functions related to CPLEX #
 
+def get_obj_value_heuristic(df_indiv: pd.DataFrame,
+                            t_min: int = None, t_max: int = None):
+    """Get objective value of current solution (max delta)."""
+    t_min = t_min or df_indiv[it.tick_field].min()
+    t_max = t_max or df_indiv[it.tick_field].max()
+    df_indiv = df_indiv[
+        (df_indiv[it.tick_field] >= t_min)
+        & (df_indiv[it.tick_field] <= t_max)]
+    df_indiv.reset_index(drop=True, inplace=True)
+    obj_val = 0.0
+    for n, n_data in df_indiv.groupby(
+            [it.host_field]):
+        max_n = 0.0
+        min_n = -1.0
+        # mean_n = 0.0
+        # nb_t = 0
+        for t, nt_data in n_data.groupby(it.tick_field):
+            if nt_data[it.metrics[0]].sum() > max_n:
+                max_n = nt_data[it.metrics[0]].sum()
+            if (nt_data[it.metrics[0]].sum() < min_n) or (
+                    min_n < 0.0):
+                min_n = nt_data[it.metrics[0]].sum()
+        #     mean_n += nt_data[it.metrics[0]].sum()
+        #     nb_t += 1
+        # delta_n = max_n - (mean_n / nb_t)
+        delta_n = max_n - min_n
+        if obj_val < delta_n:
+            obj_val = delta_n
+    print('Objective value : ', obj_val)
+
+
 def print_constraints(mdl: Model):
     """Print all the constraints."""
     for ct in mdl.iter_constraints():
@@ -839,7 +860,8 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                 #       constraints_dual_values[ct.name],
                 #       constraints_dual_values[ct.name]
                 #       + tol * constraints_dual_values[ct.name])
-                mvg_containers.append(int(indiv.group()))
+                if int(indiv.group()) not in mvg_containers:
+                    mvg_containers.append(int(indiv.group()))
     return mvg_containers
 
 

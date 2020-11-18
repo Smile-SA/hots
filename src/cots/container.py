@@ -17,6 +17,8 @@ import numpy as np
 
 import pandas as pd
 
+import plotly.express as px
+
 from . import init as it
 from . import plot
 from .instance import Instance
@@ -35,11 +37,28 @@ def plot_data_all_containers(df_indiv: pd.DataFrame, metric: str):
     plt.draw()
 
 
+def plot_all_data_all_containers_px(
+        df_indiv: pd.DataFrame,
+        sep_time: int, metrics: List[str] = None):
+    """Plot all metrics containers consumption."""
+    # TODO several metrics ?
+    # TODO line_shape in params
+    metrics = metrics or it.metrics
+    fig = px.line(df_indiv, x=it.tick_field, y=metrics[0],
+                  color=it.host_field,
+                  line_group=it.indiv_field, hover_name=it.indiv_field,
+                  line_shape='spline', render_mode='svg',
+                  title='Resource usage on all individuals')
+    fig.add_vline(sep_time, line={'color': 'red', 'dash': 'dashdot'})
+    fig.show(it.renderer)
+
+
 def plot_all_data_all_containers(
         df_indiv: pd.DataFrame,
-        metrics: List[str] = None, sep_time: int = 72):
+        sep_time: int, metrics: List[str] = None):
     """Plot all metrics containers consumption."""
-    metrics = metrics or ['cpu']
+    # TODO several metrics ?
+    metrics = metrics or it.metrics
     fig = plt.figure()
     fig.suptitle('Resource usage on all containers')
     gs = gridspec.GridSpec(len(metrics), 1)

@@ -48,7 +48,9 @@ def main(data, params):
     main_time = time.time()
 
     config = it.read_params(params)
-    it.define_fields(config['data'])
+    it.define_globals(config)
+    plt.style.use('bmh')
+    # pd.options.plotting.backend = 'plotly'  # usefull ?
 
     # Init containers & nodes data, then Instance
     my_instance = Instance(data, config)
@@ -64,10 +66,10 @@ def main(data, params):
 
     plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
-        my_instance.df_host_meta.cpu.max(),
+        my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time)
 
-    plt.show(block=False)
+    # plt.show(block=False)
     # input('Press enter to continue ...')
 
     # Get dataframe of current part
@@ -107,7 +109,7 @@ def main(data, params):
     print('Allocation time : %fs\n' % (time.time() - allocation_time))
 
     # Plot clustering & allocation for 1st part
-    plot_before_loop = True
+    plot_before_loop = False
     if plot_before_loop:
         spec_containers = False
         if spec_containers:
@@ -126,7 +128,25 @@ def main(data, params):
 
     plt.show(block=False)
 
-    input('\nEnd of first part, press enter to enter loop ...\n')
+    # Print real objective value
+    # mc.get_obj_value_heuristic(my_instance.df_indiv,
+    #                            working_df_indiv[it.tick_field].min(),
+    #                            working_df_indiv[it.tick_field].max())
+
+    # Plot heuristic result without loop
+    plot.plot_containers_groupby_nodes(
+        my_instance.df_indiv,
+        my_instance.df_host_meta[it.metrics[0]].max(),
+        my_instance.sep_time,
+        title='Node consumption after heuristic without loop')
+
+    # Print real objective value of second part if no loop
+    print('Real objective value of second part without loop')
+    mc.get_obj_value_heuristic(my_instance.df_indiv,
+                               my_instance.sep_time,
+                               my_instance.df_indiv[it.tick_field].max())
+
+    # input('\nEnd of first part, press enter to enter loop ...\n')
 
     # loop 'streaming' progress
     streaming_eval(my_instance, df_indiv_clust, labels_,
@@ -138,8 +158,15 @@ def main(data, params):
     # Plot after the loop
     plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
-        my_instance.df_host_meta.cpu.max(),
-        my_instance.sep_time)
+        my_instance.df_host_meta[it.metrics[0]].max(),
+        my_instance.sep_time,
+        title='Node consumption with loop')
+
+    # Print real objective value
+    print('Real objective value of second part with loop')
+    mc.get_obj_value_heuristic(my_instance.df_indiv,
+                               my_instance.sep_time,
+                               my_instance.df_indiv[it.tick_field].max())
 
     print('Total computing time : %fs' % (time.time() - main_time))
 
@@ -153,7 +180,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
         my_instance.df_indiv, my_instance.sep_time,
-        my_instance.df_host_meta.cpu.max())
+        my_instance.df_host_meta[it.metrics[0]].max()
+    )
     fig_clust, ax_clust = plot.init_plot_clustering(
         df_indiv_clust, my_instance.dict_id_c)
 
@@ -176,11 +204,13 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         w = clt.build_similarity_matrix(df_clust)
         df_clust['cluster'] = labels_
         u = clt.build_adjacency_matrix(labels_)
+        v = alloc.build_placement_adj_matrix(
+            working_df_indiv, my_instance.dict_id_c)
 
         # update clustering & node consumption plot
         plot.update_clustering_plot(
             fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
-        plot.update_nodes_plot(fig_node, ax_node, working_df_indiv, tmax)
+        plot.update_nodes_plot(fig_node, ax_node, working_df_indiv)
         # TODO not very practical
         # plot.plot_clustering_containers_by_node(
         #     working_df_indiv, my_instance.dict_id_c, labels_)
@@ -277,11 +307,11 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                                      my_instance.dict_id_c,
                                      my_instance.dict_id_n,
                                      obj_func=current_obj_func,
-                                     w=w, u=u, dv=dv, pb_number=3)
+                                     w=w, u=u, v=v, dv=dv, pb_number=3)
         print('\n')
-        print('Adding constraints from heuristic ...\n')
-        cplex_model.add_constraint_heuristic(
-            containers_grouped, my_instance)
+        # print('Adding constraints from heuristic ...\n')
+        # cplex_model.add_constraint_heuristic(
+        #     containers_grouped, my_instance)
         print('Solving linear relaxation ...')
         cplex_model.solve(cplex_model.relax_mdl)
         mc.print_all_dual(cplex_model.relax_mdl,
@@ -315,8 +345,9 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #         print('End of input.')
         #         break
         if len(moving_containers) >= 1:
-            alloc.move_list_containers(moving_containers,
-                                       working_df_indiv, my_instance)
+            alloc.move_list_containers(moving_containers, my_instance,
+                                       working_df_indiv[it.tick_field].min(),
+                                       working_df_indiv[it.tick_field].max())
 
         else:
             print('No container to move : we do nothing ...\n')

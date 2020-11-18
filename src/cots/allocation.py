@@ -13,7 +13,8 @@ Actually, there are 3 differents allocation techniques :
 """
 
 import math
-from typing import List
+from itertools import combinations
+from typing import Dict, List
 
 import numpy as np
 
@@ -435,47 +436,46 @@ def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
     return conso_nodes, cluster_done
 
 
-def move_list_containers(mvg_conts: List, working_df_indiv: pd.DataFrame,
-                         instance: Instance):
+def move_list_containers(mvg_conts: List, instance: Instance,
+                         tmin: int, tmax: int):
     """Move the list of containers to move."""
     # Remove all moving containers from nodes first
     for mvg_cont in mvg_conts:
-        old_id = working_df_indiv.loc[
-            working_df_indiv[it.indiv_field] == instance.dict_id_c[mvg_cont]
+        old_id = instance.df_indiv.loc[
+            instance.df_indiv[it.indiv_field] == instance.dict_id_c[mvg_cont]
         ].machine_id.to_numpy()[0]
         remove_container_node(old_id, instance.dict_id_c[mvg_cont], instance)
     # Assign them to a new node
     for mvg_cont in mvg_conts:
-        move_container(mvg_cont, working_df_indiv, instance)
+        move_container(mvg_cont, instance, tmin, tmax)
 
 
-def move_container(mvg_cont: int, working_df_indiv: pd.DataFrame,
-                   instance: Instance):
+# TODO what to do if can't open another node
+def move_container(mvg_cont: int, instance: Instance, tmin: int, tmax: int):
     """Move `mvg_cont` to another node."""
     print('Moving container :', mvg_cont)
-    tmin = working_df_indiv[it.tick_field].min()
-    tmax = working_df_indiv[it.tick_field].max()
+    working_df_indiv = instance.df_indiv[
+        (instance.
+         df_indiv[it.tick_field] >= tmin) & (
+            instance.df_indiv[it.tick_field] <= tmax)]
     duration = tmax - tmin + 1
     nb_open_nodes = working_df_indiv[it.host_field].nunique()
-    working_df_node = instance.df_host.loc[
-        (instance.df_host[it.tick_field] >= tmin) & (
-            instance.df_host[it.tick_field] <= tmax
-        )
-    ]
-    conso_nodes = np.zeros((working_df_node[it.host_field].nunique(), duration))
+    conso_nodes = np.zeros((working_df_indiv[it.host_field].nunique(), duration))
     n_int = 0
-    for node, data in working_df_node.groupby(working_df_node[it.host_field]):
+    for node, data in working_df_indiv.groupby(it.host_field):
         if n_int >= nb_open_nodes:
             break
         n = [k for k, v in instance.
              dict_id_n.items() if v == node][0]
-        conso_nodes[n] = data['cpu'].to_numpy()
+        t_int = 0
+        for time, t_data in data.groupby(data[it.tick_field]):
+            conso_nodes[n, t_int] = t_data[it.metrics[0]].sum()
+            t_int += 1
         n_int += 1
-
     cons_c = working_df_indiv.loc[
         working_df_indiv[
             it.indiv_field] == instance.dict_id_c[mvg_cont]
-    ]['cpu'].to_numpy()
+    ][it.metrics[0]].to_numpy()
     n = working_df_indiv.loc[
         working_df_indiv[
             it.indiv_field] == instance.dict_id_c[mvg_cont]
@@ -485,8 +485,9 @@ def move_container(mvg_cont: int, working_df_indiv: pd.DataFrame,
     print('He was on %s' % n)
     cap_node = instance.df_host_meta.loc[
         instance.df_host_meta[it.host_field] == n
-    ]['cpu'].to_numpy()[0]
+    ][it.metrics[0]].to_numpy()[0]
     done = False
+    n_count = 1
     while not done:
         # TODO check n <= min_nodes or infeasibility
         if np.all(np.less((conso_nodes[n_int] + cons_c), cap_node)):
@@ -496,9 +497,33 @@ def move_container(mvg_cont: int, working_df_indiv: pd.DataFrame,
                 instance)
             done = True
         else:
-            n_int = (n_int + 1) % nb_open_nodes
+            n_count += 1
+            if n_count > nb_open_nodes:
+                print('We need to open a new node')
+                nb_open_nodes += 1
+                conso_nodes = np.append(
+                    conso_nodes, [np.zeros(duration)], axis=0)
+                n_int = nb_open_nodes - 1
+            else:
+                n_int = (n_int + 1) % nb_open_nodes
             cap_node = instance.df_host_meta.loc[
                 instance.
                 df_host_meta[it.host_field] == instance.dict_id_n[n_int]
-            ]['cpu'].to_numpy()[0]
+            ][it.metrics[0]].to_numpy()[0]
     print('He can go on %s' % instance.dict_id_n[n_int])
+
+
+def build_placement_adj_matrix(
+        df_indiv: pd.DataFrame, dict_id_c: Dict) -> np.array:
+    """Build the adjacency matrix of placement."""
+    nodes_ = [None] * df_indiv[it.indiv_field].nunique()
+    for c in range(len(nodes_)):
+        nodes_[c] = df_indiv.loc[
+            df_indiv[it.indiv_field] == dict_id_c[c]][
+                it.host_field].to_numpy()[0]
+    v = np.zeros((len(nodes_), len(nodes_)))
+    for (i, j) in combinations(range(len(nodes_)), 2):
+        if nodes_[i] == nodes_[j]:
+            v[i, j] = 1
+            v[j, i] = 1
+    return v

@@ -50,7 +50,6 @@ def main(data, params):
     config = it.read_params(params)
     it.define_globals(config)
     plt.style.use('bmh')
-    # pd.options.plotting.backend = 'plotly'  # usefull ?
 
     # Init containers & nodes data, then Instance
     my_instance = Instance(data, config)
@@ -64,10 +63,18 @@ def main(data, params):
     ctnr.plot_all_data_all_containers(
         my_instance.df_indiv, sep_time=my_instance.sep_time)
 
+    alloc.allocation_spread(my_instance, 4)
+
     plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time)
+
+    # Print real objective value of second part if no loop
+    print('Real objective value of second part without heuristic and loop')
+    mc.get_obj_value_heuristic(my_instance.df_indiv,
+                               my_instance.sep_time,
+                               my_instance.df_indiv[it.tick_field].max())
 
     # plt.show(block=False)
     # input('Press enter to continue ...')
@@ -104,7 +111,7 @@ def main(data, params):
     # Allocation
     allocation_time = time.time()
     containers_grouped = alloc.allocation_distant_pairwise(
-        my_instance, cluster_var_matrix, labels_)
+        my_instance, cluster_var_matrix, labels_, nb_nodes=4)
 
     print('Allocation time : %fs\n' % (time.time() - allocation_time))
 
@@ -327,7 +334,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             print('Checking for changes in dual values ...')
             print(constraints_dual_values)
             moving_containers = mc.get_moving_containers(
-                cplex_model.relax_mdl, constraints_dual_values, tol_place)
+                cplex_model.relax_mdl, constraints_dual_values,
+                tol_place, my_instance.nb_containers)
             print(moving_containers)
 
         # Move containers by hand
@@ -352,7 +360,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         else:
             print('No container to move : we do nothing ...\n')
 
-        input('\nPress any key to progress in time ...\n')
+        # input('\nPress any key to progress in time ...\n')
         tmin += tick
         tmax += tick
         if tmax >= my_instance.time:

@@ -60,6 +60,7 @@ def plot_all_data_all_containers(
         sep_time: int, metrics: List[str] = None):
     """Plot all metrics containers consumption."""
     # TODO several metrics ?
+    plt.style.use('bmh')
     metrics = metrics or it.metrics
     fig = plt.figure()
     fig.suptitle('Resource usage on all containers')
@@ -70,12 +71,12 @@ def plot_all_data_all_containers(
         ax_.append(fig.add_subplot(gs[ai, 0]))
         ax_[ai].set_title(metric)
         ax_[ai].set(xlabel='time (s)', ylabel=metric)
-        ax_[ai].grid()
+        # ax_[ai].grid()
         temp_df = df_indiv.reset_index(drop=True)
         pvt = pd.pivot_table(temp_df, columns=it.indiv_field,
                              index=it.tick_field, aggfunc='sum', values=metric)
-        # pvt.plot(ax=ax_[ai], legend=False)
-        pvt.plot(ax=ax_[ai])
+        pvt.plot(ax=ax_[ai], legend=False)
+        # pvt.plot(ax=ax_[ai])
         ax_[ai].axvline(x=sep_time, color='red', linestyle='--')
         ai += 1
 

@@ -3,8 +3,8 @@
     "window_duration": "default"
   },
   "clustering": {
-    "algo": "hierarchical",
-    "nb_clusters": 2
+    "algo": "kmeans",
+    "nb_clusters": 5
   },
   "data": {
     "individuals_file": "container_usage.csv",

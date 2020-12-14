@@ -137,6 +137,7 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
                 pbar.update(2)
             else:
                 i_n += 1
+                print(instance.dict_id_n)
                 if i_n >= min_nodes:
                     min_nodes += 1
                     n = i_n
@@ -346,28 +347,34 @@ def allocation_ffd(instance: Instance,
 
 # TODO adapt to dfs
 # Spread technique for allocation
-# def allocation_spread(instance, nodes_available):
-
-#     services_done_ = np.zeros(instance.nb_services)
-#     assign_s = 0
-#     i_s = 0
-#     for service in instance.services_:
-#         assign = False
-
-#         while not assign:
-#             if not enough_resource(
-#                     nodes_available[assign_s, :, :],
-#                     service, instance.nodes_init[assign_s].ram,
-#                     instance.nodes_init[assign_s].cpu):
-#                 assign_s = (assign_s + 1) % instance.nb_nodes
-#             else:
-#                 assign = True
-#                 assign_service_node(nodes_available[assign_s, :, :], service)
-#         services_done_[i_s] = assign_s + 1
-#         assign_s = (assign_s + 1) % instance.nb_nodes
-#         i_s = i_s + 1
-
-#     return (services_done_)
+def allocation_spread(instance: Instance, nb_nodes: int):
+    """Dispatch containers on nodes (spread technique)."""
+    total_time = instance.sep_time
+    conso_nodes = np.zeros((instance.nb_nodes, total_time))
+    n = 0
+    for c in instance.df_indiv[it.indiv_field].unique():
+        cons_c = instance.df_indiv.loc[
+            instance.df_indiv[it.indiv_field] == c
+        ]['cpu'].to_numpy()[:total_time]
+        cap_node = instance.df_host_meta.loc[
+            instance.
+            df_host_meta[it.host_field] == instance.dict_id_n[n]
+        ]['cpu'].to_numpy()[0]
+        done = False
+        while not done:
+            # TODO check n <= min_nodes or infeasibility
+            if np.all(np.less((conso_nodes[n] + cons_c), cap_node)):
+                conso_nodes[n] += cons_c
+                done = True
+                assign_container_node(
+                    instance.dict_id_n[n], c, instance)
+            else:
+                n = (n + 1) % nb_nodes
+                cap_node = instance.df_host_meta.loc[
+                    instance.
+                    df_host_meta[it.host_field] == instance.dict_id_n[n]
+                ]['cpu'].to_numpy()[0]
+        n = (n + 1) % nb_nodes
 
 
 # TODO consider 85% usage now ?

@@ -196,7 +196,7 @@ def plot_containers_groupby_nodes(df_indiv: pd.DataFrame,
     ax.axvline(x=sep_time, color='red', linestyle='--')
     ax.axhline(y=max_cap, color='red')
 
-    plt.draw()
+    # plt.draw()
 
 
 def plot_containers_groupby_nodes_px(df_indiv: pd.DataFrame,
@@ -375,8 +375,9 @@ def init_plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
     metric = metric or it.metrics[0]
     fig, ax = plt.subplots()
     fig.suptitle('Clustering evolution')
+    print(df_clust['cluster'].nunique())
     for row in df_clust.iterrows():
-        cluster = row[1]['cluster']
+        cluster = int(row[1]['cluster'])
         values = row[1].drop(labels='cluster')
         ax.plot(values, colors[cluster], label=row[0])
     return (fig, ax)
@@ -425,7 +426,7 @@ def update_clustering_plot(fig, ax, df_clust: pd.DataFrame,
     """Update clustering plot with new data."""
     metric = metric or it.metrics[0]
     for row in df_clust.iterrows():
-        cluster = row[1]['cluster']
+        cluster = int(row[1]['cluster'])
         values = row[1].drop(labels='cluster')
         ax.plot(values, colors[cluster], label=row[0])
 

@@ -847,21 +847,27 @@ def dual_changed(mdl: Model, names: List,
 
 # TODO to improve : very low dual values can change easily
 def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
-                          tol: float) -> List:
+                          tol: float, nb_containers: int) -> List:
     """Get the list of moving containers from constraints dual values."""
-    mvg_containers = []
-    for ct in mdl.iter_linear_constraints():
-        if ct.name in constraints_dual_values:
-            if ct.dual_value > (
-                    constraints_dual_values[ct.name]
-                    + tol * constraints_dual_values[ct.name]):
-                indiv = re.search(r'\d+$', ct.name)
-                # print(indiv, indiv.group(),
-                #       constraints_dual_values[ct.name],
-                #       constraints_dual_values[ct.name]
-                #       + tol * constraints_dual_values[ct.name])
-                if int(indiv.group()) not in mvg_containers:
-                    mvg_containers.append(int(indiv.group()))
+    done = False
+    while not done:
+        mvg_containers = []
+        for ct in mdl.iter_linear_constraints():
+            if ct.name in constraints_dual_values:
+                if ct.dual_value > (
+                        constraints_dual_values[ct.name]
+                        + tol * constraints_dual_values[ct.name]):
+                    indiv = re.search(r'\d+$', ct.name)
+                    # print(indiv, indiv.group(),
+                    #       constraints_dual_values[ct.name],
+                    #       constraints_dual_values[ct.name]
+                    #       + tol * constraints_dual_values[ct.name])
+                    if int(indiv.group()) not in mvg_containers:
+                        mvg_containers.append(int(indiv.group()))
+        if len(mvg_containers) < (nb_containers / 5):
+            done = True
+        else:
+            tol = tol + 0.2
     return mvg_containers
 
 

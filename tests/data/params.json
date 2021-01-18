@@ -29,5 +29,15 @@
   },
   "plot": {
     "renderer": "chromium"
+  },
+  "allocation":{
+    "constraints":{
+      "load_threshold": 0.5,
+      "max_amplitude": 0.5
+    },
+    "objective":{
+      "open_nodes": 1,
+      "target_load_CPU": 0.8 
+    }
   }
 }

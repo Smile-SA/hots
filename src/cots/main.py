@@ -218,6 +218,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
         print('\n')
 
+        # Allocation part :
+
         # evaluate clustering solution from optim model
         # TODO update model from existing one, not creating new one each time
         cplex_model = mc.CPXInstance(working_df_indiv,

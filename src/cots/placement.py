@@ -1,11 +1,11 @@
 """
 =========
-cots allocation
+cots placement
 =========
 
-Provide allocation heuristics and all allocation-related methods
+Provide placement heuristics and all placement-related methods
 (check capacity, change assignment ...).
-Actually, there are 3 differents allocation techniques :
+Actually, there are 3 differents placement techniques :
     - ``allocation_distant_pairwise`` : try to co-localize containers
     belonging to ``distant`` clusters ;
     - ``allocation_ffd`` : based on FFD bin-packing technique

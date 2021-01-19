@@ -23,7 +23,6 @@ from matplotlib import pyplot as plt
 import pandas as pd
 
 # Personnal imports
-from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
@@ -31,6 +30,7 @@ from . import init as it
 # TODO set in params
 # from . import model_cplex as mc
 from . import model_cplex_clustering as mc
+from . import placement as place
 from . import plot
 from .instance import Instance
 
@@ -103,7 +103,7 @@ def main(data, params):
 
     # Allocation
     allocation_time = time.time()
-    containers_grouped = alloc.allocation_distant_pairwise(
+    containers_grouped = place.allocation_distant_pairwise(
         my_instance, cluster_var_matrix, labels_)
 
     print('Allocation time : %fs\n' % (time.time() - allocation_time))
@@ -204,7 +204,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         w = clt.build_similarity_matrix(df_clust)
         df_clust['cluster'] = labels_
         u = clt.build_adjacency_matrix(labels_)
-        v = alloc.build_placement_adj_matrix(
+        v = place.build_placement_adj_matrix(
             working_df_indiv, my_instance.dict_id_c)
 
         # update clustering & node consumption plot
@@ -295,7 +295,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #         cplex_model.update_max_nodes_ct(current_nb_nodes)
 
         #         # TODO adapt existing solution, but not from scratch
-        #         containers_grouped = alloc.allocation_distant_pairwise(
+        #         containers_grouped = place.allocation_distant_pairwise(
         #             my_instance, cluster_var_matrix, labels_,
         #             cplex_model.max_open_nodes)
         #     else:
@@ -347,7 +347,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #         print('End of input.')
         #         break
         if len(moving_containers) >= 1:
-            alloc.move_list_containers(moving_containers, my_instance,
+            place.move_list_containers(moving_containers, my_instance,
                                        working_df_indiv[it.tick_field].min(),
                                        working_df_indiv[it.tick_field].max())
 

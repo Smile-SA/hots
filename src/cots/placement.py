@@ -38,11 +38,11 @@ def assign_container_node(node_id: str, container_id: str, instance: Instance,
     ].machine_id.to_numpy()[0]
 
     instance.df_host.loc[
-        instance.df_host[it.host_field] == node_id, ['cpu', 'mem']
+        instance.df_host[it.host_field] == node_id, it.metrics
     ] = instance.df_host.loc[
-        instance.df_host[it.host_field] == node_id, ['cpu', 'mem']
+        instance.df_host[it.host_field] == node_id, it.metrics
     ].to_numpy() + instance.df_indiv.loc[
-        instance.df_indiv[it.indiv_field] == container_id, ['cpu', 'mem']
+        instance.df_indiv[it.indiv_field] == container_id, it.metrics
     ].to_numpy()
 
     if remove:
@@ -56,11 +56,11 @@ def assign_container_node(node_id: str, container_id: str, instance: Instance,
 def remove_container_node(node_id: str, container_id: str, instance: Instance):
     """Remove container from node."""
     instance.df_host.loc[
-        instance.df_host[it.host_field] == node_id, ['cpu', 'mem']
+        instance.df_host[it.host_field] == node_id, it.metrics
     ] = instance.df_host.loc[
-        instance.df_host[it.host_field] == node_id, ['cpu', 'mem']
+        instance.df_host[it.host_field] == node_id, it.metrics
     ].to_numpy() - instance.df_indiv.loc[
-        instance.df_indiv[it.indiv_field] == container_id, ['cpu', 'mem']
+        instance.df_indiv[it.indiv_field] == container_id, it.metrics
     ].to_numpy()
 
 
@@ -195,6 +195,7 @@ def allocation_distant_pairwise(
 
         # > 1 cluster remaining -> co-localize 2 more distant
         else:
+            print(cluster_var_matrix_copy)
             valid_idx = np.where(cluster_var_matrix_copy.flatten() >= lb)[0]
             min_idx = valid_idx[cluster_var_matrix_copy.flatten()[
                 valid_idx].argmin()]
@@ -377,29 +378,40 @@ def allocation_spread(instance: Instance, nb_nodes: int):
         n = (n + 1) % nb_nodes
 
 
-# TODO consider 85% usage now ?
+# TODO consider 85% usage now ? maybe add parameter
+# TODO make it generic with metrics
 # Try to find minimum number of nodes needed
-def nb_min_nodes(instance: Instance, total_time: int) -> (float, float):
+def nb_min_nodes(instance: Instance, total_time: int) -> float:
     """Compute the minimum number of nodes needed to support the load."""
-    max_cpu = 0.0
-    max_mem = 0.0
+    # max_cpu = 0.0
+    # max_mem = 0.0
+    # for t in range(total_time):
+    #     max_t_cpu = instance.df_indiv[
+    #         instance.df_indiv[it.tick_field] == t]['cpu'].sum()
+    #     max_t_mem = instance.df_indiv[
+    #         instance.df_indiv[it.tick_field] == t]['mem'].sum()
+
+    #     if max_t_cpu > max_cpu:
+    #         max_cpu = max_t_cpu
+    #     if max_t_mem > max_mem:
+    #         max_mem = max_t_mem
+
+    # # TODO consider nodes with different capacities
+    # cap_cpu = instance.df_host_meta['cpu'].to_numpy()[0]
+    # cap_mem = instance.df_host_meta['mem'].to_numpy()[0]
+    # min_nodes_cpu = math.ceil(max_cpu / cap_cpu)
+    # min_nodes_mem = math.ceil(max_mem / cap_mem)
+    # return max(min_nodes_cpu, min_nodes_mem)
+
+    max_metric = 0.0
     for t in range(total_time):
-        max_t_cpu = instance.df_indiv[
-            instance.df_indiv[it.tick_field] == t]['cpu'].sum()
-        max_t_mem = instance.df_indiv[
-            instance.df_indiv[it.tick_field] == t]['mem'].sum()
+        max_t_metric = instance.df_indiv[
+            instance.df_indiv[it.tick_field] == t][it.metrics[0]].sum()
+        if max_t_metric > max_metric:
+            max_metric = max_t_metric
 
-        if max_t_cpu > max_cpu:
-            max_cpu = max_t_cpu
-        if max_t_mem > max_mem:
-            max_mem = max_t_mem
-
-    # TODO consider nodes with different capacities
-    cap_cpu = instance.df_host_meta['cpu'].to_numpy()[0]
-    cap_mem = instance.df_host_meta['mem'].to_numpy()[0]
-    min_nodes_cpu = math.ceil(max_cpu / cap_cpu)
-    min_nodes_mem = math.ceil(max_mem / cap_mem)
-    return max(min_nodes_cpu, min_nodes_mem)
+    cap_metric = instance.df_host_meta[it.metrics[0]].to_numpy()[0]
+    return(math.ceil(max_metric / cap_metric))
 
 
 # TODO integrate upper bound for considering all clusters sum variance < ub

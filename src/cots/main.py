@@ -111,6 +111,9 @@ def main(data, params):
 
     # Allocation
     allocation_time = time.time()
+    print(cluster_var_matrix)
+    print(cluster_profiles)
+    print(cluster_vars)
     containers_grouped = place.allocation_distant_pairwise(
         my_instance, cluster_var_matrix, labels_)
 

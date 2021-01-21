@@ -23,6 +23,7 @@ from matplotlib import pyplot as plt
 import pandas as pd
 
 # Personnal imports
+from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
@@ -48,7 +49,7 @@ def main(data, params):
     main_time = time.time()
 
     config = it.read_params(params)
-    it.define_globals(config)
+    # it.define_globals(config)
     plt.style.use('bmh')
 
     # Init containers & nodes data, then Instance
@@ -154,6 +155,10 @@ def main(data, params):
                                my_instance.df_indiv[it.tick_field].max())
 
     # input('\nEnd of first part, press enter to enter loop ...\n')
+
+    # Test allocation use case
+    print(alloc.constraints_satisfied(config['allocation']))
+    input()
 
     # loop 'streaming' progress
     streaming_eval(my_instance, df_indiv_clust, labels_,

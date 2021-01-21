@@ -21,19 +21,18 @@ def build_df_from_containers(df_indiv: pd.DataFrame) -> pd.DataFrame:
     df_host = pd.DataFrame(data=None)
     for time in df_indiv[tick_field].unique():
         for node in df_indiv[host_field].unique():
+            temp_df = pd.Series({
+                tick_field: time,
+                host_field: node
+            })
+            for metric in metrics:
+                metric_val = df_indiv.loc[
+                    (df_indiv[tick_field] == time) & (
+                        df_indiv[host_field] == node)
+                ][metric].sum()
+                temp_df[metric] = metric_val
             df_host = df_host.append(
-                {
-                    tick_field: time,
-                    host_field: node,
-                    'cpu': df_indiv.loc[
-                        (df_indiv[tick_field] == time) & (
-                            df_indiv[host_field] == node)
-                    ]['cpu'].sum(),
-                    'mem': df_indiv.loc[
-                        (df_indiv[tick_field] == time) & (
-                            df_indiv[host_field] == node)
-                    ]['mem'].sum()
-                }, ignore_index=True
+                temp_df, ignore_index=True
             )
     return df_host
 
@@ -68,6 +67,7 @@ def read_params(params_file: str) -> Dict:
     """Get parameters from file and build the Dict config object."""
     with open(params_file, 'r') as f:
         config = json.load(f)
+    define_globals(config)
     return config
 
 

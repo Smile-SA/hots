@@ -44,6 +44,7 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
 # TODO define max by container
 # TODO change alloc only for containers in node > max
 def change_max_alloc(my_instance: Instance, config: Dict):
+    """Change max possible resource usage by containers."""
     max_ok = False
     max_goal = config['objective']['target_load_CPU'] * (
         my_instance.df_host_meta[it.metrics[0]].to_numpy()[0]
@@ -65,6 +66,7 @@ def change_max_alloc(my_instance: Instance, config: Dict):
 
 
 def get_max_by_node(df_indiv: pd.DataFrame) -> Dict:
+    """Get the max possible usage of every container, by node."""
     max_by_node = {}
     for node, node_data in df_indiv.groupby(it.host_field):
         node_max = {}
@@ -75,6 +77,7 @@ def get_max_by_node(df_indiv: pd.DataFrame) -> Dict:
 
 
 def is_max_goal_ok(current_max_by_node: Dict, max_goal: float) -> bool:
+    """Check is the max usage objective is satisfied."""
     for node in current_max_by_node.keys():
         if sum(current_max_by_node[node].values()) > max_goal:
             print('Not ok')

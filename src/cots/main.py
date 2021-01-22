@@ -127,7 +127,7 @@ def main(data, params):
             my_instance.df_host_meta.cpu.max(),
             my_instance.sep_time)
 
-    plt.show(block=False)
+    # plt.show(block=False)
 
     # Print real objective value
     # mc.get_obj_value_heuristic(my_instance.df_indiv,
@@ -151,7 +151,7 @@ def main(data, params):
 
     # Test allocation use case
     print(alloc.check_constraints(
-        config['allocation'], my_instance.df_host))
+        my_instance, config['allocation']))
     input()
 
     # loop 'streaming' progress

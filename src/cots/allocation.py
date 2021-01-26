@@ -51,6 +51,8 @@ def change_max_alloc(my_instance: Instance, config: Dict):
     )
     current_max_by_node = get_max_by_node(my_instance.df_indiv)
     while not max_ok:
+        print(current_max_by_node)
+        input()
         decrease = 0.1
         for container in my_instance.df_indiv[it.indiv_field]:
             node = my_instance.df_indiv.loc[my_instance.df_indiv[
@@ -62,7 +64,6 @@ def change_max_alloc(my_instance: Instance, config: Dict):
                 max_ok = True
                 break
     print(current_max_by_node)
-    input()
 
 
 def get_max_by_node(df_indiv: pd.DataFrame) -> Dict:

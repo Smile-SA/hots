@@ -109,12 +109,17 @@ def main(data, params):
 
     print('Clustering computing time : %fs\n' % (time.time() - clustering_time))
 
-    # Allocation
-    allocation_time = time.time()
-    containers_grouped = place.allocation_distant_pairwise(
-        my_instance, cluster_var_matrix, labels_)
+    # Placement
+    print(config['placement']['enable'])
+    if config['placement']['enable']:
+        print('Performing placement ... \n')
+        placement_time = time.time()
+        containers_grouped = place.allocation_distant_pairwise(
+            my_instance, cluster_var_matrix, labels_)
 
-    print('Allocation time : %fs\n' % (time.time() - allocation_time))
+        print('Placement time : %fs\n' % (time.time() - placement_time))
+    else:
+        print('We do not perform placement \n')
 
     # Plot clustering & allocation for 1st part
     plot_before_loop = False
@@ -157,8 +162,22 @@ def main(data, params):
     # input('\nEnd of first part, press enter to enter loop ...\n')
 
     # Test allocation use case
-    print(alloc.check_constraints(
-        my_instance, config['allocation']))
+    if config['allocation']['enable']:
+        print('Performing allocation ... \n')
+        print(alloc.check_constraints(
+            my_instance, config['allocation']))
+    else:
+        print('We do not perform allocation \n')
+
+    # Plot heuristic result without loop
+    # plot.plot_containers_groupby_nodes(
+    #     my_instance.df_indiv,
+    #     my_instance.df_host_meta[it.metrics[0]].max(),
+    #     my_instance.sep_time,
+    #     title='Node consumption after heuristic and change allocation')
+
+    plt.show(block=False)
+
     input()
 
     # loop 'streaming' progress

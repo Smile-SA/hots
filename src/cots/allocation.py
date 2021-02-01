@@ -20,6 +20,14 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
     satisfied = True
     print(config)
     print(my_instance.df_host)
+
+    if max(my_instance.df_host[it.metrics[0]]) > get_abs_goal_load(my_instance, config):
+        print('Max resources used > wanted max !')
+        satisfied = False
+        change_max_alloc(my_instance, config)
+    else:
+        print('Max used resources ok.')
+
     if my_instance.df_host[it.host_field].nunique() > config['objective']['open_nodes']:
         print('Too many open nodes !')
         satisfied = False
@@ -28,13 +36,6 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
         satisfied = False
     else:
         print('Right number of open nodes.')
-
-    if max(my_instance.df_host[it.metrics[0]]) > get_abs_goal_load(my_instance, config):
-        print('Max resources used > wanted max !')
-        satisfied = False
-        change_max_alloc(my_instance, config)
-    else:
-        print('Max used resources ok.')
 
     return satisfied
 
@@ -46,35 +47,25 @@ def change_max_alloc(my_instance: Instance, config: Dict):
     # max_ok = False
     max_goal = get_abs_goal_load(my_instance, config)
     current_max_by_node = get_max_by_node(my_instance.df_indiv)
-    print(current_max_by_node, sum(
-        current_max_by_node['n_0'].values()) + sum(
-            current_max_by_node['n_1'].values()) + sum(
-                current_max_by_node['n_2'].values())
-    )
-    total_max = sum(
-        current_max_by_node['n_0'].values()) + sum(
-            current_max_by_node['n_1'].values()) + sum(
-                current_max_by_node['n_2'].values())
+    total_max = get_total_max(current_max_by_node)
+    print(current_max_by_node, total_max)
     print('total resources (max) : ', total_max)
     total_to_remove = resources_to_remove(max_goal, current_max_by_node)
     print('total resources to remove : ', total_to_remove)
-    decrease_cont = round_decimals_up(
-        total_to_remove / my_instance.df_indiv[
-            it.indiv_field].nunique())
-    print('resources to remove by container (average) : ', decrease_cont)
+    # decrease_cont = round_decimals_up(
+    #     total_to_remove / my_instance.df_indiv[
+    #         it.indiv_field].nunique())
+    # print('resources to remove by container (average) : ', decrease_cont)
     total_will_remove = 0.0
     for container in my_instance.df_indiv[it.indiv_field].unique():
-        # print(container)
         node = my_instance.df_indiv.loc[my_instance.df_indiv[
             it.indiv_field] == container][it.host_field].to_numpy()[0]
         percent_total = current_max_by_node[node][container] / total_max
         to_remove_c = total_to_remove * percent_total
-        print(container, percent_total, to_remove_c)
         total_will_remove += to_remove_c
         current_max_by_node[node][container] = current_max_by_node[
             node][container] - to_remove_c
-        # print(decrease_cont)
-        # print(current_max_by_node)
+
     print('Will be remove : ', total_will_remove)
     # while not max_ok:
     #     print(current_max_by_node)
@@ -90,7 +81,7 @@ def change_max_alloc(my_instance: Instance, config: Dict):
     #             max_ok = True
     #             break
     print(current_max_by_node)
-    print(is_max_goal_ok(current_max_by_node, max_goal))
+    print('max goal satisfied ? ', is_max_goal_ok(current_max_by_node, max_goal))
 
 
 def get_max_by_node(df_indiv: pd.DataFrame) -> Dict:
@@ -102,6 +93,14 @@ def get_max_by_node(df_indiv: pd.DataFrame) -> Dict:
             node_max[container] = max(cont_data[it.metrics[0]])
         max_by_node[node] = node_max
     return max_by_node
+
+
+def get_total_max(max_by_node: Dict) -> float:
+    """Get the total amount of max resources."""
+    total_max = 0.0
+    for node in max_by_node.keys():
+        total_max += sum(max_by_node[node].values())
+    return total_max
 
 
 def is_max_goal_ok(current_max_by_node: Dict, max_goal: float) -> bool:
@@ -123,11 +122,8 @@ def get_abs_goal_load(my_instance: Instance, config: Dict) -> float:
 
 # TODO what if several nodes in goal ?
 def resources_to_remove(max_goal: float, max_by_node: Dict) -> float:
-    """Compute the resources amount to remove to reach the load goal."""
-    total_max = 0.0
-    for node in max_by_node.keys():
-        total_max += sum(max_by_node[node].values())
-    return (total_max - max_goal)
+    """Compute the amount of resources to remove to reach the load goal."""
+    return (get_total_max(max_by_node) - max_goal)
 
 
 def round_decimals_up(number: float, decimals: int = 2):

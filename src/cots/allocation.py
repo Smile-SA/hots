@@ -33,6 +33,7 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
 
     if my_instance.df_host[it.host_field].nunique() > config['objective']['open_nodes']:
         print('Too many open nodes !')
+        # TODO Test if we can do it
         move_containers(my_instance, config)
         satisfied = False
     elif my_instance.df_host[it.host_field].nunique() < config['objective']['open_nodes']:
@@ -73,6 +74,7 @@ def change_max_alloc(my_instance: Instance, config: Dict):
         total_will_remove += to_remove_c
         current_max_by_node[node][container] = current_max_by_node[
             node][container] - to_remove_c
+        change_df_max(my_instance, container, current_max_by_node[node][container])
     print('Will be remove : ', total_will_remove)
 
     # Retrieve small amount on all, until needed is reached
@@ -92,6 +94,19 @@ def change_max_alloc(my_instance: Instance, config: Dict):
 
     print('New max list : ', current_max_by_node)
     print('max goal satisfied ? ', is_max_goal_ok(current_max_by_node, max_goal))
+
+
+def change_df_max(my_instance: Instance, c_id: str, max_c: float):
+    """Change the DataFrame (resources values) after changing max."""
+    for time in my_instance.df_indiv[it.tick_field].unique():
+        if my_instance.df_indiv.loc[
+            (my_instance.df_indiv[it.tick_field] == time) & (
+                my_instance.df_indiv[it.indiv_field] == c_id), it.metrics[0]
+        ].to_numpy()[0] > max_c:
+            my_instance.df_indiv.loc[
+                (my_instance.df_indiv[it.tick_field] == time) & (
+                    my_instance.df_indiv[it.indiv_field] == c_id), it.metrics[0]
+            ] = max_c
 
 
 def get_max_by_node(df_indiv: pd.DataFrame) -> Dict:

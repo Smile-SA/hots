@@ -163,11 +163,13 @@ def main(data, params):
         print('We do not perform allocation \n')
 
     # Plot heuristic result without loop
-    # plot.plot_containers_groupby_nodes(
-    #     my_instance.df_indiv,
-    #     my_instance.df_host_meta[it.metrics[0]].max(),
-    #     my_instance.sep_time,
-    #     title='Node consumption after heuristic and change allocation')
+    ctnr.plot_all_data_all_containers(
+        my_instance.df_indiv, sep_time=my_instance.sep_time)
+    plot.plot_containers_groupby_nodes(
+        my_instance.df_indiv,
+        my_instance.df_host_meta[it.metrics[0]].max(),
+        my_instance.sep_time,
+        title='Node consumption after heuristic and change allocation')
 
     plt.show(block=False)
 

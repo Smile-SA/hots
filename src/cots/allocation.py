@@ -9,10 +9,13 @@ Provide resource allocation related functions to handle this problem.
 import math
 from typing import Dict
 
+import numpy as np
+
 import pandas as pd
 
 from . import init as it
 from .instance import Instance
+from .placement import spread_containers
 
 
 def check_constraints(my_instance: Instance, config: Dict) -> bool:
@@ -30,6 +33,7 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
 
     if my_instance.df_host[it.host_field].nunique() > config['objective']['open_nodes']:
         print('Too many open nodes !')
+        move_containers(my_instance, config)
         satisfied = False
     elif my_instance.df_host[it.host_field].nunique() < config['objective']['open_nodes']:
         print('Less open nodes than the objective !')
@@ -143,3 +147,13 @@ def round_decimals_up(number: float, decimals: int = 2):
 
     factor = 10 ** decimals
     return math.ceil(number * factor) / factor
+
+
+def move_containers(my_instance: Instance, config: Dict):
+    """Move containers in order to satisfy number open nodes target."""
+    conso_nodes = np.zeros((
+        config['objective']['open_nodes'], my_instance.window_duration))
+    spread_containers(
+        my_instance.df_indiv[it.indiv_field].unique(),
+        my_instance, conso_nodes, my_instance.window_duration,
+        config['objective']['open_nodes'])

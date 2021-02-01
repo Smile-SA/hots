@@ -52,10 +52,14 @@ def change_max_alloc(my_instance: Instance, config: Dict):
     print('total resources (max) : ', total_max)
     total_to_remove = resources_to_remove(max_goal, current_max_by_node)
     print('total resources to remove : ', total_to_remove)
+
+    # If we want to remove same amount from all containers
     # decrease_cont = round_decimals_up(
     #     total_to_remove / my_instance.df_indiv[
     #         it.indiv_field].nunique())
     # print('resources to remove by container (average) : ', decrease_cont)
+
+    # Remove resources at prorata of their initial max
     total_will_remove = 0.0
     for container in my_instance.df_indiv[it.indiv_field].unique():
         node = my_instance.df_indiv.loc[my_instance.df_indiv[
@@ -65,8 +69,9 @@ def change_max_alloc(my_instance: Instance, config: Dict):
         total_will_remove += to_remove_c
         current_max_by_node[node][container] = current_max_by_node[
             node][container] - to_remove_c
-
     print('Will be remove : ', total_will_remove)
+
+    # Retrieve small amount on all, until needed is reached
     # while not max_ok:
     #     print(current_max_by_node)
     #     input()
@@ -80,7 +85,8 @@ def change_max_alloc(my_instance: Instance, config: Dict):
     #         if is_max_goal_ok(current_max_by_node, max_goal):
     #             max_ok = True
     #             break
-    print(current_max_by_node)
+
+    print('New max list : ', current_max_by_node)
     print('max goal satisfied ? ', is_max_goal_ok(current_max_by_node, max_goal))
 
 

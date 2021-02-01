@@ -66,7 +66,7 @@ def remove_container_node(node_id: str, container_id: str, instance: Instance):
 
 def spread_containers(list_containers: List, instance: Instance,
                       conso_nodes: np.array, total_time: int,
-                      min_nodes: int, pbar: tqdm):
+                      min_nodes: int):
     """Spread containers from list_containers into nodes."""
     n = 0
     for c in list_containers:
@@ -86,7 +86,7 @@ def spread_containers(list_containers: List, instance: Instance,
                 done = True
                 assign_container_node(
                     instance.dict_id_n[n], c, instance)
-                pbar.update(1)
+                # pbar.update(1)
             else:
                 n = (n + 1) % min_nodes
                 cap_node = instance.df_host_meta.loc[

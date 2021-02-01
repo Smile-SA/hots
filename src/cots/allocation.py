@@ -6,6 +6,7 @@ cots allocation
 Provide resource allocation related functions to handle this problem.
 """
 
+import math
 from typing import Dict
 
 import pandas as pd
@@ -28,10 +29,7 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
     else:
         print('Right number of open nodes.')
 
-    if max(my_instance.df_host[it.metrics[0]]) > (
-        config['objective']['target_load_CPU'] * (
-            my_instance.df_host_meta[it.metrics[0]].to_numpy()[0])
-    ):
+    if max(my_instance.df_host[it.metrics[0]]) > get_abs_goal_load(my_instance, config):
         print('Max resources used > wanted max !')
         satisfied = False
         change_max_alloc(my_instance, config)
@@ -45,25 +43,54 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
 # TODO change alloc only for containers in node > max
 def change_max_alloc(my_instance: Instance, config: Dict):
     """Change max possible resource usage by containers."""
-    max_ok = False
-    max_goal = config['objective']['target_load_CPU'] * (
-        my_instance.df_host_meta[it.metrics[0]].to_numpy()[0]
-    )
+    # max_ok = False
+    max_goal = get_abs_goal_load(my_instance, config)
     current_max_by_node = get_max_by_node(my_instance.df_indiv)
-    while not max_ok:
-        print(current_max_by_node)
-        input()
-        decrease = 0.1
-        for container in my_instance.df_indiv[it.indiv_field]:
-            node = my_instance.df_indiv.loc[my_instance.df_indiv[
-                it.indiv_field] == container][it.host_field].to_numpy()[0]
-            current_max_by_node[node][container] = current_max_by_node[
-                node][container] - (current_max_by_node[
-                    node][container] * decrease)
-            if is_max_goal_ok(current_max_by_node, max_goal):
-                max_ok = True
-                break
+    print(current_max_by_node, sum(
+        current_max_by_node['n_0'].values()) + sum(
+            current_max_by_node['n_1'].values()) + sum(
+                current_max_by_node['n_2'].values())
+    )
+    total_max = sum(
+        current_max_by_node['n_0'].values()) + sum(
+            current_max_by_node['n_1'].values()) + sum(
+                current_max_by_node['n_2'].values())
+    print('total resources (max) : ', total_max)
+    total_to_remove = resources_to_remove(max_goal, current_max_by_node)
+    print('total resources to remove : ', total_to_remove)
+    decrease_cont = round_decimals_up(
+        total_to_remove / my_instance.df_indiv[
+            it.indiv_field].nunique())
+    print('resources to remove by container (average) : ', decrease_cont)
+    total_will_remove = 0.0
+    for container in my_instance.df_indiv[it.indiv_field].unique():
+        # print(container)
+        node = my_instance.df_indiv.loc[my_instance.df_indiv[
+            it.indiv_field] == container][it.host_field].to_numpy()[0]
+        percent_total = current_max_by_node[node][container] / total_max
+        to_remove_c = total_to_remove * percent_total
+        print(container, percent_total, to_remove_c)
+        total_will_remove += to_remove_c
+        current_max_by_node[node][container] = current_max_by_node[
+            node][container] - to_remove_c
+        # print(decrease_cont)
+        # print(current_max_by_node)
+    print('Will be remove : ', total_will_remove)
+    # while not max_ok:
+    #     print(current_max_by_node)
+    #     input()
+    #     decrease = 0.1
+    #     for container in my_instance.df_indiv[it.indiv_field]:
+    #         node = my_instance.df_indiv.loc[my_instance.df_indiv[
+    #             it.indiv_field] == container][it.host_field].to_numpy()[0]
+    #         current_max_by_node[node][container] = current_max_by_node[
+    #             node][container] - (current_max_by_node[
+    #                 node][container] * decrease)
+    #         if is_max_goal_ok(current_max_by_node, max_goal):
+    #             max_ok = True
+    #             break
     print(current_max_by_node)
+    print(is_max_goal_ok(current_max_by_node, max_goal))
 
 
 def get_max_by_node(df_indiv: pd.DataFrame) -> Dict:
@@ -84,3 +111,33 @@ def is_max_goal_ok(current_max_by_node: Dict, max_goal: float) -> bool:
             print('Not ok')
             return False
     return True
+
+
+# TODO what if different goal on different nodes ? Dict of nodes goal ?
+def get_abs_goal_load(my_instance: Instance, config: Dict) -> float:
+    """Get the load goal in absolute value."""
+    return config['objective']['target_load_CPU'] * (
+        my_instance.df_host_meta[it.metrics[0]].to_numpy()[0]
+    )
+
+
+# TODO what if several nodes in goal ?
+def resources_to_remove(max_goal: float, max_by_node: Dict) -> float:
+    """Compute the resources amount to remove to reach the load goal."""
+    total_max = 0.0
+    for node in max_by_node.keys():
+        total_max += sum(max_by_node[node].values())
+    return (total_max - max_goal)
+
+
+def round_decimals_up(number: float, decimals: int = 2):
+    """Return a value rounded up to a specific number of decimal places."""
+    if not isinstance(decimals, int):
+        raise TypeError('decimal places must be an integer')
+    elif decimals < 0:
+        raise ValueError('decimal places has to be 0 or more')
+    elif decimals == 0:
+        return math.ceil(number)
+
+    factor = 10 ** decimals
+    return math.ceil(number * factor) / factor

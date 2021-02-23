@@ -103,7 +103,7 @@ def main(data, params):
     print('Clustering computing time : %fs\n' % (time.time() - clustering_time))
 
     # Placement
-    print(config['placement']['enable'])
+    containers_grouped = []
     if config['placement']['enable']:
         print('Performing placement ... \n')
         placement_time = time.time()
@@ -123,14 +123,14 @@ def main(data, params):
                                           my_instance, labels_)
         show_clustering = False
         if show_clustering:
-            plot.plot_clustering_containers_by_node(
-                working_df_indiv, my_instance.dict_id_c, labels_)
+            # plot.plot_clustering_containers_by_node(
+            #     working_df_indiv, my_instance.dict_id_c, labels_)
             plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
                                  title='Clustering on first half part')
-        plot.plot_containers_groupby_nodes(
-            my_instance.df_indiv,
-            my_instance.df_host_meta.cpu.max(),
-            my_instance.sep_time)
+        # plot.plot_containers_groupby_nodes(
+        #     my_instance.df_indiv,
+        #     my_instance.df_host_meta.cpu.max(),
+        #     my_instance.sep_time)
 
     # plt.show(block=False)
 
@@ -163,15 +163,15 @@ def main(data, params):
         print('We do not perform allocation \n')
 
     # Plot heuristic result without loop
-    ctnr.plot_all_data_all_containers(
-        my_instance.df_indiv, sep_time=my_instance.sep_time)
+    # ctnr.plot_all_data_all_containers(
+    #     my_instance.df_indiv, sep_time=my_instance.sep_time)
     plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time,
         title='Node consumption after heuristic and change allocation')
 
-    plt.show(block=False)
+    # plt.show(block=False)
 
     input()
 

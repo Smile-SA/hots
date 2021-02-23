@@ -39,7 +39,7 @@ def matrix_line(args: (str, pd.DataFrame)) -> (int, Dict):
     key, data = args
     line = {}
     for row in data.iterrows():
-        line[int(row[1][it.tick_field])] = row[1]['cpu']
+        line[int(row[1][it.tick_field])] = row[1][it.metrics[0]]
         line[it.indiv_field] = key
     return (key, line)
 

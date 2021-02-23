@@ -376,7 +376,7 @@ def init_plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
     fig, ax = plt.subplots()
     fig.suptitle('Clustering evolution')
     for row in df_clust.iterrows():
-        cluster = row[1]['cluster']
+        cluster = int(row[1]['cluster'])
         values = row[1].drop(labels='cluster')
         ax.plot(values, colors[cluster], label=row[0])
     return (fig, ax)
@@ -425,7 +425,7 @@ def update_clustering_plot(fig, ax, df_clust: pd.DataFrame,
     """Update clustering plot with new data."""
     metric = metric or it.metrics[0]
     for row in df_clust.iterrows():
-        cluster = row[1]['cluster']
+        cluster = int(row[1]['cluster'])
         values = row[1].drop(labels='cluster')
         ax.plot(values, colors[cluster], label=row[0])
 

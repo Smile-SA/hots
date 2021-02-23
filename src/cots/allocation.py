@@ -20,9 +20,18 @@ from .placement import spread_containers
 
 def check_constraints(my_instance: Instance, config: Dict) -> bool:
     """Check if allocation constraints are satisfied or not."""
-    satisfied = True
+    satisfied = False
     print(config)
     print(my_instance.df_host)
+
+    # while not satisfied:
+    current_max_by_node = get_max_by_node(my_instance.df_indiv)
+    if get_total_max(current_max_by_node) > get_abs_goal_load(my_instance, config):
+        print('Max resources used > wanted max ! (new)')
+        satisfied = False
+        change_max_alloc(my_instance, config)
+    else:
+        satisfied = True
 
     if max(my_instance.df_host[it.metrics[0]]) > get_abs_goal_load(my_instance, config):
         print('Max resources used > wanted max !')
@@ -30,17 +39,19 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
         change_max_alloc(my_instance, config)
     else:
         print('Max used resources ok.')
+        satisfied = True
 
     if my_instance.df_host[it.host_field].nunique() > config['objective']['open_nodes']:
         print('Too many open nodes !')
+        satisfied = False
         # TODO Test if we can do it
         move_containers(my_instance, config)
-        satisfied = False
     elif my_instance.df_host[it.host_field].nunique() < config['objective']['open_nodes']:
         print('Less open nodes than the objective !')
-        satisfied = False
+        satisfied = True
     else:
         print('Right number of open nodes.')
+        satisfied = True
 
     return satisfied
 

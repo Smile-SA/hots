@@ -76,12 +76,18 @@ class CPXInstance:
         self.pb_number = pb_number or 0
 
         self.mdl = Model(name='allocation', cts_by_name=False)
+        print('Building names ...')
         self.build_names()
+        print('Building variables ...')
         self.build_variables()
+        print('Building data ...')
         self.build_data(df_indiv, df_host_meta, dict_id_c, dict_id_n)
+        print('Building constraints ...')
         self.build_constraints(w, u, v)
+        print('Building objective ...')
         self.build_objective(w, u, dv)
 
+        print('Building relaxed model ...')
         self.relax_mdl = make_relaxed_model(self.mdl)
 
         # Init solution for mdl with initial placement
@@ -192,11 +198,11 @@ class CPXInstance:
         for c in self.containers_names:
             self.containers_data[c] = df_indiv.loc[
                 df_indiv[it.indiv_field] == dict_id_c[c],
-                [it.tick_field, 'cpu', 'mem']].to_numpy()
+                [it.tick_field, it.metrics[0]]].to_numpy()
         for n in self.nodes_names:
             self.nodes_data[n] = df_host_meta.loc[
                 df_host_meta[it.host_field] == dict_id_n[n],
-                ['cpu', 'mem']].to_numpy()[0]
+                [it.metrics[0]]].to_numpy()[0]
 
     def build_constraints(self, w, u, v):
         """Build all model constraints."""
@@ -206,7 +212,9 @@ class CPXInstance:
         elif self.pb_number == 1:
             self.placement_constraints()
         elif self.pb_number == 2:
+            print('Add basic clustering constraints ...')
             self.clustering_constraints(self.nb_clusters, w)
+            print('Add adjacency constraints ...')
             self.add_adjacency_clust_constraints(u)
         elif self.pb_number == 3:
             self.placement_constraints()
@@ -317,12 +325,14 @@ class CPXInstance:
     def clustering_constraints(self, nb_clusters, w):
         """Build the clustering related constraints."""
         # Cluster assignment constraint
+        print('Cluster assignment constraint ...')
         for c in self.containers_names:
             self.mdl.add_constraint(self.mdl.sum(
                 self.mdl.y[c, k] for k in self.clusters_names) == 1,
                 'cluster_assign_' + str(c))
 
         # Open cluster
+        print('Open cluster ...')
         for (c, k) in product(self.containers_names, self.clusters_names):
             self.mdl.add_constraint(
                 self.mdl.y[c, k] <= self.mdl.b[k],
@@ -330,6 +340,7 @@ class CPXInstance:
             )
 
         # Number of clusters
+        print('Number of clusters ...')
         self.mdl.add_constraint(self.mdl.sum(
             self.mdl.b[k] for k in self.clusters_names) <= self.nb_clusters,
             'nb_clusters'
@@ -344,6 +355,7 @@ class CPXInstance:
         #         )
         # Constraints fixing yu(i,j,n)
         # TODO replace because too many variables
+        print('Fixing yu(i,j,n) ...')
         for(i, j) in combinations(self.containers_names, 2):
             for k in self.clusters_names:
                 self.mdl.add_constraint(

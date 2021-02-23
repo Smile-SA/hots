@@ -224,7 +224,7 @@ def build_dict_id_nodes(df_host: pd.DataFrame) -> Dict:
     """Build dictionnary for corresponding IDs and indexes."""
     dict_id_n = {}
     i = 0
-    for key in df_host.machine_id.unique():
+    for key in df_host[it.host_field].unique():
         dict_id_n[i] = key
         i += 1
 

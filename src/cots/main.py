@@ -31,6 +31,7 @@ from . import init as it
 # TODO set in params
 # from . import model_cplex as mc
 from . import model_cplex_clustering as mc
+from . import placement as place
 from . import plot
 from .instance import Instance
 
@@ -48,7 +49,7 @@ def main(data, params):
     main_time = time.time()
 
     config = it.read_params(params)
-    it.define_globals(config)
+    # it.define_globals(config)
     plt.style.use('bmh')
 
     # Init containers & nodes data, then Instance
@@ -108,12 +109,17 @@ def main(data, params):
 
     print('Clustering computing time : %fs\n' % (time.time() - clustering_time))
 
-    # Allocation
-    allocation_time = time.time()
-    containers_grouped = alloc.allocation_distant_pairwise(
-        my_instance, cluster_var_matrix, labels_, nb_nodes=4)
+    # Placement
+    containers_grouped = []
+    if config['placement']['enable']:
+        print('Performing placement ... \n')
+        placement_time = time.time()
+        containers_grouped = place.allocation_distant_pairwise(
+            my_instance, cluster_var_matrix, labels_)
 
-    print('Allocation time : %fs\n' % (time.time() - allocation_time))
+        print('Placement time : %fs\n' % (time.time() - placement_time))
+    else:
+        print('We do not perform placement \n')
 
     # Plot clustering & allocation for 1st part
     plot_before_loop = False
@@ -124,16 +130,16 @@ def main(data, params):
                                           my_instance, labels_)
         show_clustering = False
         if show_clustering:
-            plot.plot_clustering_containers_by_node(
-                working_df_indiv, my_instance.dict_id_c, labels_)
+            # plot.plot_clustering_containers_by_node(
+            #     working_df_indiv, my_instance.dict_id_c, labels_)
             plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
                                  title='Clustering on first half part')
-        plot.plot_containers_groupby_nodes(
-            my_instance.df_indiv,
-            my_instance.df_host_meta.cpu.max(),
-            my_instance.sep_time)
+        # plot.plot_containers_groupby_nodes(
+        #     my_instance.df_indiv,
+        #     my_instance.df_host_meta.cpu.max(),
+        #     my_instance.sep_time)
 
-    plt.show(block=False)
+    # plt.show(block=False)
 
     # Print real objective value
     # mc.get_obj_value_heuristic(my_instance.df_indiv,
@@ -154,6 +160,27 @@ def main(data, params):
                                my_instance.df_indiv[it.tick_field].max())
 
     # input('\nEnd of first part, press enter to enter loop ...\n')
+
+    # Test allocation use case
+    if config['allocation']['enable']:
+        print('Performing allocation ... \n')
+        print(alloc.check_constraints(
+            my_instance, config['allocation']))
+    else:
+        print('We do not perform allocation \n')
+
+    # Plot heuristic result without loop
+    # ctnr.plot_all_data_all_containers(
+    #     my_instance.df_indiv, sep_time=my_instance.sep_time)
+    plot.plot_containers_groupby_nodes(
+        my_instance.df_indiv,
+        my_instance.df_host_meta[it.metrics[0]].max(),
+        my_instance.sep_time,
+        title='Node consumption after heuristic and change allocation')
+
+    # plt.show(block=False)
+
+    input()
 
     # loop 'streaming' progress
     streaming_eval(my_instance, df_indiv_clust, labels_,
@@ -211,7 +238,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         w = clt.build_similarity_matrix(df_clust)
         df_clust['cluster'] = labels_
         u = clt.build_adjacency_matrix(labels_)
-        v = alloc.build_placement_adj_matrix(
+        v = place.build_placement_adj_matrix(
             working_df_indiv, my_instance.dict_id_c)
 
         # update clustering & node consumption plot
@@ -224,6 +251,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         plt.show(block=False)
 
         print('\n')
+
+        # Allocation part :
 
         # evaluate clustering solution from optim model
         # TODO update model from existing one, not creating new one each time
@@ -300,7 +329,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #         cplex_model.update_max_nodes_ct(current_nb_nodes)
 
         #         # TODO adapt existing solution, but not from scratch
-        #         containers_grouped = alloc.allocation_distant_pairwise(
+        #         containers_grouped = place.allocation_distant_pairwise(
         #             my_instance, cluster_var_matrix, labels_,
         #             cplex_model.max_open_nodes)
         #     else:
@@ -353,7 +382,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #         print('End of input.')
         #         break
         if len(moving_containers) >= 1:
-            alloc.move_list_containers(moving_containers, my_instance,
+            place.move_list_containers(moving_containers, my_instance,
                                        working_df_indiv[it.tick_field].min(),
                                        working_df_indiv[it.tick_field].max())
 

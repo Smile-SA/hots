@@ -39,7 +39,7 @@ def matrix_line(args: (str, pd.DataFrame)) -> (int, Dict):
     key, data = args
     line = {}
     for row in data.iterrows():
-        line[int(row[1][it.tick_field])] = row[1]['cpu']
+        line[int(row[1][it.tick_field])] = row[1][it.metrics[0]]
         line[it.indiv_field] = key
     return (key, line)
 
@@ -242,8 +242,11 @@ def get_sum_cluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
     sum_profiles_matrix = np.zeros((k, k), dtype=float)
     for i in range(k):
         for j in range(i + 1, k):
-            sum_profiles_matrix[i, j] = (
-                (profiles_[i, :] + profiles_[j, :]).var()) / (
+            if vars_[i] + vars_[j] == 0.0:
+                sum_profiles_matrix[i, j] = 1.0
+            else:
+                sum_profiles_matrix[i, j] = (
+                    (profiles_[i, :] + profiles_[j, :]).var()) / (
                     vars_[i] + vars_[j])
             sum_profiles_matrix[j, i] = sum_profiles_matrix[i, j]
         sum_profiles_matrix[i, i] = -1.0

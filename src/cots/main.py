@@ -64,8 +64,6 @@ def main(data, params):
     ctnr.plot_all_data_all_containers(
         my_instance.df_indiv, sep_time=my_instance.sep_time)
 
-    alloc.allocation_spread(my_instance, 4)
-
     plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
         my_instance.df_host_meta[it.metrics[0]].max(),

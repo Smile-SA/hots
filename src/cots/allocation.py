@@ -16,9 +16,11 @@ import pandas as pd
 from . import init as it
 from .instance import Instance
 from .placement import spread_containers
+from .tools import change_max_dataset
 
 
-def check_constraints(my_instance: Instance, config: Dict) -> bool:
+def check_constraints(my_instance: Instance,
+                      working_df_indiv: pd.DataFrame, config: Dict) -> bool:
     """Check if allocation constraints are satisfied or not."""
     satisfied = False
     print(config)
@@ -29,14 +31,14 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
     if get_total_max(current_max_by_node) > get_abs_goal_load(my_instance, config):
         print('Max resources used > wanted max ! (new)')
         satisfied = False
-        change_max_alloc(my_instance, config)
+        change_max_bound(my_instance, config, working_df_indiv[it.tick_field].max())
     else:
         satisfied = True
 
     if max(my_instance.df_host[it.metrics[0]]) > get_abs_goal_load(my_instance, config):
         print('Max resources used > wanted max !')
         satisfied = False
-        change_max_alloc(my_instance, config)
+        change_max_bound(my_instance, config, working_df_indiv[it.tick_field].max())
     else:
         print('Max used resources ok.')
         satisfied = True
@@ -45,7 +47,8 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
         print('Too many open nodes !')
         satisfied = False
         # TODO Test if we can do it
-        move_containers(my_instance, config)
+        # TODO Do not test with previous data, as it's not supposed to change
+        # move_containers(my_instance, config)
     elif my_instance.df_host[it.host_field].nunique() < config['objective']['open_nodes']:
         print('Less open nodes than the objective !')
         satisfied = True
@@ -58,7 +61,7 @@ def check_constraints(my_instance: Instance, config: Dict) -> bool:
 
 # TODO define max by container
 # TODO change alloc only for containers in node > max
-def change_max_alloc(my_instance: Instance, config: Dict):
+def change_max_bound(my_instance: Instance, config: Dict, min_time: int):
     """Change max possible resource usage by containers."""
     # max_ok = False
     max_goal = get_abs_goal_load(my_instance, config)
@@ -77,6 +80,8 @@ def change_max_alloc(my_instance: Instance, config: Dict):
 
     # Remove resources at prorata of their initial max
     total_will_remove = 0.0
+    print('Before change dataset : ')
+    print(my_instance.df_indiv)
     for container in my_instance.df_indiv[it.indiv_field].unique():
         node = my_instance.df_indiv.loc[my_instance.df_indiv[
             it.indiv_field] == container][it.host_field].to_numpy()[0]
@@ -85,7 +90,13 @@ def change_max_alloc(my_instance: Instance, config: Dict):
         total_will_remove += to_remove_c
         current_max_by_node[node][container] = current_max_by_node[
             node][container] - to_remove_c
-        change_df_max(my_instance, container, current_max_by_node[node][container])
+        change_max_dataset(my_instance.df_indiv,
+                           container, it.indiv_field,
+                           current_max_by_node[node][container], it.metrics[0],
+                           it.tick_field, min_time)
+    print('After change dataset :')
+    print(my_instance.df_indiv)
+    # input()
     print('Will be remove : ', total_will_remove)
 
     # Retrieve small amount on all, until needed is reached

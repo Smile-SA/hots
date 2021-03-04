@@ -160,10 +160,11 @@ def main(data, params):
     # input('\nEnd of first part, press enter to enter loop ...\n')
 
     # Test allocation use case
+    # TODO specific window not taken into account
     if config['allocation']['enable']:
         print('Performing allocation ... \n')
         print(alloc.check_constraints(
-            my_instance, config['allocation']))
+            my_instance, working_df_indiv, config['allocation']))
     else:
         print('We do not perform allocation \n')
 
@@ -176,7 +177,10 @@ def main(data, params):
         my_instance.sep_time,
         title='Node consumption after heuristic and change allocation')
 
-    # plt.show(block=False)
+    ctnr.plot_all_data_all_containers(
+        my_instance.df_indiv, sep_time=my_instance.sep_time)
+
+    plt.show(block=False)
 
     input()
 

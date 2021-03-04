@@ -16,6 +16,8 @@ __pycache__*
 
 # Temp files (tests etc...)
 run.sh
+run_alibaba.sh
+init_setup.sh
 
 # Result files
 */instance_file.txt

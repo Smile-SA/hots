@@ -904,7 +904,7 @@ def transf_vars(mdl: Model, relax_mdl: Model, ctn_map: Dict) -> Dict:
             else:
                 rx_lb = v.lb
             copied_var = relax_mdl._var(continuous, rx_lb, v.ub, v.name)
-            var_ctn = v._container
+            var_ctn = v.container
             if var_ctn:
                 copied_var._container = ctn_map.get(var_ctn)
             var_mapping[v] = copied_var

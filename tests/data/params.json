@@ -4,7 +4,7 @@
   },
   "clustering": {
     "algo": "kmeans",
-    "nb_clusters": 5
+    "nb_clusters": 2
   },
   "data": {
     "individuals_file": "container_usage.csv",
@@ -31,7 +31,7 @@
     "renderer": "chromium"
   },
   "allocation":{
-    "enable": true,
+    "enable": false,
     "constraints":{
       "load_threshold": 0.5,
       "max_amplitude": 0.5
@@ -42,6 +42,6 @@
     }
   },
   "placement":{
-    "enable": false
+    "enable": true
   }
 }

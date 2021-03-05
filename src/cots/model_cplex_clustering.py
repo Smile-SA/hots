@@ -898,7 +898,7 @@ def transf_vars(mdl: Model, relax_mdl: Model, ctn_map: Dict) -> Dict:
     for v in mdl.iter_variables():
         if not v.is_generated():
             # if v has type semixxx, set lB to 0
-            cpx_code = v.vartype.get_cplex_typecode()
+            cpx_code = v.vartype.cplex_typecode
             if cpx_code in {'N', 'S'}:
                 rx_lb = 0
             else:

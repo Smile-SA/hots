@@ -447,11 +447,12 @@ def update_clustering_plot(fig, ax, df_clust: pd.DataFrame,
         ax.plot(values, colors[cluster], label=row[0])
 
 
-def update_cluster_profiles(fig, ax, profiles: np.array, metric: str = None):
+def update_cluster_profiles(fig, ax, profiles: np.array,
+                            x: np.array, metric: str = None):
     """Update the clusters profiles."""
     metric = metric or it.metrics[0]
     for i in range(len(profiles)):
-        ax.plot(profiles[i], colors[i])
+        ax.plot(x, profiles[i], colors[i])
 
 
 def update_clustering_plot_axes(fig, ax_,

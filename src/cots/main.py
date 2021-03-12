@@ -307,7 +307,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         cluster_profiles = clt.get_cluster_mean_profile(
             my_instance.nb_clusters,
             df_clust,
-            my_instance.window_duration)
+            my_instance.window_duration, tmin=tmin)
 
         # Trigger manually new clustering
         # new_clustering = input('Do we perform new clustering ? (Y/N)')
@@ -403,7 +403,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         # update clustering & node consumption plot
         plot.update_clustering_plot(
             fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
-        plot.update_cluster_profiles(cluster_profiles)
+        plot.update_cluster_profiles(fig_mean_clust, ax_mean_clust, cluster_profiles,
+                                     sorted(working_df_indiv[it.tick_field].unique()))
         plot.update_nodes_plot(fig_node, ax_node, working_df_indiv)
         plt.show(block=False)
 

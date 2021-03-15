@@ -31,7 +31,7 @@ class Instance:
         dict_id_c: TODO: explain this data
     """
 
-    def __init__(self, data: str, config: Dict):
+    def __init__(self, config: Dict):
         """Instance initialization
 
         Args:
@@ -40,7 +40,7 @@ class Instance:
         """
         (self.df_indiv,
          self.df_host,
-         self.df_host_meta) = it.init_dfs(data)
+         self.df_host_meta) = it.init_dfs(config['data']['path'])
 
         self.time: int = self.df_indiv[it.tick_field].nunique()
         if config['analysis']['window_duration'] == 'default':
@@ -79,8 +79,13 @@ class Instance:
         print('%d nodes' % self.nb_nodes)
         print('%d containers' % self.nb_containers)
         print('\n')
-        # Not useful ?
-        # print('%d clusters' % self.nb_clusters)
+
+        it.results_file.write('\n')
+        it.results_file.write('### Problem instance informations ###')
+        it.results_file.write('Time considered : %d' % self.time)
+        it.results_file.write('%d nodes' % self.nb_nodes)
+        it.results_file.write('%d containers' % self.nb_containers)
+        it.results_file.write('\n')
 
     # TODO rewrite with only one f.write
 

@@ -78,11 +78,15 @@ def define_globals(config: Dict):
     global tick_field
     global metrics
 
+    global results_file
+
     global renderer
 
     indiv_field = config['data']['individual_field']
     host_field = config['data']['host_field']
     tick_field = config['data']['tick_field']
     metrics = config['data']['metrics']
+
+    results_file = open(config['data']['path'] + '/results.log', 'w')
 
     renderer = config['plot']['renderer']

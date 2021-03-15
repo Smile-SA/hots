@@ -310,3 +310,31 @@ def get_cluster_balance(df_clust: pd.DataFrame):
     """Display size of each cluster."""
     print('Clustering balance : ',
           df_clust.groupby('cluster').count())
+
+
+def get_far_container(c1: str, c2: str,
+                      df_clust: pd.DataFrame, profiles: np.array) -> str:
+    """Get the farthest container between c1 and c2 compared to profile."""
+    if norm(
+        df_clust.loc[c1].drop('cluster').values - profiles[df_clust.loc[c1]['cluster']]) >= norm(
+            df_clust.loc[c2].drop('cluster').values - profiles[df_clust.loc[c2]['cluster']]):
+        return c1
+    else:
+        return c2
+
+
+def change_clustering(mvg_containers: List, df_clust: pd.DataFrame,
+                      profiles: np.array) -> pd.DataFrame:
+    """Adjust the clustering with individuals to move to the closest cluster."""
+    for indiv in mvg_containers:
+        min_dist = float('inf')
+        new_cluster = -1
+        for cluster in range(len(profiles)):
+            if norm(
+                df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
+            ) < min_dist:
+                min_dist = norm(
+                    df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
+                )
+                new_cluster = cluster
+        df_clust.loc[indiv, 'cluster'] = new_cluster

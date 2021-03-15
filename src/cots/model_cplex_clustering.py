@@ -24,8 +24,8 @@ import numpy as np
 
 import pandas as pd
 
-from .clustering import get_far_container
 from . import init as it
+from .clustering import get_far_container
 from .instance import Instance
 
 

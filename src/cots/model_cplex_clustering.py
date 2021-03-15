@@ -24,6 +24,7 @@ import numpy as np
 
 import pandas as pd
 
+from .clustering import get_far_container
 from . import init as it
 from .instance import Instance
 
@@ -857,7 +858,35 @@ def dual_changed(mdl: Model, names: List,
     return False
 
 
+def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
+                                tol: float, nb_containers: int, dict_id_c: Dict,
+                                df_clust: pd.DataFrame, profiles: np.array) -> List:
+    """Get the list of moving containers from constraints dual values."""
+    done = False
+    while not done:
+        mvg_containers = []
+        for ct in mdl.iter_linear_constraints():
+            if ct.name in constraints_dual_values:
+                if ct.dual_value > (
+                        constraints_dual_values[ct.name]
+                        + tol * constraints_dual_values[ct.name]):
+                    indivs = re.findall(r'\d+\.*', ct.name)
+                    if not [e for e in indivs if dict_id_c[int(e)] in mvg_containers]:
+                        indiv = get_far_container(
+                            dict_id_c[int(indivs[0])],
+                            dict_id_c[int(indivs[1])],
+                            df_clust, profiles)
+                        mvg_containers.append(indiv)
+        # if len(mvg_containers) < (nb_containers / 5):
+        #     done = True
+        # else:
+        #     tol = tol + 0.2
+        done = True
+    return mvg_containers
+
+
 # TODO to improve : very low dual values can change easily
+# TODO choose container by most changing profile ?
 def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                           tol: float, nb_containers: int) -> List:
     """Get the list of moving containers from constraints dual values."""
@@ -870,10 +899,6 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                         constraints_dual_values[ct.name]
                         + tol * constraints_dual_values[ct.name]):
                     indiv = re.search(r'\d+$', ct.name)
-                    # print(indiv, indiv.group(),
-                    #       constraints_dual_values[ct.name],
-                    #       constraints_dual_values[ct.name]
-                    #       + tol * constraints_dual_values[ct.name])
                     if int(indiv.group()) not in mvg_containers:
                         mvg_containers.append(int(indiv.group()))
         if len(mvg_containers) < (nb_containers / 5):

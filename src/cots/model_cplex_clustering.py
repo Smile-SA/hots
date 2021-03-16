@@ -877,11 +877,10 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                             dict_id_c[int(indivs[1])],
                             df_clust, profiles)
                         mvg_containers.append(indiv)
-        # if len(mvg_containers) < (nb_containers / 5):
-        #     done = True
-        # else:
-        #     tol = tol + 0.2
-        done = True
+        if len(mvg_containers) < (nb_containers / 4):
+            done = True
+        else:
+            tol = tol + 0.2
     return mvg_containers
 
 

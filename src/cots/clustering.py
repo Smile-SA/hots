@@ -314,8 +314,10 @@ def get_far_container(c1: str, c2: str,
                       df_clust: pd.DataFrame, profiles: np.array) -> str:
     """Get the farthest container between c1 and c2 compared to profile."""
     if norm(
-        df_clust.loc[c1].drop('cluster').values - profiles[df_clust.loc[c1]['cluster']]) >= norm(
-            df_clust.loc[c2].drop('cluster').values - profiles[df_clust.loc[c2]['cluster']]):
+        df_clust.loc[c1].drop('cluster').values
+        - profiles[int(df_clust.loc[c1]['cluster'])]) >= norm(
+            df_clust.loc[c2].drop('cluster').values
+            - profiles[int(df_clust.loc[c2]['cluster'])]):
         return c1
     else:
         return c2

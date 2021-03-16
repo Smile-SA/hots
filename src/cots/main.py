@@ -119,18 +119,18 @@ def main(params):
         logging.info('We do not perform placement \n')
 
     # Plot clustering & allocation for 1st part
-    plot_before_loop = False
+    plot_before_loop = True
     if plot_before_loop:
         spec_containers = False
         if spec_containers:
             ctnr.show_specific_containers(working_df_indiv, df_indiv_clust,
                                           my_instance, labels_)
-        show_clustering = False
+        show_clustering = True
         if show_clustering:
-            # plot.plot_clustering_containers_by_node(
-            #     working_df_indiv, my_instance.dict_id_c, labels_)
-            plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
-                                 title='Clustering on first half part')
+            plot.plot_clustering_containers_by_node(
+                working_df_indiv, my_instance.dict_id_c, labels_)
+            # plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
+            #                      title='Clustering on first half part')
         # plot.plot_containers_groupby_nodes(
         #     my_instance.df_indiv,
         #     my_instance.df_host_meta.cpu.max(),

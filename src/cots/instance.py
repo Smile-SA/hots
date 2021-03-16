@@ -73,19 +73,11 @@ class Instance:
     # TODO rewrite with __str__
     def print(self):
         """Print Instance information."""
-        print('\n')
-        print('### Problem instance informations ###')
-        print('Time considered : %d' % self.time)
-        print('%d nodes' % self.nb_nodes)
-        print('%d containers' % self.nb_containers)
-        print('\n')
-
-        it.results_file.write('\n')
-        it.results_file.write('### Problem instance informations ###')
-        it.results_file.write('Time considered : %d' % self.time)
-        it.results_file.write('%d nodes' % self.nb_nodes)
-        it.results_file.write('%d containers' % self.nb_containers)
-        it.results_file.write('\n')
+        it.results_file.writelines(['### Problem instance informations ###\n',
+                                    'Time considered : %d\n' % self.time,
+                                    '%d nodes -- ' % self.nb_nodes,
+                                    '%d containers\n' % self.nb_containers,
+                                    '\n'])
 
     # TODO rewrite with only one f.write
 

@@ -55,6 +55,7 @@ def main(params):
     plt.style.use('bmh')
 
     # Init containers & nodes data, then Instance
+    logging.info('Loading data and creating Instance (Instance information are in results file)\n')
     my_instance = Instance(config)
 
     # Use pyomo model => to be fully applied after tests
@@ -72,13 +73,10 @@ def main(params):
     #     my_instance.sep_time)
 
     # Print real objective value of second part if no loop
-    logging.info('Real objective value of second part without heuristic and loop')
-    mc.get_obj_value_heuristic(my_instance.df_indiv,
-                               my_instance.sep_time,
-                               my_instance.df_indiv[it.tick_field].max())
-
-    # plt.show(block=False)
-    # input('Press enter to continue ...')
+    # logging.info('Real objective value of second part without heuristic and loop')
+    # mc.get_obj_value_heuristic(my_instance.df_indiv,
+    #                            my_instance.sep_time,
+    #                            my_instance.df_indiv[it.tick_field].max())
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
@@ -106,21 +104,19 @@ def main(params):
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
 
-    # input('End of clustering, press enter to continue ...')
-
-    it.results_file.write('Clustering computing time : %fs\n' % (time.time() - clustering_time))
+    it.results_file.write('\nClustering computing time : %fs\n\n' % (time.time() - clustering_time))
 
     # Placement
     containers_grouped = []
     if config['placement']['enable']:
-        print('Performing placement ... \n')
+        logging.info('Performing placement ... \n')
         placement_time = time.time()
         containers_grouped = place.allocation_distant_pairwise(
             my_instance, cluster_var_matrix, labels_)
 
-        print('Placement time : %fs\n' % (time.time() - placement_time))
+        it.results_file.write('\nPlacement time : %fs\n\n' % (time.time() - placement_time))
     else:
-        print('We do not perform placement \n')
+        logging.info('We do not perform placement \n')
 
     # Plot clustering & allocation for 1st part
     plot_before_loop = False
@@ -139,8 +135,6 @@ def main(params):
         #     my_instance.df_indiv,
         #     my_instance.df_host_meta.cpu.max(),
         #     my_instance.sep_time)
-
-    # plt.show(block=False)
 
     # Print real objective value
     # mc.get_obj_value_heuristic(my_instance.df_indiv,
@@ -165,11 +159,11 @@ def main(params):
     # Test allocation use case
     # TODO specific window not taken into account
     if config['allocation']['enable']:
-        print('Performing allocation ... \n')
+        logging.info('Performing allocation ... \n')
         print(alloc.check_constraints(
             my_instance, working_df_indiv, config['allocation']))
     else:
-        print('We do not perform allocation \n')
+        logging.info('We do not perform allocation \n')
 
     # Plot heuristic result without loop
     # ctnr.plot_all_data_all_containers(
@@ -179,9 +173,6 @@ def main(params):
     #     my_instance.df_host_meta[it.metrics[0]].max(),
     #     my_instance.sep_time,
     #     title='Node consumption after heuristic and change allocation')
-
-    # ctnr.plot_all_data_all_containers(
-    #     my_instance.df_indiv, sep_time=my_instance.sep_time)
 
     # plt.show(block=False)
 
@@ -205,7 +196,7 @@ def main(params):
                                my_instance.sep_time,
                                my_instance.df_indiv[it.tick_field].max())
 
-    print('Total computing time : %fs' % (time.time() - main_time))
+    it.results_file.write('\nTotal computing time : %fs' % (time.time() - main_time))
 
     it.results_file.close()
 
@@ -238,11 +229,14 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     clustering_dual_values = {}
     # placement_dual_values = {}
 
+    loop_nb = 1
     end = False
 
-    # input('Beginning the loop ... \n')
-
+    logging.info('Beginning the loop process ...\n')
     while not end:
+        logging.info('Enter loop number %d\n' % loop_nb)
+        it.results_file.write('Loop number %d\n' % loop_nb)
+
         working_df_indiv = my_instance.df_indiv[
             (my_instance.
                 df_indiv[it.tick_field] >= tmin) & (
@@ -259,10 +253,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         # plot.plot_clustering_containers_by_node(
         #     working_df_indiv, my_instance.dict_id_c, labels_)
 
-        print('\n')
-
-        # Allocation part :
-
         # evaluate clustering solution from optim model
         # TODO update model from existing one, not creating new one each time
         cplex_model = mc.CPXInstance(working_df_indiv,
@@ -272,29 +262,30 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                                      my_instance.dict_id_n,
                                      obj_func=current_obj_func,
                                      w=w, u=u, pb_number=2)
-        print('\n')
-        print('Solving linear relaxation ...')
+        logging.info('# Clustering evaluation #')
+        logging.info('Solving linear relaxation ...')
         cplex_model.solve(cplex_model.relax_mdl)
         # TODO only mustlink constraints
         # mc.print_all_dual(cplex_model.relax_mdl,
         #                   nn_only=True, names=constraints_dual)
 
         if len(clustering_dual_values) == 0:
-            print('Clustering problem not evaluated yet\n')
+            logging.info('Clustering problem not evaluated yet\n')
             clustering_dual_values = mc.fill_constraints_dual_values(
                 cplex_model.relax_mdl, constraints_dual
             )
         else:
-            print('Checking for changes in clustering dual values ...')
+            logging.info('Checking for changes in clustering dual values ...')
             moving_containers = mc.get_moving_containers_clust(
                 cplex_model.relax_mdl, clustering_dual_values,
                 tol_clust, my_instance.nb_containers, my_instance.dict_id_c,
                 df_clust, cluster_profiles)
             if len(moving_containers) > 0:
-                print('Changing clustering ...')
+                logging.info('Changing clustering ...')
                 clt.change_clustering(moving_containers, df_clust, cluster_profiles)
             else:
-                print('Clustering seems still right ...')
+                logging.info('Clustering seems still right ...')
+                it.results_file.write('Clustering seems still right ...')
 
         # if max_dual_clust is None:
         #     print('We have not evaluated the model yet...\n')
@@ -361,7 +352,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #                              my_instance.dict_id_n,
         #                              obj_func=current_obj_func,
         #                              w=w, u=u, v=v, dv=dv, pb_number=3)
-        print('\n')
+
         # print('Adding constraints from heuristic ...\n')
         # cplex_model.add_constraint_heuristic(
         #     containers_grouped, my_instance)
@@ -417,6 +408,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         # input('\nPress any key to progress in time ...\n')
         tmin += tick
         tmax += tick
+        loop_nb += 1
         if tmax >= my_instance.time:
             end = True
 

@@ -335,4 +335,6 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame,
                     df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
                 )
                 new_cluster = cluster
+        it.results_file.write('%s changes cluster : from %d to %d\n' % (
+            indiv, df_clust.loc[indiv, 'cluster'], new_cluster))
         df_clust.loc[indiv, 'cluster'] = new_cluster

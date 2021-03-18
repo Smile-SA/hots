@@ -1,0 +1,52 @@
+{
+    "analysis": {
+        "window_duration": 20
+    },
+    "clustering": {
+        "algo": "kmeans",
+        "nb_clusters": 5
+    },
+    "data": {
+        "path": "/home/ubuntu/cots-runs/20210315050003",
+        "individuals_file": "container_usage.csv",
+        "hosts_meta_file": "node_meta.csv",
+        "individual_field": "container_id",
+        "host_field": "host",
+        "tick_field": "time",
+        "metrics": [
+            "docker_container_cpu_current_usage_total"
+        ]
+    },
+    "heuristic": {
+        "algo": "distant_pairwise"
+    },
+    "optimization": {
+        "model": "src/cots/model_small_pyomo.py",
+        "solver": "glpk"
+    },
+    "loop": {
+        "tick": 20,
+        "constraints_dual": [
+            "mustLink"
+        ],
+        "tol_dual_clust": 0.2,
+        "tol_dual_place": 0.5
+    },
+    "plot": {
+        "renderer": "chromium"
+    },
+    "allocation": {
+        "enable": false,
+        "constraints": {
+            "load_threshold": 0.5,
+            "max_amplitude": 0.5
+        },
+        "objective": {
+            "open_nodes": 1,
+            "target_load_CPU": 0.8
+        }
+    },
+    "placement": {
+        "enable": true
+    }
+}

@@ -67,10 +67,10 @@ def main(params):
     ctnr.plot_all_data_all_containers(
         my_instance.df_indiv, sep_time=my_instance.sep_time)
 
-    # plot.plot_containers_groupby_nodes(
-    #     my_instance.df_indiv,
-    #     my_instance.df_host_meta[it.metrics[0]].max(),
-    #     my_instance.sep_time)
+    plot.plot_containers_groupby_nodes(
+        my_instance.df_indiv,
+        my_instance.df_host_meta[it.metrics[0]].max(),
+        my_instance.sep_time)
 
     # Print real objective value of second part if no loop
     # logging.info('Real objective value of second part without heuristic and loop')
@@ -119,13 +119,13 @@ def main(params):
         logging.info('We do not perform placement \n')
 
     # Plot clustering & allocation for 1st part
-    plot_before_loop = True
+    plot_before_loop = False
     if plot_before_loop:
         spec_containers = False
         if spec_containers:
             ctnr.show_specific_containers(working_df_indiv, df_indiv_clust,
                                           my_instance, labels_)
-        show_clustering = True
+        show_clustering = False
         if show_clustering:
             plot.plot_clustering_containers_by_node(
                 working_df_indiv, my_instance.dict_id_c, labels_)

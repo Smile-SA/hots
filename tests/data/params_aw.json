@@ -7,13 +7,13 @@
       "nb_clusters": 5
     },
     "data": {
-      "path": "tests/data/aw_05-03-21",
+      "path": "../data_aw/cots-runs/20210315050003",
       "individuals_file": "container_usage.csv",
       "hosts_meta_file": "node_meta.csv",
       "individual_field": "container_id",
       "host_field": "host",
       "tick_field": "time",
-      "metrics": ["value"]
+      "metrics": ["docker_container_cpu_current_usage_total"]
     },
     "heuristic": {
       "algo": "distant_pairwise"

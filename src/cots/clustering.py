@@ -324,7 +324,7 @@ def get_far_container(c1: str, c2: str,
 
 
 def change_clustering(mvg_containers: List, df_clust: pd.DataFrame,
-                      profiles: np.array) -> pd.DataFrame:
+                      profiles: np.array, nb_changes: int) -> pd.DataFrame:
     """Adjust the clustering with individuals to move to the closest cluster."""
     for indiv in mvg_containers:
         min_dist = float('inf')
@@ -337,6 +337,8 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame,
                     df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
                 )
                 new_cluster = cluster
-        it.results_file.write('%s changes cluster : from %d to %d\n' % (
-            indiv, df_clust.loc[indiv, 'cluster'], new_cluster))
-        df_clust.loc[indiv, 'cluster'] = new_cluster
+        if new_cluster != df_clust.loc[indiv, 'cluster']:
+            it.results_file.write('%s changes cluster : from %d to %d\n' % (
+                indiv, df_clust.loc[indiv, 'cluster'], new_cluster))
+            df_clust.loc[indiv, 'cluster'] = new_cluster
+            nb_changes += 1

@@ -181,7 +181,7 @@ def plot_clustering_containers_by_node_spec_cont(
 
 def plot_containers_groupby_nodes(df_indiv: pd.DataFrame,
                                   max_cap: int, sep_time: int,
-                                  title: str = None, metrics: List[str] = None):
+                                  title: str = None, metrics: List[str] = None) -> plt.Figure:
     """Plot containers consumption grouped by node."""
     metrics = metrics or it.metrics
     title = title or 'Node CPU consumption'
@@ -196,8 +196,8 @@ def plot_containers_groupby_nodes(df_indiv: pd.DataFrame,
     ax.axvline(x=sep_time, color='red', linestyle='--')
     ax.axhline(y=max_cap, color='red')
 
-    # plt.savefig('grouped_containers', format='svg')
     plt.draw()
+    return fig
 
 
 def plot_containers_groupby_nodes_px(df_indiv: pd.DataFrame,

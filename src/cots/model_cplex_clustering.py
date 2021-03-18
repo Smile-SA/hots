@@ -697,11 +697,6 @@ class CPXInstance:
         self.mdl.export_as_lp(path='./allocation.lp')
         self.relax_mdl.export_as_lp(path='./lp_allocation.lp')
 
-    # TODO not working since problem_dir deleted
-    # def export_mdls_lp(self):
-    #     self.mdl.export_as_lp(path=problem_dir)
-    #     self.relax_mdl.export_as_lp(path=problem_dir)
-
     # Expr total conso CPU in node at t
     def conso_n_t(self, node, t: int) -> LinearExpr:
         """Express the total consumption of node at time t."""

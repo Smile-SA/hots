@@ -366,7 +366,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                                      w=w, u=u, v=v, dv=dv, pb_number=3)
 
         print('Adding constraints from heuristic ...\n')
-        print(containers_grouped)
         cplex_model.add_constraint_heuristic(
             containers_grouped, my_instance)
         print('Solving linear relaxation ...')
@@ -423,8 +422,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         loop_nb += 1
         if tmax >= my_instance.time:
             end = True
-    it.results_file.write('Number of changes in clustering : %d' % nb_clust_changes)
-    it.results_file.write('Number of changes in placement : %d' % nb_place_changes)
+    it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes)
+    it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes)
     return (fig_node, fig_clust, fig_mean_clust)
 
 

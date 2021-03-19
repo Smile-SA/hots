@@ -1,12 +1,13 @@
 {
     "analysis": {
-      "window_duration": "default"
+      "window_duration": 250
     },
     "clustering": {
       "algo": "kmeans",
-      "nb_clusters": 10
+      "nb_clusters": 5
     },
     "data": {
+      "path": "tests/data/alibaba18_10n",
       "individuals_file": "container_usage.csv",
       "hosts_meta_file": "node_meta.csv",
       "individual_field": "container_id",
@@ -22,7 +23,7 @@
       "solver": "glpk"
     },
     "loop": {
-      "tick": 5,
+      "tick": 250,
       "constraints_dual": ["mustLink"],
       "tol_dual_clust": 0.5,
       "tol_dual_place": 0.5
@@ -31,7 +32,7 @@
       "renderer": "chromium"
     },
     "allocation":{
-      "enable": true,
+      "enable": false,
       "constraints":{
         "load_threshold": 0.5,
         "max_amplitude": 0.5
@@ -42,7 +43,7 @@
       }
     },
     "placement":{
-      "enable": false
+      "enable": true
     }
   }
   

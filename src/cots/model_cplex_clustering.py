@@ -76,7 +76,7 @@ class CPXInstance:
         # - 3 = placement from clustering
         self.pb_number = pb_number or 0
 
-        self.mdl = Model(name='allocation', cts_by_name=False)
+        self.mdl = Model(name=self.get_pb_name(self.pb_number), cts_by_name=False)
         print('Building names ...')
         self.build_names()
         print('Building variables ...')
@@ -99,6 +99,14 @@ class CPXInstance:
         print('Building model time : ', time.time() - model_time)
 
         self.write_infile()
+
+    def get_pb_name(self, pb_number: int) -> str:
+        """Get the problem name depending on his number."""
+        pb_names = ['place-&-clust',
+                    'placement',
+                    'clustering',
+                    'place-f-clust']
+        return pb_names[pb_number]
 
     def build_names(self):
         """Build only names variables from nodes and containers."""
@@ -258,17 +266,17 @@ class CPXInstance:
                         it.metrics[i - 1] + 'capacity_' + str(node)
                         + '_' + str(t))
 
-            # Assign constraint (x[c,n] = 1 => a[n] = 1)
-            # self.mdl.add_constraint(self.mdl.a[node] >= (self.mdl.sum(
-            #     self.mdl.x[c, node]
-            # for c in self.containers_names) / len(self.containers_names)
-            # ), 'open_a_'+str(node))
+                # Assign constraint (x[c,n] = 1 => a[n] = 1)
+                # self.mdl.add_constraint(self.mdl.a[node] >= (self.mdl.sum(
+                #     self.mdl.x[c, node]
+                # for c in self.containers_names) / len(self.containers_names)
+                # ), 'open_a_'+str(node))
 
-            # more constraints, but easier
-            # for c in self.containers_names:
-            #     self.mdl.add_constraint(
-            #         self.mdl.x[c, node] <= self.mdl.a[node],
-            #         'open_a_' + str(node))
+                # more constraints, but easier
+                # for c in self.containers_names:
+                #     self.mdl.add_constraint(
+                #         self.mdl.x[c, node] <= self.mdl.a[node],
+                #         'open_a_' + str(node))
 
             # Assign delta to diff cons - mean_cons
             expr_n = self.mean(node)
@@ -299,7 +307,7 @@ class CPXInstance:
         #     self.mdl.a[n] for n in self.
         #     nodes_names) <= self.max_open_nodes, 'max_nodes')
 
-        # Constraints fixing xv(i,j,n)
+        # Constraints fixing xv(i, j, n)
         # TODO replace because too many variables
         for(i, j) in combinations(self.containers_names, 2):
             for n in self.nodes_names:
@@ -872,10 +880,11 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                             dict_id_c[int(indivs[1])],
                             df_clust, profiles)
                         mvg_containers.append(indiv)
-        if len(mvg_containers) < (nb_containers / 4):
-            done = True
-        else:
-            tol = tol + 0.2
+        # if len(mvg_containers) < (nb_containers / 4):
+        #     done = True
+        # else:
+        #     tol = tol + 0.2
+        done = True
     return mvg_containers
 
 
@@ -895,10 +904,11 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                     indiv = re.search(r'\d+$', ct.name)
                     if int(indiv.group()) not in mvg_containers:
                         mvg_containers.append(int(indiv.group()))
-        if len(mvg_containers) < (nb_containers / 5):
-            done = True
-        else:
-            tol = tol + 0.2
+        # if len(mvg_containers) < (nb_containers / 5):
+        #     done = True
+        # else:
+        #     tol = tol + 0.2
+        done = True
     return mvg_containers
 
 

@@ -75,10 +75,14 @@ def main(params):
     init_node_fig.savefig(config['data']['path'] + '/init_node_plot.svg')
 
     # Print real objective value of second part if no loop
-    # logging.info('Real objective value of second part without heuristic and loop')
-    # mc.get_obj_value_heuristic(my_instance.df_indiv,
-    #                            my_instance.sep_time,
-    #                            my_instance.df_indiv[it.tick_field].max())
+    it.results_file.write(
+        'Real objective value of second part without heuristic and loop : ')
+    (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
+        my_instance.df_indiv,
+        my_instance.sep_time,
+        my_instance.df_indiv[it.tick_field].max())
+    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
+        obj_nodes, obj_delta))
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
@@ -152,10 +156,13 @@ def main(params):
     init_node_fig.savefig(config['data']['path'] + '/node_heur_plot.svg')
 
     # Print real objective value of second part if no loop
-    print('Real objective value of second part without loop')
-    mc.get_obj_value_heuristic(my_instance.df_indiv,
-                               my_instance.sep_time,
-                               my_instance.df_indiv[it.tick_field].max())
+    it.results_file.write('Real objective value of second part without loop\n')
+    (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
+        my_instance.df_indiv,
+        my_instance.sep_time,
+        my_instance.df_indiv[it.tick_field].max())
+    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
+        obj_nodes, obj_delta))
 
     # input('\nEnd of first part, press enter to enter loop ...\n')
 
@@ -199,10 +206,13 @@ def main(params):
         title='Node consumption with loop')
 
     # Print real objective value
-    print('Real objective value of second part with loop')
-    mc.get_obj_value_heuristic(my_instance.df_indiv,
-                               my_instance.sep_time,
-                               my_instance.df_indiv[it.tick_field].max())
+    it.results_file.write('Real objective value of second part with loop')
+    (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
+        my_instance.df_indiv,
+        my_instance.sep_time,
+        my_instance.df_indiv[it.tick_field].max())
+    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
+        obj_nodes, obj_delta))
 
     it.results_file.write('\nTotal computing time : %fs' % (time.time() - main_time))
 

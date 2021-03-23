@@ -779,7 +779,8 @@ class CPXInstance:
 # Functions related to CPLEX #
 
 def get_obj_value_heuristic(df_indiv: pd.DataFrame,
-                            t_min: int = None, t_max: int = None):
+                            t_min: int = None,
+                            t_max: int = None) -> (int, float):
     """Get objective value of current solution (max delta)."""
     t_min = t_min or df_indiv[it.tick_field].min()
     t_max = t_max or df_indiv[it.tick_field].max()
@@ -806,7 +807,7 @@ def get_obj_value_heuristic(df_indiv: pd.DataFrame,
         delta_n = max_n - min_n
         if obj_val < delta_n:
             obj_val = delta_n
-    print('Objective value : ', obj_val)
+    return (df_indiv[it.host_field].nunique(), obj_val)
 
 
 def print_constraints(mdl: Model):

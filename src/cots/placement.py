@@ -456,18 +456,20 @@ def move_list_containers(mvg_conts: List, instance: Instance,
                          tmin: int, tmax: int):
     """Move the list of containers to move."""
     # Remove all moving containers from nodes first
+    old_ids = {}
     for mvg_cont in mvg_conts:
-        old_id = instance.df_indiv.loc[
+        old_ids[mvg_cont] = instance.df_indiv.loc[
             instance.df_indiv[it.indiv_field] == instance.dict_id_c[mvg_cont]
         ][it.host_field].to_numpy()[0]
-        remove_container_node(old_id, instance.dict_id_c[mvg_cont], instance)
+        remove_container_node(old_ids[mvg_cont], instance.dict_id_c[mvg_cont], instance)
     # Assign them to a new node
     for mvg_cont in mvg_conts:
-        move_container(mvg_cont, instance, tmin, tmax)
+        move_container(mvg_cont, instance, tmin, tmax, old_ids[mvg_cont])
 
 
 # TODO what to do if can't open another node
-def move_container(mvg_cont: int, instance: Instance, tmin: int, tmax: int):
+def move_container(mvg_cont: int, instance: Instance,
+                   tmin: int, tmax: int, old_id: str):
     """Move `mvg_cont` to another node."""
     print('Moving container :', mvg_cont)
     working_df_indiv = instance.df_indiv[
@@ -496,6 +498,11 @@ def move_container(mvg_cont: int, instance: Instance, tmin: int, tmax: int):
         working_df_indiv[
             it.indiv_field] == instance.dict_id_c[mvg_cont]
     ][it.host_field].to_numpy()[0]
+    # print(working_df_indiv.loc[
+    #     working_df_indiv[
+    #         it.indiv_field] == instance.dict_id_c[mvg_cont]
+    # ][it.host_field].to_numpy()[0])
+    # input()
     n_int = ([k for k, v in instance.
               dict_id_n.items() if v == n][0] + 1) % nb_open_nodes
     print('He was on %s' % n)

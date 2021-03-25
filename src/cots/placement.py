@@ -70,7 +70,6 @@ def spread_containers(list_containers: List, instance: Instance,
     """Spread containers from list_containers into nodes."""
     n = 0
     for c in list_containers:
-        # place container c and increment node !! TODO
         cons_c = instance.df_indiv.loc[
             instance.df_indiv[it.indiv_field] == c
         ][it.metrics[0]].to_numpy()[:total_time]
@@ -78,6 +77,7 @@ def spread_containers(list_containers: List, instance: Instance,
             instance.
             df_host_meta[it.host_field] == instance.dict_id_n[n]
         ][it.metrics[0]].to_numpy()[0]
+        checked_nodes = 1
         done = False
         while not done:
             # TODO check n <= min_nodes or infeasibility
@@ -88,6 +88,10 @@ def spread_containers(list_containers: List, instance: Instance,
                     instance.dict_id_n[n], c, instance)
                 # pbar.update(1)
             else:
+                checked_nodes += 1
+                if checked_nodes > min_nodes:
+                    min_nodes += 1
+                    checked_nodes = 1
                 n = (n + 1) % min_nodes
                 cap_node = instance.df_host_meta.loc[
                     instance.
@@ -177,7 +181,6 @@ def allocation_distant_pairwise(
     containers_grouped = []
 
     while not stop:
-
         # no cluster remaining -> stop allocation
         if (c_it == 0):
             stop = True

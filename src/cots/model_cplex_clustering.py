@@ -702,8 +702,7 @@ class CPXInstance:
                 # Update the linear relaxation
         self.relax_mdl = make_relaxed_model(self.mdl)
 
-        self.mdl.export_as_lp(path='./allocation.lp')
-        self.relax_mdl.export_as_lp(path='./lp_allocation.lp')
+        self.write_infile()
 
     # Expr total conso CPU in node at t
     def conso_n_t(self, node, t: int) -> LinearExpr:

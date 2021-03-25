@@ -344,80 +344,81 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             my_instance.window_duration, tmin=tmin)
 
         # TODO improve this part (use cluster profiles)
-        # dv = ctnr.build_var_delta_matrix(
-        #     working_df_indiv, my_instance.dict_id_c)
+        dv = ctnr.build_var_delta_matrix(
+            working_df_indiv, my_instance.dict_id_c)
 
-        # # TODO Evaluate this possibility
-        # # if not cplex_model.obj_func:
-        # #     if cplex_model.relax_mdl.get_constraint_by_name(
-        # #             'max_nodes').dual_value > 0:
-        # #         print(cplex_model.relax_mdl.get_constraint_by_name(
-        # #             'max_nodes').to_string())
-        # #         print(cplex_model.relax_mdl.get_constraint_by_name(
-        # #             'max_nodes').dual_value)
-        # #         current_nb_nodes = current_nb_nodes - 1
-        # #         cplex_model.update_max_nodes_ct(current_nb_nodes)
+        # TODO Evaluate this possibility
+        # if not cplex_model.obj_func:
+        #     if cplex_model.relax_mdl.get_constraint_by_name(
+        #             'max_nodes').dual_value > 0:
+        #         print(cplex_model.relax_mdl.get_constraint_by_name(
+        #             'max_nodes').to_string())
+        #         print(cplex_model.relax_mdl.get_constraint_by_name(
+        #             'max_nodes').dual_value)
+        #         current_nb_nodes = current_nb_nodes - 1
+        #         cplex_model.update_max_nodes_ct(current_nb_nodes)
 
-        # #         # TODO adapt existing solution, but not from scratch
-        # #         containers_grouped = place.allocation_distant_pairwise(
-        # #             my_instance, cluster_var_matrix, labels_,
-        # #             cplex_model.max_open_nodes)
-        # #     else:
-        # #         cplex_model.update_obj_function(1)
-        # #         current_obj_func += 1
+        #         # TODO adapt existing solution, but not from scratch
+        #         containers_grouped = place.allocation_distant_pairwise(
+        #             my_instance, cluster_var_matrix, labels_,
+        #             cplex_model.max_open_nodes)
+        #     else:
+        #         cplex_model.update_obj_function(1)
+        #         current_obj_func += 1
 
-        # # evaluate placement
-        # logging.info('# Placement evaluation #')
-        # cplex_model = mc.CPXInstance(working_df_indiv,
-        #                              my_instance.df_host_meta,
-        #                              my_instance.nb_clusters,
-        #                              my_instance.dict_id_c,
-        #                              my_instance.dict_id_n,
-        #                              obj_func=current_obj_func,
-        #                              w=w, u=u, v=v, dv=dv, pb_number=3)
+        # evaluate placement
+        logging.info('# Placement evaluation #')
+        cplex_model = mc.CPXInstance(working_df_indiv,
+                                     my_instance.df_host_meta,
+                                     my_instance.nb_clusters,
+                                     my_instance.dict_id_c,
+                                     my_instance.dict_id_n,
+                                     obj_func=current_obj_func,
+                                     w=w, u=u, v=v, dv=dv, pb_number=3)
 
         # print('Adding constraints from heuristic ...\n')
         # cplex_model.add_constraint_heuristic(
-        #     containers_grouped, my_instance)
-        # print('Solving linear relaxation ...')
-        # cplex_model.solve(cplex_model.relax_mdl)
-        # # mc.print_all_dual(cplex_model.relax_mdl,
-        # #                   nn_only=True, names=constraints_dual)
+        # containers_grouped, my_instance)
+        print('Solving linear relaxation ...')
+        cplex_model.solve(cplex_model.relax_mdl)
+        # mc.print_all_dual(cplex_model.relax_mdl,
+        #                   nn_only=True, names=constraints_dual)
+        input()
 
+        moving_containers = []
+        if len(placement_dual_values) == 0:
+            logging.info('Placement problem not evaluated yet\n')
+            placement_dual_values = mc.fill_constraints_dual_values(
+                cplex_model.relax_mdl, constraints_dual
+            )
+        else:
+            logging.info('Checking for changes in placement dual values ...')
+            moving_containers = mc.get_moving_containers(
+                cplex_model.relax_mdl, placement_dual_values,
+                tol_place, my_instance.nb_containers)
+
+        # Move containers by hand
+        # print('Enter the containers you want to move')
         # moving_containers = []
-        # if len(placement_dual_values) == 0:
-        #     logging.info('Placement problem not evaluated yet\n')
-        #     placement_dual_values = mc.fill_constraints_dual_values(
-        #         cplex_model.relax_mdl, constraints_dual
-        #     )
-        # else:
-        #     logging.info('Checking for changes in placement dual values ...')
-        #     moving_containers = mc.get_moving_containers(
-        #         cplex_model.relax_mdl, placement_dual_values,
-        #         tol_place, my_instance.nb_containers)
+        # while True:
+        #     moving_container = input(
+        #         'Enter a container you want to move, or press Enter')
+        #     if moving_container.isdigit():
+        #         moving_containers.append(int(moving_container))
+        #         for pair in containers_grouped:
+        #             if my_instance.dict_id_c[int(moving_container)] in pair:
+        #                 containers_grouped.remove(pair)
+        #     else:
+        #         print('End of input.')
+        #         break
+        if len(moving_containers) >= 1:
+            nb_place_changes += len(moving_containers)
+            place.move_list_containers(moving_containers, my_instance,
+                                       working_df_indiv[it.tick_field].min(),
+                                       working_df_indiv[it.tick_field].max())
 
-        # # Move containers by hand
-        # # print('Enter the containers you want to move')
-        # # moving_containers = []
-        # # while True:
-        # #     moving_container = input(
-        # #         'Enter a container you want to move, or press Enter')
-        # #     if moving_container.isdigit():
-        # #         moving_containers.append(int(moving_container))
-        # #         for pair in containers_grouped:
-        # #             if my_instance.dict_id_c[int(moving_container)] in pair:
-        # #                 containers_grouped.remove(pair)
-        # #     else:
-        # #         print('End of input.')
-        # #         break
-        # if len(moving_containers) >= 1:
-        #     nb_place_changes += len(moving_containers)
-        #     place.move_list_containers(moving_containers, my_instance,
-        #                                working_df_indiv[it.tick_field].min(),
-        #                                working_df_indiv[it.tick_field].max())
-
-        # else:
-        #     logging.info('No container to move : we do nothing ...\n')
+        else:
+            logging.info('No container to move : we do nothing ...\n')
 
         # update clustering & node consumption plot
         plot.update_clustering_plot(

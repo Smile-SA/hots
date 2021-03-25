@@ -7,7 +7,7 @@
       "nb_clusters": 5
     },
     "data": {
-      "path": "../data_aw/15_22-03-21",
+      "path": "../data_aw/15_22-03_test",
       "individuals_file": "container_usage.csv",
       "hosts_meta_file": "node_meta.csv",
       "individual_field": "container_id",

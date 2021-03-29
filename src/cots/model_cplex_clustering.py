@@ -98,7 +98,7 @@ class CPXInstance:
 
         print('Building model time : ', time.time() - model_time)
 
-        self.write_infile()
+        # self.write_infile()
 
     def get_pb_name(self, pb_number: int) -> str:
         """Get the problem name depending on his number."""
@@ -542,6 +542,19 @@ class CPXInstance:
                     )
                 )
             )
+        # elif self.pb_number == 3:
+        #     self.mdl.minimize(
+        #         self.mdl.sum(
+        #             u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
+        #                 self.containers_names, 2
+        #             )
+        #         ) + self.mdl.sum(
+        #             (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
+        #             for (i, j) in combinations(
+        #                 self.containers_names, 2
+        #             )
+        #         )
+        #     )
 
     def set_x_from_df(self, df_indiv: pd.DataFrame,
                       dict_id_c: Dict, dict_id_n: Dict):
@@ -891,7 +904,8 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
 # TODO to improve : very low dual values can change easily
 # TODO choose container by most changing profile ?
 def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
-                          tol: float, nb_containers: int) -> List:
+                          tol: float, tol_move: float,
+                          nb_containers: int) -> List:
     """Get the list of moving containers from constraints dual values."""
     done = False
     while not done:
@@ -904,11 +918,10 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                     indiv = re.search(r'\d+$', ct.name)
                     if int(indiv.group()) not in mvg_containers:
                         mvg_containers.append(int(indiv.group()))
-        # if len(mvg_containers) < (nb_containers / 5):
-        #     done = True
-        # else:
-        #     tol = tol + 0.2
-        done = True
+        if len(mvg_containers) < (nb_containers * tol_move):
+            done = True
+        else:
+            tol = tol + 0.2
     return mvg_containers
 
 

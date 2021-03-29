@@ -192,7 +192,8 @@ def main(params):
         containers_grouped, config['loop']['tick'],
         config['loop']['constraints_dual'],
         config['loop']['tol_dual_clust'],
-        config['loop']['tol_dual_place'])
+        config['loop']['tol_dual_place'],
+        config['loop']['tol_move_place'])
 
     fig_node.savefig(config['data']['path'] + '/node_evo_plot.svg')
     fig_clust.savefig(config['data']['path'] + '/clust_evo_plot.svg')
@@ -222,7 +223,8 @@ def main(params):
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    labels_: List, containers_grouped: List, tick: int,
                    constraints_dual: List,
-                   tol_clust: float, tol_place: float) -> (plt.Figure, plt.Figure, plt.Figure):
+                   tol_clust: float, tol_place: float, tol_move_place: float
+                   ) -> (plt.Figure, plt.Figure, plt.Figure):
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
         my_instance.df_indiv, my_instance.sep_time,
@@ -383,7 +385,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         cplex_model.solve(cplex_model.relax_mdl)
         # mc.print_all_dual(cplex_model.relax_mdl,
         #                   nn_only=True, names=constraints_dual)
-        input()
 
         moving_containers = []
         if len(placement_dual_values) == 0:
@@ -395,7 +396,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             logging.info('Checking for changes in placement dual values ...')
             moving_containers = mc.get_moving_containers(
                 cplex_model.relax_mdl, placement_dual_values,
-                tol_place, my_instance.nb_containers)
+                tol_place, tol_move_place, my_instance.nb_containers)
 
         # Move containers by hand
         # print('Enter the containers you want to move')

@@ -1,13 +1,13 @@
 {
     "analysis": {
-      "window_duration": 20
+      "window_duration": 70
     },
     "clustering": {
       "algo": "kmeans",
       "nb_clusters": 5
     },
     "data": {
-      "path": "../data_aw/15_22-03_test",
+      "path": "../data_aw/15_22-03_test2",
       "individuals_file": "container_usage.csv",
       "hosts_meta_file": "node_meta.csv",
       "individual_field": "container_id",
@@ -23,7 +23,7 @@
       "solver": "glpk"
     },
     "loop": {
-      "tick": 20,
+      "tick": 70,
       "constraints_dual": ["mustLink"],
       "tol_dual_clust": 0.2,
       "tol_dual_place": 0.5

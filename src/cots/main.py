@@ -396,7 +396,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             logging.info('Checking for changes in placement dual values ...')
             moving_containers = mc.get_moving_containers(
                 cplex_model.relax_mdl, placement_dual_values,
-                tol_place, tol_move_place, my_instance.nb_containers)
+                tol_place, tol_move_place, my_instance.nb_containers,
+                working_df_indiv, my_instance.dict_id_c)
 
         # Move containers by hand
         # print('Enter the containers you want to move')

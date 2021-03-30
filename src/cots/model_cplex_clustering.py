@@ -98,7 +98,7 @@ class CPXInstance:
 
         print('Building model time : ', time.time() - model_time)
 
-        # self.write_infile()
+        self.write_infile()
 
     def get_pb_name(self, pb_number: int) -> str:
         """Get the problem name depending on his number."""
@@ -279,15 +279,15 @@ class CPXInstance:
                 #         'open_a_' + str(node))
 
             # Assign delta to diff cons - mean_cons
-            expr_n = self.mean(node)
-            for t in range(self.time_window):
-                self.mdl.add_constraint(self.conso_n_t(
-                    node, t) - expr_n <= self.mdl.delta,
-                    'delta_' + str(node) + '_' + str(t))
-                self.mdl.add_constraint(
-                    expr_n - self.
-                    conso_n_t(node, t) <= self.mdl.delta,
-                    'inv-delta_' + str(node) + '_' + str(t))
+            # expr_n = self.mean(node)
+            # for t in range(self.time_window):
+            #     self.mdl.add_constraint(self.conso_n_t(
+            #         node, t) - expr_n <= self.mdl.delta,
+            #         'delta_' + str(node) + '_' + str(t))
+            #     self.mdl.add_constraint(
+            #         expr_n - self.
+            #         conso_n_t(node, t) <= self.mdl.delta,
+            #         'inv-delta_' + str(node) + '_' + str(t))
 
         # Open node
         for (c, n) in product(self.containers_names, self.nodes_names):
@@ -529,22 +529,9 @@ class CPXInstance:
                     self.containers_names, 2
                 )
             ))
-        elif self.pb_number == 3:
-            self.mdl.minimize(
-                self.mdl.delta + self.mdl.sum(
-                    u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
-                        self.containers_names, 2
-                    )
-                ) + self.mdl.sum(
-                    (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
-                    for (i, j) in combinations(
-                        self.containers_names, 2
-                    )
-                )
-            )
         # elif self.pb_number == 3:
         #     self.mdl.minimize(
-        #         self.mdl.sum(
+        #         self.mdl.delta + self.mdl.sum(
         #             u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
         #                 self.containers_names, 2
         #             )
@@ -555,6 +542,19 @@ class CPXInstance:
         #             )
         #         )
         #     )
+        elif self.pb_number == 3:
+            self.mdl.minimize(
+                self.mdl.sum(
+                    u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
+                        self.containers_names, 2
+                    )
+                ) + self.mdl.sum(
+                    (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
+                    for (i, j) in combinations(
+                        self.containers_names, 2
+                    )
+                )
+            )
 
     def set_x_from_df(self, df_indiv: pd.DataFrame,
                       dict_id_c: Dict, dict_id_n: Dict):

@@ -310,7 +310,7 @@ def update_containers_plot(fig, ax, df: pd.DataFrame, t: int):
     plt.pause(0.5)
 
 
-def init_nodes_plot(df_indiv: pd.DataFrame, sep_time: int,
+def init_nodes_plot(df_indiv: pd.DataFrame, dict_id_n: Dict, sep_time: int,
                     max_cap: int, metric: str = None):
     """Initialize nodes consumption plot."""
     metric = metric or it.metrics[0]
@@ -318,14 +318,21 @@ def init_nodes_plot(df_indiv: pd.DataFrame, sep_time: int,
     fig.suptitle('Nodes consumption evolution')
     ax.set_xlim([0, df_indiv[it.tick_field].max()])
     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
+    df = df_indiv.loc[
+        df_indiv[it.tick_field] <= sep_time]
+    df.reset_index(drop=True, inplace=True)
+    for n, data_n in df.groupby(
+            df[it.host_field]):
+        n_int = [k for k, v in dict_id_n.items() if v == n][0]
+        ax.plot(data_n.groupby(data_n[it.tick_field])[metric].sum(), color=colors[n_int])
 
-    pvt = pd.pivot_table(
-        df_indiv.loc[
-            df_indiv[it.tick_field] <= sep_time],
-        columns=it.host_field,
-        index=df_indiv[it.tick_field],
-        aggfunc='sum', values=metric)
-    ax.plot(pvt)
+    # pvt = pd.pivot_table(
+    #     df_indiv.loc[
+    #         df_indiv[it.tick_field] <= sep_time],
+    #     columns=it.host_field,
+    #     index=df_indiv[it.tick_field],
+    #     aggfunc='sum', values=metric)
+    # ax.plot(pvt)
     ax.axvline(x=sep_time, color='red', linestyle='--')
     ax.axhline(y=max_cap, color='red')
 
@@ -350,13 +357,15 @@ def init_nodes_plot_px(df_indiv: pd.DataFrame, sep_time: int,
     return fig
 
 
-def update_nodes_plot(fig, ax, df: pd.DataFrame, metric: str = None):
+def update_nodes_plot(fig, ax, df: pd.DataFrame,
+                      dict_id_n: Dict, metric: str = None):
     """Update nodes consumption plot with new data."""
     metric = metric or it.metrics[0]
-    pvt_cpu = pd.pivot_table(
-        df, columns=df[it.host_field],
-        index=df[it.tick_field], aggfunc='sum', values=metric)
-    ax.plot(pvt_cpu)
+    temp_df = df.reset_index(drop=True)
+    for n, data_n in temp_df.groupby(
+            temp_df[it.host_field]):
+        n_int = [k for k, v in dict_id_n.items() if v == n][0]
+        ax.plot(data_n.groupby(data_n[it.tick_field])[metric].sum(), color=colors[n_int])
     plt.pause(0.5)
 
 

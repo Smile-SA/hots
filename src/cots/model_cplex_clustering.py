@@ -904,8 +904,8 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
 # TODO to improve : very low dual values can change easily
 # TODO choose container by most changing profile ?
 def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
-                          tol: float, tol_move: float,
-                          nb_containers: int) -> List:
+                          tol: float, tol_move: float, nb_containers: int,
+                          working_df: pd.DataFrame, dict_id_c: Dict) -> List:
     """Get the list of moving containers from constraints dual values."""
     done = False
     while not done:
@@ -915,14 +915,42 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                 if ct.dual_value > (
                         constraints_dual_values[ct.name]
                         + tol * constraints_dual_values[ct.name]):
-                    indiv = re.search(r'\d+$', ct.name)
-                    if int(indiv.group()) not in mvg_containers:
-                        mvg_containers.append(int(indiv.group()))
+                    indivs = re.findall(r'\d+\.*', ct.name)
+                    if not [e for e in indivs if int(e) in mvg_containers]:
+                        indiv = get_container_tomove(
+                            dict_id_c[int(indivs[0])],
+                            dict_id_c[int(indivs[1])],
+                            working_df
+                        )
+                        int_indiv = [k for k, v in dict_id_c.items() if v == indiv][0]
+                        mvg_containers.append(int(int_indiv))
+                    # if not in mvg_containers:
+                    #     mvg_containers.append(int(indiv.group()))
         if len(mvg_containers) < (nb_containers * tol_move):
             done = True
         else:
             tol = tol + 0.2
     return mvg_containers
+
+
+def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
+    """Get the container we want to move between c1 and c2."""
+    node = working_df.loc[
+        working_df[it.indiv_field] == c1][it.host_field].to_numpy()[0]
+    node_data = working_df.loc[
+        working_df[it.host_field] == node].groupby(
+            working_df[it.tick_field]
+    )[it.metrics[0]].sum().to_numpy()
+    c1_cons = working_df.loc[
+        working_df[it.indiv_field] == c1
+    ][it.metrics[0]].to_numpy()
+    c2_cons = working_df.loc[
+        working_df[it.indiv_field] == c2
+    ][it.metrics[0]].to_numpy()
+    if (node_data - c1_cons).var() > (node_data - c2_cons).var():
+        return c1
+    else:
+        return c2
 
 
 def print_non_user_constraint(mdl: Model):

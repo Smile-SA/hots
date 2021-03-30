@@ -227,7 +227,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    ) -> (plt.Figure, plt.Figure, plt.Figure):
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
-        my_instance.df_indiv, my_instance.sep_time,
+        my_instance.df_indiv, my_instance.dict_id_n, my_instance.sep_time,
         my_instance.df_host_meta[it.metrics[0]].max()
     )
     fig_clust, ax_clust = plot.init_plot_clustering(
@@ -426,7 +426,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
         plot.update_cluster_profiles(fig_mean_clust, ax_mean_clust, cluster_profiles,
                                      sorted(working_df_indiv[it.tick_field].unique()))
-        plot.update_nodes_plot(fig_node, ax_node, working_df_indiv)
+        plot.update_nodes_plot(fig_node, ax_node,
+                               working_df_indiv, my_instance.dict_id_n)
         # plt.show(block=False)
 
         # input('\nPress any key to progress in time ...\n')

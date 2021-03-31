@@ -479,20 +479,7 @@ def move_container(mvg_cont: int, instance: Instance,
         (instance.
          df_indiv[it.tick_field] >= tmin) & (
             instance.df_indiv[it.tick_field] <= tmax)]
-    duration = tmax - tmin + 1
     nb_open_nodes = working_df_indiv[it.host_field].nunique()
-    conso_nodes = np.zeros((working_df_indiv[it.host_field].nunique(), duration))
-    n_int = 0
-    for node, data in working_df_indiv.groupby(it.host_field):
-        if n_int >= nb_open_nodes:
-            break
-        n = [k for k, v in instance.
-             dict_id_n.items() if v == node][0]
-        t_int = 0
-        for time, t_data in data.groupby(data[it.tick_field]):
-            conso_nodes[n, t_int] = t_data[it.metrics[0]].sum()
-            t_int += 1
-        n_int += 1
     cons_c = working_df_indiv.loc[
         working_df_indiv[
             it.indiv_field] == instance.dict_id_c[mvg_cont]
@@ -501,42 +488,74 @@ def move_container(mvg_cont: int, instance: Instance,
         working_df_indiv[
             it.indiv_field] == instance.dict_id_c[mvg_cont]
     ][it.host_field].to_numpy()[0]
+    cap_node = instance.df_host_meta.loc[
+        instance.df_host_meta[it.host_field] == n
+    ][it.metrics[0]].to_numpy()[0]
+    # conso_nodes = np.zeros((working_df_indiv[it.host_field].nunique(), duration))
+    n_int = 0
+    new_n = None
+    min_var = float('inf')
+    print(min_var)
+    for node, data in working_df_indiv.groupby(it.host_field):
+        # if n_int >= nb_open_nodes:
+        #     break
+        node_data = data.groupby(
+            data[it.tick_field]
+        )[it.metrics[0]].sum().to_numpy()
+        if (np.all(np.less((node_data + cons_c), cap_node))) and (
+                (node_data + cons_c).var() < min_var):
+            new_n = node
+            min_var = (node_data + cons_c).var()
+        n_int += 1
+    if new_n is None:
+        print('Impossible de move %s on another existing node.' % instance.dict_id_c[mvg_cont])
+        print('We need to open a new node')
+        nb_open_nodes += 1
+        n_int += 1
+        new_n = instance.dict_id_n[n_int]
+
+    assign_container_node(
+        new_n,
+        instance.dict_id_c[mvg_cont],
+        instance)
+
+    # n = working_df_indiv.loc[
+    #     working_df_indiv[
+    #         it.indiv_field] == instance.dict_id_c[mvg_cont]
+    # ][it.host_field].to_numpy()[0]
     # print(working_df_indiv.loc[
     #     working_df_indiv[
     #         it.indiv_field] == instance.dict_id_c[mvg_cont]
     # ][it.host_field].to_numpy()[0])
     # input()
-    n_int = ([k for k, v in instance.
-              dict_id_n.items() if v == n][0] + 1) % nb_open_nodes
-    print('He was on %s' % n)
-    cap_node = instance.df_host_meta.loc[
-        instance.df_host_meta[it.host_field] == n
-    ][it.metrics[0]].to_numpy()[0]
-    done = False
-    n_count = 1
-    while not done:
-        # TODO check n <= min_nodes or infeasibility
-        if np.all(np.less((conso_nodes[n_int] + cons_c), cap_node)):
-            assign_container_node(
-                instance.dict_id_n[n_int],
-                instance.dict_id_c[mvg_cont],
-                instance)
-            done = True
-        else:
-            n_count += 1
-            if n_count > nb_open_nodes:
-                print('We need to open a new node')
-                nb_open_nodes += 1
-                conso_nodes = np.append(
-                    conso_nodes, [np.zeros(duration)], axis=0)
-                n_int = nb_open_nodes - 1
-            else:
-                n_int = (n_int + 1) % nb_open_nodes
-            cap_node = instance.df_host_meta.loc[
-                instance.
-                df_host_meta[it.host_field] == instance.dict_id_n[n_int]
-            ][it.metrics[0]].to_numpy()[0]
-    print('He can go on %s' % instance.dict_id_n[n_int])
+    # n_int = ([k for k, v in instance.
+    #           dict_id_n.items() if v == n][0] + 1) % nb_open_nodes
+    # print('He was on %s' % n)
+    # done = False
+    # n_count = 1
+    # while not done:
+    #     # TODO check n <= min_nodes or infeasibility
+    #     if np.all(np.less((conso_nodes[n_int] + cons_c), cap_node)):
+    #         assign_container_node(
+    #             instance.dict_id_n[n_int],
+    #             instance.dict_id_c[mvg_cont],
+    #             instance)
+    #         done = True
+    #     else:
+    #         n_count += 1
+    #         if n_count > nb_open_nodes:
+    #             print('We need to open a new node')
+    #             nb_open_nodes += 1
+    #             conso_nodes = np.append(
+    #                 conso_nodes, [np.zeros(duration)], axis=0)
+    #             n_int = nb_open_nodes - 1
+    #         else:
+    #             n_int = (n_int + 1) % nb_open_nodes
+    #         cap_node = instance.df_host_meta.loc[
+    #             instance.
+    #             df_host_meta[it.host_field] == instance.dict_id_n[n_int]
+    #         ][it.metrics[0]].to_numpy()[0]
+    print('He can go on %s' % new_n)
 
 
 def build_placement_adj_matrix(

@@ -1,19 +1,18 @@
 {
     "analysis": {
-      "window_duration": 100
+      "window_duration": 40
     },
     "clustering": {
       "algo": "kmeans",
-      "nb_clusters": 5
+      "nb_clusters": 3
     },
     "data": {
-      "path": "../data_aw/15_22-03_test4",
       "individuals_file": "container_usage.csv",
       "hosts_meta_file": "node_meta.csv",
       "individual_field": "container_id",
       "host_field": "host",
       "tick_field": "time",
-      "metrics": ["docker_container_cpu_current_usage_total"]
+      "metrics": ["value"]
     },
     "heuristic": {
       "algo": "distant_pairwise"
@@ -23,9 +22,9 @@
       "solver": "glpk"
     },
     "loop": {
-      "tick": 50,
+      "tick": 20,
       "constraints_dual": ["mustLink"],
-      "tol_dual_clust": 0.2,
+      "tol_dual_clust": 0.5,
       "tol_dual_place": 0.5,
       "tol_move_place": 0.2
     },

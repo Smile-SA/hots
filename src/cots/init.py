@@ -63,15 +63,16 @@ def init_dfs(data: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 df_from_csv(p_data / 'node_meta.csv'))
 
 
-def read_params(params_file: str) -> Dict:
+def read_params(path: str) -> Dict:
     """Get parameters from file and build the Dict config object."""
-    with open(params_file, 'r') as f:
+    p_path = Path(path)
+    with open(p_path / 'params.json', 'r') as f:
         config = json.load(f)
-    define_globals(config)
+    define_globals(p_path, config)
     return config
 
 
-def define_globals(config: Dict):
+def define_globals(p_path: Path, config: Dict):
     """Define the fields, as global variables, from config."""
     global indiv_field
     global host_field
@@ -87,6 +88,6 @@ def define_globals(config: Dict):
     tick_field = config['data']['tick_field']
     metrics = config['data']['metrics']
 
-    results_file = open(config['data']['path'] + '/results.log', 'w')
+    results_file = open(p_path / 'results.log', 'w')
 
     renderer = config['plot']['renderer']

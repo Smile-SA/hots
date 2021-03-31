@@ -31,7 +31,7 @@ class Instance:
         dict_id_c: TODO: explain this data
     """
 
-    def __init__(self, config: Dict):
+    def __init__(self, path: str, config: Dict):
         """Instance initialization
 
         Args:
@@ -40,7 +40,7 @@ class Instance:
         """
         (self.df_indiv,
          self.df_host,
-         self.df_host_meta) = it.init_dfs(config['data']['path'])
+         self.df_host_meta) = it.init_dfs(path)
 
         self.time: int = self.df_indiv[it.tick_field].nunique()
         if config['analysis']['window_duration'] == 'default':

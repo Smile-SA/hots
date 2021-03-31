@@ -43,20 +43,20 @@ from .instance import Instance
 # TODO add 'help' message
 @click.command()
 # @click.option('--data', required=True, type=click.Path(exists=True))
-@click.option('--params', required=True, type=click.Path(exists=True))
-def main(params):
+@click.option('--path', required=True, type=click.Path(exists=True))
+def main(path):
     """Perform all things of methodology."""
     # Initialization part
     main_time = time.time()
 
-    config = it.read_params(params)
-    logging.basicConfig(filename=config['data']['path'] + '/logs.log', filemode='w',
+    config = it.read_params(path)
+    logging.basicConfig(filename=path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    my_instance = Instance(config)
+    my_instance = Instance(path, config)
 
     # Use pyomo model => to be fully applied after tests
     # my_model = model.create_model(config['optimization']['model'], my_instance)
@@ -72,7 +72,7 @@ def main(params):
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time,
         title='Initial Node consumption')
-    init_node_fig.savefig(config['data']['path'] + '/init_node_plot.svg')
+    init_node_fig.savefig(path + '/init_node_plot.svg')
 
     # Print real objective value of second part if no loop
     it.results_file.write(
@@ -153,7 +153,7 @@ def main(params):
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time,
         title='Node consumption after heuristic without loop')
-    init_node_fig.savefig(config['data']['path'] + '/node_heur_plot.svg')
+    init_node_fig.savefig(path + '/node_heur_plot.svg')
 
     # Print real objective value of second part if no loop
     it.results_file.write('Real objective value of second part without loop\n')
@@ -195,9 +195,9 @@ def main(params):
         config['loop']['tol_dual_place'],
         config['loop']['tol_move_place'])
 
-    fig_node.savefig(config['data']['path'] + '/node_evo_plot.svg')
-    fig_clust.savefig(config['data']['path'] + '/clust_evo_plot.svg')
-    fig_mean_clust.savefig(config['data']['path'] + '/mean_clust_evo_plot.svg')
+    fig_node.savefig(path + '/node_evo_plot.svg')
+    fig_clust.savefig(path + '/clust_evo_plot.svg')
+    fig_mean_clust.savefig(path + '/mean_clust_evo_plot.svg')
 
     # Plot after the loop
     plot.plot_containers_groupby_nodes(

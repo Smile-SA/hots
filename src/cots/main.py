@@ -125,18 +125,24 @@ def main(path):
         logging.info('We do not perform placement \n')
 
     # Plot clustering & allocation for 1st part
-    plot_before_loop = False
+    plot_before_loop = True
     if plot_before_loop:
         spec_containers = False
         if spec_containers:
             ctnr.show_specific_containers(working_df_indiv, df_indiv_clust,
                                           my_instance, labels_)
-        show_clustering = False
+        show_clustering = True
         if show_clustering:
-            plot.plot_clustering_containers_by_node(
-                working_df_indiv, my_instance.dict_id_c, labels_)
-            # plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
-            #                      title='Clustering on first half part')
+            working_df_indiv = my_instance.df_indiv.loc[
+                my_instance.df_indiv[it.tick_field] <= my_instance.sep_time
+            ]
+            clust_node_fig = plot.plot_clustering_containers_by_node(
+                working_df_indiv, my_instance.dict_id_c,
+                labels_, filter_big=True)
+            clust_node_fig.savefig(path + '/clust_node_plot.svg')
+            first_clust_fig = plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
+                                                   title='Clustering on first half part')
+            first_clust_fig.savefig(path + '/first_clust_plot.svg')
         # plot.plot_containers_groupby_nodes(
         #     my_instance.df_indiv,
         #     my_instance.df_host_meta.cpu.max(),
@@ -192,6 +198,7 @@ def main(path):
         containers_grouped, config['loop']['tick'],
         config['loop']['constraints_dual'],
         config['loop']['tol_dual_clust'],
+        config['loop']['tol_move_clust'],
         config['loop']['tol_dual_place'],
         config['loop']['tol_move_place'])
 
@@ -223,7 +230,8 @@ def main(path):
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    labels_: List, containers_grouped: List, tick: int,
                    constraints_dual: List,
-                   tol_clust: float, tol_place: float, tol_move_place: float
+                   tol_clust: float, tol_move_clust: float,
+                   tol_place: float, tol_move_place: float
                    ) -> (plt.Figure, plt.Figure, plt.Figure):
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
@@ -270,6 +278,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         u = clt.build_adjacency_matrix(labels_)
         v = place.build_placement_adj_matrix(
             working_df_indiv, my_instance.dict_id_c)
+        moving_containers = []
 
         # TODO not very practical
         # plot.plot_clustering_containers_by_node(
@@ -298,18 +307,36 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             )
         else:
             logging.info('Checking for changes in clustering dual values ...')
+            time_get_clust_move = time.time()
             moving_containers = mc.get_moving_containers_clust(
                 cplex_model.relax_mdl, clustering_dual_values,
-                tol_clust, my_instance.nb_containers, my_instance.dict_id_c,
+                tol_clust, tol_move_clust,
+                my_instance.nb_containers, my_instance.dict_id_c,
                 df_clust, cluster_profiles)
+            print('Time get changing clustering : ', (time.time() - time_get_clust_move))
             if len(moving_containers) > 0:
                 logging.info('Changing clustering ...')
+                time_change_clust = time.time()
                 (df_clust, labels_, nb_clust_changes) = clt.change_clustering(
                     moving_containers, df_clust, labels_,
                     cluster_profiles, nb_clust_changes, my_instance.dict_id_c)
+                u = clt.build_adjacency_matrix(labels_)
+                cplex_model = mc.CPXInstance(working_df_indiv,
+                                             my_instance.df_host_meta,
+                                             my_instance.nb_clusters,
+                                             my_instance.dict_id_c,
+                                             my_instance.dict_id_n,
+                                             obj_func=current_obj_func,
+                                             w=w, u=u, pb_number=2)
+                print('Time changing clustering : ', (time.time() - time_change_clust))
             else:
                 logging.info('Clustering seems still right ...')
                 it.results_file.write('Clustering seems still right ...')
+            logging.info('Solving linear relaxation ...')
+            cplex_model.solve(cplex_model.relax_mdl)
+            clustering_dual_values = mc.fill_constraints_dual_values(
+                cplex_model.relax_mdl, constraints_dual
+            )
 
         # if max_dual_clust is None:
         #     print('We have not evaluated the model yet...\n')
@@ -385,19 +412,20 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         cplex_model.solve(cplex_model.relax_mdl)
         # mc.print_all_dual(cplex_model.relax_mdl,
         #                   nn_only=True, names=constraints_dual)
-
-        moving_containers = []
         if len(placement_dual_values) == 0:
             logging.info('Placement problem not evaluated yet\n')
             placement_dual_values = mc.fill_constraints_dual_values(
                 cplex_model.relax_mdl, constraints_dual
             )
         else:
-            logging.info('Checking for changes in placement dual values ...')
-            moving_containers = mc.get_moving_containers(
-                cplex_model.relax_mdl, placement_dual_values,
-                tol_place, tol_move_place, my_instance.nb_containers,
-                working_df_indiv, my_instance.dict_id_c)
+            if len(moving_containers) > 0:
+                logging.info('Checking for changes in placement dual values ...')
+                time_get_move = time.time()
+                moving_containers = mc.get_moving_containers(
+                    cplex_model.relax_mdl, placement_dual_values,
+                    tol_place, tol_move_place, my_instance.nb_containers,
+                    working_df_indiv, my_instance.dict_id_c)
+                print('Time get moving containers : ', (time.time() - time_get_move))
 
         # Move containers by hand
         # print('Enter the containers you want to move')
@@ -415,12 +443,27 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #         break
         if len(moving_containers) >= 1:
             nb_place_changes += len(moving_containers)
+            time_move_place = time.time()
             place.move_list_containers(moving_containers, my_instance,
                                        working_df_indiv[it.tick_field].min(),
                                        working_df_indiv[it.tick_field].max())
+            print('Time moving containers : ', (time.time() - time_move_place))
+            cplex_model = mc.CPXInstance(working_df_indiv,
+                                         my_instance.df_host_meta,
+                                         my_instance.nb_clusters,
+                                         my_instance.dict_id_c,
+                                         my_instance.dict_id_n,
+                                         obj_func=current_obj_func,
+                                         w=w, u=u, v=v, dv=dv, pb_number=3)
 
         else:
             logging.info('No container to move : we do nothing ...\n')
+
+        print('Solving linear relaxation bis ...')
+        cplex_model.solve(cplex_model.relax_mdl)
+        placement_dual_values = mc.fill_constraints_dual_values(
+            cplex_model.relax_mdl, constraints_dual
+        )
 
         # update clustering & node consumption plot
         plot.update_clustering_plot(

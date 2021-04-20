@@ -307,29 +307,29 @@ class CPXInstance:
         #     self.mdl.a[n] for n in self.
         #     nodes_names) <= self.max_open_nodes, 'max_nodes')
 
-        # Constraints fixing xv(i, j, n)
-        # TODO replace because too many variables
-        for(i, j) in combinations(self.containers_names, 2):
-            for n in self.nodes_names:
-                self.mdl.add_constraint(
-                    self.mdl.xv[i, j, n] <= self.mdl.x[i, n],
-                    'linear1_xv' + str(i) + '_' + str(j) + '_' + str(n)
-                )
-                self.mdl.add_constraint(
-                    self.mdl.xv[i, j, n] <= self.mdl.x[j, n],
-                    'linear2_xv' + str(i) + '_' + str(j) + '_' + str(n)
-                )
-                self.mdl.add_constraint(
-                    self.mdl.x[i, n] + self.mdl.x[j, n] - self.mdl.xv[i, j, n] <= 1,
-                    'linear3_xv' + str(i) + '_' + str(j) + '_' + str(n)
-                )
+        # # Constraints fixing xv(i, j, n)
+        # # TODO replace because too many variables
+        # for(i, j) in combinations(self.containers_names, 2):
+        #     for n in self.nodes_names:
+        #         self.mdl.add_constraint(
+        #             self.mdl.xv[i, j, n] <= self.mdl.x[i, n],
+        #             'linear1_xv' + str(i) + '_' + str(j) + '_' + str(n)
+        #         )
+        #         self.mdl.add_constraint(
+        #             self.mdl.xv[i, j, n] <= self.mdl.x[j, n],
+        #             'linear2_xv' + str(i) + '_' + str(j) + '_' + str(n)
+        #         )
+        #         self.mdl.add_constraint(
+        #             self.mdl.x[i, n] + self.mdl.x[j, n] - self.mdl.xv[i, j, n] <= 1,
+        #             'linear3_xv' + str(i) + '_' + str(j) + '_' + str(n)
+        #         )
 
-            # Constraints fixing v
-            self.mdl.add_constraint(
-                self.mdl.v[i, j] == self.mdl.sum(
-                    self.mdl.xv[i, j, n] for n in self.nodes_names),
-                'fix_v' + str(i) + '_' + str(j)
-            )
+        #     # Constraints fixing v
+        #     self.mdl.add_constraint(
+        #         self.mdl.v[i, j] == self.mdl.sum(
+        #             self.mdl.xv[i, j, n] for n in self.nodes_names),
+        #         'fix_v' + str(i) + '_' + str(j)
+        #     )
 
     def clustering_constraints(self, nb_clusters, w):
         """Build the clustering related constraints."""
@@ -364,28 +364,28 @@ class CPXInstance:
         #         )
         # Constraints fixing yu(i,j,n)
         # TODO replace because too many variables
-        print('Fixing yu(i,j,n) ...')
-        for(i, j) in combinations(self.containers_names, 2):
-            for k in self.clusters_names:
-                self.mdl.add_constraint(
-                    self.mdl.yu[i, j, k] <= self.mdl.y[i, k],
-                    'linear1_yu' + str(i) + '_' + str(j) + '_' + str(k)
-                )
-                self.mdl.add_constraint(
-                    self.mdl.yu[i, j, k] <= self.mdl.y[j, k],
-                    'linear2_yu' + str(i) + '_' + str(j) + '_' + str(k)
-                )
-                self.mdl.add_constraint(
-                    self.mdl.y[i, k] + self.mdl.y[j, k] - self.mdl.yu[i, j, k] <= 1,
-                    'linear3_yu' + str(i) + '_' + str(j) + '_' + str(k)
-                )
+        # print('Fixing yu(i,j,n) ...')
+        # for(i, j) in combinations(self.containers_names, 2):
+        #     for k in self.clusters_names:
+        #         self.mdl.add_constraint(
+        #             self.mdl.yu[i, j, k] <= self.mdl.y[i, k],
+        #             'linear1_yu' + str(i) + '_' + str(j) + '_' + str(k)
+        #         )
+        #         self.mdl.add_constraint(
+        #             self.mdl.yu[i, j, k] <= self.mdl.y[j, k],
+        #             'linear2_yu' + str(i) + '_' + str(j) + '_' + str(k)
+        #         )
+        #         self.mdl.add_constraint(
+        #             self.mdl.y[i, k] + self.mdl.y[j, k] - self.mdl.yu[i, j, k] <= 1,
+        #             'linear3_yu' + str(i) + '_' + str(j) + '_' + str(k)
+        #         )
 
-            # Constraints fixing u
-            self.mdl.add_constraint(
-                self.mdl.u[i, j] == self.mdl.sum(
-                    self.mdl.yu[i, j, k] for k in self.clusters_names),
-                'fix_u' + str(i) + '_' + str(j)
-            )
+        #     # Constraints fixing u
+        #     self.mdl.add_constraint(
+        #         self.mdl.u[i, j] == self.mdl.sum(
+        #             self.mdl.yu[i, j, k] for k in self.clusters_names),
+        #         'fix_u' + str(i) + '_' + str(j)
+        #     )
 
         # for(i, j) in combinations(self.containers_names, 2):
         #     self.mdl.add_constraint(
@@ -395,21 +395,77 @@ class CPXInstance:
 
     def add_adjacency_clust_constraints(self, u):
         """Add constraints fixing u variables from adjacency matrice."""
-        for (c1, c2) in combinations(self.containers_names, 2):
-            if u[c1, c2]:
+        # TODO replace because too many variables
+        print('Fixing yu(i,j,n) ...')
+        for(i, j) in combinations(self.containers_names, 2):
+            if u[i, j]:
+                for k in self.clusters_names:
+                    self.mdl.add_constraint(
+                        self.mdl.yu[i, j, k] <= self.mdl.y[i, k],
+                        'linear1_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                    )
+                    self.mdl.add_constraint(
+                        self.mdl.yu[i, j, k] <= self.mdl.y[j, k],
+                        'linear2_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                    )
+                    self.mdl.add_constraint(
+                        self.mdl.y[i, k] + self.mdl.y[j, k] - self.mdl.yu[i, j, k] <= 1,
+                        'linear3_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                    )
+
+                # Constraints fixing u
                 self.mdl.add_constraint(
-                    self.mdl.u[c1, c2] == 1,
-                    'mustLinkC_' + str(c2) + '_' + str(c1)
+                    self.mdl.u[i, j] == self.mdl.sum(
+                        self.mdl.yu[i, j, k] for k in self.clusters_names),
+                    'fix_u' + str(i) + '_' + str(j)
                 )
+                self.mdl.add_constraint(
+                    self.mdl.u[i, j] == 1,
+                    'mustLinkC_' + str(j) + '_' + str(i)
+                )
+        # for (c1, c2) in combinations(self.containers_names, 2):
+        #     if u[c1, c2]:
+        #         self.mdl.add_constraint(
+        #             self.mdl.u[c1, c2] == 1,
+        #             'mustLinkC_' + str(c2) + '_' + str(c1)
+        #         )
 
     def add_adjacency_place_constraints(self, v):
         """Add constraints fixing v variables from adjacency matrice."""
-        for (c1, c2) in combinations(self.containers_names, 2):
-            if v[c1, c2]:
+        # Constraints fixing xv(i, j, n)
+        # TODO replace because too many variables
+        for(i, j) in combinations(self.containers_names, 2):
+            if v[i, j]:
+                for n in self.nodes_names:
+                    self.mdl.add_constraint(
+                        self.mdl.xv[i, j, n] <= self.mdl.x[i, n],
+                        'linear1_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                    )
+                    self.mdl.add_constraint(
+                        self.mdl.xv[i, j, n] <= self.mdl.x[j, n],
+                        'linear2_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                    )
+                    self.mdl.add_constraint(
+                        self.mdl.x[i, n] + self.mdl.x[j, n] - self.mdl.xv[i, j, n] <= 1,
+                        'linear3_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                    )
+
+                # Constraints fixing v
                 self.mdl.add_constraint(
-                    self.mdl.v[c1, c2] == 1,
-                    'mustLinkP_' + str(c2) + '_' + str(c1)
+                    self.mdl.v[i, j] == self.mdl.sum(
+                        self.mdl.xv[i, j, n] for n in self.nodes_names),
+                    'fix_v' + str(i) + '_' + str(j)
                 )
+                self.mdl.add_constraint(
+                    self.mdl.v[i, j] == 1,
+                    'mustLinkP_' + str(j) + '_' + str(i)
+                )
+        # for (c1, c2) in combinations(self.containers_names, 2):
+        #     if v[c1, c2]:
+        #         self.mdl.add_constraint(
+        #             self.mdl.v[c1, c2] == 1,
+        #             'mustLinkP_' + str(c2) + '_' + str(c1)
+        #         )
 
     def clustering_constraints_representative(self, nb_clusters):
         """Build the clustering related constraints."""
@@ -875,29 +931,67 @@ def dual_changed(mdl: Model, names: List,
 
 
 def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
-                                tol: float, nb_containers: int, dict_id_c: Dict,
-                                df_clust: pd.DataFrame, profiles: np.array) -> List:
+                                tol: float, tol_move: float, nb_containers: int,
+                                dict_id_c: Dict, df_clust: pd.DataFrame, profiles: np.array
+                                ) -> List:
     """Get the list of moving containers from constraints dual values."""
-    done = False
-    while not done:
-        mvg_containers = []
-        for ct in mdl.iter_linear_constraints():
-            if ct.name in constraints_dual_values:
-                if ct.dual_value > (
-                        constraints_dual_values[ct.name]
-                        + tol * constraints_dual_values[ct.name]):
-                    indivs = re.findall(r'\d+\.*', ct.name)
-                    if not [e for e in indivs if dict_id_c[int(e)] in mvg_containers]:
-                        indiv = get_far_container(
-                            dict_id_c[int(indivs[0])],
-                            dict_id_c[int(indivs[1])],
-                            df_clust, profiles)
-                        mvg_containers.append(indiv)
-        # if len(mvg_containers) < (nb_containers / 4):
-        #     done = True
-        # else:
-        #     tol = tol + 0.2
-        done = True
+    # done = False
+    # while not done:
+    #     mvg_containers = []
+    #     for ct in mdl.iter_linear_constraints():
+    #         if ct.name in constraints_dual_values:
+    #             if ct.dual_value > (
+    #                     constraints_dual_values[ct.name]
+    #                     + tol * constraints_dual_values[ct.name]):
+    #                 indivs = re.findall(r'\d+\.*', ct.name)
+    #                 if not [e for e in indivs if dict_id_c[int(e)] in mvg_containers]:
+    #                     indiv = get_far_container(
+    #                         dict_id_c[int(indivs[0])],
+    #                         dict_id_c[int(indivs[1])],
+    #                         df_clust, profiles)
+    #                     mvg_containers.append(indiv)
+    #     # if len(mvg_containers) < (nb_containers / 4):
+    #     #     done = True
+    #     # else:
+    #     #     tol = tol + 0.2
+    #     done = True
+
+    mvg_containers = []
+    constraints_kept = {}
+    for ct in mdl.iter_linear_constraints():
+        if ct.name in constraints_dual_values:
+            if ct.dual_value > (
+                    constraints_dual_values[ct.name]
+                    + tol * constraints_dual_values[ct.name]):
+                constraints_kept[ct.name] = ct.dual_value
+
+    constraints_kept = dict(sorted(
+        constraints_kept.items(),
+        key=lambda item: item[1],
+        reverse=True
+    ))
+    # constraints_kept = {
+    #     name: mdl.get_constraint_by_name(name).dual_value for
+    #     name, val in sorted(
+    #         constraints_dual_values.items(),
+    #         key=lambda item: mdl.get_constraint_by_name(item[0]).dual_value,
+    #         reverse=True) if
+    #     mdl.get_constraint_by_name(name).dual_value > (val + tol * val)
+    # }
+    # print(constraints_dual_values)
+    # print(constraints_kept)
+    for ct, ct_dual in constraints_kept.items():
+        indivs = re.findall(r'\d+\.*', ct)
+        if not [e for e in indivs if dict_id_c[int(e)] in mvg_containers]:
+            indiv = get_far_container(
+                dict_id_c[int(indivs[0])],
+                dict_id_c[int(indivs[1])],
+                df_clust, profiles
+            )
+            mvg_containers.append(indiv)
+            if len(mvg_containers) >= (nb_containers * tol_move):
+                break
+    # print(mvg_containers)
     return mvg_containers
 
 
@@ -905,31 +999,67 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
 # TODO choose container by most changing profile ?
 def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                           tol: float, tol_move: float, nb_containers: int,
-                          working_df: pd.DataFrame, dict_id_c: Dict) -> List:
+                          working_df: pd.DataFrame, dict_id_c: Dict
+                          ) -> List:
     """Get the list of moving containers from constraints dual values."""
-    done = False
-    while not done:
-        mvg_containers = []
-        for ct in mdl.iter_linear_constraints():
-            if ct.name in constraints_dual_values:
-                if ct.dual_value > (
-                        constraints_dual_values[ct.name]
-                        + tol * constraints_dual_values[ct.name]):
-                    indivs = re.findall(r'\d+\.*', ct.name)
-                    if not [e for e in indivs if int(e) in mvg_containers]:
-                        indiv = get_container_tomove(
-                            dict_id_c[int(indivs[0])],
-                            dict_id_c[int(indivs[1])],
-                            working_df
-                        )
-                        int_indiv = [k for k, v in dict_id_c.items() if v == indiv][0]
-                        mvg_containers.append(int(int_indiv))
-                    # if not in mvg_containers:
-                    #     mvg_containers.append(int(indiv.group()))
-        if len(mvg_containers) < (nb_containers * tol_move):
-            done = True
-        else:
-            tol = tol + 0.2
+    # done = False
+    # while not done:
+    mvg_containers = []
+    constraints_kept = {}
+    for ct in mdl.iter_linear_constraints():
+        if ct.name in constraints_dual_values:
+            if ct.dual_value > (
+                    constraints_dual_values[ct.name]
+                    + tol * constraints_dual_values[ct.name]):
+                constraints_kept[ct.name] = ct.dual_value
+
+    constraints_kept = dict(sorted(
+        constraints_kept.items(),
+        key=lambda item: item[1],
+        reverse=True
+    ))
+    # print(len(constraints_kept), len(constraints_dual_values))
+    # print('Keep constraints time : ', (time.time() - method1_time))
+
+    # print(constraints_dual_values)
+    # for ct, dual_value in constraints_dual_values.items():
+    #     # if mdl.get_constraint_by_name(ct) is None:
+    #     print(ct)
+    #     print(mdl.get_constraint_by_name(ct))
+    #     print('\n')
+    # constraints_kept = {
+    #     name: mdl.get_constraint_by_name(name).dual_value for
+    #     name, val in sorted(
+    #         constraints_dual_values.items(),
+    #         key=lambda item: mdl.get_constraint_by_name(item[0]).dual_value,
+    #         reverse=True) if
+    #     mdl.get_constraint_by_name(name).dual_value > (val + tol * val)
+    # }
+    # constraints_kept = {
+    #     name: mdl.get_constraint_by_name(name).dual_value for
+    #     name, val in constraints_dual_values.items() if (
+    #         mdl.get_constraint_by_name(name).dual_value > (val + tol * val))
+    # }
+    # print(constraints_dual_values)
+    # print(constraints_kept)
+    for ct, ct_dual in constraints_kept.items():
+
+        indivs = re.findall(r'\d+\.*', ct)
+        if not [e for e in indivs if int(e) in mvg_containers]:
+            indiv = get_container_tomove(
+                dict_id_c[int(indivs[0])],
+                dict_id_c[int(indivs[1])],
+                working_df
+            )
+            int_indiv = [k for k, v in dict_id_c.items() if v == indiv][0]
+            mvg_containers.append(int(int_indiv))
+        # if not in mvg_containers:
+        #     mvg_containers.append(int(indiv.group()))
+            if len(mvg_containers) >= (nb_containers * tol_move):
+                break
+        # else:
+        #     tol = tol + 0.2
+    # print(mvg_containers)
     return mvg_containers
 
 

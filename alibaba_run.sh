@@ -1,2 +1,2 @@
 #!/bin/sh
-cots --params tests/data/alibaba_params.json
+cots --path ../data_alibaba/20n_k7_tau80

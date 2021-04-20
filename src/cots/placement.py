@@ -485,16 +485,21 @@ def move_container(mvg_cont: int, instance: Instance,
         instance.df_host_meta[it.host_field] == n
     ][it.metrics[0]].to_numpy()[0]
     # conso_nodes = np.zeros((working_df_indiv[it.host_field].nunique(), duration))
+    nodes = working_df_indiv[it.host_field].unique()
     n_int = 0
     new_n = None
     min_var = float('inf')
-    print(min_var)
-    for node, data in working_df_indiv.groupby(it.host_field):
+    for node in nodes:
+        node_data = instance.df_host.loc[
+            (instance.df_host[it.tick_field] >= tmin) & (
+                instance.df_host[it.tick_field] <= tmax) & (
+                instance.df_host[it.host_field] == node
+            )
+        ].groupby(
+            instance.df_host[it.tick_field]
+        )[it.metrics[0]].sum().to_numpy()
         # if n_int >= nb_open_nodes:
         #     break
-        node_data = data.groupby(
-            data[it.tick_field]
-        )[it.metrics[0]].sum().to_numpy()
         if (np.all(np.less((node_data + cons_c), cap_node))) and (
                 (node_data + cons_c).var() < min_var):
             new_n = node
@@ -510,7 +515,8 @@ def move_container(mvg_cont: int, instance: Instance,
     assign_container_node(
         new_n,
         instance.dict_id_c[mvg_cont],
-        instance)
+        instance,
+        remove=False)
 
     # n = working_df_indiv.loc[
     #     working_df_indiv[

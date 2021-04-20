@@ -11,6 +11,7 @@ import math
 from typing import Dict, List
 
 from matplotlib import gridspec as gridspec
+from matplotlib import patches as mpatches
 from matplotlib import pyplot as plt
 
 import numpy as np
@@ -39,8 +40,9 @@ other_colors = ['violet', 'lightcoral', 'navy', 'chocolate', 'turquoise']
 
 
 def plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
-                    metric: str = 'cpu', title: str = None):
+                    metric: str = None, title: str = None):
     """Plot metric containers consumption, grouped by cluster."""
+    metric = metric or it.metrics[0]
     fig = plt.figure()
     if title:
         fig.suptitle(title)
@@ -58,8 +60,11 @@ def plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
         for row in data.drop(labels='cluster', axis=1).iterrows():
             c_int = [key for key, v in dict_id_c.items() if v == row[0]][0]
             ax_[k].plot(row[1], colors[k], label=c_int)
-        ax_[k].legend()
+        # ax_[k].legend()
+        k_patch = mpatches.Patch(color=colors[k], label=len(data))
+        ax_[k].legend(handles=[k_patch], loc='upper left')
     plt.draw()
+    return fig
 
 
 def plot_clustering_spec_cont(df_clust: pd.DataFrame, dict_id_c: Dict,
@@ -104,11 +109,16 @@ def plot_containers_clustering_together(df_clust: pd.DataFrame,
 
 def plot_clustering_containers_by_node(
         df_indiv: pd.DataFrame, dict_id_c: Dict, labels_: List,
-        metric: str = 'cpu'):
+        filter_big: bool = False, metric: str = None):
     """
     Plot containers consumption grouped by node, one container added above
     another, with their cluster color.
     """
+    metric = metric or it.metrics[0]
+    if filter_big:
+        to_filter = np.bincount(labels_).argmax()
+    else:
+        to_filter = None
     fig_node_usage = plt.figure()
     fig_node_usage.suptitle(
         metric + ' consumption in each node, containers clustering')
@@ -130,12 +140,18 @@ def plot_clustering_containers_by_node(
             c_int = [k for k, v in dict_id_c.items() if v == c][0]
             temp_df = data_c.reset_index(level=it.indiv_field, drop=True)
             agglo_containers = agglo_containers.add(temp_df[metric])
-            ax_node_usage.plot(
-                x_, agglo_containers, colors[labels_[c_int]], label=c_int)
-        ax_node_usage.legend()
+            if labels_[c_int] == to_filter:
+                ax_node_usage.plot(
+                    x_, agglo_containers, colors[labels_[c_int]],
+                    alpha=0.0)
+            else:
+                ax_node_usage.plot(
+                    x_, agglo_containers, colors[labels_[c_int]], label=c_int)
+        # ax_node_usage.legend()
         i += 1
 
     plt.draw()
+    return fig_node_usage
 
 
 def plot_clustering_containers_by_node_spec_cont(

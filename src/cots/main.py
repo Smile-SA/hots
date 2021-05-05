@@ -77,12 +77,12 @@ def main(path):
     # Print real objective value of second part if no loop
     it.results_file.write(
         'Real objective value of second part without heuristic and loop :\n')
-    (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
+    (init_obj_nodes, init_obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
         my_instance.sep_time,
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        obj_nodes, obj_delta))
+        init_obj_nodes, init_obj_delta))
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
@@ -169,6 +169,10 @@ def main(path):
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         obj_nodes, obj_delta))
+    # obj_nodes,
+    # (init_obj_nodes - obj_nodes) / init_obj_nodes,
+    # obj_delta,
+    # (init_obj_delta - obj_delta) / obj_delta))
 
     # input('\nEnd of first part, press enter to enter loop ...\n')
 
@@ -193,6 +197,7 @@ def main(path):
     # plt.show(block=False)
 
     # loop 'streaming' progress
+    it.results_file.write('\n### Loop process ###\n')
     (fig_node, fig_clust, fig_mean_clust) = streaming_eval(
         my_instance, df_indiv_clust, labels_,
         containers_grouped, config['loop']['tick'],
@@ -264,8 +269,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
     logging.info('Beginning the loop process ...\n')
     while not end:
-        logging.info('Enter loop number %d\n' % loop_nb)
-        it.results_file.write('Loop number %d\n' % loop_nb)
+        logging.info('\n # Enter loop number %d #\n' % loop_nb)
+        it.results_file.write('\n # Loop number %d #\n' % loop_nb)
 
         working_df_indiv = my_instance.df_indiv[
             (my_instance.
@@ -279,6 +284,9 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         v = place.build_placement_adj_matrix(
             working_df_indiv, my_instance.dict_id_c)
         moving_containers = []
+
+        nb_clust_changes_loop = 0
+        nb_place_changes_loop = 0
 
         # TODO not very practical
         # plot.plot_clustering_containers_by_node(
@@ -317,9 +325,9 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             if len(moving_containers) > 0:
                 logging.info('Changing clustering ...')
                 time_change_clust = time.time()
-                (df_clust, labels_, nb_clust_changes) = clt.change_clustering(
+                (df_clust, labels_, nb_clust_changes_loop) = clt.change_clustering(
                     moving_containers, df_clust, labels_,
-                    cluster_profiles, nb_clust_changes, my_instance.dict_id_c)
+                    cluster_profiles, my_instance.dict_id_c)
                 u = clt.build_adjacency_matrix(labels_)
                 cplex_model = mc.CPXInstance(working_df_indiv,
                                              my_instance.df_host_meta,
@@ -442,7 +450,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #         print('End of input.')
         #         break
         if len(moving_containers) >= 1:
-            nb_place_changes += len(moving_containers)
+            nb_place_changes_loop = len(moving_containers)
             time_move_place = time.time()
             place.move_list_containers(moving_containers, my_instance,
                                        working_df_indiv[it.tick_field].min(),
@@ -474,14 +482,20 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                                working_df_indiv, my_instance.dict_id_n)
         # plt.show(block=False)
 
+        it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
+        it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
+        nb_clust_changes += nb_clust_changes_loop
+        nb_place_changes += nb_place_changes_loop
+
         # input('\nPress any key to progress in time ...\n')
         tmin += tick
         tmax += tick
         loop_nb += 1
         if tmax >= my_instance.time:
             end = True
-    it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes)
-    it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes)
+    it.results_file.write('\n### Results of loops ###\n')
+    it.results_file.write('Total number of changes in clustering : %d\n' % nb_clust_changes)
+    it.results_file.write('Total number of changes in placement : %d\n' % nb_place_changes)
     return (fig_node, fig_clust, fig_mean_clust)
 
 

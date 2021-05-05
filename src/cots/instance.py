@@ -77,6 +77,11 @@ class Instance:
                                     'Time considered : %d\n' % self.time,
                                     '%d nodes -- ' % self.nb_nodes,
                                     '%d containers\n' % self.nb_containers,
+                                    '\n### Parameters ###\n'
+                                    'clusters : %d\n' % self.nb_clusters,
+                                    'tau : %d (%f%%)\n' % (
+                                        self.window_duration,
+                                        (self.window_duration / self.time)),
                                     '\n'])
 
     # TODO rewrite with only one f.write

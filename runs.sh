@@ -1,7 +1,5 @@
 #!/bin/sh
-for dir in ../*; do
-    { printf '%s\n' "$dir"
-      ( cd "$dir" && find . )
-    }
-    # } >"$dir/original_filenames.txt"
-done
+for f in /home/eleclercq/Documents/CIFRE/code_cifre/data_aw/15_22-03_bench/*;
+    do
+        [ -d $f ] && cd "$f" && cots --path .
+    done;

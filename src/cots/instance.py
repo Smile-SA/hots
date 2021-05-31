@@ -54,8 +54,12 @@ class Instance:
             self.sep_time: int = self.df_indiv[
                 it.tick_field].min() + self.window_duration - 1
 
-        self.eval_time: int = math.floor(self.time / 2) + self.df_indiv[
-            it.tick_field].min()
+        if config['analysis']['eval_time'] == 'default':
+            self.eval_time: int = math.floor(self.time / 2) + self.df_indiv[
+                it.tick_field].min()
+        else:
+            self.eval_time = config['analysis']['eval_time']
+
         self.nb_nodes = self.df_host_meta[it.host_field].nunique()
         self.nb_containers = self.df_indiv[it.indiv_field].nunique()
         self.nb_clusters = config['clustering']['nb_clusters']

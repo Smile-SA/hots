@@ -83,6 +83,7 @@ def change_max_bound(my_instance: Instance, config: Dict, min_time: int):
     print('Before change dataset : ')
     print(my_instance.df_indiv)
     for container in my_instance.df_indiv[it.indiv_field].unique():
+        print('Doing container %s' % container)
         node = my_instance.df_indiv.loc[my_instance.df_indiv[
             it.indiv_field] == container][it.host_field].to_numpy()[0]
         percent_total = current_max_by_node[node][container] / total_max

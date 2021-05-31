@@ -79,7 +79,18 @@ def main(path):
         'Real objective value of second part without heuristic and loop :\n')
     (init_obj_nodes, init_obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
-        my_instance.sep_time,
+        my_instance.eval_time,
+        my_instance.df_indiv[it.tick_field].max())
+    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
+        init_obj_nodes, init_obj_delta))
+
+    # Print real objective value of second part with spread technique
+    place.allocation_spread(my_instance)
+    it.results_file.write(
+        'Real objective value of second part with spread technique :\n')
+    (init_obj_nodes, init_obj_delta) = mc.get_obj_value_heuristic(
+        my_instance.df_indiv,
+        my_instance.eval_time,
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         init_obj_nodes, init_obj_delta))
@@ -111,6 +122,15 @@ def main(path):
         cluster_profiles, cluster_vars)
 
     it.results_file.write('\nClustering computing time : %fs\n\n' % (time.time() - clustering_time))
+
+    # Test allocation use case
+    # TODO specific window not taken into account
+    if config['allocation']['enable']:
+        logging.info('Performing allocation ... \n')
+        print(alloc.check_constraints(
+            my_instance, working_df_indiv, config['allocation']))
+    else:
+        logging.info('We do not perform allocation \n')
 
     # Placement
     containers_grouped = []
@@ -165,7 +185,7 @@ def main(path):
     it.results_file.write('Real objective value of second part without loop\n')
     (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
-        my_instance.sep_time,
+        my_instance.eval_time,
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         obj_nodes, obj_delta))
@@ -178,12 +198,12 @@ def main(path):
 
     # Test allocation use case
     # TODO specific window not taken into account
-    if config['allocation']['enable']:
-        logging.info('Performing allocation ... \n')
-        print(alloc.check_constraints(
-            my_instance, working_df_indiv, config['allocation']))
-    else:
-        logging.info('We do not perform allocation \n')
+    # if config['allocation']['enable']:
+    #     logging.info('Performing allocation ... \n')
+    #     print(alloc.check_constraints(
+    #         my_instance, working_df_indiv, config['allocation']))
+    # else:
+    #     logging.info('We do not perform allocation \n')
 
     # Plot heuristic result without loop
     # ctnr.plot_all_data_all_containers(
@@ -222,7 +242,7 @@ def main(path):
     it.results_file.write('Real objective value of second part with loop :\n')
     (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
-        my_instance.sep_time,
+        my_instance.eval_time,
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         obj_nodes, obj_delta))

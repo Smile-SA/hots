@@ -77,7 +77,7 @@ def plot_all_data_all_containers(
                              index=it.tick_field, aggfunc='sum', values=metric)
         pvt.plot(ax=ax_[ai], legend=False)
         # pvt.plot(ax=ax_[ai])
-        ax_[ai].axvline(x=sep_time, color='red', linestyle='--')
+        # ax_[ai].axvline(x=sep_time, color='red', linestyle='--')
         ai += 1
 
     fig.align_labels()

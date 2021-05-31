@@ -1,2 +1,2 @@
 #!/bin/sh
-cots --path ../data_alibaba/20n_k7_tau80
+cots --path ../data_alibaba/20n_batch_bench/k3_tau70

@@ -121,37 +121,84 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
             instance.
             df_host_meta[it.host_field] == instance.dict_id_n[n]
         ][it.metrics[0]].to_numpy()[0]
-        done = False
         i_n = 0
-        while not done:
-            if np.all(np.less(
-                    (conso_nodes[n] + cons_i + cons_j), cap_node)):
-                conso_nodes[n] += cons_i + cons_j
-                assign_container_node(
-                    instance.dict_id_n[n],
-                    list_containers_i[c],
-                    instance)
-                assign_container_node(
-                    instance.dict_id_n[n],
-                    list_containers_j[c],
-                    instance)
-                containers_grouped.append([
-                    list_containers_i[c], list_containers_j[c]])
-                done = True
-                pbar.update(2)
-            else:
-                i_n += 1
-                print(instance.dict_id_n)
-                if i_n >= min_nodes:
-                    min_nodes += 1
-                    n = i_n
+        if not np.all(np.less(
+                cons_i + cons_j, cap_node)):
+            done1 = False
+            while not done1:
+                if np.all(np.less(
+                        (conso_nodes[n] + cons_i), cap_node)):
+                    conso_nodes[n] += cons_i
+                    assign_container_node(
+                        instance.dict_id_n[n],
+                        list_containers_i[c],
+                        instance)
+                    done1 = True
+                    pbar.update(1)
                 else:
-                    n = (n + 1) % min_nodes
-                cap_node = instance.df_host_meta.loc[
-                    instance.
-                    df_host_meta[it.host_field] == instance.dict_id_n[n]
-                ][it.metrics[0]].to_numpy()[0]
-        n = (n + 1) % min_nodes
+                    i_n += 1
+                    if i_n >= min_nodes:
+                        min_nodes += 1
+                        n = i_n
+                    else:
+                        n = (n + 1) % min_nodes
+                    cap_node = instance.df_host_meta.loc[
+                        instance.
+                        df_host_meta[it.host_field] == instance.dict_id_n[n]
+                    ][it.metrics[0]].to_numpy()[0]
+            n = (n + 1) % min_nodes
+            done2 = False
+            while not done2:
+                if np.all(np.less(
+                        (conso_nodes[n] + cons_j), cap_node)):
+                    conso_nodes[n] += cons_j
+                    assign_container_node(
+                        instance.dict_id_n[n],
+                        list_containers_j[c],
+                        instance)
+                    done2 = True
+                    pbar.update(1)
+                else:
+                    i_n += 1
+                    if i_n >= min_nodes:
+                        min_nodes += 1
+                        n = i_n
+                    else:
+                        n = (n + 1) % min_nodes
+                    cap_node = instance.df_host_meta.loc[
+                        instance.
+                        df_host_meta[it.host_field] == instance.dict_id_n[n]
+                    ][it.metrics[0]].to_numpy()[0]
+        else:
+            done = False
+            while not done:
+                if np.all(np.less(
+                        (conso_nodes[n] + cons_i + cons_j), cap_node)):
+                    conso_nodes[n] += cons_i + cons_j
+                    assign_container_node(
+                        instance.dict_id_n[n],
+                        list_containers_i[c],
+                        instance)
+                    assign_container_node(
+                        instance.dict_id_n[n],
+                        list_containers_j[c],
+                        instance)
+                    containers_grouped.append([
+                        list_containers_i[c], list_containers_j[c]])
+                    done = True
+                    pbar.update(2)
+                else:
+                    i_n += 1
+                    if i_n >= min_nodes:
+                        min_nodes += 1
+                        n = i_n
+                    else:
+                        n = (n + 1) % min_nodes
+                    cap_node = instance.df_host_meta.loc[
+                        instance.
+                        df_host_meta[it.host_field] == instance.dict_id_n[n]
+                    ][it.metrics[0]].to_numpy()[0]
+            n = (n + 1) % min_nodes
     return c
 
 
@@ -344,6 +391,19 @@ def allocation_ffd(instance: Instance,
                     instance.dict_id_n[assign_container], container, instance)
                 pbar.update(1)
     pbar.close()
+
+
+def allocation_spread(instance: Instance):
+    """Spread technique for placement."""
+    total_time = instance.sep_time
+
+    min_nodes = nb_min_nodes(instance, total_time)
+    conso_nodes = np.zeros((instance.nb_nodes, total_time))
+
+    spread_containers(
+        instance.df_indiv[it.indiv_field].unique(),
+        instance, conso_nodes, total_time, min_nodes
+    )
 
 
 # TODO adapt to dfs

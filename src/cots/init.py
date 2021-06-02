@@ -16,7 +16,7 @@ import pandas as pd
 # Functions definitions #
 
 
-def build_df_from_containers(df_indiv: pd.DataFrame) -> pd.DataFrame:
+def build_df_from_containers_old(df_indiv: pd.DataFrame) -> pd.DataFrame:
     """Build the `df_host` from containers df."""
     df_host = pd.DataFrame(data=None)
     for time in df_indiv[tick_field].unique():
@@ -34,6 +34,18 @@ def build_df_from_containers(df_indiv: pd.DataFrame) -> pd.DataFrame:
             df_host = df_host.append(
                 temp_df, ignore_index=True
             )
+    return df_host
+
+
+def build_df_from_containers(df_indiv: pd.DataFrame) -> pd.DataFrame:
+    """Build the `df_host` from containers df."""
+    dict_agg = {}
+    for metric in metrics:
+        dict_agg[metric] = 'sum'
+
+    df_host = df_indiv.groupby(
+        [tick_field, host_field], as_index=False).agg(dict_agg)
+
     return df_host
 
 

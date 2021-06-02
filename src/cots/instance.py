@@ -64,6 +64,15 @@ class Instance:
         self.nb_containers = self.df_indiv[it.indiv_field].nunique()
         self.nb_clusters = config['clustering']['nb_clusters']
 
+        self.df_indiv = self.df_indiv.astype({
+            it.indiv_field: str,
+            it.host_field: str,
+            it.tick_field: int})
+        self.df_host = self.df_host.astype({
+            it.host_field: str,
+            it.tick_field: int})
+        self.df_host_meta = self.df_host_meta.astype({it.host_field: str})
+
         self.df_host.sort_values(it.tick_field, inplace=True)
         self.df_indiv.sort_values(it.tick_field, inplace=True)
         self.df_host.set_index(

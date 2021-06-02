@@ -92,6 +92,8 @@ def define_globals(p_path: Path, config: Dict):
     global metrics
 
     global results_file
+    global main_results_file
+    global additional_results_file
 
     global renderer
 
@@ -101,5 +103,7 @@ def define_globals(p_path: Path, config: Dict):
     metrics = config['data']['metrics']
 
     results_file = open(p_path / 'results.log', 'w')
+    main_results_file = open(p_path / 'results.log', 'w')
+    additional_results_file = open(p_path / 'results.log', 'w')
 
     renderer = config['plot']['renderer']

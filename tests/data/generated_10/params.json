@@ -1,6 +1,7 @@
 {
     "analysis": {
-      "window_duration": "default"
+      "window_duration": "default",
+      "eval_time": "default"
     },
     "clustering": {
       "algo": "kmeans",

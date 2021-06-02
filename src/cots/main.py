@@ -76,24 +76,27 @@ def main(path):
 
     # Print real objective value of second part if no loop
     it.results_file.write(
-        'Real objective value of second part without heuristic and loop :\n')
+        'Real objective value of second part with initial dataset placement :\n')
     (init_obj_nodes, init_obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
         my_instance.eval_time,
         my_instance.df_indiv[it.tick_field].max())
-    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
+    it.results_file.write('Number of nodes : %d, Delta : %f\n\n' % (
         init_obj_nodes, init_obj_delta))
 
     # Print real objective value of second part with spread technique
+    spread_time = time.time()
     place.allocation_spread(my_instance)
+    spread_time = time.time() - spread_time
     it.results_file.write(
         'Real objective value of second part with spread technique :\n')
-    (init_obj_nodes, init_obj_delta) = mc.get_obj_value_heuristic(
+    (spread_obj_nodes, spread_obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
         my_instance.eval_time,
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        init_obj_nodes, init_obj_delta))
+        spread_obj_nodes, spread_obj_delta))
+    it.results_file.write('Spread technique time : %f s\n\n' % (spread_time))
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
@@ -121,7 +124,8 @@ def main(path):
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
 
-    it.results_file.write('\nClustering computing time : %fs\n\n' % (time.time() - clustering_time))
+    it.results_file.write('\nClustering computing time : %f s\n\n' %
+                          (time.time() - clustering_time))
 
     # Test allocation use case
     # TODO specific window not taken into account
@@ -136,13 +140,23 @@ def main(path):
     containers_grouped = []
     if config['placement']['enable']:
         logging.info('Performing placement ... \n')
-        placement_time = time.time()
+        heur_time = time.time()
         containers_grouped = place.allocation_distant_pairwise(
             my_instance, cluster_var_matrix, labels_)
-
-        it.results_file.write('\nPlacement time : %fs\n\n' % (time.time() - placement_time))
+        heur_time = time.time() - heur_time
     else:
         logging.info('We do not perform placement \n')
+
+    # Print real objective value of second part if no loop
+    it.results_file.write(
+        'Real objective value of second part with heuristic only (without loop)\n')
+    (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
+        my_instance.df_indiv,
+        my_instance.eval_time,
+        my_instance.df_indiv[it.tick_field].max())
+    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
+        obj_nodes, obj_delta))
+    it.results_file.write('Heuristic time : %f s\n\n' % (heur_time))
 
     # Plot clustering & allocation for 1st part
     plot_before_loop = True
@@ -168,11 +182,6 @@ def main(path):
         #     my_instance.df_host_meta.cpu.max(),
         #     my_instance.sep_time)
 
-    # Print real objective value
-    # mc.get_obj_value_heuristic(my_instance.df_indiv,
-    #                            working_df_indiv[it.tick_field].min(),
-    #                            working_df_indiv[it.tick_field].max())
-
     # Plot heuristic result without loop
     init_node_fig = plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
@@ -180,19 +189,6 @@ def main(path):
         my_instance.sep_time,
         title='Node consumption after heuristic without loop')
     init_node_fig.savefig(path + '/node_heur_plot.svg')
-
-    # Print real objective value of second part if no loop
-    it.results_file.write('Real objective value of second part without loop\n')
-    (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
-        my_instance.df_indiv,
-        my_instance.eval_time,
-        my_instance.df_indiv[it.tick_field].max())
-    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        obj_nodes, obj_delta))
-    # obj_nodes,
-    # (init_obj_nodes - obj_nodes) / init_obj_nodes,
-    # obj_delta,
-    # (init_obj_delta - obj_delta) / obj_delta))
 
     # input('\nEnd of first part, press enter to enter loop ...\n')
 
@@ -247,7 +243,7 @@ def main(path):
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         obj_nodes, obj_delta))
 
-    it.results_file.write('\nTotal computing time : %fs' % (time.time() - main_time))
+    it.results_file.write('\nTotal computing time : %f s' % (time.time() - main_time))
 
     it.results_file.close()
 
@@ -282,6 +278,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     clustering_dual_values = {}
     placement_dual_values = {}
 
+    total_loop_time = 0.0
     loop_nb = 1
     nb_clust_changes = 0
     nb_place_changes = 0
@@ -289,6 +286,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
     logging.info('Beginning the loop process ...\n')
     while not end:
+        loop_time = time.time()
         logging.info('\n # Enter loop number %d #\n' % loop_nb)
         it.results_file.write('\n # Loop number %d #\n' % loop_nb)
 
@@ -506,16 +504,20 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
         nb_clust_changes += nb_clust_changes_loop
         nb_place_changes += nb_place_changes_loop
+        total_loop_time += (time.time() - loop_time)
 
         # input('\nPress any key to progress in time ...\n')
         tmin += tick
         tmax += tick
-        loop_nb += 1
         if tmax >= my_instance.time:
             end = True
+        else:
+            loop_nb += 1
     it.results_file.write('\n### Results of loops ###\n')
     it.results_file.write('Total number of changes in clustering : %d\n' % nb_clust_changes)
     it.results_file.write('Total number of changes in placement : %d\n' % nb_place_changes)
+    it.results_file.write('Average loop time : %f s\n' % (total_loop_time / loop_nb))
+
     return (fig_node, fig_clust, fig_mean_clust)
 
 

@@ -58,6 +58,9 @@ def main(path):
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
     my_instance = Instance(path, config)
 
+    # Prepare list for all results (main + additional)
+    main_results = []
+
     # Use pyomo model => to be fully applied after tests
     # my_model = model.create_model(config['optimization']['model'], my_instance)
     # model.solve_model(my_model, 'glpk')
@@ -83,6 +86,8 @@ def main(path):
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n\n' % (
         init_obj_nodes, init_obj_delta))
+    main_results.append(init_obj_nodes)
+    main_results.append(init_obj_delta)
 
     # Print real objective value of second part with spread technique
     spread_time = time.time()
@@ -97,6 +102,9 @@ def main(path):
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         spread_obj_nodes, spread_obj_delta))
     it.results_file.write('Spread technique time : %f s\n\n' % (spread_time))
+    main_results.append(spread_obj_nodes)
+    main_results.append(spread_obj_delta)
+    main_results.append(spread_time)
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
@@ -150,13 +158,16 @@ def main(path):
     # Print real objective value of second part if no loop
     it.results_file.write(
         'Real objective value of second part with heuristic only (without loop)\n')
-    (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
+    (heur_obj_nodes, heur_obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
         my_instance.eval_time,
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        obj_nodes, obj_delta))
+        heur_obj_nodes, heur_obj_delta))
     it.results_file.write('Heuristic time : %f s\n\n' % (heur_time))
+    main_results.append(heur_obj_nodes)
+    main_results.append(heur_obj_delta)
+    main_results.append(heur_time)
 
     # Plot clustering & allocation for 1st part
     plot_before_loop = True
@@ -214,7 +225,7 @@ def main(path):
 
     # loop 'streaming' progress
     it.results_file.write('\n### Loop process ###\n')
-    (fig_node, fig_clust, fig_mean_clust) = streaming_eval(
+    (fig_node, fig_clust, fig_mean_clust, loop_time, nb_loops) = streaming_eval(
         my_instance, df_indiv_clust, labels_,
         containers_grouped, config['loop']['tick'],
         config['loop']['constraints_dual'],
@@ -236,15 +247,21 @@ def main(path):
 
     # Print real objective value
     it.results_file.write('Real objective value of second part with loop :\n')
-    (obj_nodes, obj_delta) = mc.get_obj_value_heuristic(
+    (loop_obj_nodes, loop_obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
         my_instance.eval_time,
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        obj_nodes, obj_delta))
+        loop_obj_nodes, loop_obj_delta))
+    main_results.append(loop_obj_nodes)
+    main_results.append(loop_obj_delta)
+    main_results.append(loop_time / nb_loops)
+
+    write_main_results(main_results)
 
     it.results_file.write('\nTotal computing time : %f s' % (time.time() - main_time))
 
+    it.main_results_file.close()
     it.results_file.close()
 
 
@@ -502,6 +519,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
         it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
         it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
+        it.results_file.write('Loop time : %f s\n' % (time.time() - loop_time))
         nb_clust_changes += nb_clust_changes_loop
         nb_place_changes += nb_place_changes_loop
         total_loop_time += (time.time() - loop_time)
@@ -518,7 +536,18 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     it.results_file.write('Total number of changes in placement : %d\n' % nb_place_changes)
     it.results_file.write('Average loop time : %f s\n' % (total_loop_time / loop_nb))
 
-    return (fig_node, fig_clust, fig_mean_clust)
+    return (fig_node, fig_clust, fig_mean_clust, total_loop_time, loop_nb)
+
+
+def write_main_results(result_list: List):
+    """Write the main results in the .csv file."""
+    i = 1
+    for e in result_list:
+        if i < len(result_list):
+            it.main_results_file.write('%f,' % e)
+            i += 1
+        else:
+            it.main_results_file.write('%f' % e)
 
 
 if __name__ == '__main__':

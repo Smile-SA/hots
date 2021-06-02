@@ -23,6 +23,7 @@ init_setup.sh
 */instance_file.txt
 *.log
 *.svg
+*main_results.csv
 
 # .lp files (created by CPLEX)
 *.lp

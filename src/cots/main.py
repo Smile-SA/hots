@@ -32,6 +32,7 @@ from . import init as it
 # TODO set in params
 # from . import model_cplex as mc
 from . import model_cplex_clustering as mc
+from . import node
 from . import placement as place
 from . import plot
 from .instance import Instance
@@ -88,6 +89,7 @@ def main(path):
         init_obj_nodes, init_obj_delta))
     main_results.append(init_obj_nodes)
     main_results.append(init_obj_delta)
+    additional_results = get_additional_results(my_instance, 'init_')
 
     # Print real objective value of second part with spread technique
     spread_time = time.time()
@@ -105,6 +107,11 @@ def main(path):
     main_results.append(spread_obj_nodes)
     main_results.append(spread_obj_delta)
     main_results.append(spread_time)
+    additional_results = pd.concat([
+        additional_results,
+        get_additional_results(my_instance, 'spread_')],
+        axis=1
+    )
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
@@ -168,6 +175,11 @@ def main(path):
     main_results.append(heur_obj_nodes)
     main_results.append(heur_obj_delta)
     main_results.append(heur_time)
+    additional_results = pd.concat([
+        additional_results,
+        get_additional_results(my_instance, 'heur_')],
+        axis=1
+    )
 
     # Plot clustering & allocation for 1st part
     plot_before_loop = True
@@ -256,13 +268,16 @@ def main(path):
     main_results.append(loop_obj_nodes)
     main_results.append(loop_obj_delta)
     main_results.append(loop_time / nb_loops)
+    additional_results = pd.concat([
+        additional_results,
+        get_additional_results(my_instance, 'loop_')],
+        axis=1
+    )
 
+    additional_results.to_csv(path + '/additional_results.csv')
     write_main_results(main_results)
-
     it.results_file.write('\nTotal computing time : %f s' % (time.time() - main_time))
-
-    it.main_results_file.close()
-    it.results_file.close()
+    close_files()
 
 
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
@@ -548,6 +563,25 @@ def write_main_results(result_list: List):
             i += 1
         else:
             it.main_results_file.write('%f' % e)
+
+
+def get_additional_results(instance: Instance, algo: str) -> pd.DataFrame:
+    """Compute all wanted additional indicators."""
+    eval_df_host = instance.df_host.loc[
+        instance.df_host[it.tick_field] >= instance.eval_time
+    ]
+
+    result_df = node.get_nodes_load_info(
+        eval_df_host, instance.df_host_meta)
+    result_df = result_df.add_prefix(algo)
+
+    return result_df
+
+
+def close_files():
+    """Write the final files and close all open files."""
+    it.results_file.close()
+    it.main_results_file.close()
 
 
 if __name__ == '__main__':

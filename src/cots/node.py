@@ -101,7 +101,7 @@ def get_mean_consumption(df_host: pd.DataFrame):
         for key, data in df_host.groupby(df_host[it.host_field]):
             global_mean += float(data[metric].mean())
         print('Global mean : ', float(
-            global_mean / df_host.machine_id.nunique()))
+            global_mean / df_host[it.tick_field].nunique()))
 
 
 def get_list_mean(df_host: pd.DataFrame, total_time: int) -> (Dict, Dict):
@@ -260,3 +260,25 @@ def get_mean_consumption_node(df_host: pd.DataFrame, node_id: str) -> float:
         df_host.loc[
             df_host[it.host_field] == node_id, ['cpu']].to_numpy()
     )
+
+
+def get_nodes_load_info(df_host: pd.DataFrame, df_host_meta: pd.DataFrame) -> pd.DataFrame:
+    """Get all wanted node information in a dataframe."""
+    results_df = pd.DataFrame(
+        columns=[it.host_field, 'load_var', 'avg_load', 'min_load', 'max_load'])
+    metric = it.metrics[0]
+
+    for node, data_n in df_host.groupby(df_host[it.host_field]):
+        node_cap = df_host_meta.loc[
+            df_host_meta[it.host_field] == node
+        ][metric].to_numpy()[0]
+        results_df = results_df.append({
+            it.host_field: node,
+            'load_var': data_n[metric].var(),
+            'avg_load': data_n[metric].mean() / node_cap * 100,
+            'min_load': data_n[metric].min() / node_cap * 100,
+            'max_load': data_n[metric].max() / node_cap * 100
+        }, ignore_index=True)
+    results_df.set_index(it.host_field, inplace=True)
+
+    return results_df

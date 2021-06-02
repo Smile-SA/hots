@@ -32,7 +32,7 @@ from . import init as it
 from .instance import Instance
 
 # Global variables
-
+# TODO manage big number of colors
 colors = ['blue', 'orange', 'green', 'red', 'purple',
           'brown', 'pink', 'gray', 'olive', 'cyan', 'turquoise',
           'chocolate', 'navy', 'lightcoral', 'violet']
@@ -339,7 +339,7 @@ def init_nodes_plot(df_indiv: pd.DataFrame, dict_id_n: Dict, sep_time: int,
     df.reset_index(drop=True, inplace=True)
     for n, data_n in df.groupby(
             df[it.host_field]):
-        n_int = [k for k, v in dict_id_n.items() if v == n][0]
+        n_int = [k for k, v in dict_id_n.items() if v == n][0] % len(colors)
         ax.plot(data_n.groupby(data_n[it.tick_field])[metric].sum(), color=colors[n_int])
 
     # pvt = pd.pivot_table(
@@ -380,7 +380,7 @@ def update_nodes_plot(fig, ax, df: pd.DataFrame,
     temp_df = df.reset_index(drop=True)
     for n, data_n in temp_df.groupby(
             temp_df[it.host_field]):
-        n_int = [k for k, v in dict_id_n.items() if v == n][0]
+        n_int = [k for k, v in dict_id_n.items() if v == n][0] % len(colors)
         ax.plot(data_n.groupby(data_n[it.tick_field])[metric].sum(), color=colors[n_int])
     plt.pause(0.5)
 

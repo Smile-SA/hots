@@ -43,7 +43,6 @@ from .instance import Instance
 
 # TODO add 'help' message
 @click.command()
-# @click.option('--data', required=True, type=click.Path(exists=True))
 @click.option('--path', required=True, type=click.Path(exists=True))
 def main(path):
     """Perform all things of methodology."""
@@ -58,9 +57,6 @@ def main(path):
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
     my_instance = Instance(path, config)
-
-    # Prepare list for all results (main + additional)
-    main_results = []
 
     # Use pyomo model => to be fully applied after tests
     # my_model = model.create_model(config['optimization']['model'], my_instance)
@@ -87,8 +83,8 @@ def main(path):
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n\n' % (
         init_obj_nodes, init_obj_delta))
-    main_results.append(init_obj_nodes)
-    main_results.append(init_obj_delta)
+    it.main_results.append(init_obj_nodes)
+    it.main_results.append(init_obj_delta)
     additional_results = get_additional_results(my_instance, 'init_')
 
     # Print real objective value of second part with spread technique
@@ -104,9 +100,9 @@ def main(path):
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         spread_obj_nodes, spread_obj_delta))
     it.results_file.write('Spread technique time : %f s\n\n' % (spread_time))
-    main_results.append(spread_obj_nodes)
-    main_results.append(spread_obj_delta)
-    main_results.append(spread_time)
+    it.main_results.append(spread_obj_nodes)
+    it.main_results.append(spread_obj_delta)
+    it.main_results.append(spread_time)
     additional_results = pd.concat([
         additional_results,
         get_additional_results(my_instance, 'spread_')],
@@ -172,9 +168,9 @@ def main(path):
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         heur_obj_nodes, heur_obj_delta))
     it.results_file.write('Heuristic time : %f s\n\n' % (heur_time))
-    main_results.append(heur_obj_nodes)
-    main_results.append(heur_obj_delta)
-    main_results.append(heur_time)
+    it.main_results.append(heur_obj_nodes)
+    it.main_results.append(heur_obj_delta)
+    it.main_results.append(heur_time)
     additional_results = pd.concat([
         additional_results,
         get_additional_results(my_instance, 'heur_')],
@@ -265,18 +261,20 @@ def main(path):
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         loop_obj_nodes, loop_obj_delta))
-    main_results.append(loop_obj_nodes)
-    main_results.append(loop_obj_delta)
-    main_results.append(loop_time / nb_loops)
+    it.main_results.append(loop_obj_nodes)
+    it.main_results.append(loop_obj_delta)
+    it.main_results.append(loop_time / nb_loops)
     additional_results = pd.concat([
         additional_results,
         get_additional_results(my_instance, 'loop_')],
         axis=1
     )
 
+    main_time = time.time() - main_time
+    it.main_results.append(main_time)
     additional_results.to_csv(path + '/additional_results.csv')
-    write_main_results(main_results)
-    it.results_file.write('\nTotal computing time : %f s' % (time.time() - main_time))
+    write_main_results()
+    it.results_file.write('\nTotal computing time : %f s' % (main_time))
     close_files()
 
 
@@ -554,11 +552,11 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     return (fig_node, fig_clust, fig_mean_clust, total_loop_time, loop_nb)
 
 
-def write_main_results(result_list: List):
+def write_main_results():
     """Write the main results in the .csv file."""
     i = 1
-    for e in result_list:
-        if i < len(result_list):
+    for e in it.main_results:
+        if i < len(it.main_results):
             it.main_results_file.write('%f,' % e)
             i += 1
         else:

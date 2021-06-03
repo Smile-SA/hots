@@ -91,6 +91,8 @@ def define_globals(p_path: Path, config: Dict):
     global tick_field
     global metrics
 
+    global main_results
+
     global results_file
     global main_results_file
     global additional_results_file
@@ -101,6 +103,8 @@ def define_globals(p_path: Path, config: Dict):
     host_field = config['data']['host_field']
     tick_field = config['data']['tick_field']
     metrics = config['data']['metrics']
+
+    main_results = []
 
     results_file = open(p_path / 'results.log', 'w')
     main_results_file = open(p_path / 'main_results.csv', 'w')

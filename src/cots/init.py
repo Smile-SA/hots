@@ -84,6 +84,13 @@ def read_params(path: str) -> Dict:
     return config
 
 
+def set_loop_results() -> pd.DataFrame:
+    """Create the dataframe for loop results."""
+    return pd.DataFrame(columns=[
+        'num_loop', 'clust_changes', 'place_changes', 'loop_time'
+    ])
+
+
 def define_globals(p_path: Path, config: Dict):
     """Define the fields, as global variables, from config."""
     global indiv_field
@@ -92,6 +99,8 @@ def define_globals(p_path: Path, config: Dict):
     global metrics
 
     global main_results
+    global loop_results
+    # global node_results
 
     global results_file
     global main_results_file
@@ -105,6 +114,7 @@ def define_globals(p_path: Path, config: Dict):
     metrics = config['data']['metrics']
 
     main_results = []
+    loop_results = set_loop_results()
 
     results_file = open(p_path / 'results.log', 'w')
     main_results_file = open(p_path / 'main_results.csv', 'w')

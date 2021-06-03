@@ -85,7 +85,7 @@ def main(path):
         init_obj_nodes, init_obj_delta))
     it.main_results.append(init_obj_nodes)
     it.main_results.append(init_obj_delta)
-    additional_results = get_additional_results(my_instance, 'init_')
+    node_results = get_node_results(my_instance, 'init_')
 
     # Print real objective value of second part with spread technique
     spread_time = time.time()
@@ -103,9 +103,9 @@ def main(path):
     it.main_results.append(spread_obj_nodes)
     it.main_results.append(spread_obj_delta)
     it.main_results.append(spread_time)
-    additional_results = pd.concat([
-        additional_results,
-        get_additional_results(my_instance, 'spread_')],
+    node_results = pd.concat([
+        node_results,
+        get_node_results(my_instance, 'spread_')],
         axis=1
     )
 
@@ -171,9 +171,9 @@ def main(path):
     it.main_results.append(heur_obj_nodes)
     it.main_results.append(heur_obj_delta)
     it.main_results.append(heur_time)
-    additional_results = pd.concat([
-        additional_results,
-        get_additional_results(my_instance, 'heur_')],
+    node_results = pd.concat([
+        node_results,
+        get_node_results(my_instance, 'heur_')],
         axis=1
     )
 
@@ -233,7 +233,7 @@ def main(path):
 
     # loop 'streaming' progress
     it.results_file.write('\n### Loop process ###\n')
-    (fig_node, fig_clust, fig_mean_clust, loop_time, nb_loops) = streaming_eval(
+    (fig_node, fig_clust, fig_mean_clust, loop_main_results) = streaming_eval(
         my_instance, df_indiv_clust, labels_,
         containers_grouped, config['loop']['tick'],
         config['loop']['constraints_dual'],
@@ -263,16 +263,17 @@ def main(path):
         loop_obj_nodes, loop_obj_delta))
     it.main_results.append(loop_obj_nodes)
     it.main_results.append(loop_obj_delta)
-    it.main_results.append(loop_time / nb_loops)
-    additional_results = pd.concat([
-        additional_results,
-        get_additional_results(my_instance, 'loop_')],
+    it.main_results.extend(loop_main_results)
+    node_results = pd.concat([
+        node_results,
+        get_node_results(my_instance, 'loop_')],
         axis=1
     )
 
     main_time = time.time() - main_time
     it.main_results.append(main_time)
-    additional_results.to_csv(path + '/additional_results.csv')
+    node_results.to_csv(path + '/node_results.csv')
+    it.loop_results.to_csv(path + '/loop_results.csv', index=False)
     write_main_results()
     it.results_file.write('\nTotal computing time : %f s' % (main_time))
     close_files()
@@ -283,7 +284,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    constraints_dual: List,
                    tol_clust: float, tol_move_clust: float,
                    tol_place: float, tol_move_place: float
-                   ) -> (plt.Figure, plt.Figure, plt.Figure):
+                   ) -> (plt.Figure, plt.Figure, plt.Figure, List):
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
         my_instance.df_indiv, my_instance.dict_id_n, my_instance.sep_time,
@@ -530,26 +531,38 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                                working_df_indiv, my_instance.dict_id_n)
         # plt.show(block=False)
 
+        loop_time = (time.time() - loop_time)
         it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
         it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
         it.results_file.write('Loop time : %f s\n' % (time.time() - loop_time))
         nb_clust_changes += nb_clust_changes_loop
         nb_place_changes += nb_place_changes_loop
-        total_loop_time += (time.time() - loop_time)
+        total_loop_time += loop_time
 
         # input('\nPress any key to progress in time ...\n')
         tmin += tick
         tmax += tick
+
+        # Save loop indicators in df
+        it.loop_results = it.loop_results.append({
+            'num_loop': int(loop_nb),
+            'clust_changes': int(nb_clust_changes_loop),
+            'place_changes': int(nb_place_changes_loop),
+            'loop_time': loop_time
+        }, ignore_index=True)
+
         if tmax >= my_instance.time:
             end = True
         else:
             loop_nb += 1
+
     it.results_file.write('\n### Results of loops ###\n')
     it.results_file.write('Total number of changes in clustering : %d\n' % nb_clust_changes)
     it.results_file.write('Total number of changes in placement : %d\n' % nb_place_changes)
     it.results_file.write('Average loop time : %f s\n' % (total_loop_time / loop_nb))
 
-    return (fig_node, fig_clust, fig_mean_clust, total_loop_time, loop_nb)
+    return (fig_node, fig_clust, fig_mean_clust,
+            [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb])
 
 
 def write_main_results():
@@ -563,7 +576,7 @@ def write_main_results():
             it.main_results_file.write('%f' % e)
 
 
-def get_additional_results(instance: Instance, algo: str) -> pd.DataFrame:
+def get_node_results(instance: Instance, algo: str) -> pd.DataFrame:
     """Compute all wanted additional indicators."""
     eval_df_host = instance.df_host.loc[
         instance.df_host[it.tick_field] >= instance.eval_time

@@ -67,12 +67,12 @@ def main(path):
     ctnr.plot_all_data_all_containers(
         my_instance.df_indiv, sep_time=my_instance.sep_time)
 
-    init_node_fig = plot.plot_containers_groupby_nodes(
+    node_evo_fig = plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time,
         title='Initial Node consumption')
-    init_node_fig.savefig(path + '/init_node_plot.svg')
+    node_evo_fig.savefig(path + '/init_node_plot.svg')
 
     # Print real objective value of second part if no loop
     it.results_file.write(
@@ -90,6 +90,9 @@ def main(path):
     # Print real objective value of second part with spread technique
     spread_time = time.time()
     place.allocation_spread(my_instance)
+    # TODO progress in eval window for check capacities
+    # spread_df_host = progress_time_noloop(my_instance)
+    # print(spread_df_host)
     spread_time = time.time() - spread_time
     it.results_file.write(
         'Real objective value of second part with spread technique :\n')
@@ -108,6 +111,14 @@ def main(path):
         get_node_results(my_instance, 'spread_')],
         axis=1
     )
+
+    # Plot spread result
+    node_evo_fig = plot.plot_containers_groupby_nodes(
+        my_instance.df_indiv,
+        my_instance.df_host_meta[it.metrics[0]].max(),
+        my_instance.sep_time,
+        title='Node consumption after spread technique')
+    node_evo_fig.savefig(path + '/node_spread_plot.svg')
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
@@ -202,12 +213,12 @@ def main(path):
         #     my_instance.sep_time)
 
     # Plot heuristic result without loop
-    init_node_fig = plot.plot_containers_groupby_nodes(
+    node_evo_fig = plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time,
         title='Node consumption after heuristic without loop')
-    init_node_fig.savefig(path + '/node_heur_plot.svg')
+    node_evo_fig.savefig(path + '/node_heur_plot.svg')
 
     # input('\nEnd of first part, press enter to enter loop ...\n')
 
@@ -233,7 +244,8 @@ def main(path):
 
     # loop 'streaming' progress
     it.results_file.write('\n### Loop process ###\n')
-    (fig_node, fig_clust, fig_mean_clust, loop_main_results) = streaming_eval(
+    (fig_node, fig_clust, fig_mean_clust,
+     loop_main_results, df_host_evo) = streaming_eval(
         my_instance, df_indiv_clust, labels_,
         containers_grouped, config['loop']['tick'],
         config['loop']['constraints_dual'],
@@ -255,10 +267,12 @@ def main(path):
 
     # Print real objective value
     it.results_file.write('Real objective value of second part with loop :\n')
-    (loop_obj_nodes, loop_obj_delta) = mc.get_obj_value_heuristic(
-        my_instance.df_indiv,
-        my_instance.eval_time,
-        my_instance.df_indiv[it.tick_field].max())
+    # (loop_obj_nodes, loop_obj_delta) = mc.get_obj_value_heuristic(
+    #     my_instance.df_indiv,
+    #     my_instance.eval_time,
+    #     my_instance.df_indiv[it.tick_field].max())
+    (loop_obj_nodes, loop_obj_delta) = mc.get_obj_value_host(
+        df_host_evo)
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         loop_obj_nodes, loop_obj_delta))
     it.main_results.append(loop_obj_nodes)
@@ -284,7 +298,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    constraints_dual: List,
                    tol_clust: float, tol_move_clust: float,
                    tol_place: float, tol_move_place: float
-                   ) -> (plt.Figure, plt.Figure, plt.Figure, List):
+                   ) -> (plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame):
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
         my_instance.df_indiv, my_instance.dict_id_n, my_instance.sep_time,
@@ -300,6 +314,11 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     fig_mean_clust, ax_mean_clust = plot.init_plot_cluster_profiles(
         cluster_profiles
     )
+
+    df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
+    dict_agg = {}
+    for metric in it.metrics:
+        dict_agg[metric] = 'sum'
 
     tmin = my_instance.df_indiv[it.tick_field].min()
     tmax = my_instance.sep_time
@@ -531,6 +550,18 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                                working_df_indiv, my_instance.dict_id_n)
         # plt.show(block=False)
 
+        if loop_nb > 1:
+            working_df_indiv = my_instance.df_indiv[
+                (my_instance.
+                    df_indiv[it.tick_field] >= tmin) & (
+                    my_instance.df_indiv[it.tick_field] <= tmax)]
+            working_df_host = working_df_indiv.groupby(
+                [working_df_indiv[it.tick_field], it.host_field],
+                as_index=False).agg(dict_agg)
+            df_host_evo = df_host_evo.append(
+                working_df_host[~working_df_host[it.tick_field].isin(
+                    df_host_evo[it.tick_field].unique())], ignore_index=True)
+
         loop_time = (time.time() - loop_time)
         it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
         it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
@@ -561,8 +592,40 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     it.results_file.write('Total number of changes in placement : %d\n' % nb_place_changes)
     it.results_file.write('Average loop time : %f s\n' % (total_loop_time / loop_nb))
 
+    if loop_nb <= 1:
+        df_host_evo = my_instance.df_indiv[
+            (my_instance.
+             df_indiv[it.tick_field] >= tmin) & (
+                my_instance.df_indiv[it.tick_field] <= tmax)].groupby(
+            [my_instance.df_indiv[it.tick_field], it.host_field],
+            as_index=False).agg(dict_agg)
     return (fig_node, fig_clust, fig_mean_clust,
-            [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb])
+            [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb],
+            df_host_evo)
+
+
+def progress_time_noloop(instance: Instance) -> pd.DataFrame:
+    """We progress in time without performing the loop, checking node capacities."""
+    # df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
+    dict_agg = {}
+    for metric in it.metrics:
+        dict_agg[metric] = 'sum'
+
+    print(instance.df_host_meta)
+    print(instance.df_host)
+    for tick in range(
+            instance.eval_time, instance.df_host[it.tick_field].max()):
+        print(tick)
+        df_host_tick = instance.df_indiv.loc[
+            instance.df_indiv[it.tick_field] == tick
+        ].groupby(
+            [instance.df_indiv[it.tick_field], it.host_field],
+            as_index=False).agg(dict_agg)
+        host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
+        if len(host_overload) > 0:
+            print('Overload : We must move containers')
+            place.free_full_nodes(instance, host_overload, tick)
+        input()
 
 
 def write_main_results():

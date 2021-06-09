@@ -64,6 +64,18 @@ def remove_container_node(node_id: str, container_id: str, instance: Instance):
     ].to_numpy()
 
 
+def free_full_nodes(instance: Instance, full_nodes: List, tick: int):
+    """Change the solution in order to satisfy node capacities."""
+    for host in full_nodes:
+        print(host, tick)
+        df_indiv_host = instance.df_indiv.loc[
+            (instance.df_indiv[it.host_field] == host) & (
+                instance.df_indiv[it.tick_field] == tick
+            )
+        ]
+        print(df_indiv_host)
+
+
 def spread_containers(list_containers: List, instance: Instance,
                       conso_nodes: np.array, total_time: int,
                       min_nodes: int):

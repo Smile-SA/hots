@@ -878,6 +878,28 @@ def get_obj_value_heuristic(df_indiv: pd.DataFrame,
     return (df_indiv[it.host_field].nunique(), obj_val)
 
 
+def get_obj_value_host(df_host: pd.DataFrame,
+                       t_min: int = None,
+                       t_max: int = None) -> (int, float):
+    """Get objective value of current solution (max delta)."""
+    t_min = t_min or df_host[it.tick_field].min()
+    t_max = t_max or df_host[it.tick_field].max()
+    df_host = df_host[
+        (df_host[it.tick_field] >= t_min)
+        & (df_host[it.tick_field] <= t_max)]
+    df_host.reset_index(drop=True, inplace=True)
+    delta = 0.0
+    nb_nodes = 0
+    for n, n_data in df_host.groupby(
+            df_host[it.host_field]):
+        if n_data[it.metrics[0]].mean() > 1e-6:
+            nb_nodes += 1
+            delta_n = n_data[it.metrics[0]].max() - n_data[it.metrics[0]].min()
+            if delta_n > delta:
+                delta = delta_n
+    return (nb_nodes, delta)
+
+
 def print_constraints(mdl: Model):
     """Print all the constraints."""
     for ct in mdl.iter_constraints():

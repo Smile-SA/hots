@@ -42,6 +42,10 @@ class Instance:
          self.df_host,
          self.df_host_meta) = it.init_dfs(path)
 
+        # (self.spread_df_host,
+        #  self.heur_df_host,
+        #  self.loop_df_host) = it.init_algo_dfs()
+
         self.time: int = self.df_indiv[it.tick_field].nunique()
         if config['analysis']['window_duration'] == 'default':
             self.sep_time: int = math.floor(self.time / 2) + self.df_indiv[

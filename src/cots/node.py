@@ -8,7 +8,7 @@ for node IDs, compute different statistic measures ...)
 """
 
 import math
-from typing import Dict
+from typing import Dict, List
 
 from matplotlib import gridspec as gridspec
 from matplotlib import pyplot as plt
@@ -282,3 +282,16 @@ def get_nodes_load_info(df_host: pd.DataFrame, df_host_meta: pd.DataFrame) -> pd
     results_df.set_index(it.host_field, inplace=True)
 
     return results_df
+
+
+def check_capacities(df_host: pd.DataFrame, df_host_meta: pd.DataFrame) -> List:
+    """Check if node capacities are satisfied at a given time."""
+    host_overload = []
+
+    for host, host_data in df_host.groupby(it.host_field):
+        if host_data[it.metrics[0]].to_numpy()[0] > df_host_meta.loc[
+            df_host_meta[it.host_field] == host
+        ][it.metrics[0]].to_numpy()[0]:
+            host_overload.append(host)
+
+    return host_overload

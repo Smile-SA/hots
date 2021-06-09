@@ -75,6 +75,16 @@ def init_dfs(data: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 df_from_csv(p_data / 'node_meta.csv'))
 
 
+# TODO generalize
+def init_algo_dfs() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Initialize host dataframes for specific methods."""
+    spread_df = pd.DataFrame()
+    heur_df = pd.DataFrame()
+    loop_df = pd.DataFrame()
+
+    return (spread_df, heur_df, loop_df)
+
+
 def read_params(path: str) -> Dict:
     """Get parameters from file and build the Dict config object."""
     p_path = Path(path)

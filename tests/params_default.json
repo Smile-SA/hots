@@ -5,7 +5,7 @@
     },
     "clustering": {
       "algo": "kmeans",
-      "nb_clusters": 10
+      "nb_clusters": 3
     },
     "data": {
       "individuals_file": "container_usage.csv",
@@ -23,7 +23,7 @@
       "solver": "glpk"
     },
     "loop": {
-      "tick": 300,
+      "tick": 2,
       "constraints_dual": ["mustLink"],
       "tol_dual_clust": 0.2,
       "tol_move_clust": 1,

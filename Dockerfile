@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM python:3.7-slim-buster
 
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
@@ -8,8 +8,8 @@ ENV LANG C.UTF-8
 # Where to install (this is also specified in install.properties)
 ARG COSDIR=/opt/CPLEX
 
-# Default Python version is 3.8
-ARG CPX_PYVERSION=3.8
+# Default Python version is 3.7
+ARG CPX_PYVERSION=3.7
 
 # Remove stuff that is typically not needed in a container, such as IDE,
 # documentation, examples. Override with --build-arg CPX_KEEP_XXX=TRUE.
@@ -25,7 +25,7 @@ RUN chmod u+x /tmp/installer
 # Install Java runtime. This is required by the installer
 RUN dpkg --configure -a
 RUN apt install --fix-broken
-#RUN mkdir /usr/share/man/man1/
+RUN mkdir /usr/share/man/man1/
 RUN apt-get update && apt-get install -y default-jre
 
 # Install COS
@@ -56,6 +56,8 @@ ENV CPX_PYVERSION ${CPX_PYVERSION}
 
 # STEP 2 INSTALL THE COTS LOCAL PYTHON PACKAGE
 
+
+
 RUN apt-get -qq update \
     && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends \
     python-dev \
@@ -82,20 +84,11 @@ RUN pip install . \
     && apt -y autoremove
 
 
-# Replace 1000 with your user / group id
-RUN mkdir /etc/sudoers.d/
-RUN export uid=1000 gid=1000 && \
-    mkdir -p /home/developer && \
-    echo "developer:x:${uid}:${gid}:Developer,,,:/home/developer:/bin/bash" >> /etc/passwd && \
-    echo "developer:x:${uid}:" >> /etc/group && \
-    echo "developer ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/developer && \
-    chmod 0440 /etc/sudoers.d/developer && \
-    chown ${uid}:${gid} -R /home/developer
 
-USER developer
-ENV HOME /home/developer
-
-WORKDIR /home/developer
+# Default user is cplex
+RUN adduser --disabled-password --gecos "" cplex
+USER cplex
+WORKDIR /home/cplex
 
 # run a shell
 CMD /bin/bash

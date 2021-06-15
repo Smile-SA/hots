@@ -1,4 +1,4 @@
-FROM python:3.7-slim-buster
+FROM ubuntu:20.04
 
 ENV LC_ALL C.UTF-8
 ENV LANG C.UTF-8
@@ -8,8 +8,8 @@ ENV LANG C.UTF-8
 # Where to install (this is also specified in install.properties)
 ARG COSDIR=/opt/CPLEX
 
-# Default Python version is 3.7
-ARG CPX_PYVERSION=3.7
+# Default Python version is 3.8
+ARG CPX_PYVERSION=3.8
 
 # Remove stuff that is typically not needed in a container, such as IDE,
 # documentation, examples. Override with --build-arg CPX_KEEP_XXX=TRUE.
@@ -25,7 +25,7 @@ RUN chmod u+x /tmp/installer
 # Install Java runtime. This is required by the installer
 RUN dpkg --configure -a
 RUN apt install --fix-broken
-RUN mkdir /usr/share/man/man1/
+#RUN mkdir /usr/share/man/man1/
 RUN apt-get update && apt-get install -y default-jre
 
 # Install COS
@@ -63,7 +63,6 @@ RUN apt-get -qq update \
     python-dev \
     build-essential \
     pip \
-    python3-tk \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean -y \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -84,13 +83,12 @@ RUN pip install . \
     && apt -y autoremove
 
 
-
-# Default user is cplex
+# Add a default user cplex
 RUN adduser --disabled-password --gecos "" cplex
 USER cplex
 WORKDIR /home/cplex
 
-# run a shell
+# run a bash shell
 CMD /bin/bash
 
 

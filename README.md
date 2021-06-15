@@ -2,90 +2,49 @@
 
 > Application for testing a hybrid resource allocation method using machine learning and optimization.
 
-(**TODO**: describe a **real life** use case for `cots`)
+This is a version for testing COTS using Docker containers
 
-## Installation
+## Requirements for running
 
-### Common requirements
+Once installation:
+Install docker on local machine
 
-Have Python 3.6, 3.7 or 3.8 on an Unix box (Linux, MacOS, ...) with a graphic display.
+For Ubuntu the following page lists the installation steps:
+https://docs.docker.com/engine/install/ubuntu/
 
-Moreover, `cots` module needs `IBM CPLEX` solver to be installed on the machine to
-solve the optimization problem. To see details, visit their website [here](https://www.ibm.com/uk-en/products/ilog-cplex-optimization-studio).
-Once you have `CPLEX` installed on the machine, you have to add in your
-`#PYTHONPATH` the `/path/to/cplex/python/[python-version]/[your-distribution]`.
+Once installation:
+Install docker-compose
 
-### Production
+For Ubuntu the folowing page lists the installation steps:
+https://docs.docker.com/compose/install/
 
-Latest stable version:
+##Known issues:
+On running docker there may be issues with connection denied.
 
-```bash
-pip install cots
-```
+This page proposes the remedy to this problem:
+https://docs.docker.com/engine/install/linux-postinstall/
 
-See `pip` documentation and available versions on PyPI for other options and `cots` versions.
+run the following commands:
+sudo groupadd docker
+sudo usermod -aG docker $USER
+newgrp docker
 
-### Development
+### Running the COTS testing via docker
 
-The easiest way to install a `development` version of `cots` is to use `make` :
+Run the following commands in a bash shell at the root of the directory where ther is the Dockerfile:
 
-```bash
-make
-```
+docker-compose build
 
-As it is created within the `Makefile`, we recommend using a dedicated virtual environment.
-After the install has finished succesfully, don't forget to activate this environment :
+docker-compose up
 
-```bash
-source venv/bin/activate
-```
+docker run -ti cots
 
-The `dev` option adds development / tests tools.
+This last command will run the cots image and drop you in a bash shell of the cots container
+At the shell run the cots testing with the command:
 
-### Full documentation
+cots --data /rac/tests/data/generated_30 --params /rac/tests/data/params.json 
 
-As in above **Development** section, the documentation can be built using `make`:
 
-```bash
-make doc
-```
-
-You can now open `build/sphinx/index.html` with your favorite Web browser.
-
-## Usage
-
-Basically, start the application with this command :
-
-```bash
-cots --data /path/to/your/data/folder --params /path/to/your/params_file.json
-```
-
-Note that the repository provides some examples datasets in `.tests/data/` folder.
-You can then run, for instance, the `generated_30` example like this :
-
-```bash
-cots --data tests/data/generated_30 --params tests/data/params.json
-```
-
-Your data folder must provide at least two files :
-
-- `container_usage.csv` provides resource consumption by containers
-- `node_meta.csv` provides nodes capacities for each metric
-
-Display the short instructions with this command :
-
-```bash
-cots --help
-```
-
-## Known issues
-
-- If you have any error (_ really any ? _) with matplotlib, you might have to install the backend
-  `tkinter` with :
-
-```bash
-sudo apt install python3-tk
-```
 
 ## Credits
 

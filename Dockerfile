@@ -56,13 +56,12 @@ ENV CPX_PYVERSION ${CPX_PYVERSION}
 
 # STEP 2 INSTALL THE COTS LOCAL PYTHON PACKAGE
 
-
-
 RUN apt-get -qq update \
     && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends \
     python-dev \
     build-essential \
     pip \
+    python3-tk \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean -y \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -83,12 +82,22 @@ RUN pip install . \
     && apt -y autoremove
 
 
-# Add a default user cplex
-RUN adduser --disabled-password --gecos "" cplex
-USER cplex
-WORKDIR /home/cplex
+# Replace 1000 with your user / group id
+RUN mkdir /etc/sudoers.d/
+RUN export uid=1000 gid=1000 && \
+    mkdir -p /home/developer && \
+    echo "developer:x:${uid}:${gid}:Developer,,,:/home/developer:/bin/bash" >> /etc/passwd && \
+    echo "developer:x:${uid}:" >> /etc/group && \
+    echo "developer ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/developer && \
+    chmod 0440 /etc/sudoers.d/developer && \
+    chown ${uid}:${gid} -R /home/developer
 
-# run a bash shell
+USER developer
+ENV HOME /home/developer
+
+WORKDIR /home/developer
+
+# run a shell
 CMD /bin/bash
 
 

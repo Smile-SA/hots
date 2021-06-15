@@ -4,6 +4,9 @@
 
 This is a version for testing COTS using Docker containers
 
+# current issue to fix in the cots package --> cots crashing at stage 'Building relaxed model'
+---------------------------------
+
 ## Requirements for running
 
 Once installation:
@@ -33,16 +36,20 @@ newgrp docker
 
 Run the following commands in a bash shell at the root of the directory where ther is the Dockerfile:
 
+# build the cots image
 docker build -t cots
 
-docker run -ti cots
+# run the cots image in a container with export of display
+docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix cots
 
 This last command will run the cots image and drop you in a bash shell of the cots container
 At the shell run the cots testing with the command:
 
+# run cots testing
 cots --data /rac/tests/data/generated_30 --params /rac/tests/data/params.json 
 
-
+#outputs
+terminal output and matplotlib graphs 
 
 ## Credits
 

@@ -9,16 +9,15 @@ This is a version for testing COTS using Docker containers
 
 ## Requirements for running
 
-Once installation:
-Install docker on local machine
 
-For Ubuntu the following page lists the installation steps:
+### Install docker on local machine
+
+Installation steps:
 https://docs.docker.com/engine/install/ubuntu/
 
-Once installation:
-Install docker-compose
+### Install docker-compose
 
-For Ubuntu the folowing page lists the installation steps:
+Installation steps:
 https://docs.docker.com/compose/install/
 
 ##Known issues:
@@ -28,26 +27,32 @@ This page proposes the remedy to this problem:
 https://docs.docker.com/engine/install/linux-postinstall/
 
 run the following commands:
+```bash
 sudo groupadd docker
 sudo usermod -aG docker $USER
 newgrp docker
-
+```
 ### Running the COTS testing via docker
 
 Run the following commands in a bash shell at the root of the directory where ther is the Dockerfile:
 
 # build the cots image
+```bash
 docker build -t cots
+```
 
 # run the cots image in a container with export of display
+```bash
 docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix cots
+```
 
 This last command will run the cots image and drop you in a bash shell of the cots container
 At the shell run the cots testing with the command:
 
 # run cots testing
+```bash
 cots --data /rac/tests/data/generated_30 --params /rac/tests/data/params.json 
-
+```
 #outputs
 terminal output and matplotlib graphs 
 

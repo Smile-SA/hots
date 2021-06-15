@@ -33,9 +33,7 @@ newgrp docker
 
 Run the following commands in a bash shell at the root of the directory where ther is the Dockerfile:
 
-docker-compose build
-
-docker-compose up
+docker build -t cots
 
 docker run -ti cots
 

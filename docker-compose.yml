@@ -1,0 +1,7 @@
+version: '3.9'
+services:
+  cots:
+    build: .
+    container_name: cots
+    volumes:
+      - .:/code

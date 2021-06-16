@@ -59,6 +59,14 @@ docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix cots
 ```
 
 This last command will run the cots image and drop you in a bash shell of the cots container
+You will be at /home/developer which is empty
+
+# check the content of /rac where the repo has been copied
+```bash
+ls /rac
+```
+
+
 At the shell run the cots testing with the command:
 
 # run cots testing

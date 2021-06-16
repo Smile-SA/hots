@@ -32,6 +32,18 @@ sudo groupadd docker
 sudo usermod -aG docker $USER
 newgrp docker
 ```
+
+### Check the Dockerfile to see if the uid is 1000, change otherwise
+
+check the uid of the local machine user
+```bash
+more /etc/passwd
+```
+if the uid of the user is 1000 then no need to edit the Dockerfile
+Else edit the Dockerfile
+look for the comments 'Replace 1000 with your user / group id'
+Change 1000 to your uid and gid from the /etc/passwd file
+
 ### Running the COTS testing via docker
 
 Run the following commands in a bash shell at the root of the directory where ther is the Dockerfile:

@@ -50,7 +50,7 @@ Run the following commands in a bash shell at the root of the directory where th
 
 # build the cots image
 ```bash
-docker build -t cots
+docker build -t cots .
 ```
 
 # run the cots image in a container with export of display

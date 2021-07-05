@@ -44,13 +44,15 @@ from .instance import Instance
 # TODO add 'help' message
 @click.command()
 @click.option('--path', required=True, type=click.Path(exists=True))
-def main(path):
+@click.option('--k', required=False, type=int)
+@click.option('--tau', required=False, type=int)
+def main(path, k, tau):
     """Perform all things of methodology."""
     # Initialization part
     main_time = time.time()
 
-    config = it.read_params(path)
-    logging.basicConfig(filename=path + '/logs.log', filemode='w',
+    (config, output_path) = it.read_params(path, k, tau)
+    logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')
 
@@ -72,7 +74,7 @@ def main(path):
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time,
         title='Initial Node consumption')
-    node_evo_fig.savefig(path + '/init_node_plot.svg')
+    node_evo_fig.savefig(output_path + '/init_node_plot.svg')
 
     # Print real objective value of second part if no loop
     it.results_file.write(
@@ -118,7 +120,7 @@ def main(path):
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time,
         title='Node consumption after spread technique')
-    node_evo_fig.savefig(path + '/node_spread_plot.svg')
+    node_evo_fig.savefig(output_path + '/node_spread_plot.svg')
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
@@ -203,10 +205,10 @@ def main(path):
             clust_node_fig = plot.plot_clustering_containers_by_node(
                 working_df_indiv, my_instance.dict_id_c,
                 labels_, filter_big=True)
-            clust_node_fig.savefig(path + '/clust_node_plot.svg')
+            clust_node_fig.savefig(output_path + '/clust_node_plot.svg')
             first_clust_fig = plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
                                                    title='Clustering on first half part')
-            first_clust_fig.savefig(path + '/first_clust_plot.svg')
+            first_clust_fig.savefig(output_path + '/first_clust_plot.svg')
         # plot.plot_containers_groupby_nodes(
         #     my_instance.df_indiv,
         #     my_instance.df_host_meta.cpu.max(),
@@ -218,7 +220,7 @@ def main(path):
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time,
         title='Node consumption after heuristic without loop')
-    node_evo_fig.savefig(path + '/node_heur_plot.svg')
+    node_evo_fig.savefig(output_path + '/node_heur_plot.svg')
 
     # input('\nEnd of first part, press enter to enter loop ...\n')
 
@@ -254,9 +256,9 @@ def main(path):
         config['loop']['tol_dual_place'],
         config['loop']['tol_move_place'])
 
-    fig_node.savefig(path + '/node_evo_plot.svg')
-    fig_clust.savefig(path + '/clust_evo_plot.svg')
-    fig_mean_clust.savefig(path + '/mean_clust_evo_plot.svg')
+    fig_node.savefig(output_path + '/node_evo_plot.svg')
+    fig_clust.savefig(output_path + '/clust_evo_plot.svg')
+    fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
 
     # Plot after the loop
     plot.plot_containers_groupby_nodes(
@@ -286,8 +288,8 @@ def main(path):
 
     main_time = time.time() - main_time
     it.main_results.append(main_time)
-    node_results.to_csv(path + '/node_results.csv')
-    it.loop_results.to_csv(path + '/loop_results.csv', index=False)
+    node_results.to_csv(output_path + '/node_results.csv')
+    it.loop_results.to_csv(output_path + '/loop_results.csv', index=False)
     write_main_results()
     it.results_file.write('\nTotal computing time : %f s' % (main_time))
     close_files()
@@ -488,13 +490,14 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         cplex_model.solve(cplex_model.relax_mdl)
         # mc.print_all_dual(cplex_model.relax_mdl,
         #                   nn_only=True, names=constraints_dual)
+        moving_containers = []
         if len(placement_dual_values) == 0:
             logging.info('Placement problem not evaluated yet\n')
             placement_dual_values = mc.fill_constraints_dual_values(
                 cplex_model.relax_mdl, constraints_dual
             )
         else:
-            if len(moving_containers) > 0:
+            if nb_clust_changes_loop > 0:
                 logging.info('Checking for changes in placement dual values ...')
                 time_get_move = time.time()
                 moving_containers = mc.get_moving_containers(
@@ -517,7 +520,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #     else:
         #         print('End of input.')
         #         break
-        if len(moving_containers) >= 1:
+        if len(moving_containers) > 0:
             nb_place_changes_loop = len(moving_containers)
             time_move_place = time.time()
             place.move_list_containers(moving_containers, my_instance,

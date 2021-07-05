@@ -85,13 +85,23 @@ def init_algo_dfs() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     return (spread_df, heur_df, loop_df)
 
 
-def read_params(path: str) -> Dict:
+def read_params(path: str, k: int, tau: int) -> Dict:
     """Get parameters from file and build the Dict config object."""
     p_path = Path(path)
     with open(p_path / 'params.json', 'r') as f:
         config = json.load(f)
-    define_globals(p_path, config)
-    return config
+    if k is not None:
+        config['clustering']['nb_clusters'] = k
+    if tau is not None:
+        config['analysis']['window_duration'] = tau + 1
+        config['analysis']['eval_time'] = tau
+        config['loop']['tick'] = tau
+    output_path = Path(path + 'k' + str(
+        config['clustering']['nb_clusters']) + '_' + 'tau' + str(
+            config['loop']['tick']))
+    output_path.mkdir(parents=True, exist_ok=True)
+    define_globals(output_path, config)
+    return (config, str(output_path))
 
 
 def set_loop_results() -> pd.DataFrame:

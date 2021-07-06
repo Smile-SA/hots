@@ -24,3 +24,6 @@ init_setup.sh
 
 # .lp files (created by CPLEX)
 *.lp
+
+# ide files
+.idea/

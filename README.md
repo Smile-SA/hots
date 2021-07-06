@@ -2,10 +2,10 @@
 
 > Application for testing a hybrid resource allocation method using machine learning and optimization.
 
-This is a version for testing COTS using Docker containers
+This is a version for testing COTS in a Docker containers
+This version includes test data with all nodes
 
-# current issue to fix in the cots package --> cots crashing at stage 'Building relaxed model'
----------------------------------
+# current issue to fix in the cots package --> crashing on data with all nodes
 
 ## Requirements for running
 
@@ -69,10 +69,16 @@ ls /rac
 
 At the shell run the cots testing with the command:
 
-# run cots testing
+# run cots testing on test data
 ```bash
 cots --data /rac/tests/data/generated_30 --params /rac/tests/data/params.json 
 ```
+# run cots testing on test data with all nodes
+```bash
+cots --data /rac/tests/alibaba_short_time_interval_test_data --params /rac/tests/alibaba_short_time_interval_test_data/params.json 
+```
+
+
 #outputs
 terminal output and matplotlib graphs 
 

@@ -941,6 +941,9 @@ def get_max_dual(mdl: Model, names: List = None):
             max_dual = ct.dual_value
     return max_dual
 
+# def eval_clustering():
+#     """Perform all needed stuff for evaluating clustering."""
+
 
 def dual_changed(mdl: Model, names: List,
                  prev_dual: float, tol: float) -> bool:

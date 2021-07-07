@@ -94,7 +94,6 @@ def read_params(path: str, k: int, tau: int) -> Dict:
         config['clustering']['nb_clusters'] = k
     if tau is not None:
         config['analysis']['window_duration'] = tau + 1
-        config['analysis']['eval_time'] = tau
         config['loop']['tick'] = tau
     output_path = Path(path + 'k' + str(
         config['clustering']['nb_clusters']) + '_' + 'tau' + str(

@@ -91,7 +91,7 @@ def main(path, k, tau):
 
     # Print real objective value of second part with spread technique
     spread_time = time.time()
-    place.allocation_spread(my_instance)
+    place.allocation_spread(my_instance, my_instance.nb_nodes)
     # TODO progress in eval window for check capacities
     # spread_df_host = progress_time_noloop(my_instance)
     # print(spread_df_host)
@@ -121,6 +121,39 @@ def main(path, k, tau):
         my_instance.sep_time,
         title='Node consumption after spread technique')
     node_evo_fig.savefig(output_path + '/node_spread_plot.svg')
+
+    # Print real objective value of second part with iterative consolidation technique
+    pack_spread_time = time.time()
+    place.allocation_spread(my_instance)
+    # TODO progress in eval window for check capacities
+    # spread_df_host = progress_time_noloop(my_instance)
+    # print(spread_df_host)
+    pack_spread_time = time.time() - pack_spread_time
+    it.results_file.write(
+        'Real objective value of second part with iterative consolidation technique :\n')
+    (pack_spread_obj_nodes, pack_spread_obj_delta) = mc.get_obj_value_heuristic(
+        my_instance.df_indiv,
+        my_instance.eval_time,
+        my_instance.df_indiv[it.tick_field].max())
+    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
+        pack_spread_obj_nodes, pack_spread_obj_delta))
+    it.results_file.write('Iterative consolidation technique time : %f s\n\n' % (pack_spread_time))
+    it.main_results.append(pack_spread_obj_nodes)
+    it.main_results.append(pack_spread_obj_delta)
+    it.main_results.append(pack_spread_time)
+    node_results = pd.concat([
+        node_results,
+        get_node_results(my_instance, 'iter-consoli_')],
+        axis=1
+    )
+
+    # Plot iterative consolidation result
+    node_evo_fig = plot.plot_containers_groupby_nodes(
+        my_instance.df_indiv,
+        my_instance.df_host_meta[it.metrics[0]].max(),
+        my_instance.sep_time,
+        title='Node consumption after iterative consolidation technique')
+    node_evo_fig.savefig(output_path + '/node_iter-consoli_plot.svg')
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
@@ -325,8 +358,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     tmin = my_instance.df_indiv[it.tick_field].min()
     tmax = my_instance.sep_time
     current_obj_func = 1
-    # current_nb_nodes = my_instance.nb_nodes
-    # max_dual_clust = None
     clustering_dual_values = {}
     placement_dual_values = {}
 
@@ -363,6 +394,14 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #     working_df_indiv, my_instance.dict_id_c, labels_)
 
         # evaluate clustering solution from optim model
+        # mc.eval_clustering(
+        #     working_df_indiv,
+        #     my_instance,
+        #     current_obj_func,
+        #     w, u,
+        #     clustering_dual_values,
+        #     moving_containers
+        # )
         # TODO update model from existing one, not creating new one each time
         cplex_model = mc.CPXInstance(working_df_indiv,
                                      my_instance.df_host_meta,
@@ -374,9 +413,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         logging.info('# Clustering evaluation #')
         logging.info('Solving linear relaxation ...')
         cplex_model.solve(cplex_model.relax_mdl)
-        # TODO only mustlink constraints
-        # mc.print_all_dual(cplex_model.relax_mdl,
-        #                   nn_only=True, names=constraints_dual)
 
         if len(clustering_dual_values) == 0:
             logging.info('Clustering problem not evaluated yet\n')
@@ -416,34 +452,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 cplex_model.relax_mdl, constraints_dual
             )
 
-        # if max_dual_clust is None:
-        #     print('We have not evaluated the model yet...\n')
-        #     max_dual_clust = mc.get_max_dual(
-        #         cplex_model.relax_mdl, constraints_dual)
-        # else:
-        #     if mc.dual_changed(cplex_model.relax_mdl, constraints_dual,
-        #                        max_dual_clust, tol_clust):
-        #         print('Performing new clustering ...\n')
-        #         labels_ = clt.perform_clustering(
-        #             df_clust, 'kmeans', my_instance.nb_clusters)
-        #         df_clust['cluster'] = labels_
-        #         my_instance.nb_clusters = labels_.max() + 1
-        #         u = clt.build_adjacency_matrix(labels_)
-        #         cplex_model = mc.CPXInstance(working_df_indiv,
-        #                                      my_instance.df_host_meta,
-        #                                      my_instance.nb_clusters,
-        #                                      my_instance.dict_id_c,
-        #                                      my_instance.dict_id_n,
-        #                                      obj_func=current_obj_func,
-        #                                      w=w, u=u, pb_number=2)
-        #         print('\n')
-        #         print('Solving linear relaxation ...')
-        #         cplex_model.solve(cplex_model.relax_mdl)
-        #     else:
-        #         print('Clustering seems still right\n')
-        #     max_dual_clust = mc.get_max_dual(
-        #         cplex_model.relax_mdl, constraints_dual)
-
         # Compute new clusters profiles
         cluster_profiles = clt.get_cluster_mean_profile(
             my_instance.nb_clusters,
@@ -482,14 +490,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                                      my_instance.dict_id_n,
                                      obj_func=current_obj_func,
                                      w=w, u=u, v=v, dv=dv, pb_number=3)
-
-        # print('Adding constraints from heuristic ...\n')
-        # cplex_model.add_constraint_heuristic(
-        # containers_grouped, my_instance)
         print('Solving linear relaxation ...')
         cplex_model.solve(cplex_model.relax_mdl)
-        # mc.print_all_dual(cplex_model.relax_mdl,
-        #                   nn_only=True, names=constraints_dual)
         moving_containers = []
         if len(placement_dual_values) == 0:
             logging.info('Placement problem not evaluated yet\n')
@@ -506,20 +508,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                     working_df_indiv, my_instance.dict_id_c)
                 print('Time get moving containers : ', (time.time() - time_get_move))
 
-        # Move containers by hand
-        # print('Enter the containers you want to move')
-        # moving_containers = []
-        # while True:
-        #     moving_container = input(
-        #         'Enter a container you want to move, or press Enter')
-        #     if moving_container.isdigit():
-        #         moving_containers.append(int(moving_container))
-        #         for pair in containers_grouped:
-        #             if my_instance.dict_id_c[int(moving_container)] in pair:
-        #                 containers_grouped.remove(pair)
-        #     else:
-        #         print('End of input.')
-        #         break
         if len(moving_containers) > 0:
             nb_place_changes_loop = len(moving_containers)
             time_move_place = time.time()
@@ -551,7 +539,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                                      sorted(working_df_indiv[it.tick_field].unique()))
         plot.update_nodes_plot(fig_node, ax_node,
                                working_df_indiv, my_instance.dict_id_n)
-        # plt.show(block=False)
 
         if loop_nb > 1:
             working_df_indiv = my_instance.df_indiv[

@@ -405,11 +405,11 @@ def allocation_ffd(instance: Instance,
     pbar.close()
 
 
-def allocation_spread(instance: Instance):
+def allocation_spread(instance: Instance, min_nodes: int = None):
     """Spread technique for placement."""
     total_time = instance.sep_time
 
-    min_nodes = nb_min_nodes(instance, total_time)
+    min_nodes = min_nodes or nb_min_nodes(instance, total_time)
     conso_nodes = np.zeros((instance.nb_nodes, total_time))
 
     spread_containers(

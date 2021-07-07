@@ -1,6 +1,7 @@
 {
   "analysis": {
-    "window_duration": 15
+    "window_duration": 15,
+    "eval_time": "default"
   },
   "clustering": {
     "algo": "kmeans",
@@ -25,13 +26,15 @@
     "tick": 2,
     "constraints_dual": ["mustLink"],
     "tol_dual_clust": 0.5,
-    "tol_dual_place": 0.5
+    "tol_move_clust": 1,
+    "tol_dual_place": 0.5,
+    "tol_move_place": 0.2
   },
   "plot": {
     "renderer": "chromium"
   },
   "allocation":{
-    "enable": true,
+    "enable": false,
     "constraints":{
       "load_threshold": 0.5,
       "max_amplitude": 0.5

@@ -583,11 +583,12 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     it.results_file.write('Average loop time : %f s\n' % (total_loop_time / loop_nb))
 
     if loop_nb <= 1:
-        df_host_evo = my_instance.df_indiv[
+        working_df_indiv = my_instance.df_indiv[
             (my_instance.
              df_indiv[it.tick_field] >= tmin) & (
-                my_instance.df_indiv[it.tick_field] <= tmax)].groupby(
-            [my_instance.df_indiv[it.tick_field], it.host_field],
+                my_instance.df_indiv[it.tick_field] <= tmax)]
+        df_host_evo = working_df_indiv.groupby(
+            [working_df_indiv[it.tick_field], it.host_field],
             as_index=False).agg(dict_agg)
     return (fig_node, fig_clust, fig_mean_clust,
             [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb],

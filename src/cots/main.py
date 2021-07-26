@@ -540,21 +540,27 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         plot.update_nodes_plot(fig_node, ax_node,
                                working_df_indiv, my_instance.dict_id_n)
 
+        (init_loop_obj_nodes, init_loop_obj_delta) = mc.get_obj_value_heuristic(
+            working_df_indiv)
+        working_df_indiv = my_instance.df_indiv[
+            (my_instance.
+                df_indiv[it.tick_field] >= tmin) & (
+                my_instance.df_indiv[it.tick_field] <= tmax)]
+        working_df_host = working_df_indiv.groupby(
+            [working_df_indiv[it.tick_field], it.host_field],
+            as_index=False).agg(dict_agg)
         if loop_nb > 1:
-            working_df_indiv = my_instance.df_indiv[
-                (my_instance.
-                    df_indiv[it.tick_field] >= tmin) & (
-                    my_instance.df_indiv[it.tick_field] <= tmax)]
-            working_df_host = working_df_indiv.groupby(
-                [working_df_indiv[it.tick_field], it.host_field],
-                as_index=False).agg(dict_agg)
             df_host_evo = df_host_evo.append(
                 working_df_host[~working_df_host[it.tick_field].isin(
                     df_host_evo[it.tick_field].unique())], ignore_index=True)
 
         loop_time = (time.time() - loop_time)
+        (end_loop_obj_nodes, end_loop_obj_delta) = mc.get_obj_value_host(
+            working_df_host)
         it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
         it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
+        it.results_file.write('Loop delta before changes : %f\n' % init_loop_obj_delta)
+        it.results_file.write('Loop delta after changes : %f\n' % end_loop_obj_delta)
         it.results_file.write('Loop time : %f s\n' % (time.time() - loop_time))
         nb_clust_changes += nb_clust_changes_loop
         nb_place_changes += nb_place_changes_loop
@@ -567,8 +573,10 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         # Save loop indicators in df
         it.loop_results = it.loop_results.append({
             'num_loop': int(loop_nb),
+            'init_delta': init_loop_obj_delta,
             'clust_changes': int(nb_clust_changes_loop),
             'place_changes': int(nb_place_changes_loop),
+            'end_delta': end_loop_obj_delta,
             'loop_time': loop_time
         }, ignore_index=True)
 
@@ -583,10 +591,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     it.results_file.write('Average loop time : %f s\n' % (total_loop_time / loop_nb))
 
     if loop_nb <= 1:
-        working_df_indiv = my_instance.df_indiv[
-            (my_instance.
-             df_indiv[it.tick_field] >= tmin) & (
-                my_instance.df_indiv[it.tick_field] <= tmax)]
         df_host_evo = working_df_indiv.groupby(
             [working_df_indiv[it.tick_field], it.host_field],
             as_index=False).agg(dict_agg)

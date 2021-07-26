@@ -106,7 +106,9 @@ def read_params(path: str, k: int, tau: int) -> Dict:
 def set_loop_results() -> pd.DataFrame:
     """Create the dataframe for loop results."""
     return pd.DataFrame(columns=[
-        'num_loop', 'clust_changes', 'place_changes', 'loop_time'
+        'num_loop', 'init_delta',
+        'clust_changes', 'place_changes',
+        'end_delta', 'loop_time'
     ])
 
 

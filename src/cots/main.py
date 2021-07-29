@@ -373,8 +373,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         logging.info('\n # Enter loop number %d #\n' % loop_nb)
         it.results_file.write('\n # Loop number %d #\n' % loop_nb)
 
-        # if loop_nb > 1:
-        # progress_time_noloop(my_instance, tmin, tmax)
+        if loop_nb > 1:
+            progress_time_noloop(my_instance, tmin, tmax)
 
         working_df_indiv = my_instance.df_indiv[
             (my_instance.
@@ -650,17 +650,11 @@ def progress_time_noloop(instance: Instance,
                          tmin: int, tmax: int) -> pd.DataFrame:
     """We progress in time without performing the loop, checking node capacities."""
     # df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
-    print(tmin, tmax)
-    input()
     dict_agg = {}
     for metric in it.metrics:
         dict_agg[metric] = 'sum'
 
-    print(instance.df_host_meta)
-    print(instance.df_host)
-    for tick in range(
-            instance.eval_time, instance.df_host[it.tick_field].max()):
-        print(tick)
+    for tick in range(tmin, tmax + 1):
         df_host_tick = instance.df_indiv.loc[
             instance.df_indiv[it.tick_field] == tick
         ].groupby(
@@ -670,7 +664,6 @@ def progress_time_noloop(instance: Instance,
         if len(host_overload) > 0:
             print('Overload : We must move containers')
             place.free_full_nodes(instance, host_overload, tick)
-        input()
 
 
 def write_main_results():

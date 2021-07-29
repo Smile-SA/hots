@@ -13,6 +13,7 @@ Actually, there are 3 differents placement techniques :
 """
 
 import math
+import random
 from itertools import combinations
 from typing import Dict, List
 
@@ -67,13 +68,57 @@ def remove_container_node(node_id: str, container_id: str, instance: Instance):
 def free_full_nodes(instance: Instance, full_nodes: List, tick: int):
     """Change the solution in order to satisfy node capacities."""
     for host in full_nodes:
-        print(host, tick)
-        df_indiv_host = instance.df_indiv.loc[
-            (instance.df_indiv[it.host_field] == host) & (
-                instance.df_indiv[it.tick_field] == tick
+        stop = False
+        while not stop:
+            df_indiv_host = instance.df_indiv.loc[
+                (instance.df_indiv[it.host_field] == host) & (
+                    instance.df_indiv[it.tick_field] == tick
+                )
+            ]
+            if df_indiv_host[it.metrics[0]].sum() > instance.df_host_meta.loc[
+                instance.df_host_meta[it.host_field] == host
+            ][it.metrics[0]].to_numpy()[0]:
+                moving_indiv = random.choice(
+                    df_indiv_host[it.indiv_field].unique())
+                print('Moving individual %s' % moving_indiv)
+                assign_indiv_available_host(instance, moving_indiv, tick, tick)
+            else:
+                stop = True
+
+
+def assign_indiv_available_host(instance: Instance, indiv_id: str,
+                                tmin: int, tmax: int):
+    """Assign the individual to first available host."""
+    cons_c = instance.df_indiv.loc[
+        (instance.df_indiv[it.indiv_field] == indiv_id) & (
+            instance.df_indiv[it.tick_field] >= tmin) & (
+            instance.df_indiv[it.tick_field] <= tmax
+        )
+    ][it.metrics[0]].to_numpy()
+
+    n = 0
+    checked_nodes = 1
+    done = False
+    while not done:
+        # TODO check n <= min_nodes or infeasibility
+        cap_node = instance.df_host_meta.loc[
+            instance.
+            df_host_meta[it.host_field] == instance.dict_id_n[n]
+        ][it.metrics[0]].to_numpy()[0]
+        conso_node = instance.df_indiv.loc[
+            (instance.df_indiv[it.host_field] == instance.dict_id_n[n]) & (
+                instance.df_indiv[it.tick_field] >= tmin) & (
+                instance.df_indiv[it.tick_field] <= tmax
             )
-        ]
-        print(df_indiv_host)
+        ][it.metrics[0]].sum()
+        if np.all(np.less((conso_node + cons_c), cap_node)):
+            conso_node += cons_c
+            done = True
+            assign_container_node(
+                instance.dict_id_n[n], indiv_id, instance)
+        else:
+            checked_nodes += 1
+            n = (n + 1) % instance.nb_nodes
 
 
 def spread_containers(list_containers: List, instance: Instance,

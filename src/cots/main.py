@@ -143,7 +143,7 @@ def main(path, k, tau):
     it.main_results.append(pack_spread_time)
     node_results = pd.concat([
         node_results,
-        get_node_results(my_instance, 'iter-consoli_')],
+        get_node_results(my_instance, 'iter-consol_')],
         axis=1
     )
 
@@ -153,7 +153,7 @@ def main(path, k, tau):
         my_instance.df_host_meta[it.metrics[0]].max(),
         my_instance.sep_time,
         title='Node consumption after iterative consolidation technique')
-    node_evo_fig.savefig(output_path + '/node_iter-consoli_plot.svg')
+    node_evo_fig.savefig(output_path + '/node_iter-consol_plot.svg')
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[

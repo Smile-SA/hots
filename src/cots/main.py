@@ -3,12 +3,14 @@
 =========
 cots main
 =========
-Entry point of cots module through ``cots --data --params``.
+Entry point of cots module through ``cots --path [--k --tau]``.
 
-    - data is the folder where we find the files
+    - path is the folder where we find the files
         x container_usage.csv : describes container resource consumption
         x node_meta.csv : describes nodes capacities
         (x node_usage.csv : describes nodes resource consumption)
+    - k is the number of cluster to use for the clustering part
+    - tau is the size of one time window (for analysis and solution evaluation)
 
 The entire methodology is called from here (initialization, clustering,
 allocation, evaluation, access to optimization model...).
@@ -37,9 +39,6 @@ from . import placement as place
 from . import plot
 from .instance import Instance
 
-
-# Clustering algorithm
-# {kmeans, hierarchical, spectral, spectral_perso}
 
 # TODO add 'help' message
 @click.command()

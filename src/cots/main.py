@@ -350,9 +350,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     )
 
     df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
-    dict_agg = {}
-    for metric in it.metrics:
-        dict_agg[metric] = 'sum'
 
     tmin = my_instance.df_indiv[it.tick_field].min()
     tmax = my_instance.sep_time
@@ -581,7 +578,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                     my_instance.df_indiv[it.tick_field] <= tmax)]
             working_df_host = working_df_indiv.groupby(
                 [working_df_indiv[it.tick_field], it.host_field],
-                as_index=False).agg(dict_agg)
+                as_index=False).agg(it.dict_agg_metrics)
 
             if loop_nb > 1:
                 df_host_evo = df_host_evo.append(
@@ -615,12 +612,38 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         else:
             loop_nb += 1
 
+    df_host_evo = end_loop(my_instance, tmin, nb_clust_changes, nb_place_changes,
+                           total_loop_time, loop_nb, df_host_evo)
+
+    return (fig_node, fig_clust, fig_mean_clust,
+            [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb],
+            df_host_evo)
+
+
+def progress_time_noloop(instance: Instance,
+                         tmin: int, tmax: int) -> pd.DataFrame:
+    """We progress in time without performing the loop, checking node capacities."""
+    for tick in range(tmin, tmax + 1):
+        df_host_tick = instance.df_indiv.loc[
+            instance.df_indiv[it.tick_field] == tick
+        ].groupby(
+            [instance.df_indiv[it.tick_field], it.host_field],
+            as_index=False).agg(it.dict_agg_metrics)
+        host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
+        if len(host_overload) > 0:
+            print('Overload : We must move containers')
+            place.free_full_nodes(instance, host_overload, tick)
+
+
+def end_loop(my_instance: Instance, tmin: int, nb_clust_changes: int, nb_place_changes: int,
+             total_loop_time: float, loop_nb: int, df_host_evo: pd.DataFrame):
+    """Perform all stuffs after last loop."""
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
          df_indiv[it.tick_field] >= tmin)]
     working_df_host = working_df_indiv.groupby(
         [working_df_indiv[it.tick_field], it.host_field],
-        as_index=False).agg(dict_agg)
+        as_index=False).agg(it.dict_agg_metrics)
 
     (end_loop_obj_nodes, end_loop_obj_delta) = mc.get_obj_value_host(
         working_df_host)
@@ -634,35 +657,12 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     if loop_nb <= 1:
         df_host_evo = working_df_indiv.groupby(
             [working_df_indiv[it.tick_field], it.host_field],
-            as_index=False).agg(dict_agg)
+            as_index=False).agg(it.dict_agg_metrics)
     else:
         df_host_evo = df_host_evo.append(
             working_df_host[~working_df_host[it.tick_field].isin(
                 df_host_evo[it.tick_field].unique())], ignore_index=True)
-
-    return (fig_node, fig_clust, fig_mean_clust,
-            [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb],
-            df_host_evo)
-
-
-def progress_time_noloop(instance: Instance,
-                         tmin: int, tmax: int) -> pd.DataFrame:
-    """We progress in time without performing the loop, checking node capacities."""
-    # df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
-    dict_agg = {}
-    for metric in it.metrics:
-        dict_agg[metric] = 'sum'
-
-    for tick in range(tmin, tmax + 1):
-        df_host_tick = instance.df_indiv.loc[
-            instance.df_indiv[it.tick_field] == tick
-        ].groupby(
-            [instance.df_indiv[it.tick_field], it.host_field],
-            as_index=False).agg(dict_agg)
-        host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
-        if len(host_overload) > 0:
-            print('Overload : We must move containers')
-            place.free_full_nodes(instance, host_overload, tick)
+    return df_host_evo
 
 
 def write_main_results():

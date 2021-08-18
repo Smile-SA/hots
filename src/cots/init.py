@@ -127,6 +127,8 @@ def define_globals(p_path: Path, config: Dict):
     global main_results_file
     global additional_results_file
 
+    global dict_agg_metrics
+
     global renderer
 
     indiv_field = config['data']['individual_field']
@@ -140,5 +142,9 @@ def define_globals(p_path: Path, config: Dict):
     results_file = open(p_path / 'results.log', 'w')
     main_results_file = open(p_path / 'main_results.csv', 'w')
     # additional_results_file = open(p_path / 'results.log', 'w')
+
+    dict_agg_metrics = {}
+    for metric in metrics:
+        dict_agg_metrics[metric] = 'sum'
 
     renderer = config['plot']['renderer']

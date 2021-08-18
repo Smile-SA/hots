@@ -274,8 +274,6 @@ def main(path, k, tau):
     #     my_instance.sep_time,
     #     title='Node consumption after heuristic and change allocation')
 
-    # plt.show(block=False)
-
     # loop 'streaming' progress
     it.results_file.write('\n### Loop process ###\n')
     (fig_node, fig_clust, fig_mean_clust,
@@ -327,6 +325,7 @@ def main(path, k, tau):
     close_files()
 
 
+# TODO last ticks of data may not be plotted
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    labels_: List, containers_grouped: List, tick: int,
                    constraints_dual: List,
@@ -371,8 +370,9 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
         print('\n # Enter loop number %d #\n' % loop_nb)
 
-        if loop_nb > 1:
-            progress_time_noloop(my_instance, tmin, tmax)
+        # TODO not fully tested (replace containers)
+        # if loop_nb > 1:
+        #     progress_time_noloop(my_instance, tmin, tmax)
 
         working_df_indiv = my_instance.df_indiv[
             (my_instance.

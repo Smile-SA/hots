@@ -80,7 +80,6 @@ def free_full_nodes(instance: Instance, full_nodes: List, tick: int):
             ][it.metrics[0]].to_numpy()[0]:
                 moving_indiv = random.choice(
                     df_indiv_host[it.indiv_field].unique())
-                print('Moving individual %s' % moving_indiv)
                 assign_indiv_available_host(instance, moving_indiv, tick, tick)
             else:
                 stop = True
@@ -89,6 +88,7 @@ def free_full_nodes(instance: Instance, full_nodes: List, tick: int):
 def assign_indiv_available_host(instance: Instance, indiv_id: str,
                                 tmin: int, tmax: int):
     """Assign the individual to first available host."""
+    print('Moving individual %s' % indiv_id)
     cons_c = instance.df_indiv.loc[
         (instance.df_indiv[it.indiv_field] == indiv_id) & (
             instance.df_indiv[it.tick_field] >= tmin) & (
@@ -119,6 +119,54 @@ def assign_indiv_available_host(instance: Instance, indiv_id: str,
         else:
             checked_nodes += 1
             n = (n + 1) % instance.nb_nodes
+            if checked_nodes > instance.nb_nodes:
+                find_substitution(instance, indiv_id, tmin, tmax)
+
+
+def find_substitution(instance: Instance, indiv_id: str,
+                      tmin: int, tmax: int):
+    """Find a node in which we can place indiv_id by moving another indiv."""
+    # TODO not fully functionnal
+    cons_c = instance.df_indiv.loc[
+        (instance.df_indiv[it.indiv_field] == indiv_id) & (
+            instance.df_indiv[it.tick_field] >= tmin) & (
+            instance.df_indiv[it.tick_field] <= tmax
+        )
+    ][it.metrics[0]].to_numpy()
+
+    n = 0
+    checked_nodes = 1
+    done = False
+    while not done:
+        conso_node = instance.df_indiv.loc[
+            (instance.df_indiv[it.host_field] == instance.dict_id_n[n]) & (
+                instance.df_indiv[it.tick_field] >= tmin) & (
+                instance.df_indiv[it.tick_field] <= tmax
+            )
+        ][it.metrics[0]].sum()
+        cap_node = instance.df_host_meta.loc[
+            instance.
+            df_host_meta[it.host_field] == instance.dict_id_n[n]
+        ][it.metrics[0]].to_numpy()[0]
+        moving_indiv = random.choice(
+            instance.df_indiv.loc[
+                (instance.df_indiv[it.host_field] == instance.dict_id_n[n])
+            ][it.indiv_field].unique())
+        conso_indiv = instance.df_indiv.loc[
+            (instance.df_indiv[it.indiv_field] == moving_indiv) & (
+                instance.df_indiv[it.tick_field] >= tmin) & (
+                instance.df_indiv[it.tick_field] <= tmax)
+        ][it.metrics[0]].to_numpy()
+        if np.all(np.less((conso_node - conso_indiv + cons_c), cap_node)):
+            done = True
+            assign_container_node(
+                instance.dict_id_n[n], indiv_id, instance)
+            assign_indiv_available_host(instance, moving_indiv, tmin, tmax)
+        else:
+            checked_nodes += 1
+            n = (n + 1) % instance.nb_nodes
+            if checked_nodes > instance.nb_nodes:
+                raise RuntimeError('No node to welcome %s' % indiv_id)
 
 
 def spread_containers(list_containers: List, instance: Instance,
@@ -463,41 +511,8 @@ def allocation_spread(instance: Instance, min_nodes: int = None):
     )
 
 
-# TODO adapt to dfs
-# Spread technique for allocation
-def allocation_spread(instance: Instance, nb_nodes: int):
-    """Dispatch containers on nodes (spread technique)."""
-    total_time = instance.sep_time
-    conso_nodes = np.zeros((instance.nb_nodes, total_time))
-    n = 0
-    for c in instance.df_indiv[it.indiv_field].unique():
-        cons_c = instance.df_indiv.loc[
-            instance.df_indiv[it.indiv_field] == c
-        ]['cpu'].to_numpy()[:total_time]
-        cap_node = instance.df_host_meta.loc[
-            instance.
-            df_host_meta[it.host_field] == instance.dict_id_n[n]
-        ]['cpu'].to_numpy()[0]
-        done = False
-        while not done:
-            # TODO check n <= min_nodes or infeasibility
-            if np.all(np.less((conso_nodes[n] + cons_c), cap_node)):
-                conso_nodes[n] += cons_c
-                done = True
-                assign_container_node(
-                    instance.dict_id_n[n], c, instance)
-            else:
-                n = (n + 1) % nb_nodes
-                cap_node = instance.df_host_meta.loc[
-                    instance.
-                    df_host_meta[it.host_field] == instance.dict_id_n[n]
-                ]['cpu'].to_numpy()[0]
-        n = (n + 1) % nb_nodes
-
-
 # TODO consider 85% usage now ? maybe add parameter
 # TODO make it generic with metrics
-# Try to find minimum number of nodes needed
 def nb_min_nodes(instance: Instance, total_time: int) -> float:
     """Compute the minimum number of nodes needed to support the load."""
     # max_cpu = 0.0

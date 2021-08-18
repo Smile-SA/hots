@@ -30,6 +30,7 @@ from .instance import Instance
 #####################################################################
 # Functions definitions
 
+# TODO factorize many functions (assign indiv, change node during assign indiv..)
 
 def assign_container_node(node_id: str, container_id: str, instance: Instance,
                           remove: bool = True):
@@ -121,6 +122,46 @@ def assign_indiv_available_host(instance: Instance, indiv_id: str,
             n = (n + 1) % instance.nb_nodes
             if checked_nodes > instance.nb_nodes:
                 find_substitution(instance, indiv_id, tmin, tmax)
+
+
+def assign_indiv_initial_placement(instance: Instance, indiv_id: str,
+                                   tmin: int, tmax: int,
+                                   conso_nodes: List, min_nodes: int, n: int = 0) -> bool:
+    """Assign indiv in node during first heuristic."""
+    cons_c = instance.df_indiv.loc[
+        (instance.df_indiv[it.indiv_field] == indiv_id) & (
+            instance.df_indiv[it.tick_field] >= tmin) & (
+            instance.df_indiv[it.tick_field] <= tmax
+        )
+    ][it.metrics[0]].to_numpy()
+
+    i_n = 0
+    done = False
+    while not done:
+        cap_node = instance.df_host_meta.loc[
+            instance.
+            df_host_meta[it.host_field] == instance.dict_id_n[n]
+        ][it.metrics[0]].to_numpy()[0]
+        if np.all(np.less(
+                (conso_nodes[n] + cons_c), cap_node)):
+            conso_nodes[n] += cons_c
+            assign_container_node(
+                instance.dict_id_n[n],
+                indiv_id,
+                instance)
+            done = True
+        else:
+            i_n += 1
+            if i_n >= min_nodes:
+                min_nodes += 1
+                n = i_n
+            else:
+                n = (n + 1) % min_nodes
+            cap_node = instance.df_host_meta.loc[
+                instance.
+                df_host_meta[it.host_field] == instance.dict_id_n[n]
+            ][it.metrics[0]].to_numpy()[0]
+    return done
 
 
 def find_substitution(instance: Instance, indiv_id: str,
@@ -229,52 +270,21 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
         i_n = 0
         if not np.all(np.less(
                 cons_i + cons_j, cap_node)):
-            done1 = False
-            while not done1:
-                if np.all(np.less(
-                        (conso_nodes[n] + cons_i), cap_node)):
-                    conso_nodes[n] += cons_i
-                    assign_container_node(
-                        instance.dict_id_n[n],
-                        list_containers_i[c],
-                        instance)
-                    done1 = True
-                    pbar.update(1)
-                else:
-                    i_n += 1
-                    if i_n >= min_nodes:
-                        min_nodes += 1
-                        n = i_n
-                    else:
-                        n = (n + 1) % min_nodes
-                    cap_node = instance.df_host_meta.loc[
-                        instance.
-                        df_host_meta[it.host_field] == instance.dict_id_n[n]
-                    ][it.metrics[0]].to_numpy()[0]
+            # If indivs i & j can't fit together : split them
+            if not assign_indiv_initial_placement(
+                    instance, list_containers_i[c],
+                    instance.df_indiv[it.tick_field].min(), total_time,
+                    conso_nodes, min_nodes, n):
+                raise RuntimeError('No node to welcome %s' % list_containers_i[c])
             n = (n + 1) % min_nodes
-            done2 = False
-            while not done2:
-                if np.all(np.less(
-                        (conso_nodes[n] + cons_j), cap_node)):
-                    conso_nodes[n] += cons_j
-                    assign_container_node(
-                        instance.dict_id_n[n],
-                        list_containers_j[c],
-                        instance)
-                    done2 = True
-                    pbar.update(1)
-                else:
-                    i_n += 1
-                    if i_n >= min_nodes:
-                        min_nodes += 1
-                        n = i_n
-                    else:
-                        n = (n + 1) % min_nodes
-                    cap_node = instance.df_host_meta.loc[
-                        instance.
-                        df_host_meta[it.host_field] == instance.dict_id_n[n]
-                    ][it.metrics[0]].to_numpy()[0]
+            if not assign_indiv_initial_placement(
+                    instance, list_containers_j[c],
+                    instance.df_indiv[it.tick_field].min(), total_time,
+                    conso_nodes, min_nodes, n):
+                raise RuntimeError('No node to welcome %s' % list_containers_j[c])
+
         else:
+            # Indivs i & j could fit together
             done = False
             while not done:
                 if np.all(np.less(

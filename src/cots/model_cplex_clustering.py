@@ -51,15 +51,15 @@ class CPXInstance:
     # functions #
 
     # TODO parallelize all building
+    # TODO nice writing in log file
     def __init__(self, df_indiv: pd.DataFrame,
                  df_host_meta: pd.DataFrame, nb_clusters: int,
                  dict_id_c: Dict, dict_id_n: Dict, obj_func: int,
                  w: np.array = None, u: np.array = None, v: np.array = None,
                  dv: np.array = None, nb_nodes: int = None,
-                 pb_number: int = None):
+                 pb_number: int = None, verbose: bool = False):
         """Initialize CPXInstance with data in Instance."""
         model_time = time.time()
-        print('Building of cplex model ...')
         self.nb_nodes = df_host_meta[it.host_field].nunique()
         self.nb_containers = df_indiv[it.indiv_field].nunique()
         self.nb_clusters = nb_clusters
@@ -77,28 +77,33 @@ class CPXInstance:
         self.pb_number = pb_number or 0
 
         self.mdl = Model(name=self.get_pb_name(self.pb_number), cts_by_name=False)
-        print('Building names ...')
+        if verbose:
+            it.optim_file.write('Building names ...')
         self.build_names()
-        print('Building variables ...')
+        if verbose:
+            it.optim_file.write('Building variables ...')
         self.build_variables()
-        print('Building data ...')
+        if verbose:
+            it.optim_file.write('Building data ...')
         self.build_data(df_indiv, df_host_meta, dict_id_c, dict_id_n)
-        print('Building constraints ...')
+        if verbose:
+            it.optim_file.write('Building constraints ...')
         self.build_constraints(w, u, v)
-        print('Building objective ...')
+        if verbose:
+            it.optim_file.write('Building objective ...')
         self.build_objective(w, u, dv)
 
-        print('Building relaxed model ...')
+        if verbose:
+            it.optim_file.write('Building relaxed model ...')
         self.relax_mdl = make_relaxed_model(self.mdl)
 
         # Init solution for mdl with initial placement
         # self.set_x_from_df(df_indiv, dict_id_c, dict_id_n)
 
-        self.mdl.print_information()
-
-        print('Building model time : ', time.time() - model_time)
-
-        self.write_infile()
+        if verbose:
+            self.mdl.print_information()
+            it.optim_file.write('Building model time : ', time.time() - model_time)
+            self.write_infile()
 
     def get_pb_name(self, pb_number: int) -> str:
         """Get the problem name depending on his number."""
@@ -221,9 +226,9 @@ class CPXInstance:
         elif self.pb_number == 1:
             self.placement_constraints()
         elif self.pb_number == 2:
-            print('Add basic clustering constraints ...')
+            # it.optim_file.write('Add basic clustering constraints ...')
             self.clustering_constraints(self.nb_clusters, w)
-            print('Add adjacency constraints ...')
+            # it.optim_file.write('Add adjacency constraints ...')
             self.add_adjacency_clust_constraints(u)
         elif self.pb_number == 3:
             self.placement_constraints()
@@ -334,14 +339,14 @@ class CPXInstance:
     def clustering_constraints(self, nb_clusters, w):
         """Build the clustering related constraints."""
         # Cluster assignment constraint
-        print('Cluster assignment constraint ...')
+        # it.optim_file.write('Cluster assignment constraint ...')
         for c in self.containers_names:
             self.mdl.add_constraint(self.mdl.sum(
                 self.mdl.y[c, k] for k in self.clusters_names) == 1,
                 'cluster_assign_' + str(c))
 
         # Open cluster
-        print('Open cluster ...')
+        # it.optim_file.write('Open cluster ...')
         for (c, k) in product(self.containers_names, self.clusters_names):
             self.mdl.add_constraint(
                 self.mdl.y[c, k] <= self.mdl.b[k],
@@ -349,7 +354,7 @@ class CPXInstance:
             )
 
         # Number of clusters
-        print('Number of clusters ...')
+        # it.optim_file.write('Number of clusters ...')
         self.mdl.add_constraint(self.mdl.sum(
             self.mdl.b[k] for k in self.clusters_names) <= self.nb_clusters,
             'nb_clusters'
@@ -396,7 +401,7 @@ class CPXInstance:
     def add_adjacency_clust_constraints(self, u):
         """Add constraints fixing u variables from adjacency matrice."""
         # TODO replace because too many variables
-        print('Fixing yu(i,j,n) ...')
+        # it.optim_file.write('Fixing yu(i,j,n) ...')
         for(i, j) in combinations(self.containers_names, 2):
             if u[i, j]:
                 for k in self.clusters_names:
@@ -633,25 +638,25 @@ class CPXInstance:
     def solve(self, my_mdl: Model, verbose: bool = False):
         """Solve the given problem."""
         if not my_mdl.solve(log_output=verbose):
-            print('*** Problem has no solution ***')
+            it.optim_file.write('*** Problem has no solution ***')
         else:
-            print('*** Model solved as function:')
+            it.optim_file.write('*** Model solved as function:')
             if verbose:
                 my_mdl.print_solution()
                 my_mdl.report()
-            print(my_mdl.objective_value)
+            it.optim_file.write('%f' % my_mdl.objective_value)
             # my_mdl.report_kpis()
 
     def print_heuristic_solution_a(self):
         """Print the heuristic solution (variables a)."""
-        print('Values of variables a :')
+        it.optim_file.write('Values of variables a :')
         for n in self.nodes_names:
-            print(self.mdl.a[n], self.current_sol.get_value(
+            it.optim_file.write(self.mdl.a[n], self.current_sol.get_value(
                 self.mdl.a[n]))
 
     def print_sol_infos_heur(self, total_time: int = 6):
         """Print information about heuristic solution."""
-        print('Infos about heuristics solution ...')
+        it.optim_file.write('Infos about heuristics solution ...')
 
         means_ = np.zeros(len(self.nodes_names))
         vars_ = np.zeros(len(self.nodes_names))
@@ -663,7 +668,7 @@ class CPXInstance:
                     for t in range(total_time):
                         means_[n] += self.containers_data[c][t][1]
             means_[n] = means_[n] / total_time
-            print('Mean of node %d : %f' % (n, means_[n]))
+            it.optim_file.write('Mean of node %d : %f' % (n, means_[n]))
 
             # Compute variance in each node
             for t in range(total_time):
@@ -673,13 +678,13 @@ class CPXInstance:
                         total_t += self.containers_data[c][t][1]
                 vars_[n] += math.pow(total_t - means_[n], 2)
             vars_[n] = vars_[n] / total_time
-            print('Variance of node %d : %f' % (n, vars_[n]))
+            it.optim_file.write('Variance of node %d : %f' % (n, vars_[n]))
 
     # We can get dual values only for LP
     def get_max_dual(self):
         """Get the constraint with the highest dual variable value."""
         if self.relax_mdl is None:
-            print("*** Linear Relaxation does not exist : we can't get\
+            it.optim_file.write("*** Linear Relaxation does not exist : we can't get\
                 dual values ***")
         else:
             self.solve(self.relax_mdl)
@@ -689,7 +694,7 @@ class CPXInstance:
                 if ct.dual_value > dual_max:
                     ct_max = ct
                     dual_max = ct.dual_value
-            print(ct_max, dual_max)
+            it.optim_file.write(ct_max, dual_max)
 
     def add_constraint_heuristic(self,
                                  container_grouped: List, instance: Instance):
@@ -830,6 +835,7 @@ class CPXInstance:
 
     def write_infile(self):
         """Write the problem in LP file."""
+        # TODO write these files in data folder
         if self.pb_number == 0:
             self.mdl.export_as_lp(path='./place_w_clust.lp')
             self.relax_mdl.export_as_lp(path='./lp_place_w_clust.lp')
@@ -903,23 +909,23 @@ def get_obj_value_host(df_host: pd.DataFrame,
 def print_constraints(mdl: Model):
     """Print all the constraints."""
     for ct in mdl.iter_constraints():
-        print(ct)
+        it.optim_file.write(ct)
 
 
 def print_all_dual(mdl: Model, nn_only: bool = True,
                    names: List = None):
     """Print dual values associated to constraints."""
     if nn_only:
-        print('Display non-zero dual values')
+        it.optim_file.write('Display non-zero dual values')
     else:
-        print('Display all dual values')
+        it.optim_file.write('Display all dual values')
     for ct in mdl.iter_linear_constraints():
         if not nn_only:
-            print(ct, ct.dual_value)
+            it.optim_file.write(ct, ct.dual_value)
         elif ct.dual_value > 0 and nn_only and names is None:
-            print(ct, ct.dual_value)
+            it.optim_file.write(ct, ct.dual_value)
         elif ct.dual_value > 0 and True in (name in ct.name for name in names):
-            print(ct, ct.dual_value)
+            it.optim_file.write(ct, ct.dual_value)
 
 
 def fill_constraints_dual_values(mdl: Model, names: List) -> Dict:
@@ -1110,10 +1116,10 @@ def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
 
 def print_non_user_constraint(mdl: Model):
     """Print constraints not added by the user."""
-    print('*** Print non user constraints ***', mdl.name)
+    it.optim_file.write('*** Print non user constraints ***', mdl.name)
     for ct in mdl.iter_constraints():
         if not ct.has_user_name():
-            print(ct, ct.is_generated())
+            it.optim_file.write(ct, ct.is_generated())
 
 
 def transf_vars(mdl: Model, relax_mdl: Model, ctn_map: Dict) -> Dict:
@@ -1197,7 +1203,7 @@ def make_relaxed_model(mdl: Model) -> Model:
             unrelaxables.append(sos)
 
     for urx in unrelaxables:
-        print('- Modeling element cannot be relaxed: {0!r}, ignored', urx)
+        it.optim_file.write('- Modeling element cannot be relaxed: {0!r}, ignored', urx)
     if unrelaxables:
         #
         return None

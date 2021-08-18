@@ -368,6 +368,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         loop_time = time.time()
         logging.info('\n # Enter loop number %d #\n' % loop_nb)
         it.results_file.write('\n # Loop number %d #\n' % loop_nb)
+        it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
+        print('\n # Enter loop number %d #\n' % loop_nb)
 
         if loop_nb > 1:
             progress_time_noloop(my_instance, tmin, tmax)

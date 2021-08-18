@@ -40,6 +40,7 @@ colors = ['blue', 'orange', 'green', 'red', 'purple',
 other_colors = ['violet', 'lightcoral', 'navy', 'chocolate', 'turquoise']
 
 
+# TODO better plots (especially "live" plots)
 # Functions definitions #
 
 
@@ -382,7 +383,6 @@ def update_nodes_plot(fig, ax, df: pd.DataFrame,
             temp_df[it.host_field]):
         n_int = [k for k, v in dict_id_n.items() if v == n][0] % len(colors)
         ax.plot(data_n.groupby(data_n[it.tick_field])[metric].sum(), color=colors[n_int])
-    plt.pause(0.5)
 
 
 def update_nodes_plot_px(fig, df: pd.DataFrame, metric: str = None):

@@ -62,7 +62,6 @@ def main(path, k, tau):
     # Use pyomo model => to be fully applied after tests
     # my_model = model.create_model(config['optimization']['model'], my_instance)
     # model.solve_model(my_model, 'glpk')
-    # input('waiting here')
 
     # Plot initial data (containers & nodes consumption)
     ctnr.plot_all_data_all_containers(

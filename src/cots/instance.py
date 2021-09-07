@@ -42,27 +42,23 @@ class Instance:
          self.df_host,
          self.df_host_meta) = it.init_dfs(path)
 
-        # (self.spread_df_host,
-        #  self.heur_df_host,
-        #  self.loop_df_host) = it.init_algo_dfs()
-
         self.time: int = self.df_indiv[it.tick_field].nunique()
-        if config['analysis']['window_duration'] == 'default':
-            self.sep_time: int = math.floor(self.time / 2) + self.df_indiv[
-                it.tick_field].min()
-            self.window_duration = self.df_indiv.loc[
-                self.df_indiv[it.tick_field] <= self.sep_time
-            ][it.tick_field].nunique()
-        else:
-            self.window_duration = config['analysis']['window_duration']
-            self.sep_time: int = self.df_indiv[
-                it.tick_field].min() + self.window_duration - 1
+        # if config['analysis']['window_duration'] == 'default':
+        #     self.sep_time: int = math.floor(self.time / 2) + self.df_indiv[
+        #         it.tick_field].min()
+        #     self.window_duration = self.df_indiv.loc[
+        #         self.df_indiv[it.tick_field] <= self.sep_time
+        #     ][it.tick_field].nunique()
+        # else:
+        #     self.window_duration = config['analysis']['window_duration']
+        #     self.sep_time: int = self.df_indiv[
+        #         it.tick_field].min() + self.window_duration - 1
 
-        if config['analysis']['eval_time'] == 'default':
-            self.eval_time: int = math.floor(self.time / 2) + self.df_indiv[
-                it.tick_field].min()
-        else:
-            self.eval_time = config['analysis']['eval_time']
+        # if config['analysis']['eval_time'] == 'default':
+        #     self.eval_time: int = math.floor(self.time / 2) + self.df_indiv[
+        #         it.tick_field].min()
+        # else:
+        #     self.eval_time = config['analysis']['eval_time']
 
         self.nb_nodes = self.df_host_meta[it.host_field].nunique()
         self.nb_containers = self.df_indiv[it.indiv_field].nunique()
@@ -84,6 +80,8 @@ class Instance:
         self.df_indiv.set_index(
             [it.tick_field, it.indiv_field], inplace=True, drop=False)
 
+        self.percentage_to_timestamp(config)
+
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.dict_id_c = {}
 
@@ -103,41 +101,26 @@ class Instance:
                                         (self.window_duration / self.time)),
                                     '\n'])
 
-    # TODO rewrite with only one f.write
+    def percentage_to_timestamp(self, config: Dict):
+        """Transform percentage config time to timestamp."""
+        self.window_duration = math.floor(
+            self.time * int(config['analysis']['window_duration']) / 100
+        ) + self.df_indiv[it.tick_field].min()
+        self.sep_time: int = self.df_indiv[
+            it.tick_field].min() + self.window_duration - 1
+        self.eval_time = math.floor(
+            self.time * int(config['analysis']['eval_time']) / 100
+        ) + self.df_indiv[it.tick_field].min()
+        config['loop']['tick'] = math.floor(
+            self.time * int(config['loop']['tick']) / 100
+        ) - 1
 
-    def instance_in_file_before(self, filename: str):
-        """Write Instance information in file."""
-        f = open(filename, 'w')
-        f.write('### Problem instance informations ###\n')
-        f.write('Time considered : %d\n' % self.time)
-        f.write('%d nodes -- ' % self.nb_nodes)
-        f.write('%d containers\n' % self.nb_containers)
-        f.write('\n')
-
-        f.write('### Variance before optimization ###\n')
-        var, global_var = nd.get_nodes_variance(self.df_host, self.time, 2)
-        f.write(str(var))
-        f.write('\nGlobal variance : %s\n' % str(global_var))
-
-        f.write('\n### Nodes state at the beginning ###\n')
-
-        # for node in self.nodes_:
-        #     node.print_inFile(f, 1)
-        #     f.write('\n')
-
-        f.write('\n')
-        f.close()
-
-    def instance_in_file_after(self, filename: str):
-        """Write Instance information after optimization step."""
-        f = open(filename, 'a')
-
-        f.write('\n### Variance after optimization ###\n')
-        var, global_var = nd.get_nodes_variance(self.df_host, self.time, 2)
-        f.write(str(var))
-        f.write('\nGlobal variance : %s\n' % str(global_var))
-
-        f.close()
+        if self.window_duration <= 1:
+            self.window_duration += 1
+        if self.sep_time <= 0:
+            self.sep_time = 1
+        if config['loop']['tick'] <= 0:
+            config['loop']['tick'] = 1
 
     def get_node_from_container(self, container_id: str) -> str:
         """Get node ID from container ID."""

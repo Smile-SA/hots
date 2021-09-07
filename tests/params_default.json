@@ -28,7 +28,8 @@
       "tol_dual_clust": 0.2,
       "tol_move_clust": 1,
       "tol_dual_place": 0.5,
-      "tol_move_place": 0.2
+      "tol_move_place": 0.2,
+      "tol_step": 0.1
     },
     "plot": {
       "renderer": "chromium"

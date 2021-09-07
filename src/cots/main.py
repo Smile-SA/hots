@@ -327,7 +327,6 @@ def main(path, k, tau):
     close_files()
 
 
-# TODO last ticks of data may not be plotted
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    labels_: List, containers_grouped: List, tick: int,
                    constraints_dual: List,
@@ -620,7 +619,21 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         else:
             loop_nb += 1
 
-    df_host_evo = end_loop(my_instance, tmin, nb_clust_changes, nb_place_changes,
+    working_df_indiv = my_instance.df_indiv[
+        (my_instance.
+         df_indiv[it.tick_field] >= tmin)]
+    if tmin < working_df_indiv[it.tick_field].max():
+        # update clustering & node consumption plot
+        # TODO not same size issue with clustering
+        # print(cluster_profiles)
+        # plot.update_clustering_plot(
+        #     fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
+        # plot.update_cluster_profiles(fig_mean_clust, ax_mean_clust, cluster_profiles,
+        #                              sorted(working_df_indiv[it.tick_field].unique()))
+        plot.update_nodes_plot(fig_node, ax_node,
+                               working_df_indiv, my_instance.dict_id_n)
+
+    df_host_evo = end_loop(working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
                            total_loop_time, loop_nb, df_host_evo)
 
     return (fig_node, fig_clust, fig_mean_clust,
@@ -643,12 +656,10 @@ def progress_time_noloop(instance: Instance,
             place.free_full_nodes(instance, host_overload, tick)
 
 
-def end_loop(my_instance: Instance, tmin: int, nb_clust_changes: int, nb_place_changes: int,
+def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
+             nb_clust_changes: int, nb_place_changes: int,
              total_loop_time: float, loop_nb: int, df_host_evo: pd.DataFrame):
     """Perform all stuffs after last loop."""
-    working_df_indiv = my_instance.df_indiv[
-        (my_instance.
-         df_indiv[it.tick_field] >= tmin)]
     working_df_host = working_df_indiv.groupby(
         [working_df_indiv[it.tick_field], it.host_field],
         as_index=False).agg(it.dict_agg_metrics)

@@ -50,6 +50,8 @@ def main(path, k, tau):
     # Initialization part
     main_time = time.time()
 
+    if not path[-1] == '/':
+        path += '/'
     (config, output_path) = it.read_params(path, k, tau)
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)

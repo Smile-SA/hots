@@ -966,27 +966,6 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                                 dict_id_c: Dict, df_clust: pd.DataFrame, profiles: np.array
                                 ) -> List:
     """Get the list of moving containers from constraints dual values."""
-    # done = False
-    # while not done:
-    #     mvg_containers = []
-    #     for ct in mdl.iter_linear_constraints():
-    #         if ct.name in constraints_dual_values:
-    #             if ct.dual_value > (
-    #                     constraints_dual_values[ct.name]
-    #                     + tol * constraints_dual_values[ct.name]):
-    #                 indivs = re.findall(r'\d+\.*', ct.name)
-    #                 if not [e for e in indivs if dict_id_c[int(e)] in mvg_containers]:
-    #                     indiv = get_far_container(
-    #                         dict_id_c[int(indivs[0])],
-    #                         dict_id_c[int(indivs[1])],
-    #                         df_clust, profiles)
-    #                     mvg_containers.append(indiv)
-    #     # if len(mvg_containers) < (nb_containers / 4):
-    #     #     done = True
-    #     # else:
-    #     #     tol = tol + 0.2
-    #     done = True
-
     mvg_containers = []
     constraints_kept = {}
     for ct in mdl.iter_linear_constraints():
@@ -1001,16 +980,7 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
         key=lambda item: item[1],
         reverse=True
     ))
-    # constraints_kept = {
-    #     name: mdl.get_constraint_by_name(name).dual_value for
-    #     name, val in sorted(
-    #         constraints_dual_values.items(),
-    #         key=lambda item: mdl.get_constraint_by_name(item[0]).dual_value,
-    #         reverse=True) if
-    #     mdl.get_constraint_by_name(name).dual_value > (val + tol * val)
-    # }
-    # print(constraints_dual_values)
-    # print(constraints_kept)
+
     for ct, ct_dual in constraints_kept.items():
         indivs = re.findall(r'\d+\.*', ct)
         if not [e for e in indivs if dict_id_c[int(e)] in mvg_containers]:
@@ -1022,7 +992,6 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
             mvg_containers.append(indiv)
             if len(mvg_containers) >= (nb_containers * tol_move):
                 break
-    # print(mvg_containers)
     return mvg_containers
 
 
@@ -1033,8 +1002,6 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                           working_df: pd.DataFrame, dict_id_c: Dict
                           ) -> List:
     """Get the list of moving containers from constraints dual values."""
-    # done = False
-    # while not done:
     mvg_containers = []
     constraints_kept = {}
     for ct in mdl.iter_linear_constraints():
@@ -1049,32 +1016,8 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
         key=lambda item: item[1],
         reverse=True
     ))
-    # print(len(constraints_kept), len(constraints_dual_values))
-    # print('Keep constraints time : ', (time.time() - method1_time))
 
-    # print(constraints_dual_values)
-    # for ct, dual_value in constraints_dual_values.items():
-    #     # if mdl.get_constraint_by_name(ct) is None:
-    #     print(ct)
-    #     print(mdl.get_constraint_by_name(ct))
-    #     print('\n')
-    # constraints_kept = {
-    #     name: mdl.get_constraint_by_name(name).dual_value for
-    #     name, val in sorted(
-    #         constraints_dual_values.items(),
-    #         key=lambda item: mdl.get_constraint_by_name(item[0]).dual_value,
-    #         reverse=True) if
-    #     mdl.get_constraint_by_name(name).dual_value > (val + tol * val)
-    # }
-    # constraints_kept = {
-    #     name: mdl.get_constraint_by_name(name).dual_value for
-    #     name, val in constraints_dual_values.items() if (
-    #         mdl.get_constraint_by_name(name).dual_value > (val + tol * val))
-    # }
-    # print(constraints_dual_values)
-    # print(constraints_kept)
     for ct, ct_dual in constraints_kept.items():
-
         indivs = re.findall(r'\d+\.*', ct)
         if not [e for e in indivs if int(e) in mvg_containers]:
             indiv = get_container_tomove(
@@ -1084,13 +1027,8 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
             )
             int_indiv = [k for k, v in dict_id_c.items() if v == indiv][0]
             mvg_containers.append(int(int_indiv))
-        # if not in mvg_containers:
-        #     mvg_containers.append(int(indiv.group()))
             if len(mvg_containers) >= (nb_containers * tol_move):
                 break
-        # else:
-        #     tol = tol + 0.2
-    # print(mvg_containers)
     return mvg_containers
 
 

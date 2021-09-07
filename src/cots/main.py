@@ -284,7 +284,8 @@ def main(path, k, tau):
         config['loop']['tol_dual_clust'],
         config['loop']['tol_move_clust'],
         config['loop']['tol_dual_place'],
-        config['loop']['tol_move_place'])
+        config['loop']['tol_move_place'],
+        config['loop']['tol_step'])
 
     fig_node.savefig(output_path + '/node_evo_plot.svg')
     fig_clust.savefig(output_path + '/clust_evo_plot.svg')
@@ -330,7 +331,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    labels_: List, containers_grouped: List, tick: int,
                    constraints_dual: List,
                    tol_clust: float, tol_move_clust: float,
-                   tol_place: float, tol_move_place: float
+                   tol_place: float, tol_move_place: float, tol_step: float
                    ) -> (plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame):
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
@@ -608,6 +609,10 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         # input('\nPress any key to progress in time ...\n')
         tmin += tick
         tmax += tick
+        if tol_clust < 1.0:
+            tol_clust += tol_step
+        if tol_place < 1.0:
+            tol_place += tol_step
 
         if tmax >= my_instance.time:
             end = True

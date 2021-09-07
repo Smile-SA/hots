@@ -88,7 +88,11 @@ def init_algo_dfs() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
 def read_params(path: str, k: int, tau: int) -> Dict:
     """Get parameters from file and build the Dict config object."""
     p_path = Path(path)
-    with open(p_path / 'params.json', 'r') as f:
+    if Path(p_path / 'params.json').exists():
+        config_path = p_path / 'params.json'
+    else:
+        config_path = 'tests/params_default.json'
+    with open(config_path, 'r') as f:
         config = json.load(f)
     if k is not None:
         config['clustering']['nb_clusters'] = k

@@ -313,13 +313,29 @@ def get_cluster_balance(df_clust: pd.DataFrame):
 def get_far_container(c1: str, c2: str,
                       df_clust: pd.DataFrame, profiles: np.array) -> str:
     """Get the farthest container between c1 and c2 compared to profile."""
+    # print('distance c1')
+    # print(df_clust.loc[c1].drop('cluster').values
+    #       - profiles[int(df_clust.loc[c1]['cluster'])])
+    # print(norm(
+    #     df_clust.loc[c1].drop('cluster').values
+    #     - profiles[int(df_clust.loc[c1]['cluster'])]))
+    # print('distance c2')
+    # print(df_clust.loc[c2].drop('cluster').values
+    #       - profiles[int(df_clust.loc[c2]['cluster'])])
+    # print(norm(
+    #     df_clust.loc[c2].drop('cluster').values
+    #     - profiles[int(df_clust.loc[c2]['cluster'])]))
     if norm(
         df_clust.loc[c1].drop('cluster').values
         - profiles[int(df_clust.loc[c1]['cluster'])]) >= norm(
             df_clust.loc[c2].drop('cluster').values
             - profiles[int(df_clust.loc[c2]['cluster'])]):
+        # print('c1 changed')
+        # print('\n')
         return c1
     else:
+        # print('c2 changed')
+        # print('\n')
         return c2
 
 

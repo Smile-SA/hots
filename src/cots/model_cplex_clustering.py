@@ -78,23 +78,23 @@ class CPXInstance:
 
         self.mdl = Model(name=self.get_pb_name(self.pb_number), cts_by_name=False)
         if verbose:
-            it.optim_file.write('Building names ...')
+            it.optim_file.write('Building names ...\n')
         self.build_names()
         if verbose:
-            it.optim_file.write('Building variables ...')
+            it.optim_file.write('Building variables ...\n')
         self.build_variables()
         if verbose:
-            it.optim_file.write('Building data ...')
+            it.optim_file.write('Building data ...\n')
         self.build_data(df_indiv, df_host_meta, dict_id_c, dict_id_n)
         if verbose:
-            it.optim_file.write('Building constraints ...')
+            it.optim_file.write('Building constraints ...\n')
         self.build_constraints(w, u, v)
         if verbose:
-            it.optim_file.write('Building objective ...')
+            it.optim_file.write('Building objective ...\n')
         self.build_objective(w, u, dv)
 
         if verbose:
-            it.optim_file.write('Building relaxed model ...')
+            it.optim_file.write('Building relaxed model ...\n')
         self.relax_mdl = make_relaxed_model(self.mdl)
 
         # Init solution for mdl with initial placement
@@ -102,7 +102,7 @@ class CPXInstance:
 
         if verbose:
             self.mdl.print_information()
-            it.optim_file.write('Building model time : ', time.time() - model_time)
+            it.optim_file.write('Building model time : %f s\n\n' % (time.time() - model_time))
             self.write_infile()
 
     def get_pb_name(self, pb_number: int) -> str:
@@ -644,7 +644,7 @@ class CPXInstance:
             if verbose:
                 my_mdl.print_solution()
                 my_mdl.report()
-            it.optim_file.write('%f' % my_mdl.objective_value)
+            it.optim_file.write('%f\n' % my_mdl.objective_value)
             # my_mdl.report_kpis()
 
     def print_heuristic_solution_a(self):
@@ -1046,7 +1046,7 @@ def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
     c2_cons = working_df.loc[
         working_df[it.indiv_field] == c2
     ][it.metrics[0]].to_numpy()
-    if (node_data - c1_cons).var() > (node_data - c2_cons).var():
+    if (node_data - c1_cons).var() < (node_data - c2_cons).var():
         return c1
     else:
         return c2

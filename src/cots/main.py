@@ -52,6 +52,8 @@ def main(path, k, tau):
 
     if not path[-1] == '/':
         path += '/'
+
+    # TODO what if we want tick < tau ?
     (config, output_path) = it.read_params(path, k, tau)
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
@@ -480,6 +482,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 print('Time changing clustering : ', (time.time() - time_change_clust))
                 logging.info('Solving linear relaxation after changes ...')
                 cplex_model.solve(cplex_model.relax_mdl)
+                # input()
                 clustering_dual_values = mc.fill_constraints_dual_values(
                     cplex_model.relax_mdl, constraints_dual
                 )

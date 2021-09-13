@@ -45,7 +45,6 @@ class CPXInstance:
     - containers_data :
     - current_sol :
     - max_open_nodes :
-    - obj_func :
     """
 
     # functions #
@@ -54,7 +53,7 @@ class CPXInstance:
     # TODO nice writing in log file
     def __init__(self, df_indiv: pd.DataFrame,
                  df_host_meta: pd.DataFrame, nb_clusters: int,
-                 dict_id_c: Dict, dict_id_n: Dict, obj_func: int,
+                 dict_id_c: Dict, dict_id_n: Dict,
                  w: np.array = None, u: np.array = None, v: np.array = None,
                  dv: np.array = None, nb_nodes: int = None,
                  pb_number: int = None, verbose: bool = False):
@@ -64,7 +63,6 @@ class CPXInstance:
         self.nb_containers = df_indiv[it.indiv_field].nunique()
         self.nb_clusters = nb_clusters
         self.time_window = df_indiv[it.tick_field].nunique()
-        self.obj_func = obj_func
 
         # Fix max number of nodes (TODO function to evaluate it)
         self.max_open_nodes = nb_nodes or self.nb_nodes

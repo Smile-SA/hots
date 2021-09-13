@@ -8,7 +8,7 @@ build dictionnary for container IDs ...)
 """
 
 from itertools import combinations
-from typing import List
+from typing import Dict, List
 
 from matplotlib import gridspec as gridspec
 from matplotlib import pyplot as plt
@@ -82,7 +82,7 @@ def plot_all_data_all_containers(
     plt.draw()
 
 
-def build_dict_id_containers(df_indiv: pd.DataFrame):
+def build_dict_id_containers(df_indiv: pd.DataFrame) -> Dict:
     """Build dictionnary for corresponding IDs and indexes."""
     dict_id_c = {}
     i = 0
@@ -93,7 +93,7 @@ def build_dict_id_containers(df_indiv: pd.DataFrame):
     return dict_id_c
 
 
-def build_var_delta_matrix(df_indiv: pd.DataFrame, dict_id_c):
+def build_var_delta_matrix(df_indiv: pd.DataFrame, dict_id_c) -> np.array:
     """Build variance of deltas matrix."""
     c = df_indiv[it.indiv_field].nunique()
     vars_matrix = np.zeros((c, c), dtype=float)

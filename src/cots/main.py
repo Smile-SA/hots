@@ -376,8 +376,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         print('\n # Enter loop number %d #\n' % loop_nb)
 
         # TODO not fully tested (replace containers)
-        # if loop_nb > 1:
-        #     progress_time_noloop(my_instance, tmin, tmax)
+        if loop_nb > 1:
+            progress_time_noloop(my_instance, tmin, tmax)
 
         working_df_indiv = my_instance.df_indiv[
             (my_instance.

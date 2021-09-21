@@ -121,6 +121,8 @@ class Instance:
             self.sep_time = 1
         if config['loop']['tick'] <= 0:
             config['loop']['tick'] = 1
+        if self.window_duration == config['loop']['tick']:
+            self.window_duration += 1
 
     def get_node_from_container(self, container_id: str) -> str:
         """Get node ID from container ID."""

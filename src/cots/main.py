@@ -367,6 +367,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     end = False
 
     logging.info('Beginning the loop process ...\n')
+    # TODO improve cplex model builds
     while not end:
         loop_time = time.time()
         logging.info('\n # Enter loop number %d #\n' % loop_nb)
@@ -407,8 +408,22 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             )
 
             # TODO improve this part (use cluster profiles)
-            dv = ctnr.build_var_delta_matrix(
-                working_df_indiv, my_instance.dict_id_c)
+            # temp_time = time.time()
+            # dv = ctnr.build_var_delta_matrix(
+            #     working_df_indiv, my_instance.dict_id_c)
+            # print('Building var_delta matrices time : %f s' % (time.time() - temp_time))
+
+            # TODO improve this part (distance...)
+            cluster_vars = clt.get_cluster_variance(
+                my_instance.nb_clusters, df_clust)
+            cluster_profiles = clt.get_cluster_mean_profile(
+                my_instance.nb_clusters,
+                df_clust,
+                my_instance.window_duration, tmin=tmin)
+            cluster_var_matrix = clt.get_sum_cluster_variance(
+                cluster_profiles, cluster_vars)
+            dv = ctnr.build_var_delta_matrix_cluster(
+                df_clust, cluster_var_matrix, my_instance.dict_id_c)
 
             # evaluate placement
             logging.info('# Placement evaluation #')
@@ -580,7 +595,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         tol_clust, tol_move_clust,
         my_instance.nb_containers, my_instance.dict_id_c,
         df_clust, cluster_profiles)
-    print('Time get changing clustering : ', (time.time() - time_get_clust_move))
+    print('Time get changing clustering : %f s' % (time.time() - time_get_clust_move))
     if len(moving_containers) > 0:
         logging.info('Changing clustering ...')
         time_change_clust = time.time()
@@ -594,7 +609,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
                                      my_instance.dict_id_c,
                                      my_instance.dict_id_n,
                                      w=w, u=u, pb_number=2)
-        print('Time changing clustering : ', (time.time() - time_change_clust))
+        print('Time changing clustering : %f s' % (time.time() - time_change_clust))
         logging.info('Solving linear relaxation after changes ...')
         cplex_model.solve(cplex_model.relax_mdl)
         clustering_dual_values = mc.fill_constraints_dual_values(
@@ -604,15 +619,24 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         logging.info('Clustering seems still right ...')
         it.results_file.write('Clustering seems still right ...')
 
+    # TODO improve this part (use cluster profiles)
+    # temp_time = time.time()
+    # dv = ctnr.build_var_delta_matrix(
+    #     working_df_indiv, my_instance.dict_id_c)
+    # print('Building var_delta matrices time : %f s' % (time.time() - temp_time))
+
+    # TODO improve this part (distance...)
+    cluster_vars = clt.get_cluster_variance(
+        my_instance.nb_clusters, df_clust)
     # Compute new clusters profiles
     cluster_profiles = clt.get_cluster_mean_profile(
         my_instance.nb_clusters,
         df_clust,
         my_instance.window_duration, tmin=tmin)
-
-    # TODO improve this part (use cluster profiles)
-    dv = ctnr.build_var_delta_matrix(
-        working_df_indiv, my_instance.dict_id_c)
+    cluster_var_matrix = clt.get_sum_cluster_variance(
+        cluster_profiles, cluster_vars)
+    dv = ctnr.build_var_delta_matrix_cluster(
+        df_clust, cluster_var_matrix, my_instance.dict_id_c)
 
     # TODO Evaluate this possibility
     # if not cplex_model.obj_func:
@@ -659,7 +683,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
             cplex_model.relax_mdl, placement_dual_values,
             tol_place, tol_move_place, my_instance.nb_containers,
             working_df_indiv, my_instance.dict_id_c)
-        print('Time get moving containers : ', (time.time() - time_get_move))
+        print('Time get moving containers : %f s' % (time.time() - time_get_move))
 
     if len(moving_containers) > 0:
         nb_place_changes_loop = len(moving_containers)
@@ -667,7 +691,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
         place.move_list_containers(moving_containers, my_instance,
                                    working_df_indiv[it.tick_field].min(),
                                    working_df_indiv[it.tick_field].max())
-        print('Time moving containers : ', (time.time() - time_move_place))
+        print('Time moving containers : %f s' % (time.time() - time_move_place))
         cplex_model = mc.CPXInstance(working_df_indiv,
                                      my_instance.df_host_meta,
                                      my_instance.nb_clusters,

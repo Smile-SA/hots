@@ -234,7 +234,6 @@ def get_cluster_mean_profile(nb_clusters: int, df_clust: pd.DataFrame,
     for key, data in df_clust.groupby(['cluster']):
         for t in range(total_time):
             profiles_[key, t] = data[t + tmin].mean()
-
     return profiles_
 
 

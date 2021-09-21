@@ -552,6 +552,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
                     df_clust: pd.DataFrame, cluster_profiles: np.array, labels_: List) -> np.array:
     """Evaluate current clustering solution and update it if needed."""
     moving_containers = []
+    nb_clust_changes_loop = 0
     # evaluate clustering solution from optim model
     # mc.eval_clustering(
     #     working_df_indiv,
@@ -596,7 +597,6 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         print('Time changing clustering : ', (time.time() - time_change_clust))
         logging.info('Solving linear relaxation after changes ...')
         cplex_model.solve(cplex_model.relax_mdl)
-        # input()
         clustering_dual_values = mc.fill_constraints_dual_values(
             cplex_model.relax_mdl, constraints_dual
         )

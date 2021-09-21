@@ -134,7 +134,6 @@ def assign_indiv_initial_placement(instance: Instance, indiv_id: str,
             instance.df_indiv[it.tick_field] <= tmax
         )
     ][it.metrics[0]].to_numpy()
-
     i_n = 0
     done = False
     while not done:
@@ -273,13 +272,13 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
             # If indivs i & j can't fit together : split them
             if not assign_indiv_initial_placement(
                     instance, list_containers_i[c],
-                    instance.df_indiv[it.tick_field].min(), total_time,
+                    instance.df_indiv[it.tick_field].min(), total_time - 1,
                     conso_nodes, min_nodes, n):
                 raise RuntimeError('No node to welcome %s' % list_containers_i[c])
             n = (n + 1) % min_nodes
             if not assign_indiv_initial_placement(
                     instance, list_containers_j[c],
-                    instance.df_indiv[it.tick_field].min(), total_time,
+                    instance.df_indiv[it.tick_field].min(), total_time - 1,
                     conso_nodes, min_nodes, n):
                 raise RuntimeError('No node to welcome %s' % list_containers_j[c])
 
@@ -301,7 +300,6 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
                     containers_grouped.append([
                         list_containers_i[c], list_containers_j[c]])
                     done = True
-                    pbar.update(2)
                 else:
                     i_n += 1
                     if i_n >= min_nodes:
@@ -314,6 +312,7 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
                         df_host_meta[it.host_field] == instance.dict_id_n[n]
                     ][it.metrics[0]].to_numpy()[0]
             n = (n + 1) % min_nodes
+        pbar.update(2)
     return c
 
 
@@ -356,6 +355,7 @@ def allocation_distant_pairwise(
                 labels_) if value == c]
             spread_containers(list_containers, instance, conso_nodes,
                               total_time, min_nodes)
+            pbar.update(len(list_containers))
             stop = True
 
         # > 1 cluster remaining -> co-localize 2 more distant
@@ -383,11 +383,13 @@ def allocation_distant_pairwise(
                     list_containers = list_containers_j[it:]
                     spread_containers(list_containers, instance, conso_nodes,
                                       total_time, min_nodes)
+                    pbar.update(len(list_containers))
 
                 elif it < len(list_containers_i):
                     list_containers = list_containers_i[it:]
                     spread_containers(list_containers, instance, conso_nodes,
                                       total_time, min_nodes)
+                    pbar.update(len(list_containers))
 
             cluster_var_matrix_copy[i, :] = -1.0
             cluster_var_matrix_copy[:, i] = -1.0
@@ -598,7 +600,7 @@ def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
 
 
 def move_list_containers(mvg_conts: List, instance: Instance,
-                         tmin: int, tmax: int):
+                         tmin: int, tmax: int, order: str = 'max'):
     """Move the list of containers to move."""
     # Remove all moving containers from nodes first
     old_ids = {}
@@ -607,9 +609,20 @@ def move_list_containers(mvg_conts: List, instance: Instance,
             instance.df_indiv[it.indiv_field] == instance.dict_id_c[mvg_cont]
         ][it.host_field].to_numpy()[0]
         remove_container_node(old_ids[mvg_cont], instance.dict_id_c[mvg_cont], instance)
+    # TODO developp smart method for replace containers (based on clustering)
     # Assign them to a new node
+    mvg_conts_cons = {}
     for mvg_cont in mvg_conts:
-        move_container(mvg_cont, instance, tmin, tmax, old_ids[mvg_cont])
+        mvg_conts_cons[mvg_cont] = instance.df_indiv.loc[
+            instance.df_indiv[it.indiv_field] == instance.dict_id_c[mvg_cont]
+        ][it.metrics[0]].to_numpy()
+    order_indivs = ()
+    if order == 'max':
+        order_indivs = ((max(cons), c) for c, cons in mvg_conts_cons.items())
+    elif order == 'mean':
+        order_indivs = ((sum(cons) / len(cons), c) for c, cons in mvg_conts_cons.items())
+    for val, c in sorted(order_indivs, reverse=True):
+        move_container(c, instance, tmin, tmax, old_ids[mvg_cont])
 
 
 # TODO what to do if can't open another node

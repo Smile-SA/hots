@@ -81,13 +81,15 @@ def free_full_nodes(instance: Instance, full_nodes: List, tick: int):
             ][it.metrics[0]].to_numpy()[0]:
                 moving_indiv = random.choice(
                     df_indiv_host[it.indiv_field].unique())
-                assign_indiv_available_host(instance, moving_indiv, tick, tick)
+                assign_indiv_available_host(
+                    instance, moving_indiv, tick, tick,
+                    df_indiv_host[it.host_field].nunique())
             else:
                 stop = True
 
 
 def assign_indiv_available_host(instance: Instance, indiv_id: str,
-                                tmin: int, tmax: int):
+                                tmin: int, tmax: int, nb_open_nodes: int):
     """Assign the individual to first available host."""
     print('Moving individual %s' % indiv_id)
     cons_c = instance.df_indiv.loc[
@@ -119,9 +121,13 @@ def assign_indiv_available_host(instance: Instance, indiv_id: str,
                 instance.dict_id_n[n], indiv_id, instance)
         else:
             checked_nodes += 1
-            n = (n + 1) % instance.nb_nodes
-            if checked_nodes > instance.nb_nodes:
-                find_substitution(instance, indiv_id, tmin, tmax)
+            n = (n + 1) % nb_open_nodes
+            if checked_nodes > nb_open_nodes:
+                print('Impossible to move %s on another existing node.' % indiv_id)
+                print('We need to open a new node')
+                assign_container_node(
+                    instance.dict_id_n[checked_nodes], indiv_id, instance)
+                # find_substitution(instance, indiv_id, tmin, tmax)
 
 
 def assign_indiv_initial_placement(instance: Instance, indiv_id: str,

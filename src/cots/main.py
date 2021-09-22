@@ -129,18 +129,16 @@ def main(path, k, tau):
     # Print real objective value of second part with iterative consolidation technique
     pack_spread_time = time.time()
     place.allocation_spread(my_instance)
-    # TODO progress in eval window for check capacities
-    # spread_df_host = progress_time_noloop(my_instance)
-    # print(spread_df_host)
+    (spread_df_host, spread_overload) = progress_time_noloop(
+        my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
     pack_spread_time = time.time() - pack_spread_time
     it.results_file.write(
         'Real objective value of second part with iterative consolidation technique :\n')
-    (pack_spread_obj_nodes, pack_spread_obj_delta) = mc.get_obj_value_heuristic(
-        my_instance.df_indiv,
-        my_instance.eval_time,
-        my_instance.df_indiv[it.tick_field].max())
+    (pack_spread_obj_nodes, pack_spread_obj_delta) = mc.get_obj_value_host(
+        spread_df_host)
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         pack_spread_obj_nodes, pack_spread_obj_delta))
+    it.results_file.write('Number of overload : %d\n' % spread_overload)
     it.results_file.write('Iterative consolidation technique time : %f s\n\n' % (pack_spread_time))
     it.main_results.append(pack_spread_obj_nodes)
     it.main_results.append(pack_spread_obj_delta)
@@ -204,19 +202,21 @@ def main(path, k, tau):
         heur_time = time.time()
         containers_grouped = place.allocation_distant_pairwise(
             my_instance, cluster_var_matrix, labels_)
-        heur_time = time.time() - heur_time
     else:
         logging.info('We do not perform placement \n')
 
+    # Progress in time without loop
+    (heur_df_host, heur_overload) = progress_time_noloop(
+        my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
+    heur_time = time.time() - heur_time
     # Print real objective value of second part if no loop
     it.results_file.write(
         'Real objective value of second part with heuristic only (without loop)\n')
-    (heur_obj_nodes, heur_obj_delta) = mc.get_obj_value_heuristic(
-        my_instance.df_indiv,
-        my_instance.eval_time,
-        my_instance.df_indiv[it.tick_field].max())
+    (heur_obj_nodes, heur_obj_delta) = mc.get_obj_value_host(
+        heur_df_host)
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         heur_obj_nodes, heur_obj_delta))
+    it.results_file.write('Number of overload : %d\n' % heur_overload)
     it.results_file.write('Heuristic time : %f s\n\n' % (heur_time))
     it.main_results.append(heur_obj_nodes)
     it.main_results.append(heur_obj_delta)
@@ -364,6 +364,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     loop_nb = 1
     nb_clust_changes = 0
     nb_place_changes = 0
+    total_nb_overload = 0
     end = False
 
     logging.info('Beginning the loop process ...\n')
@@ -377,7 +378,13 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
         # TODO not fully tested (replace containers)
         if loop_nb > 1:
-            progress_time_noloop(my_instance, tmin, tmax)
+            temp_time = time.time()
+            (temp_df_host, nb_overload) = progress_time_noloop(my_instance, tmin, tmax)
+            df_host_evo = df_host_evo.append(
+                temp_df_host[~temp_df_host[it.tick_field].isin(
+                    df_host_evo[it.tick_field].unique())], ignore_index=True)
+            print('Progress no loop time : %f s' % (time.time() - temp_time))
+            total_nb_overload += nb_overload
 
         working_df_indiv = my_instance.df_indiv[
             (my_instance.
@@ -497,7 +504,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 working_df_host)
             it.results_file.write('Loop delta before changes : %f\n' % init_loop_obj_delta)
             it.results_file.write('Loop delta after changes : %f\n' % end_loop_obj_delta)
-            it.results_file.write('Loop time : %f s\n' % (time.time() - loop_time))
+            it.results_file.write('Loop time : %f s\n' % loop_time)
             total_loop_time += loop_time
 
             # Save loop indicators in df
@@ -538,7 +545,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                                working_df_indiv, my_instance.dict_id_n)
 
     df_host_evo = end_loop(working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
-                           total_loop_time, loop_nb, df_host_evo)
+                           total_nb_overload, total_loop_time, loop_nb, df_host_evo)
 
     return (fig_node, fig_clust, fig_mean_clust,
             [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb],
@@ -546,18 +553,26 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
 
 def progress_time_noloop(instance: Instance,
-                         tmin: int, tmax: int) -> pd.DataFrame:
+                         tmin: int, tmax: int) -> (pd.DataFrame, int):
     """We progress in time without performing the loop, checking node capacities."""
+    df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
+    nb_overload = 0
     for tick in range(tmin, tmax + 1):
         df_host_tick = instance.df_indiv.loc[
             instance.df_indiv[it.tick_field] == tick
         ].groupby(
             [instance.df_indiv[it.tick_field], it.host_field],
             as_index=False).agg(it.dict_agg_metrics)
+
         host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
+        df_host_tick[it.tick_field] = tick
+        df_host_evo = df_host_evo.append(
+            df_host_tick, ignore_index=True)
         if len(host_overload) > 0:
             print('Overload : We must move containers')
+            nb_overload += len(host_overload)
             place.free_full_nodes(instance, host_overload, tick)
+    return (df_host_evo, nb_overload)
 
 
 def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
@@ -710,7 +725,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
 
 
 def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
-             nb_clust_changes: int, nb_place_changes: int,
+             nb_clust_changes: int, nb_place_changes: int, nb_overload: int,
              total_loop_time: float, loop_nb: int, df_host_evo: pd.DataFrame):
     """Perform all stuffs after last loop."""
     working_df_host = working_df_indiv.groupby(
@@ -724,6 +739,7 @@ def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
     it.results_file.write('\n### Results of loops ###\n')
     it.results_file.write('Total number of changes in clustering : %d\n' % nb_clust_changes)
     it.results_file.write('Total number of changes in placement : %d\n' % nb_place_changes)
+    it.results_file.write('Total number of overload : %d\n' % nb_overload)
     it.results_file.write('Average loop time : %f s\n' % (total_loop_time / loop_nb))
 
     if loop_nb <= 1:

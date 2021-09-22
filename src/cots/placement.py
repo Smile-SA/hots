@@ -83,7 +83,7 @@ def free_full_nodes(instance: Instance, full_nodes: List, tick: int):
                     df_indiv_host[it.indiv_field].unique())
                 assign_indiv_available_host(
                     instance, moving_indiv, tick, tick,
-                    df_indiv_host[it.host_field].nunique())
+                    instance.df_indiv[it.host_field].nunique())
             else:
                 stop = True
 
@@ -124,9 +124,15 @@ def assign_indiv_available_host(instance: Instance, indiv_id: str,
             n = (n + 1) % nb_open_nodes
             if checked_nodes > nb_open_nodes:
                 print('Impossible to move %s on another existing node.' % indiv_id)
-                print('We need to open a new node')
-                assign_container_node(
-                    instance.dict_id_n[checked_nodes], indiv_id, instance)
+                if (instance.dict_id_n[checked_nodes] in
+                    instance.df_host_meta[it.host_field].unique()) & (
+                        np.all(np.less(cons_c, cap_node))):
+                    print('We can open node %s' % (instance.dict_id_n[checked_nodes]))
+                    assign_container_node(
+                        instance.dict_id_n[checked_nodes], indiv_id, instance)
+                    done = True
+                else:
+                    raise RuntimeError('No node to welcome %s' % indiv_id)
                 # find_substitution(instance, indiv_id, tmin, tmax)
 
 

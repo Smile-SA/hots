@@ -343,22 +343,39 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
                           pd.DataFrame, List, int):
     """Adjust the clustering with individuals to move to the closest cluster."""
     nb_changes = 0
+    df_clust_new = df_clust
+    labels_new = labels_
     for indiv in mvg_containers:
         min_dist = float('inf')
         new_cluster = -1
         for cluster in range(len(profiles)):
             if norm(
-                df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
+                df_clust_new.loc[indiv].drop('cluster').values - profiles[cluster]
             ) < min_dist:
                 min_dist = norm(
-                    df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
+                    df_clust_new.loc[indiv].drop('cluster').values - profiles[cluster]
                 )
                 new_cluster = cluster
-        if new_cluster != df_clust.loc[indiv, 'cluster']:
+        if new_cluster != df_clust_new.loc[indiv, 'cluster']:
             it.results_file.write('%s changes cluster : from %d to %d\n' % (
-                indiv, df_clust.loc[indiv, 'cluster'], new_cluster))
-            df_clust.loc[indiv, 'cluster'] = new_cluster
+                indiv, df_clust_new.loc[indiv, 'cluster'], new_cluster))
+            df_clust_new.loc[indiv, 'cluster'] = new_cluster
             nb_changes += 1
             c_int = [k for k, v in dict_id_c.items() if v == indiv][0]
-            labels_[c_int] = new_cluster
-    return (df_clust, labels_, nb_changes)
+            labels_new[c_int] = new_cluster
+    return (df_clust_new, labels_new, nb_changes)
+
+
+def change_clustering_maxkcut(mvg_containers: List, df_clust: pd.DataFrame, labels_: List,
+                              profiles: np.array, dict_id_c: Dict) -> (
+        pd.DataFrame, List, int):
+    """Change current clustering with max-k-cut on moving containers."""
+    nb_changes = 0
+    df_clust_new = df_clust
+    labels_new = labels_
+    # set overall obj
+    # build list of clusters with indivs already in it ?
+    # loop on indivs
+    # get cluster of indiv and all neighbours
+    # assign indiv to cluster that max overall obj
+    return (df_clust_new, labels_new, nb_changes)

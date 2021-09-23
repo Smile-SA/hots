@@ -91,7 +91,8 @@ def main(path, k, tau):
         init_obj_nodes, init_obj_delta))
     it.main_results.append(init_obj_nodes)
     it.main_results.append(init_obj_delta)
-    node_results = get_node_results(my_instance, 'init_')
+    node_results = get_node_results(
+        my_instance.df_host, my_instance.df_host_meta, 'init_')
 
     # Print real objective value of second part with spread technique
     spread_time = time.time()
@@ -114,7 +115,8 @@ def main(path, k, tau):
     it.main_results.append(spread_time)
     node_results = pd.concat([
         node_results,
-        get_node_results(my_instance, 'spread_')],
+        get_node_results(
+            my_instance.df_host, my_instance.df_host_meta, 'spread_')],
         axis=1
     )
 
@@ -145,7 +147,8 @@ def main(path, k, tau):
     it.main_results.append(pack_spread_time)
     node_results = pd.concat([
         node_results,
-        get_node_results(my_instance, 'iter-consol_')],
+        get_node_results(
+            spread_df_host, my_instance.df_host_meta, 'iter-consol_')],
         axis=1
     )
 
@@ -223,7 +226,8 @@ def main(path, k, tau):
     it.main_results.append(heur_time)
     node_results = pd.concat([
         node_results,
-        get_node_results(my_instance, 'heur_')],
+        get_node_results(
+            heur_df_host, my_instance.df_host_meta, 'heur_')],
         axis=1
     )
 
@@ -318,7 +322,8 @@ def main(path, k, tau):
     it.main_results.extend(loop_main_results)
     node_results = pd.concat([
         node_results,
-        get_node_results(my_instance, 'loop_')],
+        get_node_results(
+            df_host_evo, my_instance.df_host_meta, 'loop_')],
         axis=1
     )
 
@@ -614,17 +619,19 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     if len(moving_containers) > 0:
         logging.info('Changing clustering ...')
         time_change_clust = time.time()
-        (df_clust, labels_, nb_clust_changes_loop) = clt.change_clustering(
+        (df_clust_old, labels_old, nb_clust_changes_loop_old) = clt.change_clustering(
             moving_containers, df_clust, labels_,
             cluster_profiles, my_instance.dict_id_c)
-        u = clt.build_adjacency_matrix(labels_)
+        u = clt.build_adjacency_matrix(labels_old)
+        print('Time changing clustering (old one): %f s' % (time.time() - time_change_clust))
+        # (df_clust_new, labels_new, nb_clust_changes_loop_new) =
+        # print('Time changing clustering (new one): %f s' % (time.time() - time_change_clust))
         cplex_model = mc.CPXInstance(working_df_indiv,
                                      my_instance.df_host_meta,
                                      my_instance.nb_clusters,
                                      my_instance.dict_id_c,
                                      my_instance.dict_id_n,
                                      w=w, u=u, pb_number=2)
-        print('Time changing clustering : %f s' % (time.time() - time_change_clust))
         logging.info('Solving linear relaxation after changes ...')
         cplex_model.solve(cplex_model.relax_mdl)
         clustering_dual_values = mc.fill_constraints_dual_values(
@@ -764,14 +771,11 @@ def write_main_results():
             it.main_results_file.write('%f' % e)
 
 
-def get_node_results(instance: Instance, algo: str) -> pd.DataFrame:
+def get_node_results(
+        df_host: pd.DataFrame, df_host_meta: pd.DataFrame, algo: str) -> pd.DataFrame:
     """Compute all wanted additional indicators."""
-    eval_df_host = instance.df_host.loc[
-        instance.df_host[it.tick_field] >= instance.eval_time
-    ]
-
     result_df = node.get_nodes_load_info(
-        eval_df_host, instance.df_host_meta)
+        df_host, df_host_meta)
     result_df = result_df.add_prefix(algo)
 
     return result_df

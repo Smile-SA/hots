@@ -70,8 +70,9 @@ def main(path, k, tau):
     # model.solve_model(my_model, 'glpk')
 
     # Plot initial data (containers & nodes consumption)
-    ctnr.plot_all_data_all_containers(
+    indivs_cons = ctnr.plot_all_data_all_containers(
         my_instance.df_indiv, sep_time=my_instance.sep_time)
+    indivs_cons.savefig(output_path + '/indivs_cons.svg')
 
     node_evo_fig = plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
@@ -462,14 +463,14 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             #     working_df_indiv, my_instance.dict_id_c, labels_)
 
             # evaluate clustering
-            (dv, nb_clust_changes_loop) = eval_clustering(
+            (dv, nb_clust_changes_loop, clustering_dual_values) = eval_clustering(
                 my_instance, working_df_indiv,
                 tmin, w, u, clustering_dual_values, constraints_dual,
                 tol_clust, tol_move_clust,
                 df_clust, cluster_profiles, labels_)
 
             # evaluate placement
-            nb_place_changes_loop = eval_placement(
+            (nb_place_changes_loop, placement_dual_values) = eval_placement(
                 my_instance, working_df_indiv,
                 w, u, v, dv,
                 placement_dual_values, constraints_dual,
@@ -588,6 +589,9 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     """Evaluate current clustering solution and update it if needed."""
     moving_containers = []
     nb_clust_changes_loop = 0
+    it.clustering_file.write('Beginning loop clustering df : \n')
+    it.clustering_file.write(df_clust.to_string())
+    it.clustering_file.write('\n\n')
     # evaluate clustering solution from optim model
     # mc.eval_clustering(
     #     working_df_indiv,
@@ -618,14 +622,24 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     print('Time get changing clustering : %f s' % (time.time() - time_get_clust_move))
     if len(moving_containers) > 0:
         logging.info('Changing clustering ...')
+        # print(tmin, working_df_indiv[it.tick_field].max())
+        # print(df_clust)
+        # print(labels_)
+        # print(cluster_profiles)
         time_change_clust = time.time()
-        (df_clust_old, labels_old, nb_clust_changes_loop_old) = clt.change_clustering(
+        (df_clust, labels_, nb_clust_changes_loop) = clt.change_clustering(
             moving_containers, df_clust, labels_,
             cluster_profiles, my_instance.dict_id_c)
-        u = clt.build_adjacency_matrix(labels_old)
+        u = clt.build_adjacency_matrix(labels_)
+        # (df_clust_old, labels_old, nb_clust_changes_loop) = clt.change_clustering(
+        #     moving_containers, df_clust, labels_,
+        #     cluster_profiles, my_instance.dict_id_c)
         print('Time changing clustering (old one): %f s' % (time.time() - time_change_clust))
-        # (df_clust_new, labels_new, nb_clust_changes_loop_new) =
+        # (df_clust_new, labels_new, nb_clust_changes_loop_new) = clt.change_clustering_maxkcut(
+        #     moving_containers, df_clust, labels_, my_instance.dict_id_c
+        # )
         # print('Time changing clustering (new one): %f s' % (time.time() - time_change_clust))
+        # input()
         cplex_model = mc.CPXInstance(working_df_indiv,
                                      my_instance.df_host_meta,
                                      my_instance.nb_clusters,
@@ -678,7 +692,10 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     #     else:
     #         cplex_model.update_obj_function(1)
     #         current_obj_func += 1
-    return (dv, nb_clust_changes_loop)
+    it.clustering_file.write('Resulting loop clustering df : \n')
+    it.clustering_file.write(df_clust.to_string())
+    it.clustering_file.write('\n\n***\n\n')
+    return (dv, nb_clust_changes_loop, clustering_dual_values)
 
 
 def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
@@ -728,7 +745,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
 
     else:
         logging.info('No container to move : we do nothing ...\n')
-    return nb_place_changes_loop
+    return (nb_place_changes_loop, placement_dual_values)
 
 
 def end_loop(working_df_indiv: pd.DataFrame, tmin: int,

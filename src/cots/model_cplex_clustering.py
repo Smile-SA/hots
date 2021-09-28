@@ -966,8 +966,10 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
     """Get the list of moving containers from constraints dual values."""
     mvg_containers = []
     constraints_kept = {}
+    i = 0
     for ct in mdl.iter_linear_constraints():
         if ct.name in constraints_dual_values:
+            i += 1
             if ct.dual_value > (
                     constraints_dual_values[ct.name]
                     + tol * constraints_dual_values[ct.name]):
@@ -978,6 +980,21 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
         key=lambda item: item[1],
         reverse=True
     ))
+
+    it.clustering_file.write('list of constraints from last loop :\n')
+    it.clustering_file.write(str(constraints_dual_values))
+    it.clustering_file.write('\n\n')
+    it.optim_file.write('Nb constraints init clustering : %d\n' % i)
+    it.optim_file.write('clustering tol : %f\n' % tol)
+    it.optim_file.write('Nb of moving clustering constraints : %s\n' %
+                        len(constraints_kept))
+    violated_constraints = {}
+    it.clustering_file.write('list of violated constraints :\n')
+    for ct, c_dual in constraints_kept.items():
+        indivs = re.findall(r'\d+\.*', ct)
+        violated_constraints[tuple(indivs)] = c_dual
+    it.clustering_file.write(str(violated_constraints))
+    it.clustering_file.write('\n\n')
 
     for ct, ct_dual in constraints_kept.items():
         indivs = re.findall(r'\d+\.*', ct)
@@ -1014,6 +1031,13 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
         key=lambda item: item[1],
         reverse=True
     ))
+
+    it.optim_file.write('placement tol : %f\n' % tol)
+    it.optim_file.write('Nb of moving placement constraints : %s\n' %
+                        len(constraints_kept))
+    for ct, c_dual in constraints_kept.items():
+        it.optim_file.write(ct)
+    it.optim_file.write('\n')
 
     for ct, ct_dual in constraints_kept.items():
         indivs = re.findall(r'\d+\.*', ct)

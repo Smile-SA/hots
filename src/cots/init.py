@@ -131,6 +131,7 @@ def define_globals(p_path: Path, config: Dict):
     global main_results_file
     global additional_results_file
     global optim_file
+    global clustering_file
 
     global dict_agg_metrics
 
@@ -148,6 +149,7 @@ def define_globals(p_path: Path, config: Dict):
     main_results_file = open(p_path / 'main_results.csv', 'w')
     # additional_results_file = open(p_path / 'results.log', 'w')
     optim_file = open(p_path / 'optim_logs.log', 'w')
+    clustering_file = open(p_path / 'clustering_logs.log', 'w')
 
     dict_agg_metrics = {}
     for metric in metrics:

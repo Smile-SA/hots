@@ -228,10 +228,14 @@ def get_cluster_variance(nb_clusters: int, df_clust: pd.DataFrame) -> np.array:
 def get_cluster_mean_profile(nb_clusters: int, df_clust: pd.DataFrame,
                              total_time: int, tmin: int = 0) -> np.array:
     """Compute the mean profile of each cluster."""
-    profiles_ = np.zeros((nb_clusters, total_time), dtype=float)
+    profiles_ = np.zeros((
+        df_clust['cluster'].nunique(),
+        len(df_clust.columns) - 1), dtype=float)
     for key, data in df_clust.groupby(['cluster']):
-        for t in range(total_time):
-            profiles_[key, t] = data[t + tmin].mean()
+        t = 0
+        for c, c_data in data.iloc[:, :-1].iteritems():
+            profiles_[key, t] = c_data.mean()
+            t += 1
     return profiles_
 
 
@@ -366,13 +370,22 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
     return (df_clust_new, labels_new, nb_changes)
 
 
-def change_clustering_maxkcut(mvg_containers: List, df_clust: pd.DataFrame, labels_: List,
-                              profiles: np.array, dict_id_c: Dict) -> (
-        pd.DataFrame, List, int):
+def change_clustering_maxkcut(
+    mvg_containers: List, df_clust: pd.DataFrame, labels_: List,
+    dict_id_c: Dict
+) -> (pd.DataFrame, List, int):
     """Change current clustering with max-k-cut on moving containers."""
     nb_changes = 0
-    df_clust_new = df_clust
-    labels_new = labels_
+    df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
+    print(df_clust_new)
+    print('nb pts : ', len(df_clust_new.columns) - 1)
+    # profiles_ = get_cluster_mean_profile(
+    #     df_clust_new['cluster'].nunique(), df_clust_new,
+    #     len(df_clust_new.columns) - 1
+    # )
+    labels_new = [None] * len(labels_)
+    # for indiv in mvg_containers:
+    #     print(indiv)
     # set overall obj
     # build list of clusters with indivs already in it ?
     # loop on indivs

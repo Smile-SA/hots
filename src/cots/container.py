@@ -80,6 +80,7 @@ def plot_all_data_all_containers(
 
     fig.align_labels()
     plt.draw()
+    return fig
 
 
 def build_dict_id_containers(df_indiv: pd.DataFrame) -> Dict:

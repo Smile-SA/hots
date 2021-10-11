@@ -85,7 +85,7 @@ def init_algo_dfs() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     return (spread_df, heur_df, loop_df)
 
 
-def read_params(path: str, k: int, tau: int) -> Dict:
+def read_params(path: str, k: int, tau: int, method: str) -> Dict:
     """Get parameters from file and build the Dict config object."""
     p_path = Path(path)
     if Path(p_path / 'params.json').exists():
@@ -104,6 +104,8 @@ def read_params(path: str, k: int, tau: int) -> Dict:
             config['loop']['tick']))
     output_path.mkdir(parents=True, exist_ok=True)
     define_globals(output_path, config)
+    if method not in methods:
+        raise ValueError('Method %s is not accepted' % method)
     return (config, str(output_path))
 
 
@@ -123,6 +125,8 @@ def define_globals(p_path: Path, config: Dict):
     global tick_field
     global metrics
 
+    global methods
+
     global main_results
     global loop_results
     # global node_results
@@ -141,6 +145,8 @@ def define_globals(p_path: Path, config: Dict):
     host_field = config['data']['host_field']
     tick_field = config['data']['tick_field']
     metrics = config['data']['metrics']
+
+    methods = ['init', 'spread', 'iter-conso', 'heur', 'loop']
 
     main_results = []
     loop_results = set_loop_results()

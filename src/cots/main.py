@@ -44,10 +44,11 @@ from .instance import Instance
 
 # TODO add 'help' message
 @click.command()
-@click.option('--path', required=True, type=click.Path(exists=True))
-@click.option('--k', required=False, type=int)
-@click.option('--tau', required=False, type=int)
-def main(path, k, tau):
+@click.argument('path', required=True, type=click.Path(exists=True))
+@click.option('-k', required=False, type=int)
+@click.option('-t', '--tau', required=False, type=int)
+@click.option('-m', '--method', required=False, type=str, default='loop')
+def main(path, k, tau, method):
     """Perform all things of methodology."""
     # Initialization part
     main_time = time.time()
@@ -56,7 +57,7 @@ def main(path, k, tau):
         path += '/'
 
     # TODO what if we want tick < tau ?
-    (config, output_path) = it.read_params(path, k, tau)
+    (config, output_path) = it.read_params(path, k, tau, method)
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')

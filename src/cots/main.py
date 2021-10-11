@@ -178,12 +178,10 @@ def main(path, k, tau):
     my_instance.nb_clusters = labels_.max() + 1
 
     # TODO improve this part (distance...)
-    cluster_vars = clt.get_cluster_variance(
-        my_instance.nb_clusters, df_indiv_clust)
     cluster_profiles = clt.get_cluster_mean_profile(
-        my_instance.nb_clusters,
-        df_indiv_clust,
-        working_df_indiv[it.tick_field].nunique())
+        df_indiv_clust)
+    cluster_vars = clt.get_cluster_variance(cluster_profiles)
+
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
 
@@ -351,10 +349,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     fig_clust, ax_clust = plot.init_plot_clustering(
         df_indiv_clust, my_instance.dict_id_c)
 
-    cluster_profiles = clt.get_cluster_mean_profile(
-        my_instance.nb_clusters,
-        df_indiv_clust,
-        my_instance.window_duration)
+    cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
     fig_mean_clust, ax_mean_clust = plot.init_plot_cluster_profiles(
         cluster_profiles
     )
@@ -427,12 +422,10 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             # print('Building var_delta matrices time : %f s' % (time.time() - temp_time))
 
             # TODO improve this part (distance...)
-            cluster_vars = clt.get_cluster_variance(
-                my_instance.nb_clusters, df_clust)
             cluster_profiles = clt.get_cluster_mean_profile(
-                my_instance.nb_clusters,
-                df_clust,
-                my_instance.window_duration, tmin=tmin)
+                df_clust)
+            cluster_vars = clt.get_cluster_variance(cluster_profiles)
+
             cluster_var_matrix = clt.get_sum_cluster_variance(
                 cluster_profiles, cluster_vars)
             dv = ctnr.build_var_delta_matrix_cluster(
@@ -463,7 +456,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             #     working_df_indiv, my_instance.dict_id_c, labels_)
 
             # evaluate clustering
-            (dv, nb_clust_changes_loop, clustering_dual_values) = eval_clustering(
+            (cv, dv, nb_clust_changes_loop,
+             clustering_dual_values, constraints_rm) = eval_clustering(
                 my_instance, working_df_indiv,
                 tmin, w, u, clustering_dual_values, constraints_dual,
                 tol_clust, tol_move_clust,
@@ -472,8 +466,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             # evaluate placement
             (nb_place_changes_loop, placement_dual_values) = eval_placement(
                 my_instance, working_df_indiv,
-                w, u, v, dv,
-                placement_dual_values, constraints_dual,
+                w, u, v, dv, cv,
+                placement_dual_values, constraints_dual, constraints_rm,
                 tol_place, tol_move_place, nb_clust_changes_loop
             )
 
@@ -587,11 +581,13 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
                     tol_clust: float, tol_move_clust: float,
                     df_clust: pd.DataFrame, cluster_profiles: np.array, labels_: List) -> np.array:
     """Evaluate current clustering solution and update it if needed."""
-    moving_containers = []
+    # moving_containers = []
     nb_clust_changes_loop = 0
-    it.clustering_file.write('Beginning loop clustering df : \n')
-    it.clustering_file.write(df_clust.to_string())
-    it.clustering_file.write('\n\n')
+
+    (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
+    it.clustering_file.write('ICS and ICD before any change : %f, %f\n' % (ics, icd))
+
+    # time_loop_clust = time.time()
     # evaluate clustering solution from optim model
     # mc.eval_clustering(
     #     working_df_indiv,
@@ -613,47 +609,72 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     cplex_model.solve(cplex_model.relax_mdl)
 
     logging.info('Checking for changes in clustering dual values ...')
-    time_get_clust_move = time.time()
-    moving_containers = mc.get_moving_containers_clust(
-        cplex_model.relax_mdl, clustering_dual_values,
+    # time_get_clust_move = time.time()
+    constraints_rm = mc.get_conflict_graph_clust(
+        cplex_model, clustering_dual_values,
         tol_clust, tol_move_clust,
         my_instance.nb_containers, my_instance.dict_id_c,
-        df_clust, cluster_profiles)
-    print('Time get changing clustering : %f s' % (time.time() - time_get_clust_move))
-    if len(moving_containers) > 0:
-        logging.info('Changing clustering ...')
-        # print(tmin, working_df_indiv[it.tick_field].max())
-        # print(df_clust)
-        # print(labels_)
-        # print(cluster_profiles)
-        time_change_clust = time.time()
-        (df_clust, labels_, nb_clust_changes_loop) = clt.change_clustering(
-            moving_containers, df_clust, labels_,
-            cluster_profiles, my_instance.dict_id_c)
-        u = clt.build_adjacency_matrix(labels_)
-        # (df_clust_old, labels_old, nb_clust_changes_loop) = clt.change_clustering(
-        #     moving_containers, df_clust, labels_,
-        #     cluster_profiles, my_instance.dict_id_c)
-        print('Time changing clustering (old one): %f s' % (time.time() - time_change_clust))
-        # (df_clust_new, labels_new, nb_clust_changes_loop_new) = clt.change_clustering_maxkcut(
-        #     moving_containers, df_clust, labels_, my_instance.dict_id_c
-        # )
-        # print('Time changing clustering (new one): %f s' % (time.time() - time_change_clust))
-        # input()
-        cplex_model = mc.CPXInstance(working_df_indiv,
-                                     my_instance.df_host_meta,
-                                     my_instance.nb_clusters,
-                                     my_instance.dict_id_c,
-                                     my_instance.dict_id_n,
-                                     w=w, u=u, pb_number=2)
-        logging.info('Solving linear relaxation after changes ...')
-        cplex_model.solve(cplex_model.relax_mdl)
-        clustering_dual_values = mc.fill_constraints_dual_values(
-            cplex_model.relax_mdl, constraints_dual
-        )
-    else:
-        logging.info('Clustering seems still right ...')
-        it.results_file.write('Clustering seems still right ...')
+        df_clust, cluster_profiles
+    )
+    # moving_containers = mc.get_moving_containers_clust(
+    #     cplex_model.relax_mdl, clustering_dual_values,
+    #     tol_clust, tol_move_clust,
+    #     my_instance.nb_containers, my_instance.dict_id_c,
+    #     df_clust, cluster_profiles)
+    # print('Time get changing clustering : %f s' % (time.time() - time_get_clust_move))
+    # if len(moving_containers) > 0:
+    #     logging.info('Changing clustering ...')
+    #     # print(tmin, working_df_indiv[it.tick_field].max())
+    #     # print(df_clust)
+    #     # print(labels_)
+    #     # print(cluster_profiles)
+    #     time_change_clust = time.time()
+    #     (df_clust, labels_, nb_clust_changes_loop) = clt.change_clustering(
+    #         moving_containers, df_clust, labels_,
+    #         my_instance.dict_id_c)
+    #     u = clt.build_adjacency_matrix(labels_)
+    #     # (df_clust_old, labels_old, nb_clust_changes_loop) = clt.change_clustering(
+    #     #     moving_containers, df_clust, labels_,
+    #     #     cluster_profiles, my_instance.dict_id_c)
+    #     print('Time changing clustering : %f s' % (time.time() - time_change_clust))
+    #     (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
+    # it.clustering_file.write(
+    #     'ICS and ICD after loop change : %f, %f\n' % (ics, icd))
+    # it.clustering_file.write(
+    #     'Loop clustering time : %f s\n' % (time.time() - time_loop_clust))
+
+    #     # Perform k-means from scratch (compare with loop changing)
+    #     time_kmeans = time.time()
+    #     (df_clust_scratch, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
+    #         working_df_indiv)
+    #     labels_scratch = clt.perform_clustering(
+    #         df_clust_scratch, 'kmeans', my_instance.nb_clusters)
+    #     df_clust_scratch['cluster'] = labels_scratch
+    #     (ics, icd) = clt.eval_clustering(df_clust_scratch, w, my_instance.dict_id_c)
+    #     it.clustering_file.write(
+    # 'ICS and ICD after new k-means : %f, %f\n' % (ics, icd))
+    #     it.clustering_file.write(
+    # 'Kmeans clustering time : %f s\n\n' % (time.time() - time_kmeans))
+
+    #     # (df_clust_new, labels_new, nb_clust_changes_loop_new) = clt.change_clustering_maxkcut(
+    #     #     moving_containers, df_clust, labels_, my_instance.dict_id_c
+    #     # )
+    #     # print('Time changing clustering (new one): %f s' % (time.time() - time_change_clust))
+    #     # input()
+    #     cplex_model = mc.CPXInstance(working_df_indiv,
+    #                                  my_instance.df_host_meta,
+    #                                  my_instance.nb_clusters,
+    #                                  my_instance.dict_id_c,
+    #                                  my_instance.dict_id_n,
+    #                                  w=w, u=u, pb_number=2)
+    #     logging.info('Solving linear relaxation after changes ...')
+    #     cplex_model.solve(cplex_model.relax_mdl)
+    #     clustering_dual_values = mc.fill_constraints_dual_values(
+    #         cplex_model.relax_mdl, constraints_dual
+    #     )
+    # else:
+    #     logging.info('Clustering seems still right ...')
+    #     it.results_file.write('Clustering seems still right ...')
 
     # TODO improve this part (use cluster profiles)
     # temp_time = time.time()
@@ -662,17 +683,16 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     # print('Building var_delta matrices time : %f s' % (time.time() - temp_time))
 
     # TODO improve this part (distance...)
-    cluster_vars = clt.get_cluster_variance(
-        my_instance.nb_clusters, df_clust)
     # Compute new clusters profiles
     cluster_profiles = clt.get_cluster_mean_profile(
-        my_instance.nb_clusters,
-        df_clust,
-        my_instance.window_duration, tmin=tmin)
+        df_clust)
+    cluster_vars = clt.get_cluster_variance(cluster_profiles)
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
     dv = ctnr.build_var_delta_matrix_cluster(
         df_clust, cluster_var_matrix, my_instance.dict_id_c)
+    cv = ctnr.build_vars_matrix_indivs(
+        df_clust, cluster_vars, my_instance.dict_id_c)
 
     # TODO Evaluate this possibility
     # if not cplex_model.obj_func:
@@ -692,15 +712,15 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     #     else:
     #         cplex_model.update_obj_function(1)
     #         current_obj_func += 1
-    it.clustering_file.write('Resulting loop clustering df : \n')
-    it.clustering_file.write(df_clust.to_string())
-    it.clustering_file.write('\n\n***\n\n')
-    return (dv, nb_clust_changes_loop, clustering_dual_values)
+    # it.clustering_file.write('Resulting loop clustering df : \n')
+    # it.clustering_file.write(df_clust.to_string())
+    # it.clustering_file.write('\n\n***\n\n')
+    return (cv, dv, nb_clust_changes_loop, clustering_dual_values, constraints_rm)
 
 
 def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
-                   w: np.array, u: np.array, v: np.array, dv: np.array,
-                   placement_dual_values: Dict, constraints_dual: Dict,
+                   w: np.array, u: np.array, v: np.array, dv: np.array, cv: np.array,
+                   placement_dual_values: Dict, constraints_dual: Dict, constraints_rm: List,
                    tol_place: float, tol_move_place: float,
                    nb_clust_changes_loop: int):
     """Evaluate current clustering solution and update it if needed."""
@@ -711,10 +731,43 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
                                  my_instance.dict_id_c,
                                  my_instance.dict_id_n,
                                  w=w, u=u, v=v, dv=dv, pb_number=3)
+    print(u)
     print('Solving linear relaxation ...')
+    it.optim_file.write('solve without any change\n')
     cplex_model.solve(cplex_model.relax_mdl)
+    input()
+
     moving_containers = []
     nb_place_changes_loop = 0
+
+    mc.get_conflict_graph_place(
+        cplex_model, placement_dual_values, constraints_rm,
+        tol_place, tol_move_place,
+        my_instance.nb_containers, my_instance.dict_id_c,
+        working_df_indiv
+    )
+    u = mc.set_u_constraints_rm(constraints_rm, u)
+    cplex_model = mc.CPXInstance(working_df_indiv,
+                                 my_instance.df_host_meta,
+                                 my_instance.nb_clusters,
+                                 my_instance.dict_id_c,
+                                 my_instance.dict_id_n,
+                                 w=w, u=u, v=v, dv=dv, cv=cv, pb_number=3)
+    print(u)
+    print(cv)
+    print('Solving linear relaxation ...')
+    it.optim_file.write('new solve after changing u\n')
+    cplex_model.solve(cplex_model.relax_mdl)
+    # input()
+
+    mc.get_conflict_graph_place(
+        cplex_model, placement_dual_values, constraints_rm,
+        tol_place, tol_move_place,
+        my_instance.nb_containers, my_instance.dict_id_c,
+        working_df_indiv
+    )
+    input()
+
     if nb_clust_changes_loop > 0:
         logging.info('Checking for changes in placement dual values ...')
         time_get_move = time.time()

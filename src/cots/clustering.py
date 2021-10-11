@@ -12,6 +12,8 @@ import multiprocessing as mp
 from itertools import combinations
 from typing import Callable, Dict, List
 
+import networkx as nx
+
 import numpy as np
 from numpy.linalg import multi_dot, norm
 
@@ -217,18 +219,16 @@ def weighted_kmeans(w: np.array, d: np.array,
     return labels_
 
 
-def get_cluster_variance(nb_clusters: int, df_clust: pd.DataFrame) -> np.array:
+def get_cluster_variance(profiles_: np.array) -> np.array:
     """Compute the variance of each cluster."""
-    vars_ = np.zeros((nb_clusters), dtype=float)
-
-    for key, data in df_clust.groupby(['cluster']):
-        vars_[key] = data.drop('cluster', 1).sum().var()
-
+    k = len(profiles_)
+    vars_ = np.zeros((k), dtype=float)
+    for i in range(k):
+        vars_[i] = profiles_[i].var()
     return vars_
 
 
-def get_cluster_mean_profile(nb_clusters: int, df_clust: pd.DataFrame,
-                             total_time: int, tmin: int = 0) -> np.array:
+def get_cluster_mean_profile(df_clust: pd.DataFrame) -> np.array:
     """Compute the mean profile of each cluster."""
     profiles_ = np.zeros((
         df_clust['cluster'].nunique(),
@@ -245,16 +245,23 @@ def get_sum_cluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
     """Compute a matrix of sum of variances of each pair of cluster."""
     k = len(profiles_)
     sum_profiles_matrix = np.zeros((k, k), dtype=float)
+    # for i in range(k):
+    #     for j in range(i + 1, k):
+    #         if vars_[i] + vars_[j] == 0.0:
+    #             sum_profiles_matrix[i, j] = 1.0
+    #         else:
+    #             sum_profiles_matrix[i, j] = (
+    #                 (profiles_[i, :] + profiles_[j, :]).var(ddof=0)) / (
+    #                 vars_[i] + vars_[j])
+    #         sum_profiles_matrix[j, i] = sum_profiles_matrix[i, j]
+    #     sum_profiles_matrix[i, i] = -1.0
+    # print(sum_profiles_matrix)
+    # sum_profiles_matrix = np.zeros((k, k), dtype=float)
     for i in range(k):
-        for j in range(i + 1, k):
-            if vars_[i] + vars_[j] == 0.0:
-                sum_profiles_matrix[i, j] = 1.0
-            else:
-                sum_profiles_matrix[i, j] = (
-                    (profiles_[i, :] + profiles_[j, :]).var()) / (
-                    vars_[i] + vars_[j])
+        for j in range(i, k):
+            sum_profiles_matrix[i, j] = (
+                (profiles_[i, :] + profiles_[j, :]).var(ddof=0))
             sum_profiles_matrix[j, i] = sum_profiles_matrix[i, j]
-        sum_profiles_matrix[i, i] = -1.0
     return sum_profiles_matrix
 
 
@@ -345,47 +352,52 @@ def get_far_container(c1: str, c2: str,
 
 
 def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: List,
-                      profiles: np.array, dict_id_c: Dict) -> (
-                          pd.DataFrame, List, int):
+                      dict_id_c: Dict) -> (pd.DataFrame, List, int):
     """Adjust the clustering with individuals to move to the closest cluster."""
     nb_changes = 0
-    df_clust_new = df_clust
-    labels_new = labels_
+    df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
+    profiles = get_cluster_mean_profile(
+        df_clust_new['cluster'].nunique(), df_clust_new
+    )
     for indiv in mvg_containers:
         min_dist = float('inf')
         new_cluster = -1
         for cluster in range(len(profiles)):
             if norm(
-                df_clust_new.loc[indiv].drop('cluster').values - profiles[cluster]
+                df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
             ) < min_dist:
                 min_dist = norm(
-                    df_clust_new.loc[indiv].drop('cluster').values - profiles[cluster]
+                    df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
                 )
                 new_cluster = cluster
-        if new_cluster != df_clust_new.loc[indiv, 'cluster']:
+        if new_cluster != df_clust.loc[indiv, 'cluster']:
             it.results_file.write('%s changes cluster : from %d to %d\n' % (
-                indiv, df_clust_new.loc[indiv, 'cluster'], new_cluster))
-            df_clust_new.loc[indiv, 'cluster'] = new_cluster
+                indiv, df_clust.loc[indiv, 'cluster'], new_cluster))
+            df_clust.loc[indiv, 'cluster'] = new_cluster
             nb_changes += 1
             c_int = [k for k, v in dict_id_c.items() if v == indiv][0]
-            labels_new[c_int] = new_cluster
-    return (df_clust_new, labels_new, nb_changes)
+            labels_[c_int] = new_cluster
+    return (df_clust, labels_, nb_changes)
 
 
 def change_clustering_maxkcut(
-    mvg_containers: List, df_clust: pd.DataFrame, labels_: List,
+    conflict_graph: nx.Graph,
+    df_clust: pd.DataFrame, labels_: List,
     dict_id_c: Dict
 ) -> (pd.DataFrame, List, int):
     """Change current clustering with max-k-cut on moving containers."""
     nb_changes = 0
-    df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
-    print(df_clust_new)
-    print('nb pts : ', len(df_clust_new.columns) - 1)
-    # profiles_ = get_cluster_mean_profile(
-    #     df_clust_new['cluster'].nunique(), df_clust_new,
-    #     len(df_clust_new.columns) - 1
-    # )
-    labels_new = [None] * len(labels_)
+    df_clust_new = df_clust
+    labels_new = labels_
+    # print('List violated constraints :')
+    # print(constraints_kept)
+    # print('List of indivs :')
+    # print(mvg_containers)
+
+    # df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
+    # print(df_clust_new)
+    # print('nb pts : ', len(df_clust_new.columns) - 1)
+    # labels_new = [None] * len(labels_)
     # for indiv in mvg_containers:
     #     print(indiv)
     # set overall obj
@@ -393,4 +405,59 @@ def change_clustering_maxkcut(
     # loop on indivs
     # get cluster of indiv and all neighbours
     # assign indiv to cluster that max overall obj
-    return (df_clust_new, labels_new, nb_changes)
+
+    mvg_containers = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
+    profiles = get_cluster_mean_profile(
+        df_clust_new['cluster'].nunique(), df_clust_new
+    )
+    print(df_clust)
+    print(df_clust_new)
+    print(profiles)
+    print(conflict_graph)
+    print(mvg_containers)
+    for indiv, occur in mvg_containers:
+        indiv_s = dict_id_c[int(indiv)]
+        min_dist = float('inf')
+        new_cluster = -1
+        print('Moving indiv ', indiv_s, occur)
+        print(conflict_graph.edges.data())
+        for cluster in range(len(profiles)):
+            if norm(
+                df_clust_new.loc[indiv_s].drop('cluster').values - profiles[cluster]
+            ) < min_dist:
+                min_dist = norm(
+                    df_clust_new.loc[indiv_s].drop('cluster').values - profiles[cluster]
+                )
+                new_cluster = cluster
+        if new_cluster != df_clust_new.loc[indiv_s, 'cluster']:
+            it.results_file.write('%s changes cluster : from %d to %d\n' % (
+                indiv_s, df_clust_new.loc[indiv_s, 'cluster'], new_cluster))
+            df_clust_new.loc[indiv_s, 'cluster'] = new_cluster
+            nb_changes += 1
+            labels_new[indiv] = new_cluster
+        else:
+            print('indiv did not change cluster')
+        conflict_graph.remove_node(indiv)
+        print(conflict_graph.edges.data())
+        print(list(nx.isolates(conflict_graph)))
+        print(conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph))))
+        print(sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True))
+
+        input()
+
+    # return (df_clust_new, labels_new, nb_changes)
+
+
+def eval_clustering(df_clust: pd.DataFrame, w: np.array, dict_id_c: Dict):
+    """Evaluate the clustering with ICS and ICD."""
+    ics = 0.0
+    icd = 0.0
+    for (c1_s, c2_s) in combinations(list(df_clust.index.values), 2):
+        c1 = [k for k, v in dict_id_c.items() if v == c1_s][0]
+        c2 = [k for k, v in dict_id_c.items() if v == c2_s][0]
+        if df_clust.loc[c1_s]['cluster'] == df_clust.loc[c2_s]['cluster']:
+            ics += w[c1][c2]
+        else:
+            icd += w[c1][c2]
+    return (ics, icd)

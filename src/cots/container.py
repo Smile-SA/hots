@@ -112,7 +112,7 @@ def build_var_delta_matrix(df_indiv: pd.DataFrame, dict_id_c) -> np.array:
 
 
 def build_var_delta_matrix_cluster(
-        df_clust: pd.DataFrame, cluster_var_matrix: np.array, dict_id_c) -> np.array:
+        df_clust: pd.DataFrame, cluster_var_matrix: np.array, dict_id_c: Dict) -> np.array:
     """Build variance of deltas matrix from cluster."""
     c = len(df_clust)
     vars_matrix = np.zeros((c, c), dtype=float)
@@ -122,6 +122,21 @@ def build_var_delta_matrix_cluster(
         c2 = [k for k, v in dict_id_c.items() if v == c2_s][0]
         vars_matrix[c1, c2] = cluster_var_matrix[
             df_clust.at[c1_s, 'cluster'], df_clust.at[c2_s, 'cluster']]
+        vars_matrix[c2, c1] = vars_matrix[c1, c2]
+    return vars_matrix
+
+
+def build_vars_matrix_indivs(
+        df_clust: pd.DataFrame, vars_: np.array, dict_id_c: Dict):
+    """Build containers matrix with clusters variance."""
+    c = len(df_clust)
+    vars_matrix = np.zeros((c, c), dtype=float)
+    for (c1_s, c2_s) in combinations(list(df_clust.index.values), 2):
+        c1 = [k for k, v in dict_id_c.items() if v == c1_s][0]
+        c2 = [k for k, v in dict_id_c.items() if v == c2_s][0]
+        vars_matrix[c1, c2] = vars_[
+            df_clust.at[c1_s, 'cluster']] + vars_[
+                df_clust.at[c2_s, 'cluster']]
         vars_matrix[c2, c1] = vars_matrix[c1, c2]
     return vars_matrix
 

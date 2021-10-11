@@ -20,6 +20,8 @@ from docplex.mp.linear import LinearExpr
 from docplex.mp.model import Model
 from docplex.mp.solution import SolveSolution
 
+import networkx as nx
+
 import numpy as np
 
 import pandas as pd
@@ -55,8 +57,8 @@ class CPXInstance:
                  df_host_meta: pd.DataFrame, nb_clusters: int,
                  dict_id_c: Dict, dict_id_n: Dict,
                  w: np.array = None, u: np.array = None, v: np.array = None,
-                 dv: np.array = None, nb_nodes: int = None,
-                 pb_number: int = None, verbose: bool = False):
+                 dv: np.array = None, cv: np.array = None,
+                 nb_nodes: int = None, pb_number: int = None, verbose: bool = False):
         """Initialize CPXInstance with data in Instance."""
         model_time = time.time()
         self.nb_nodes = df_host_meta[it.host_field].nunique()
@@ -74,6 +76,9 @@ class CPXInstance:
         # - 3 = placement from clustering
         self.pb_number = pb_number or 0
 
+        if cv is None:
+            cv = np.ones((self.nb_containers, self.nb_containers))
+
         self.mdl = Model(name=self.get_pb_name(self.pb_number), cts_by_name=False)
         if verbose:
             it.optim_file.write('Building names ...\n')
@@ -89,7 +94,7 @@ class CPXInstance:
         self.build_constraints(w, u, v)
         if verbose:
             it.optim_file.write('Building objective ...\n')
-        self.build_objective(w, u, dv)
+        self.build_objective(w, u, dv, cv)
 
         if verbose:
             it.optim_file.write('Building relaxed model ...\n')
@@ -101,14 +106,15 @@ class CPXInstance:
         if verbose:
             self.mdl.print_information()
             it.optim_file.write('Building model time : %f s\n\n' % (time.time() - model_time))
-            self.write_infile()
+        self.write_infile()
 
     def get_pb_name(self, pb_number: int) -> str:
         """Get the problem name depending on his number."""
         pb_names = ['place-&-clust',
                     'placement',
                     'clustering',
-                    'place-f-clust']
+                    'place-f-clust',
+                    'clustering_bis']
         return pb_names[pb_number]
 
     def build_names(self):
@@ -130,6 +136,8 @@ class CPXInstance:
             self.build_clustering_variables()
         elif self.pb_number == 3:
             self.build_placement_variables()
+        elif self.pb_number == 4:
+            self.build_clustering_variables()
 
     def build_placement_variables(self):
         """Build placement related variables."""
@@ -231,6 +239,12 @@ class CPXInstance:
         elif self.pb_number == 3:
             self.placement_constraints()
             self.add_adjacency_place_constraints(v)
+        elif self.pb_number == 4:
+            # it.optim_file.write('Add basic clustering constraints ...')
+            self.clustering_constraints(self.nb_clusters, w)
+            # it.optim_file.write('Add adjacency constraints ...')
+            # self.add_adjacency_clust_constraints(u)
+            self.add_cannotlink_constraints(u)
             # Constraints fixing z
             # for (i, j) in combinations(self.containers_names, 2):
             #     self.mdl.add_constraint(
@@ -426,12 +440,37 @@ class CPXInstance:
                     self.mdl.u[i, j] == 1,
                     'mustLinkC_' + str(j) + '_' + str(i)
                 )
-        # for (c1, c2) in combinations(self.containers_names, 2):
-        #     if u[c1, c2]:
-        #         self.mdl.add_constraint(
-        #             self.mdl.u[c1, c2] == 1,
-        #             'mustLinkC_' + str(c2) + '_' + str(c1)
-        #         )
+
+    def add_cannotlink_constraints(self, u):
+        """Add constraints fixing u variables from adjacency matrice."""
+        # TODO replace because too many variables
+        # it.optim_file.write('Fixing yu(i,j,n) ...')
+        for(i, j) in combinations(self.containers_names, 2):
+            if not u[i, j]:
+                for k in self.clusters_names:
+                    self.mdl.add_constraint(
+                        self.mdl.yu[i, j, k] <= self.mdl.y[i, k],
+                        'linear1_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                    )
+                    self.mdl.add_constraint(
+                        self.mdl.yu[i, j, k] <= self.mdl.y[j, k],
+                        'linear2_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                    )
+                    self.mdl.add_constraint(
+                        self.mdl.y[i, k] + self.mdl.y[j, k] - self.mdl.yu[i, j, k] <= 1,
+                        'linear3_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                    )
+
+                # Constraints fixing u
+                self.mdl.add_constraint(
+                    self.mdl.u[i, j] == self.mdl.sum(
+                        self.mdl.yu[i, j, k] for k in self.clusters_names),
+                    'fix_u' + str(i) + '_' + str(j)
+                )
+                self.mdl.add_constraint(
+                    self.mdl.u[i, j] == 0,
+                    'cannotLinkC_' + str(j) + '_' + str(i)
+                )
 
     def add_adjacency_place_constraints(self, v):
         """Add constraints fixing v variables from adjacency matrice."""
@@ -520,7 +559,7 @@ class CPXInstance:
             'nb_clusters'
         )
 
-    def build_objective(self, w, u, dv):
+    def build_objective(self, w, u, dv, cv):
         """Build objective."""
         # Minimize sum of a[n] (number of open nodes)
         # self.mdl.minimize(self.mdl.sum(
@@ -604,12 +643,26 @@ class CPXInstance:
         elif self.pb_number == 3:
             self.mdl.minimize(
                 self.mdl.sum(
-                    u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
+                    u[i, j] * self.mdl.v[i, j] * cv[i, j] for (i, j) in combinations(
                         self.containers_names, 2
                     )
                 ) + self.mdl.sum(
                     (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
                     for (i, j) in combinations(
+                        self.containers_names, 2
+                    )
+                )
+            )
+        elif self.pb_number == 4:
+            # Only clustering
+            self.mdl.maximize(
+                # self.mdl.sum(
+                #     w[i, j] * self.mdl.u[i, j] for (i, j) in combinations(
+                #         self.containers_names, 2
+                #     )
+                # ) +
+                self.mdl.sum(
+                    (1 - self.mdl.u[i, j]) * w[i, j] for (i, j) in combinations(
                         self.containers_names, 2
                     )
                 )
@@ -638,11 +691,12 @@ class CPXInstance:
         if not my_mdl.solve(log_output=verbose):
             it.optim_file.write('*** Problem has no solution ***')
         else:
-            it.optim_file.write('*** Model solved as function:')
+            it.optim_file.write('*** Model %s solved as function:' % self.pb_number)
             if verbose:
                 my_mdl.print_solution()
                 my_mdl.report()
             it.optim_file.write('%f\n' % my_mdl.objective_value)
+            print(my_mdl.objective_value)
             # my_mdl.report_kpis()
 
     def print_heuristic_solution_a(self):
@@ -846,6 +900,9 @@ class CPXInstance:
         elif self.pb_number == 3:
             self.mdl.export_as_lp(path='./place_f_clust.lp')
             self.relax_mdl.export_as_lp(path='./lp_place_f_clust.lp')
+        elif self.pb_number == 4:
+            self.mdl.export_as_lp(path='./clustering_bis.lp')
+            self.relax_mdl.export_as_lp(path='./clustering_bis.lp')
 
 
 # Functions related to CPLEX #
@@ -962,52 +1019,210 @@ def dual_changed(mdl: Model, names: List,
 def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                                 tol: float, tol_move: float, nb_containers: int,
                                 dict_id_c: Dict, df_clust: pd.DataFrame, profiles: np.array
-                                ) -> List:
+                                ) -> (List, Dict):
     """Get the list of moving containers from constraints dual values."""
     mvg_containers = []
-    constraints_kept = {}
+    # mvg_containers = {}
+    conflict_graph = nx.Graph()
+    # constraints_kept = {}
     i = 0
+    # list_indivs = []
     for ct in mdl.iter_linear_constraints():
         if ct.name in constraints_dual_values:
             i += 1
             if ct.dual_value > (
                     constraints_dual_values[ct.name]
                     + tol * constraints_dual_values[ct.name]):
-                constraints_kept[ct.name] = ct.dual_value
+                # constraints_kept[ct.name] = ct.dual_value
+                indivs = re.findall(r'\d+\.*', ct.name)
+                conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
+                # list_indivs.append(indivs)
 
-    constraints_kept = dict(sorted(
-        constraints_kept.items(),
-        key=lambda item: item[1],
-        reverse=True
-    ))
-
-    it.clustering_file.write('list of constraints from last loop :\n')
-    it.clustering_file.write(str(constraints_dual_values))
-    it.clustering_file.write('\n\n')
-    it.optim_file.write('Nb constraints init clustering : %d\n' % i)
-    it.optim_file.write('clustering tol : %f\n' % tol)
-    it.optim_file.write('Nb of moving clustering constraints : %s\n' %
-                        len(constraints_kept))
-    violated_constraints = {}
-    it.clustering_file.write('list of violated constraints :\n')
-    for ct, c_dual in constraints_kept.items():
-        indivs = re.findall(r'\d+\.*', ct)
-        violated_constraints[tuple(indivs)] = c_dual
-    it.clustering_file.write(str(violated_constraints))
-    it.clustering_file.write('\n\n')
-
-    for ct, ct_dual in constraints_kept.items():
-        indivs = re.findall(r'\d+\.*', ct)
-        if not [e for e in indivs if dict_id_c[int(e)] in mvg_containers]:
-            indiv = get_far_container(
-                dict_id_c[int(indivs[0])],
-                dict_id_c[int(indivs[1])],
+    list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    while len(list_indivs) > 1:
+        # print(conflict_graph.edges.data())
+        (indiv, occur) = list_indivs[0]
+        if occur > 1:
+            mvg_containers.append(dict_id_c[int(indiv)])
+            conflict_graph.remove_node(indiv)
+        else:
+            other_indiv = list(conflict_graph.edges(indiv))[0][1]
+            if other_indiv == indiv:
+                other_indiv = list(conflict_graph.edges(indiv))[0][0]
+            mvg_indiv = get_far_container(
+                dict_id_c[int(indiv)],
+                dict_id_c[int(other_indiv)],
                 df_clust, profiles
             )
-            mvg_containers.append(indiv)
-            if len(mvg_containers) >= (nb_containers * tol_move):
-                break
+            mvg_containers.append(mvg_indiv)
+            conflict_graph.remove_node(indiv)
+            conflict_graph.remove_node(other_indiv)
+        conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph)))
+        list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    # print('list indivs is empty')
+    # print(mvg_containers)
+    # input()
+
+    # constraints_kept = dict(sorted(
+    #     constraints_kept.items(),
+    #     key=lambda item: item[1],
+    #     reverse=True
+    # ))
+    # for ct, ct_dual in constraints_kept.items():
+    #     indivs = re.findall(r'\d+\.*', ct)
+    #     if not [e for e in indivs if dict_id_c[int(e)] in mvg_containers]:
+    #         indiv = get_far_container(
+    #             dict_id_c[int(indivs[0])],
+    #             dict_id_c[int(indivs[1])],
+    #             df_clust, profiles
+    #         )
+    #         mvg_containers.append(indiv)
+    #         if len(mvg_containers) >= (nb_containers * tol_move):
+    #             break
+
+    # while len(constraints_kept) > 0:
+    #     print(constraints_kept)
+    #     counter_list = Counter(
+    #         chain.from_iterable(list_indivs)
+    #     )
+    #     indiv = counter_list.most_common(1)[0][0]
+    #     occur = counter_list.most_common(1)[0][1]
+    #     if occur == 1:
+    #         print('Only one violated constraint with %s' % dict_id_c[int(indiv)])
+    #     else:
+    #         print('Dealing indiv %s' % dict_id_c[int(indiv)])
+    #         list_constraints = ((ct_name, ct_dual) for (ct_name, ct_dual)
+    #                             in constraints_kept.copy().items() if indiv in ct_name)
+    #         dual_indiv = 0
+    #         for (ct_name, ct_dual) in list_constraints:
+    #             dual_indiv += ct_dual
+    #             other_indiv = [
+    #                 x for x in re.findall(r'\d+\.*', ct_name) if x != indiv][0]
+    #             conflict_graph.add_edge(indiv, other_indiv, weight=ct_dual)
+    #             del constraints_kept[ct_name]
+
+    #     plot_conflict_graph(conflict_graph)
+
+    # it.clustering_file.write('list of constraints from last loop :\n')
+    # it.clustering_file.write(str(constraints_dual_values))
+    # it.clustering_file.write('\n\n')
+    # it.optim_file.write('Nb constraints init clustering : %d\n' % i)
+    # it.optim_file.write('clustering tol : %f\n' % tol)
+    # it.optim_file.write('Nb of moving clustering constraints : %s\n' %
+    #                     len(constraints_kept))
+    # violated_constraints = {}
+    # list_indivs = []
+    # it.clustering_file.write('list of violated constraints :\n')
+    # for ct, c_dual in constraints_kept.items():
+    #     indivs = re.findall(r'\d+\.*', ct)
+    #     violated_constraints[tuple(indivs)] = c_dual
+    #     list_indivs.append(indivs)
+    # # print(list_indivs)
+    # # print(violated_constraints)
+    # # input()
+    # it.clustering_file.write(str(violated_constraints))
+    # it.clustering_file.write('\n\n')
+
     return mvg_containers
+
+
+def get_conflict_graph_clust(mdl: CPXInstance, constraints_dual_values: Dict,
+                             tol: float, tol_move: float, nb_containers: int,
+                             dict_id_c: Dict, df_clust: pd.DataFrame, profiles: np.array):
+    """Retrieve dual values of mustlink constraints."""
+    conflict_graph = nx.Graph()
+    for ct in mdl.relax_mdl.iter_linear_constraints():
+        if ct.name in constraints_dual_values:
+            if ct.dual_value > (
+                    constraints_dual_values[ct.name]
+                    + tol * constraints_dual_values[ct.name]):
+                indivs = re.findall(r'\d+\.*', ct.name)
+                conflict_graph.add_edge(
+                    indivs[0], indivs[1],
+                    weight=ct.dual_value,
+                    ct=ct)
+
+    constraints_remove = perform_k_max_cut(conflict_graph, df_clust['cluster'].nunique())
+    print('Constraints to remove :')
+    print(constraints_remove)
+    print('before removing constraints')
+    for ct in mdl.relax_mdl.iter_linear_constraints():
+        if ct.name in constraints_dual_values:
+            print(ct.name, ct.dual_value)
+    print('after removing constraints')
+    mdl.relax_mdl.remove_constraints(constraints_remove)
+    it.optim_file.write('new solve after removing constraints\n')
+    mdl.solve(mdl.relax_mdl)
+
+    return constraints_remove
+
+
+def get_conflict_graph_place(mdl: CPXInstance, constraints_dual_values: Dict, constraints_rm: List,
+                             tol: float, tol_move: float, nb_containers: int,
+                             dict_id_c: Dict, working_df: pd.DataFrame):
+    """Retrieve dual values of mustlink constraints."""
+    conflict_graph = nx.Graph()
+    for ct in mdl.relax_mdl.iter_linear_constraints():
+        if ct.name in constraints_dual_values:
+            if ct.dual_value > (
+                    constraints_dual_values[ct.name]
+                    + tol * constraints_dual_values[ct.name]):
+                indivs = re.findall(r'\d+\.*', ct.name)
+                conflict_graph.add_edge(
+                    indivs[0], indivs[1],
+                    weight=ct.dual_value,
+                    ct=ct)
+
+    constraints_remove = perform_k_max_cut(
+        conflict_graph, working_df[it.host_field].nunique())
+    print('Constraints to remove :')
+    print(constraints_remove)
+    print('before removing constraints')
+    for ct in mdl.relax_mdl.iter_linear_constraints():
+        if ct.name in constraints_dual_values:
+            print(ct.name, ct.dual_value)
+    print('after removing constraints')
+    mdl.relax_mdl.remove_constraints(constraints_remove)
+    it.optim_file.write('new solve after removing constraints\n')
+    mdl.solve(mdl.relax_mdl)
+
+
+def perform_k_max_cut(graph: nx.Graph(), k: int) -> List:
+    """Perform greedy k-max-cut algo on conflict graph."""
+    cut = []
+    cut_val = 0.0
+    sets = [[] for i in range(k)]
+    for indiv, data in graph.nodes(data=True):
+        best_set = 0
+        best_cut_val = 0.0
+        best_cut = []
+        for k_i in range(k):
+            k_cut_val = 0
+            temp_cut = []
+            for k_j in range(k):
+                if k_j == k_i:
+                    continue
+                for m_k in sets[k_j]:
+                    if m_k in graph.adj[indiv]:
+                        k_cut_val += graph.get_edge_data(indiv, m_k)['weight']
+                        temp_cut.append(graph.get_edge_data(indiv, m_k)['ct'])
+            if k_cut_val > best_cut_val:
+                best_cut_val = k_cut_val
+                best_set = k_i
+                best_cut = temp_cut
+        sets[best_set].append(indiv)
+        cut.extend(best_cut)
+        cut_val += best_cut_val
+    return cut
+
+
+def set_u_constraints_rm(constraints_rm: List, u: np.array):
+    """Modify u matrix from constraints removed in model."""
+    for ct in constraints_rm:
+        indivs = re.findall(r'\d+\.*', ct.name)
+        u[int(indivs[0])][int(indivs[1])] = 0
+        u[int(indivs[1])][int(indivs[0])] = 0
+    return u
 
 
 # TODO to improve : very low dual values can change easily
@@ -1018,39 +1233,65 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                           ) -> List:
     """Get the list of moving containers from constraints dual values."""
     mvg_containers = []
-    constraints_kept = {}
+    conflict_graph = nx.Graph()
+    # constraints_kept = {}
     for ct in mdl.iter_linear_constraints():
         if ct.name in constraints_dual_values:
             if ct.dual_value > (
                     constraints_dual_values[ct.name]
                     + tol * constraints_dual_values[ct.name]):
-                constraints_kept[ct.name] = ct.dual_value
+                # constraints_kept[ct.name] = ct.dual_value
+                indivs = re.findall(r'\d+\.*', ct.name)
+                conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
 
-    constraints_kept = dict(sorted(
-        constraints_kept.items(),
-        key=lambda item: item[1],
-        reverse=True
-    ))
-
-    it.optim_file.write('placement tol : %f\n' % tol)
-    it.optim_file.write('Nb of moving placement constraints : %s\n' %
-                        len(constraints_kept))
-    for ct, c_dual in constraints_kept.items():
-        it.optim_file.write(ct)
-    it.optim_file.write('\n')
-
-    for ct, ct_dual in constraints_kept.items():
-        indivs = re.findall(r'\d+\.*', ct)
-        if not [e for e in indivs if int(e) in mvg_containers]:
-            indiv = get_container_tomove(
-                dict_id_c[int(indivs[0])],
-                dict_id_c[int(indivs[1])],
+    list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    while len(list_indivs) > 1:
+        # print(conflict_graph.edges.data())
+        (indiv, occur) = list_indivs[0]
+        if occur > 1:
+            mvg_containers.append(int(indiv))
+            conflict_graph.remove_node(indiv)
+        else:
+            other_indiv = list(conflict_graph.edges(indiv))[0][1]
+            if other_indiv == indiv:
+                other_indiv = list(conflict_graph.edges(indiv))[0][0]
+            mvg_indiv = get_container_tomove(
+                dict_id_c[int(indiv)],
+                dict_id_c[int(other_indiv)],
                 working_df
             )
-            int_indiv = [k for k, v in dict_id_c.items() if v == indiv][0]
+            int_indiv = [k for k, v in dict_id_c.items() if v == mvg_indiv][0]
             mvg_containers.append(int(int_indiv))
-            if len(mvg_containers) >= (nb_containers * tol_move):
-                break
+            conflict_graph.remove_node(indiv)
+            conflict_graph.remove_node(other_indiv)
+        conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph)))
+        list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+
+    # constraints_kept = dict(sorted(
+    #     constraints_kept.items(),
+    #     key=lambda item: item[1],
+    #     reverse=True
+    # ))
+
+    # it.optim_file.write('placement tol : %f\n' % tol)
+    # it.optim_file.write('Nb of moving placement constraints : %s\n' %
+    #                     len(constraints_kept))
+    # for ct, c_dual in constraints_kept.items():
+    #     it.optim_file.write(ct)
+    # it.optim_file.write('\n')
+
+    # for ct, ct_dual in constraints_kept.items():
+    #     indivs = re.findall(r'\d+\.*', ct)
+    #     if not [e for e in indivs if int(e) in mvg_containers]:
+    #         indiv = get_container_tomove(
+    #             dict_id_c[int(indivs[0])],
+    #             dict_id_c[int(indivs[1])],
+    #             working_df
+    #         )
+    #         int_indiv = [k for k, v in dict_id_c.items() if v == indiv][0]
+    #         mvg_containers.append(int(int_indiv))
+    #         if len(mvg_containers) >= (nb_containers * tol_move):
+    #             break
     return mvg_containers
 
 

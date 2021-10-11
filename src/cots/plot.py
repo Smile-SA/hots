@@ -14,6 +14,9 @@ from matplotlib import gridspec as gridspec
 from matplotlib import patches as mpatches
 from matplotlib import pyplot as plt
 
+import networkx as nx
+# from networkx.drawing.nx_agraph import graphviz_layout
+
 import numpy as np
 
 import pandas as pd
@@ -519,3 +522,16 @@ def update_clustering_plot_px(
     #     fig.suptitle('Node CPU consumption')
     #     # TODO generic
     #     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
+
+
+def plot_conflict_graph(graph: nx.Graph):
+    """Plot the conflict graph from dual values."""
+    fig, ax = plt.subplots()
+    fig.suptitle('Conflict graph')
+    pos = nx.spring_layout(graph, k=0.15, iterations=20)
+    nx.draw(graph, pos, with_labels=True)
+    nx.draw_networkx_edge_labels(
+        graph, pos, edge_labels=nx.get_edge_attributes(graph, 'weight'))
+
+    fig.savefig('graph.svg')
+    # plt.draw()

@@ -70,11 +70,18 @@ def main(path, k, tau, method):
     # my_model = model.create_model(config['optimization']['model'], my_instance)
     # model.solve_model(my_model, 'glpk')
 
-    # Plot initial data (containers & nodes consumption)
-    indivs_cons = ctnr.plot_all_data_all_containers(
-        my_instance.df_indiv, sep_time=my_instance.sep_time)
-    indivs_cons.savefig(output_path + '/indivs_cons.svg')
+    # Plot initial data (containers)
+    if False:
+        indivs_cons = ctnr.plot_all_data_all_containers(
+            my_instance.df_indiv, sep_time=my_instance.sep_time)
+        indivs_cons.savefig(path + '/indivs_cons.svg')
 
+    # Analysis period
+    # if method in ['heur', 'loop']:
+
+        # Clustering part
+
+    # Plot nodes consumption
     node_evo_fig = plot.plot_containers_groupby_nodes(
         my_instance.df_indiv,
         my_instance.df_host_meta[it.metrics[0]].max(),

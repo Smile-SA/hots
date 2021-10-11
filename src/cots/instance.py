@@ -94,9 +94,12 @@ class Instance:
         self.sep_time = math.floor(
             self.time * int(config['analysis']['sep_time']) / 100
         ) + self.df_indiv[it.tick_field].min()
-        config['loop']['tick'] = math.floor(
-            self.time * int(config['loop']['tick']) / 100
-        ) - 1
+        if config['loop']['tick'] == 'default':
+            config['loop']['tick'] = self.window_duration - 1
+        else:
+            config['loop']['tick'] = math.floor(
+                self.time * int(config['loop']['tick']) / 100
+            ) - 1
 
         if self.window_duration <= 1:
             self.window_duration += 1

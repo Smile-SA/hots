@@ -86,7 +86,7 @@ def main(path, k, tau):
         'Real objective value of second part with initial dataset placement :\n')
     (init_obj_nodes, init_obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
-        my_instance.eval_time,
+        my_instance.sep_time,
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n\n' % (
         init_obj_nodes, init_obj_delta))
@@ -106,7 +106,7 @@ def main(path, k, tau):
         'Real objective value of second part with spread technique :\n')
     (spread_obj_nodes, spread_obj_delta) = mc.get_obj_value_heuristic(
         my_instance.df_indiv,
-        my_instance.eval_time,
+        my_instance.sep_time,
         my_instance.df_indiv[it.tick_field].max())
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
         spread_obj_nodes, spread_obj_delta))
@@ -308,10 +308,6 @@ def main(path, k, tau):
 
     # Print real objective value
     it.results_file.write('Real objective value of second part with loop :\n')
-    # (loop_obj_nodes, loop_obj_delta) = mc.get_obj_value_heuristic(
-    #     my_instance.df_indiv,
-    #     my_instance.eval_time,
-    #     my_instance.df_indiv[it.tick_field].max())
     (loop_obj_nodes, loop_obj_delta) = mc.get_obj_value_host(
         df_host_evo)
     it.results_file.write('Number of nodes : %d, Delta : %f\n' % (

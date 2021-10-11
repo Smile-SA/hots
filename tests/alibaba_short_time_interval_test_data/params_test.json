@@ -1,7 +1,7 @@
 {
   "analysis": {
     "window_duration": 15,
-    "eval_time": "default"
+    "sep_time": "default"
   },
   "clustering": {
     "algo": "kmeans",

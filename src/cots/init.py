@@ -99,9 +99,11 @@ def read_params(path: str, k: int, tau: int, method: str) -> Dict:
     if tau is not None:
         config['analysis']['window_duration'] = tau + 1
         config['loop']['tick'] = tau
+    else:
+        tau = config['analysis']['window_duration']
     output_path = Path(path + 'k' + str(
         config['clustering']['nb_clusters']) + '_' + 'tau' + str(
-            config['loop']['tick']))
+            tau) + '_' + method)
     output_path.mkdir(parents=True, exist_ok=True)
     define_globals(output_path, config)
     if method not in methods:
@@ -146,7 +148,7 @@ def define_globals(p_path: Path, config: Dict):
     tick_field = config['data']['tick_field']
     metrics = config['data']['metrics']
 
-    methods = ['init', 'spread', 'iter-conso', 'heur', 'loop']
+    methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
 
     main_results = []
     loop_results = set_loop_results()

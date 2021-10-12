@@ -28,7 +28,7 @@ import numpy as np
 import pandas as pd
 
 # Personnal imports
-from . import allocation as alloc
+# from . import allocation as alloc
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
@@ -77,200 +77,117 @@ def main(path, k, tau, method):
         indivs_cons.savefig(path + '/indivs_cons.svg')
 
     # Analysis period
-    # if method in ['heur', 'loop']:
-
-        # Clustering part
-
-    # Plot nodes consumption
-    node_evo_fig = plot.plot_containers_groupby_nodes(
-        my_instance.df_indiv,
-        my_instance.df_host_meta[it.metrics[0]].max(),
-        my_instance.sep_time,
-        title='Initial Node consumption')
-    node_evo_fig.savefig(output_path + '/init_node_plot.svg')
-
-    # Print real objective value of second part if no loop
-    it.results_file.write(
-        'Real objective value of second part with initial dataset placement :\n')
-    (init_obj_nodes, init_obj_delta) = mc.get_obj_value_heuristic(
-        my_instance.df_indiv,
-        my_instance.sep_time,
-        my_instance.df_indiv[it.tick_field].max())
-    it.results_file.write('Number of nodes : %d, Delta : %f\n\n' % (
-        init_obj_nodes, init_obj_delta))
-    it.main_results.append(init_obj_nodes)
-    it.main_results.append(init_obj_delta)
-    node_results = get_node_results(
-        my_instance.df_host, my_instance.df_host_meta, 'init_')
-
-    # Print real objective value of second part with spread technique
-    spread_time = time.time()
-    place.allocation_spread(my_instance, my_instance.nb_nodes)
-    # TODO progress in eval window for check capacities
-    # spread_df_host = progress_time_noloop(my_instance)
-    # print(spread_df_host)
-    spread_time = time.time() - spread_time
-    it.results_file.write(
-        'Real objective value of second part with spread technique :\n')
-    (spread_obj_nodes, spread_obj_delta) = mc.get_obj_value_heuristic(
-        my_instance.df_indiv,
-        my_instance.sep_time,
-        my_instance.df_indiv[it.tick_field].max())
-    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        spread_obj_nodes, spread_obj_delta))
-    it.results_file.write('Spread technique time : %f s\n\n' % (spread_time))
-    it.main_results.append(spread_obj_nodes)
-    it.main_results.append(spread_obj_delta)
-    it.main_results.append(spread_time)
-    node_results = pd.concat([
-        node_results,
-        get_node_results(
-            my_instance.df_host, my_instance.df_host_meta, 'spread_')],
-        axis=1
-    )
-
-    # Plot spread result
-    node_evo_fig = plot.plot_containers_groupby_nodes(
-        my_instance.df_indiv,
-        my_instance.df_host_meta[it.metrics[0]].max(),
-        my_instance.sep_time,
-        title='Node consumption after spread technique')
-    node_evo_fig.savefig(output_path + '/node_spread_plot.svg')
-
-    # Print real objective value of second part with iterative consolidation technique
-    pack_spread_time = time.time()
-    place.allocation_spread(my_instance)
-    (spread_df_host, spread_overload) = progress_time_noloop(
-        my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
-    pack_spread_time = time.time() - pack_spread_time
-    it.results_file.write(
-        'Real objective value of second part with iterative consolidation technique :\n')
-    (pack_spread_obj_nodes, pack_spread_obj_delta) = mc.get_obj_value_host(
-        spread_df_host)
-    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        pack_spread_obj_nodes, pack_spread_obj_delta))
-    it.results_file.write('Number of overload : %d\n' % spread_overload)
-    it.results_file.write('Iterative consolidation technique time : %f s\n\n' % (pack_spread_time))
-    it.main_results.append(pack_spread_obj_nodes)
-    it.main_results.append(pack_spread_obj_delta)
-    it.main_results.append(pack_spread_time)
-    node_results = pd.concat([
-        node_results,
-        get_node_results(
-            spread_df_host, my_instance.df_host_meta, 'iter-consol_')],
-        axis=1
-    )
-
-    # Plot iterative consolidation result
-    node_evo_fig = plot.plot_containers_groupby_nodes(
-        my_instance.df_indiv,
-        my_instance.df_host_meta[it.metrics[0]].max(),
-        my_instance.sep_time,
-        title='Node consumption after iterative consolidation technique')
-    node_evo_fig.savefig(output_path + '/node_iter-consol_plot.svg')
 
     # Get dataframe of current part
     working_df_indiv = my_instance.df_indiv.loc[
         my_instance.df_indiv[it.tick_field] <= my_instance.sep_time
     ]
+    df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
+    nb_overloads = 0
+    total_method_time = time.time()
 
-    # Clustering part
-    logging.info('Starting first clustering ...')
-    (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-        working_df_indiv)
+    if method == 'init':
+        df_host_evo = my_instance.df_host
+    if method in ['heur', 'loop']:
+        # Clustering part
+        logging.info('Starting first clustering ...')
+        (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
+            working_df_indiv)
 
-    clustering_time = time.time()
-    labels_ = clt.perform_clustering(
-        df_indiv_clust, config['clustering']['algo'], my_instance.nb_clusters)
-    df_indiv_clust['cluster'] = labels_
-    my_instance.nb_clusters = labels_.max() + 1
+        clustering_time = time.time()
+        labels_ = clt.perform_clustering(
+            df_indiv_clust, config['clustering']['algo'], my_instance.nb_clusters)
+        df_indiv_clust['cluster'] = labels_
+        my_instance.nb_clusters = labels_.max() + 1
 
-    # TODO improve this part (distance...)
-    cluster_profiles = clt.get_cluster_mean_profile(
-        df_indiv_clust)
-    cluster_vars = clt.get_cluster_variance(cluster_profiles)
+        # TODO improve this part (distance...)
+        cluster_profiles = clt.get_cluster_mean_profile(
+            df_indiv_clust)
+        cluster_vars = clt.get_cluster_variance(cluster_profiles)
 
-    cluster_var_matrix = clt.get_sum_cluster_variance(
-        cluster_profiles, cluster_vars)
+        cluster_var_matrix = clt.get_sum_cluster_variance(
+            cluster_profiles, cluster_vars)
 
-    it.results_file.write('\nClustering computing time : %f s\n\n' %
-                          (time.time() - clustering_time))
+        it.results_file.write('\nClustering computing time : %f s\n\n' %
+                              (time.time() - clustering_time))
 
-    # Test allocation use case
-    # TODO specific window not taken into account
-    if config['allocation']['enable']:
-        logging.info('Performing allocation ... \n')
-        print(alloc.check_constraints(
-            my_instance, working_df_indiv, config['allocation']))
-    else:
-        logging.info('We do not perform allocation \n')
+        # Placement
+        if config['placement']['enable']:
+            logging.info('Performing placement ... \n')
+            heur_time = time.time()
+            place.allocation_distant_pairwise(
+                my_instance, cluster_var_matrix, labels_)
+            heur_time = time.time() - heur_time
+        else:
+            logging.info('We do not perform placement \n')
 
-    # Placement
-    containers_grouped = []
-    if config['placement']['enable']:
-        logging.info('Performing placement ... \n')
-        heur_time = time.time()
-        containers_grouped = place.allocation_distant_pairwise(
-            my_instance, cluster_var_matrix, labels_)
-    else:
-        logging.info('We do not perform placement \n')
+        if method == 'loop':
+            # loop 'streaming' progress
+            it.results_file.write('\n### Loop process ###\n')
+            (fig_node, fig_clust, fig_mean_clust,
+             main_results, df_host_evo, nb_overloads) = streaming_eval(
+                my_instance, df_indiv_clust, labels_,
+                config['loop']['tick'],
+                config['loop']['constraints_dual'],
+                config['loop']['tol_dual_clust'],
+                config['loop']['tol_move_clust'],
+                config['loop']['tol_dual_place'],
+                config['loop']['tol_move_place'],
+                config['loop']['tol_step'],
+                df_host_evo)
+            fig_node.savefig(output_path + '/node_evo_plot.svg')
+            fig_clust.savefig(output_path + '/clust_evo_plot.svg')
+            fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
+    elif method == 'spread':
+        place.allocation_spread(my_instance, my_instance.nb_nodes)
+    elif method == 'iter-consol':
+        place.allocation_spread(my_instance)
+    if method in ['heur', 'spread', 'iter-consol']:
+        (df_host_evo, nb_overloads) = progress_time_noloop(
+            my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
+    total_method_time = time.time() - total_method_time
 
-    # Progress in time without loop
-    (heur_df_host, heur_overload) = progress_time_noloop(
-        my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
-    heur_time = time.time() - heur_time
-    # Print real objective value of second part if no loop
-    it.results_file.write(
-        'Real objective value of second part with heuristic only (without loop)\n')
-    (heur_obj_nodes, heur_obj_delta) = mc.get_obj_value_host(
-        heur_df_host)
-    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        heur_obj_nodes, heur_obj_delta))
-    it.results_file.write('Number of overload : %d\n' % heur_overload)
-    it.results_file.write('Heuristic time : %f s\n\n' % (heur_time))
-    it.main_results.append(heur_obj_nodes)
-    it.main_results.append(heur_obj_delta)
-    it.main_results.append(heur_time)
-    node_results = pd.concat([
-        node_results,
-        get_node_results(
-            heur_df_host, my_instance.df_host_meta, 'heur_')],
-        axis=1
-    )
+    # Print objectives of evaluation part
+    (obj_nodes, obj_delta) = mc.get_obj_value_host(df_host_evo)
+    it.results_file.write('Number of nodes : %d, Delta : %f\n\n' % (
+        obj_nodes, obj_delta))
+    it.results_file.write('Number of overloads : %d\n' % nb_overloads)
+    it.results_file.write('Total execution time : %f s\n\n' % (total_method_time))
+
+    # Save evaluation results in files
+    it.main_results.append(obj_nodes)
+    it.main_results.append(obj_delta)
+    node_results = node.get_nodes_load_info(
+        df_host_evo, my_instance.df_host_meta)
+
+    # Plot nodes consumption
+    # TODO plot from df_host_evo
+    # node_evo_fig = plot.plot_containers_groupby_nodes(
+    #     my_instance.df_indiv,
+    #     my_instance.df_host_meta[it.metrics[0]].max(),
+    #     my_instance.sep_time,
+    #     title='Initial Node consumption')
+    # node_evo_fig.savefig(output_path + '/init_node_plot.svg')
 
     # Plot clustering & allocation for 1st part
-    plot_before_loop = True
-    if plot_before_loop:
-        spec_containers = False
-        if spec_containers:
-            ctnr.show_specific_containers(working_df_indiv, df_indiv_clust,
-                                          my_instance, labels_)
-        show_clustering = True
-        if show_clustering:
-            working_df_indiv = my_instance.df_indiv.loc[
-                my_instance.df_indiv[it.tick_field] <= my_instance.sep_time
-            ]
-            clust_node_fig = plot.plot_clustering_containers_by_node(
-                working_df_indiv, my_instance.dict_id_c,
-                labels_, filter_big=True)
-            clust_node_fig.savefig(output_path + '/clust_node_plot.svg')
-            first_clust_fig = plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
-                                                   title='Clustering on first half part')
-            first_clust_fig.savefig(output_path + '/first_clust_plot.svg')
-        # plot.plot_containers_groupby_nodes(
-        #     my_instance.df_indiv,
-        #     my_instance.df_host_meta.cpu.max(),
-        #     my_instance.sep_time)
-
-    # Plot heuristic result without loop
-    node_evo_fig = plot.plot_containers_groupby_nodes(
-        my_instance.df_indiv,
-        my_instance.df_host_meta[it.metrics[0]].max(),
-        my_instance.sep_time,
-        title='Node consumption after heuristic without loop')
-    node_evo_fig.savefig(output_path + '/node_heur_plot.svg')
-
-    # input('\nEnd of first part, press enter to enter loop ...\n')
+    # plot_before_loop = False
+    # if plot_before_loop:
+    #     spec_containers = False
+    #     if spec_containers:
+    #         ctnr.show_specific_containers(working_df_indiv, df_indiv_clust,
+    #                                       my_instance, labels_)
+    #     show_clustering = True
+    #     if show_clustering:
+    #         working_df_indiv = my_instance.df_indiv.loc[
+    #             my_instance.df_indiv[it.tick_field] <= my_instance.sep_time
+    #         ]
+    #         clust_node_fig = plot.plot_clustering_containers_by_node(
+    #             working_df_indiv, my_instance.dict_id_c,
+    #             labels_, filter_big=True)
+    #         clust_node_fig.savefig(output_path + '/clust_node_plot.svg')
+    #         first_clust_fig = plot.plot_clustering(df_indiv_clust, my_instance.dict_id_c,
+    #                                                title='Clustering on first half part')
+    #         first_clust_fig.savefig(output_path + '/first_clust_plot.svg')
 
     # Test allocation use case
     # TODO specific window not taken into account
@@ -280,55 +197,6 @@ def main(path, k, tau, method):
     #         my_instance, working_df_indiv, config['allocation']))
     # else:
     #     logging.info('We do not perform allocation \n')
-
-    # Plot heuristic result without loop
-    # ctnr.plot_all_data_all_containers(
-    #     my_instance.df_indiv, sep_time=my_instance.sep_time)
-    # plot.plot_containers_groupby_nodes(
-    #     my_instance.df_indiv,
-    #     my_instance.df_host_meta[it.metrics[0]].max(),
-    #     my_instance.sep_time,
-    #     title='Node consumption after heuristic and change allocation')
-
-    # loop 'streaming' progress
-    it.results_file.write('\n### Loop process ###\n')
-    (fig_node, fig_clust, fig_mean_clust,
-     loop_main_results, df_host_evo) = streaming_eval(
-        my_instance, df_indiv_clust, labels_,
-        containers_grouped, config['loop']['tick'],
-        config['loop']['constraints_dual'],
-        config['loop']['tol_dual_clust'],
-        config['loop']['tol_move_clust'],
-        config['loop']['tol_dual_place'],
-        config['loop']['tol_move_place'],
-        config['loop']['tol_step'])
-
-    fig_node.savefig(output_path + '/node_evo_plot.svg')
-    fig_clust.savefig(output_path + '/clust_evo_plot.svg')
-    fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
-
-    # Plot after the loop
-    plot.plot_containers_groupby_nodes(
-        my_instance.df_indiv,
-        my_instance.df_host_meta[it.metrics[0]].max(),
-        my_instance.sep_time,
-        title='Node consumption with loop')
-
-    # Print real objective value
-    it.results_file.write('Real objective value of second part with loop :\n')
-    (loop_obj_nodes, loop_obj_delta) = mc.get_obj_value_host(
-        df_host_evo)
-    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        loop_obj_nodes, loop_obj_delta))
-    it.main_results.append(loop_obj_nodes)
-    it.main_results.append(loop_obj_delta)
-    it.main_results.extend(loop_main_results)
-    node_results = pd.concat([
-        node_results,
-        get_node_results(
-            df_host_evo, my_instance.df_host_meta, 'loop_')],
-        axis=1
-    )
 
     main_time = time.time() - main_time
     it.main_results.append(main_time)
@@ -340,11 +208,12 @@ def main(path, k, tau, method):
 
 
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
-                   labels_: List, containers_grouped: List, tick: int,
+                   labels_: List, tick: int,
                    constraints_dual: List,
                    tol_clust: float, tol_move_clust: float,
-                   tol_place: float, tol_move_place: float, tol_step: float
-                   ) -> (plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame):
+                   tol_place: float, tol_move_place: float, tol_step: float,
+                   df_host_evo: pd.DataFrame
+                   ) -> (plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int):
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
         my_instance.df_indiv, my_instance.dict_id_n, my_instance.sep_time,
@@ -357,8 +226,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     fig_mean_clust, ax_mean_clust = plot.init_plot_cluster_profiles(
         cluster_profiles
     )
-
-    df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
 
     tmin = my_instance.df_indiv[it.tick_field].min()
     tmax = my_instance.sep_time
@@ -553,7 +420,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
     return (fig_node, fig_clust, fig_mean_clust,
             [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb],
-            df_host_evo)
+            df_host_evo, total_nb_overload)
 
 
 def progress_time_noloop(instance: Instance,
@@ -698,27 +565,6 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     cv = ctnr.build_vars_matrix_indivs(
         df_clust, cluster_vars, my_instance.dict_id_c)
 
-    # TODO Evaluate this possibility
-    # if not cplex_model.obj_func:
-    #     if cplex_model.relax_mdl.get_constraint_by_name(
-    #             'max_nodes').dual_value > 0:
-    #         print(cplex_model.relax_mdl.get_constraint_by_name(
-    #             'max_nodes').to_string())
-    #         print(cplex_model.relax_mdl.get_constraint_by_name(
-    #             'max_nodes').dual_value)
-    #         current_nb_nodes = current_nb_nodes - 1
-    #         cplex_model.update_max_nodes_ct(current_nb_nodes)
-
-    #         # TODO adapt existing solution, but not from scratch
-    #         containers_grouped = place.allocation_distant_pairwise(
-    #             my_instance, cluster_var_matrix, labels_,
-    #             cplex_model.max_open_nodes)
-    #     else:
-    #         cplex_model.update_obj_function(1)
-    #         current_obj_func += 1
-    # it.clustering_file.write('Resulting loop clustering df : \n')
-    # it.clustering_file.write(df_clust.to_string())
-    # it.clustering_file.write('\n\n***\n\n')
     return (cv, dv, nb_clust_changes_loop, clustering_dual_values, constraints_rm)
 
 
@@ -843,16 +689,6 @@ def write_main_results():
             i += 1
         else:
             it.main_results_file.write('%f' % e)
-
-
-def get_node_results(
-        df_host: pd.DataFrame, df_host_meta: pd.DataFrame, algo: str) -> pd.DataFrame:
-    """Compute all wanted additional indicators."""
-    result_df = node.get_nodes_load_info(
-        df_host, df_host_meta)
-    result_df = result_df.add_prefix(algo)
-
-    return result_df
 
 
 def close_files():

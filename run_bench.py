@@ -32,6 +32,11 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
             process = subprocess.Popen(bash_command.split())
             output, error = process.communicate()
 
+            bash_command = 'cots ' + path + ' -k ' + str(k) + ' -t ' + str(tau) + ' -m loop_v2'
+            print('\n%s\n' % bash_command)
+            process = subprocess.Popen(bash_command.split())
+            output, error = process.communicate()
+
             bash_command = 'cots ' + path + ' -k ' + str(k) + ' -t ' + str(tau) + ' -m loop_kmeans'
             print('\n%s\n' % bash_command)
             process = subprocess.Popen(bash_command.split())

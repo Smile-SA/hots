@@ -354,9 +354,7 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
     """Adjust the clustering with individuals to move to the closest cluster."""
     nb_changes = 0
     df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
-    profiles = get_cluster_mean_profile(
-        df_clust_new['cluster'].nunique(), df_clust_new
-    )
+    profiles = get_cluster_mean_profile(df_clust_new)
     for indiv in mvg_containers:
         min_dist = float('inf')
         new_cluster = -1
@@ -370,6 +368,8 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
                 new_cluster = cluster
         if new_cluster != df_clust.loc[indiv, 'cluster']:
             it.results_file.write('%s changes cluster : from %d to %d\n' % (
+                indiv, df_clust.loc[indiv, 'cluster'], new_cluster))
+            print('%s changes cluster : from %d to %d\n' % (
                 indiv, df_clust.loc[indiv, 'cluster'], new_cluster))
             df_clust.loc[indiv, 'cluster'] = new_cluster
             nb_changes += 1

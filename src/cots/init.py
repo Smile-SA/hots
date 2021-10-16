@@ -97,7 +97,7 @@ def read_params(path: str, k: int, tau: int, method: str) -> Dict:
     if k is not None:
         config['clustering']['nb_clusters'] = k
     if tau is not None:
-        config['analysis']['window_duration'] = tau + 1
+        config['analysis']['window_duration'] = tau
         config['loop']['tick'] = tau
     else:
         tau = config['analysis']['window_duration']
@@ -148,7 +148,7 @@ def define_globals(p_path: Path, config: Dict):
     tick_field = config['data']['tick_field']
     metrics = config['data']['metrics']
 
-    methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
+    methods = ['init', 'spread', 'iter-consol', 'heur', 'loop', 'loop_v2', 'loop_kmeans']
 
     main_results = []
     loop_results = set_loop_results()

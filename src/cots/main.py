@@ -122,11 +122,6 @@ def main(path, k, tau, method):
             logging.info('We do not perform placement \n')
 
         if method in ['loop', 'loop_v2', 'loop_kmeans']:
-            df_host_evo_nothing = my_instance.df_host[
-                my_instance.df_host[it.tick_field] >= my_instance.sep_time
-            ]
-            (df_host_evo_noloop, nb_overloads_noloop) = progress_time_noloop(
-                my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
             # loop 'streaming' progress
             it.results_file.write('\n### Loop process ###\n')
             (fig_node, fig_clust, fig_mean_clust,
@@ -160,22 +155,7 @@ def main(path, k, tau, method):
     it.results_file.write('Number of overloads : %d\n' % nb_overloads)
     it.results_file.write('Total execution time : %f s\n\n' % (total_method_time))
 
-    # tests
-    (obj_nodes_nothing, obj_delta_nothing) = mc.get_obj_value_host(df_host_evo_nothing)
-    it.results_file.write('NOTHING : \n')
-    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        obj_nodes_nothing, obj_delta_nothing))
-    # it.results_file.write('Number of overloads : %d\n' % nb_overloads_nothing)
-    it.results_file.write('Total execution time : %f s\n\n' % (total_method_time))
-
-    (obj_nodes_noloop, obj_delta_noloop) = mc.get_obj_value_host(df_host_evo_noloop)
-    it.results_file.write('NOloop : \n')
-    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
-        obj_nodes_noloop, obj_delta_noloop))
-    it.results_file.write('Number of overloads : %d\n' % nb_overloads_noloop)
-    it.results_file.write('Total execution time : %f s\n\n' % (total_method_time))
-
-    it.results_file.write('\nFinal k : %d' % my_instance.nb_clusters)
+    it.clustering_file.write('\nFinal k : %d' % my_instance.nb_clusters)
 
     # Save evaluation results in files
     it.main_results.append(obj_nodes)
@@ -262,15 +242,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     total_nb_overload = 0
     end = False
 
-    # print('df_indiv before loops')
-    # working_df_indiv = my_instance.df_indiv[
-    #     (my_instance.
-    #      df_indiv[it.tick_field] >= tmax)]
-    # print(working_df_indiv)
-    # print(working_df_indiv.groupby(
-    #     [working_df_indiv[it.tick_field], it.host_field],
-    #     as_index=False).agg(it.dict_agg_metrics))
-
     logging.info('Beginning the loop process ...\n')
     # TODO improve cplex model builds
     while not end:
@@ -317,11 +288,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             clustering_dual_values = mc.fill_constraints_dual_values(
                 cplex_model.relax_mdl, constraints_dual
             )
-
-            # TODO improve this part (use cluster profiles)
-            # temp_time = time.time()
-            # dv = ctnr.build_var_delta_matrix(
-            #     working_df_indiv, my_instance.dict_id_c)
 
             # TODO improve this part (distance...)
             cluster_profiles = clt.get_cluster_mean_profile(
@@ -370,36 +336,15 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             #     df_clust, cluster_profiles, labels_
             # )
 
-            # eval & change clustering + placement with new method
-            if method == 'loop_kmeans':
-                (nb_clust_changes_loop, nb_place_changes_loop,
-                 clustering_dual_values, placement_dual_values,
-                 df_clust, cluster_profiles, labels_) = eval_sol_scratch(
-                    my_instance, working_df_indiv,
-                    w, u, v, dv,
-                    constraints_dual, clustering_dual_values, placement_dual_values,
-                    tol_clust, tol_move_clust, tol_place, tol_move_place,
-                    df_clust, cluster_profiles, labels_
-                )
-            elif method == 'loop_v2':
-                (nb_clust_changes_loop, nb_place_changes_loop,
-                 clustering_dual_values, placement_dual_values,
-                 df_clust, cluster_profiles, labels_) = eval_sols_new(
-                    my_instance, working_df_indiv,
-                    w, u, v, dv,
-                    constraints_dual, clustering_dual_values, placement_dual_values,
-                    tol_clust, tol_move_clust, tol_place, tol_move_place,
-                    df_clust, cluster_profiles, labels_
-                )
-            else:
-                (nb_clust_changes_loop, nb_place_changes_loop,
-                 clustering_dual_values, placement_dual_values) = eval_sols_old(
-                    my_instance, working_df_indiv,
-                    w, u, v, dv,
-                    constraints_dual, clustering_dual_values, placement_dual_values,
-                    tol_clust, tol_move_clust, tol_place, tol_move_place,
-                    df_clust, cluster_profiles, labels_
-                )
+            (nb_clust_changes_loop, nb_place_changes_loop,
+             clustering_dual_values, placement_dual_values,
+             df_clust, cluster_profiles, labels_) = eval_sols(
+                my_instance, working_df_indiv,
+                w, u, v, dv,
+                constraints_dual, clustering_dual_values, placement_dual_values,
+                tol_clust, tol_move_clust, tol_place, tol_move_place,
+                df_clust, cluster_profiles, labels_
+            )
 
             it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
             it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
@@ -505,6 +450,38 @@ def progress_time_noloop(instance: Instance,
     return (df_host_evo, nb_overload)
 
 
+def eval_sols(
+        my_instance: Instance, working_df_indiv: pd.DataFrame,
+        w: np.array, u, v, dv,
+        constraints_dual, clustering_dual_values, placement_dual_values,
+        tol_clust, tol_move_clust, tol_place, tol_move_place,
+        df_clust, cluster_profiles, labels_,
+        method: str = 'loop'
+):
+    """Evaluate clustering and placement solutions with method technique."""
+    if method == 'loop_kmeans':
+        return eval_sol_scratch(
+            my_instance, working_df_indiv,
+            w, u, v, dv,
+            constraints_dual, clustering_dual_values, placement_dual_values,
+            tol_clust, tol_move_clust, tol_place, tol_move_place,
+            df_clust, cluster_profiles, labels_)
+    elif method == 'loop_v2':
+        return eval_sols_new(
+            my_instance, working_df_indiv,
+            w, u, v, dv,
+            constraints_dual, clustering_dual_values, placement_dual_values,
+            tol_clust, tol_move_clust, tol_place, tol_move_place,
+            df_clust, cluster_profiles, labels_)
+    else:
+        return eval_sols_old(
+            my_instance, working_df_indiv,
+            w, u, v, dv,
+            constraints_dual, clustering_dual_values, placement_dual_values,
+            tol_clust, tol_move_clust, tol_place, tol_move_place,
+            df_clust, cluster_profiles, labels_)
+
+
 def eval_sols_old(
         my_instance: Instance, working_df_indiv: pd.DataFrame,
         w: np.array, u, v, dv,
@@ -531,7 +508,8 @@ def eval_sols_old(
 
     return (
         nb_clust_changes_loop, nb_place_changes_loop,
-        clustering_dual_values, placement_dual_values
+        clustering_dual_values, placement_dual_values,
+        df_clust, cluster_profiles, labels_
     )
 
 
@@ -660,7 +638,6 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
                     tol_clust: float, tol_move_clust: float,
                     df_clust: pd.DataFrame, cluster_profiles: np.array, labels_: List) -> np.array:
     """Evaluate current clustering solution and update it if needed."""
-    # moving_containers = []
     nb_clust_changes_loop = 0
 
     (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
@@ -679,8 +656,6 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     logging.info('Solving linear relaxation ...')
     cplex_model.solve(cplex_model.relax_mdl)
     print('Init clustering lp solution : ', cplex_model.relax_mdl.objective_value)
-    # print('init clust')
-    # print(df_clust)
 
     logging.info('Checking for changes in clustering dual values ...')
     time_get_clust_move = time.time()
@@ -750,10 +725,6 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         cluster_profiles, cluster_vars)
     dv = ctnr.build_var_delta_matrix_cluster(
         df_clust, cluster_var_matrix, my_instance.dict_id_c)
-
-    # print('final clust')
-    # print(df_clust)
-    # input()
 
     return (dv, nb_clust_changes_loop, clustering_dual_values)
 
@@ -982,17 +953,12 @@ def eval_placement_v2(my_instance: Instance, working_df_indiv: pd.DataFrame,
     cplex_model.solve(cplex_model.relax_mdl)
     init_obj_place = cplex_model.relax_mdl.objective_value
     print('Init placement lp obj : ', cplex_model.relax_mdl.objective_value)
-    # input()
     moving_containers = []
     nb_place_changes_loop = 0
 
     # New method (in test) : only constraints to remove are passed
     if len(constraints_rm) > 0:
-        # print('constraints from clust not empty')
-        # print(constraints_rm)
-        # print(u)
         u = mc.set_u_constraints_rm(constraints_rm, u)
-        # print(u)
         cplex_model = mc.CPXInstance(working_df_indiv,
                                      my_instance.df_host_meta,
                                      my_instance.nb_clusters,
@@ -1004,7 +970,6 @@ def eval_placement_v2(my_instance: Instance, working_df_indiv: pd.DataFrame,
         cplex_model.solve(cplex_model.relax_mdl)
         adj_u_obj_place = cplex_model.relax_mdl.objective_value
         print('After changing u, placement lp obj : ', adj_u_obj_place)
-        # input()
 
         if adj_u_obj_place < init_obj_place:
             print('lp relax better with clust change')
@@ -1016,7 +981,6 @@ def eval_placement_v2(my_instance: Instance, working_df_indiv: pd.DataFrame,
                 cplex_model.relax_mdl, placement_dual_values,
                 tol_place, tol_move_place, my_instance.nb_containers,
                 working_df_indiv, my_instance.dict_id_c)
-            print(moving_containers)
             print('Time get moving containers : %f s' % (time.time() - time_get_move))
         else:
             print('we dont improve lp relax with clust')

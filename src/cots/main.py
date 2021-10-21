@@ -42,14 +42,13 @@ from . import plot
 from .instance import Instance
 
 
-# TODO add 'help' message
 @click.command()
 @click.argument('path', required=True, type=click.Path(exists=True))
-@click.option('-k', required=False, type=int)
-@click.option('-t', '--tau', required=False, type=int)
-@click.option('-m', '--method', required=False, type=str, default='loop')
+@click.option('-k', required=False, type=int, help='Number of clusters')
+@click.option('-t', '--tau', required=False, type=int, help='Time window size')
+@click.option('-m', '--method', required=False, type=str, default='loop', help='Method used')
 def main(path, k, tau, method):
-    """Perform all things of methodology."""
+    """Use method to propose a placement solution for micro-services adjusted in time."""
     # Initialization part
     main_time = time.time()
 

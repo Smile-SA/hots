@@ -6,7 +6,27 @@ cots tools
 Provide external tools usefull for the code.
 """
 
+import sys
+from typing import List
+
 import pandas as pd
+
+
+def print_size_vars(list_vars: List):
+    """Display size (memory) of variables."""
+    print('List of variables with sizes:')
+    for name, size in sorted(((name, sys.getsizeof(value)) for name, value in list_vars),
+                             key=lambda x: -x[1])[:10]:
+        print('{:>30}: {:>8}'.format(name, sizeof_fmt(size)))
+
+
+def sizeof_fmt(num, suffix='B'):
+    """Ease display of memory sizes."""
+    for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
+        if abs(num) < 1024.0:
+            return '%3.1f %s%s' % (num, unit, suffix)
+        num /= 1024.0
+    return '%.1f %s%s' % (num, 'Yi', suffix)
 
 
 def change_max_dataset(df_indiv: pd.DataFrame,

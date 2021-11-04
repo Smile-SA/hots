@@ -1429,8 +1429,8 @@ def make_relaxed_model(mdl: Model) -> Model:
 
     :return: a new model with continuous relaxation, if possible, else None.
     """
-    if mdl._pwl_counter:
-        mdl.fatal('Model has piecewise-linear expressions, cannot be relaxed')
+    # if mdl._pwl_counter:
+    #     mdl.fatal('Model has piecewise-linear expressions, cannot be relaxed')
     mdl_class = mdl.__class__
     relaxed_model = mdl_class(name='lp_' + mdl.name)
 

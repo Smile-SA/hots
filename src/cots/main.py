@@ -65,6 +65,7 @@ def main(path, k, tau, method):
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
     my_instance = Instance(path, config)
     it.results_file.write('Method used : %s\n' % method)
+    my_instance.print_times()
 
     # Use pyomo model => to be fully applied after tests
     # my_model = model.create_model(config['optimization']['model'], my_instance)
@@ -472,8 +473,8 @@ def progress_time_noloop(
             elif fixing == 'loop':
                 working_df_indiv = instance.df_indiv[
                     (instance.
-                     df_indiv[it.tick_field] >= tmin) & (
-                        instance.df_indiv[it.tick_field] <= tmax)]
+                     df_indiv[it.tick_field] >= tick - instance.window_duration) & (
+                        instance.df_indiv[it.tick_field] <= tick)]
                 (df_clust, instance.dict_id_c) = clt.build_matrix_indiv_attr(
                     working_df_indiv)
                 w = clt.build_similarity_matrix(df_clust)

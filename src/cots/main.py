@@ -498,6 +498,8 @@ def progress_time_noloop(
                     tol_clust, tol_move_clust, tol_place, tol_move_place,
                     df_clust, cluster_profiles, labels_
                 )
+                if nb_place_changes_loop < 1:
+                    place.free_full_nodes(instance, host_overload, tick)
                 loop_nb += 1
                 nb_clust_changes += nb_clust_changes_loop
                 nb_place_changes += nb_place_changes_loop

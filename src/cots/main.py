@@ -126,6 +126,7 @@ def main(path, k, tau, method):
             (fig_node, fig_clust, fig_mean_clust,
              main_results, df_host_evo, nb_overloads) = streaming_eval(
                 my_instance, df_indiv_clust, labels_,
+                config['loop']['mode'],
                 config['loop']['tick'],
                 config['loop']['constraints_dual'],
                 config['loop']['tol_dual_clust'],
@@ -210,7 +211,7 @@ def main(path, k, tau, method):
 
 
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
-                   labels_: List, tick: int,
+                   labels_: List, mode: str, tick: int,
                    constraints_dual: List,
                    tol_clust: float, tol_move_clust: float,
                    tol_place: float, tol_move_place: float, tol_step: float,
@@ -230,7 +231,10 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     )
 
     tmin = my_instance.sep_time - tick
-    tmax = my_instance.sep_time
+    if mode == 'event':
+        tmax = my_instance.df_indiv[it.tick_field].max()
+    else:
+        tmax = my_instance.sep_time
     clustering_dual_values = {}
     placement_dual_values = {}
 
@@ -253,7 +257,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         # TODO not fully tested (replace containers)
         if loop_nb > 1:
             temp_time = time.time()
-            (temp_df_host, nb_overload) = progress_time_noloop(my_instance, tmin, tmax)
+            (temp_df_host, nb_overload) = progress_time_noloop(
+                my_instance, 'local', tmin, tmax)
             df_host_evo = df_host_evo.append(
                 temp_df_host[~temp_df_host[it.tick_field].isin(
                     df_host_evo[it.tick_field].unique())], ignore_index=True)
@@ -312,6 +317,14 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             placement_dual_values = mc.fill_constraints_dual_values(
                 cplex_model.relax_mdl, constraints_dual
             )
+            if mode == 'event':
+                (temp_df_host, nb_overload, loop_nb) = progress_time_noloop(
+                    my_instance, 'loop', tmin, tmax, labels_, loop_nb,
+                    constraints_dual, clustering_dual_values, placement_dual_values,
+                    tol_clust, tol_move_clust, tol_place, tol_move_place)
+                df_host_evo = df_host_evo.append(
+                    temp_df_host[~temp_df_host[it.tick_field].isin(
+                        df_host_evo[it.tick_field].unique())], ignore_index=True)
 
         else:  # We have already an evaluated solution
 
@@ -426,8 +439,10 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             df_host_evo, total_nb_overload)
 
 
-def progress_time_noloop(instance: Instance,
-                         tmin: int, tmax: int) -> (pd.DataFrame, int):
+def progress_time_noloop(
+        instance: Instance, fixing: str, tmin: int, tmax: int, labels_, loop_nb,
+        constraints_dual, clustering_dual_values, placement_dual_values,
+        tol_clust, tol_move_clust, tol_place, tol_move_place) -> (pd.DataFrame, int):
     """We progress in time without performing the loop, checking node capacities."""
     df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
     nb_overload = 0
@@ -445,8 +460,39 @@ def progress_time_noloop(instance: Instance,
         if len(host_overload) > 0:
             print('Overload : We must move containers')
             nb_overload += len(host_overload)
-            place.free_full_nodes(instance, host_overload, tick)
-    return (df_host_evo, nb_overload)
+            if fixing == 'local':
+                place.free_full_nodes(instance, host_overload, tick)
+            elif fixing == 'loop':
+                working_df_indiv = instance.df_indiv[
+                    (instance.
+                     df_indiv[it.tick_field] >= tmin) & (
+                        instance.df_indiv[it.tick_field] <= tmax)]
+                (df_clust, instance.dict_id_c) = clt.build_matrix_indiv_attr(
+                    working_df_indiv)
+                w = clt.build_similarity_matrix(df_clust)
+                df_clust['cluster'] = labels_
+                u = clt.build_adjacency_matrix(labels_)
+                v = place.build_placement_adj_matrix(
+                    working_df_indiv, instance.dict_id_c)
+                cluster_profiles = clt.get_cluster_mean_profile(
+                    df_clust)
+                cluster_vars = clt.get_cluster_variance(cluster_profiles)
+
+                cluster_var_matrix = clt.get_sum_cluster_variance(
+                    cluster_profiles, cluster_vars)
+                dv = ctnr.build_var_delta_matrix_cluster(
+                    df_clust, cluster_var_matrix, instance.dict_id_c)
+                (nb_clust_changes_loop, nb_place_changes_loop,
+                 clustering_dual_values, placement_dual_values,
+                 df_clust, cluster_profiles, labels_) = eval_sols(
+                    instance, working_df_indiv,
+                    w, u, v, dv,
+                    constraints_dual, clustering_dual_values, placement_dual_values,
+                    tol_clust, tol_move_clust, tol_place, tol_move_place,
+                    df_clust, cluster_profiles, labels_
+                )
+                loop_nb += 1
+    return (df_host_evo, nb_overload, loop_nb)
 
 
 def eval_sols(

@@ -85,6 +85,12 @@ class Instance:
                                         (self.window_duration / self.time)),
                                     '\n'])
 
+    def print_times(self):
+        """Print time informations."""
+        print('Total time : ', self.time)
+        print('Window duration : ', self.window_duration)
+        print('Separation time : ', self.sep_time)
+
     def percentage_to_timestamp(self, config: Dict):
         """Transform percentage config time to timestamp."""
         # TODO consider 'tick' param as absolute, not percent ?

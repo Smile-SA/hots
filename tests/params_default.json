@@ -23,6 +23,7 @@
       "solver": "glpk"
     },
     "loop": {
+      "mode": "event",
       "tick": "default",
       "constraints_dual": ["mustLink", "nb_clusters"],
       "tol_dual_clust": 0.15,

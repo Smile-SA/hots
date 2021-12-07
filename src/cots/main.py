@@ -320,7 +320,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 cplex_model.relax_mdl, constraints_dual
             )
             if mode == 'event':
-                (temp_df_host, nb_overload, loop_nb) = progress_time_noloop(
+                (temp_df_host, nb_overload, loop_nb,
+                 nb_clust_changes, nb_place_changes) = progress_time_noloop(
                     my_instance, 'loop', tmin, tmax, labels_, loop_nb,
                     constraints_dual, clustering_dual_values, placement_dual_values,
                     tol_clust, tol_move_clust, tol_place, tol_move_place)
@@ -449,6 +450,9 @@ def progress_time_noloop(
     """We progress in time without performing the loop, checking node capacities."""
     df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
     nb_overload = 0
+    nb_clust_changes = 0
+    nb_place_changes = 0
+
     for tick in range(tmin, tmax + 1):
         df_host_tick = instance.df_indiv.loc[
             instance.df_indiv[it.tick_field] == tick
@@ -495,7 +499,9 @@ def progress_time_noloop(
                     df_clust, cluster_profiles, labels_
                 )
                 loop_nb += 1
-    return (df_host_evo, nb_overload, loop_nb)
+                nb_clust_changes += nb_clust_changes_loop
+                nb_place_changes += nb_place_changes_loop
+    return (df_host_evo, nb_overload, loop_nb, nb_clust_changes, nb_place_changes)
 
 
 def eval_sols(

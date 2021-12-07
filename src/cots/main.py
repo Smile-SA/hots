@@ -64,6 +64,7 @@ def main(path, k, tau, method):
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
     my_instance = Instance(path, config)
+    it.results_file.write('Method used : %s\n' % method)
 
     # Use pyomo model => to be fully applied after tests
     # my_model = model.create_model(config['optimization']['model'], my_instance)
@@ -245,6 +246,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     total_nb_overload = 0
     end = False
 
+    it.results_file.write('Loop mode : %s\n' % mode)
     logging.info('Beginning the loop process ...\n')
     # TODO improve cplex model builds
     while not end:
@@ -325,6 +327,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 df_host_evo = df_host_evo.append(
                     temp_df_host[~temp_df_host[it.tick_field].isin(
                         df_host_evo[it.tick_field].unique())], ignore_index=True)
+                total_nb_overload += nb_overload
 
         else:  # We have already an evaluated solution
 

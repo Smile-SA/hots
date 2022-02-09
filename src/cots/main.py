@@ -90,7 +90,9 @@ def main(path, k, tau, method):
     if method == 'init':
         df_host_evo = my_instance.df_host
     if method in ['heur', 'loop', 'loop_v2', 'loop_kmeans']:
-        # Clustering part
+        # Compute starting point
+
+        # First clustering part
         logging.info('Starting first clustering ...')
         (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
             working_df_indiv)
@@ -112,7 +114,7 @@ def main(path, k, tau, method):
         it.results_file.write('\nClustering computing time : %f s\n\n' %
                               (time.time() - clustering_time))
 
-        # Placement
+        # First placement part
         if config['placement']['enable']:
             logging.info('Performing placement ... \n')
             heur_time = time.time()
@@ -122,6 +124,9 @@ def main(path, k, tau, method):
         else:
             logging.info('We do not perform placement \n')
 
+        # Loops inside analysis time
+
+        # Loops for evaluation
         if method in ['loop', 'loop_v2', 'loop_kmeans']:
             # loop 'streaming' progress
             it.results_file.write('\n### Loop process ###\n')

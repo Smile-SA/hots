@@ -96,10 +96,11 @@ class Instance:
         # TODO consider 'tick' param as absolute, not percent ?
         self.window_duration = math.floor(
             self.time * int(config['analysis']['window_duration']) / 100
-        ) + self.df_indiv[it.tick_field].min()
-        self.sep_time = math.floor(
+        )
+        sep_nb_data = math.floor(
             self.time * int(config['analysis']['sep_time']) / 100
-        ) + self.df_indiv[it.tick_field].min()
+        )
+        self.sep_time = self.df_indiv[it.tick_field].min() + sep_nb_data - 1
         if config['loop']['tick'] == 'default':
             config['loop']['tick'] = self.window_duration - 1
         else:

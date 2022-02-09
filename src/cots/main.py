@@ -82,9 +82,9 @@ def main(path, k, tau, method):
     # Analysis period
 
     # Get dataframe of current part
-    working_df_indiv = my_instance.df_indiv.loc[
-        my_instance.df_indiv[it.tick_field] <= my_instance.sep_time
-    ]
+    # working_df_indiv = my_instance.df_indiv.loc[
+    #     my_instance.df_indiv[it.tick_field] <= my_instance.sep_time
+    # ]
     df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
     nb_overloads = 0
     total_method_time = time.time()
@@ -92,14 +92,22 @@ def main(path, k, tau, method):
     if method == 'init':
         df_host_evo = my_instance.df_host
     if method in ['heur', 'loop', 'loop_v2', 'loop_kmeans']:
+
         # Compute starting point
         n_iter = math.floor((
-            my_instance.sep_time + 1 - working_df_indiv[it.tick_field].min()
+            my_instance.sep_time + 1 - my_instance.df_host[it.tick_field].min()
         ) / my_instance.window_duration)
         start_point = (
             my_instance.sep_time - n_iter * my_instance.window_duration
         ) + 1
-        print(start_point)
+        end_point = (
+            start_point + my_instance.window_duration - 1
+        )
+        working_df_indiv = my_instance.df_indiv[
+            (my_instance.
+                df_indiv[it.tick_field] >= start_point) & (
+                my_instance.df_indiv[it.tick_field] <= end_point)
+        ]
 
         # First clustering part
         logging.info('Starting first clustering ...')
@@ -122,6 +130,31 @@ def main(path, k, tau, method):
 
         it.results_file.write('\nClustering computing time : %f s\n\n' %
                               (time.time() - clustering_time))
+        n_iter = n_iter - 1
+
+        # Loop for incrementing clustering (during analysis)
+        while n_iter > 0:
+            start_point = end_point + 1
+            end_point = (
+                start_point + my_instance.window_duration - 1
+            )
+            working_df_indiv = my_instance.df_indiv[
+                (my_instance.
+                    df_indiv[it.tick_field] >= start_point) & (
+                    my_instance.df_indiv[it.tick_field] <= end_point)]
+            print(working_df_indiv)
+            print(df_indiv_clust)
+
+            # evaluate clustering
+            # (dv, nb_clust_changes_loop,
+            #     clustering_dual_values) = eval_clustering(
+            #     my_instance, working_df_indiv,
+            #     w, u, clustering_dual_values, constraints_dual,
+            #     tol_clust, tol_move_clust,
+            #     df_clust, cluster_profiles, labels_)
+
+            n_iter = n_iter - 1
+        input()
 
         # First placement part
         if config['placement']['enable']:

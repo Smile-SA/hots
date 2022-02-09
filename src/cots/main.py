@@ -19,6 +19,8 @@ import logging
 import time
 from typing import Dict, List
 
+import math
+
 import click
 
 from matplotlib import pyplot as plt
@@ -91,6 +93,13 @@ def main(path, k, tau, method):
         df_host_evo = my_instance.df_host
     if method in ['heur', 'loop', 'loop_v2', 'loop_kmeans']:
         # Compute starting point
+        n_iter = math.floor((
+            my_instance.sep_time + 1 - working_df_indiv[it.tick_field].min()
+        ) / my_instance.window_duration)
+        start_point = (
+            my_instance.sep_time - n_iter * my_instance.window_duration
+        ) + 1
+        print(start_point)
 
         # First clustering part
         logging.info('Starting first clustering ...')

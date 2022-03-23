@@ -377,6 +377,7 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
             nb_changes += 1
             c_int = [k for k, v in dict_id_c.items() if v == indiv][0]
             labels_[c_int] = new_cluster
+    print('New clustering : ', labels_)
     return (df_clust, labels_, nb_changes)
 
 

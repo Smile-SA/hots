@@ -76,7 +76,7 @@ def main(path, k, tau, method):
     # model.solve_model(my_model, 'glpk')
 
     # Plot initial data (containers)
-    if False:
+    if True:
         indivs_cons = ctnr.plot_all_data_all_containers(
             my_instance.df_indiv, sep_time=my_instance.sep_time)
         indivs_cons.savefig(path + '/indivs_cons.svg')
@@ -129,12 +129,12 @@ def main(path, k, tau, method):
 
         cluster_var_matrix = clt.get_sum_cluster_variance(
             cluster_profiles, cluster_vars)
-
         it.results_file.write('\nClustering computing time : %f s\n\n' %
                               (time.time() - clustering_time))
         n_iter = n_iter - 1
 
         # Loop for incrementing clustering (during analysis)
+        # TODO finish
         while n_iter > 0:
             start_point = end_point + 1
             end_point = (
@@ -156,7 +156,7 @@ def main(path, k, tau, method):
             #     df_clust, cluster_profiles, labels_)
 
             n_iter = n_iter - 1
-        input()
+        # input()
 
         # First placement part
         if config['placement']['enable']:
@@ -170,6 +170,11 @@ def main(path, k, tau, method):
 
         # Loops inside analysis time
 
+        # Display analysis results
+        print(my_instance.df_indiv.loc[
+            my_instance.df_indiv[it.tick_field] == 0
+        ])
+        input('Press anything to enter the loop')
         # Loops for evaluation
         if method in ['loop', 'loop_v2', 'loop_kmeans']:
             # loop 'streaming' progress

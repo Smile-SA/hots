@@ -350,7 +350,7 @@ def get_far_container(c1: str, c2: str,
 
 
 def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: List,
-                      dict_id_c: Dict) -> (pd.DataFrame, List, int):
+                      dict_id_c: Dict, tol_open_clust: float) -> (pd.DataFrame, List, int):
     """Adjust the clustering with individuals to move to the closest cluster."""
     nb_changes = 0
     df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
@@ -359,6 +359,9 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
         min_dist = float('inf')
         new_cluster = -1
         for cluster in range(len(profiles)):
+            print(min_dist, cluster, norm(
+                df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
+            ))
             if norm(
                 df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
             ) < min_dist:
@@ -366,6 +369,14 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
                     df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
                 )
                 new_cluster = cluster
+        if min_dist >= tol_open_clust:
+            print('We open a new cluster')
+            new_cluster = cluster + 1
+            profiles = np.append(
+                profiles,
+                [df_clust.loc[indiv].drop('cluster').values],
+                axis=0)
+
         if new_cluster != df_clust.loc[indiv, 'cluster']:
             it.results_file.write('%s changes cluster : from %d to %d\n' % (
                 indiv, df_clust.loc[indiv, 'cluster'], new_cluster))

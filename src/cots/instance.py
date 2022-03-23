@@ -85,11 +85,12 @@ class Instance:
                                         (self.window_duration / self.time)),
                                     '\n'])
 
-    def print_times(self):
+    def print_times(self, tick: int):
         """Print time informations."""
         print('Total time : ', self.time)
         print('Window duration : ', self.window_duration)
         print('Separation time : ', self.sep_time)
+        print('Ticks : ', tick)
 
     def percentage_to_timestamp(self, config: Dict):
         """Transform percentage config time to timestamp."""
@@ -102,7 +103,7 @@ class Instance:
         )
         self.sep_time = self.df_indiv[it.tick_field].min() + sep_nb_data - 1
         if config['loop']['tick'] == 'default':
-            config['loop']['tick'] = self.window_duration - 1
+            config['loop']['tick'] = self.window_duration
         else:
             config['loop']['tick'] = math.floor(
                 self.time * int(config['loop']['tick']) / 100
@@ -114,8 +115,8 @@ class Instance:
             self.sep_time = 1
         if config['loop']['tick'] <= 0:
             config['loop']['tick'] = 1
-        if self.window_duration == config['loop']['tick']:
-            self.window_duration += 1
+        # if self.window_duration == config['loop']['tick']:
+        #     self.window_duration += 1
 
     def get_node_from_container(self, container_id: str) -> str:
         """Get node ID from container ID."""

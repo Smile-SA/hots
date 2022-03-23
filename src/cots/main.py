@@ -69,7 +69,7 @@ def main(path, k, tau, method):
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
     my_instance = Instance(path, config)
     it.results_file.write('Method used : %s\n' % method)
-    my_instance.print_times()
+    my_instance.print_times(config['loop']['tick'])
 
     # Use pyomo model => to be fully applied after tests
     # my_model = model.create_model(config['optimization']['model'], my_instance)
@@ -200,6 +200,7 @@ def main(path, k, tau, method):
     elif method == 'iter-consol':
         place.allocation_spread(my_instance)
     if method in ['heur', 'spread', 'iter-consol']:
+        # TODO adapt after 'progress_time_noloop' changed
         (df_host_evo, nb_overloads) = progress_time_noloop(
             my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
     total_method_time = time.time() - total_method_time
@@ -286,11 +287,12 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         cluster_profiles
     )
 
-    tmin = my_instance.sep_time - tick
+    tmin = my_instance.sep_time - (my_instance.window_duration - 1)
     if mode == 'event':
         tmax = my_instance.df_indiv[it.tick_field].max()
     else:
         tmax = my_instance.sep_time
+
     clustering_dual_values = {}
     placement_dual_values = {}
 
@@ -314,8 +316,11 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         # TODO not fully tested (replace containers)
         if loop_nb > 1:
             temp_time = time.time()
-            (temp_df_host, nb_overload) = progress_time_noloop(
-                my_instance, 'local', tmin, tmax)
+            (temp_df_host, nb_overload, loop_nb,
+             nb_clust_changes, nb_place_changes) = progress_time_noloop(
+                my_instance, 'local', tmin, tmax, labels_, loop_nb,
+                constraints_dual, clustering_dual_values, placement_dual_values,
+                tol_clust, tol_move_clust, tol_place, tol_move_place)
             df_host_evo = df_host_evo.append(
                 temp_df_host[~temp_df_host[it.tick_field].isin(
                     df_host_evo[it.tick_field].unique())], ignore_index=True)
@@ -333,6 +338,9 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         u = clt.build_adjacency_matrix(labels_)
         v = place.build_placement_adj_matrix(
             working_df_indiv, my_instance.dict_id_c)
+
+        print(working_df_indiv)
+        print(tmin, tmax)
 
         if loop_nb == 1:
             logging.info('Evaluation of problems with initial solutions')
@@ -374,6 +382,12 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             placement_dual_values = mc.fill_constraints_dual_values(
                 cplex_model.relax_mdl, constraints_dual
             )
+
+            print('End first (pre-)loop')
+            print(clustering_dual_values)
+            print(cluster_profiles)
+            print(placement_dual_values)
+            input()
             if mode == 'event':
                 (temp_df_host, nb_overload, loop_nb,
                  nb_clust_changes, nb_place_changes) = progress_time_noloop(

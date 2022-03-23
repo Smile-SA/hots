@@ -187,6 +187,7 @@ def main(path, k, tau, method):
                 config['loop']['constraints_dual'],
                 config['loop']['tol_dual_clust'],
                 config['loop']['tol_move_clust'],
+                config['loop']['tol_open_clust'],
                 config['loop']['tol_dual_place'],
                 config['loop']['tol_move_place'],
                 config['loop']['tol_step'],
@@ -270,7 +271,7 @@ def main(path, k, tau, method):
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    labels_: List, mode: str, tick: int,
                    constraints_dual: List,
-                   tol_clust: float, tol_move_clust: float,
+                   tol_clust: float, tol_move_clust: float, tol_open_clust: float,
                    tol_place: float, tol_move_place: float, tol_step: float,
                    method: str, df_host_evo: pd.DataFrame
                    ) -> (plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int):
@@ -427,7 +428,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 my_instance, working_df_indiv,
                 w, u, v, dv,
                 constraints_dual, clustering_dual_values, placement_dual_values,
-                tol_clust, tol_move_clust, tol_place, tol_move_place,
+                tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
                 df_clust, cluster_profiles, labels_
             )
 
@@ -579,7 +580,7 @@ def eval_sols(
         my_instance: Instance, working_df_indiv: pd.DataFrame,
         w: np.array, u, v, dv,
         constraints_dual, clustering_dual_values, placement_dual_values,
-        tol_clust, tol_move_clust, tol_place, tol_move_place,
+        tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
         df_clust, cluster_profiles, labels_,
         method: str = 'loop'
 ):
@@ -603,7 +604,7 @@ def eval_sols(
             my_instance, working_df_indiv,
             w, u, v, dv,
             constraints_dual, clustering_dual_values, placement_dual_values,
-            tol_clust, tol_move_clust, tol_place, tol_move_place,
+            tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
             df_clust, cluster_profiles, labels_)
 
 
@@ -611,7 +612,7 @@ def eval_sols_old(
         my_instance: Instance, working_df_indiv: pd.DataFrame,
         w: np.array, u, v, dv,
         constraints_dual, clustering_dual_values, placement_dual_values,
-        tol_clust, tol_move_clust, tol_place, tol_move_place,
+        tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
         df_clust, cluster_profiles, labels_):
     """Evaluate and update solutions using old method."""
     # evaluate clustering
@@ -619,7 +620,7 @@ def eval_sols_old(
         clustering_dual_values) = eval_clustering(
         my_instance, working_df_indiv,
         w, u, clustering_dual_values, constraints_dual,
-        tol_clust, tol_move_clust,
+        tol_clust, tol_move_clust, tol_open_clust,
         df_clust, cluster_profiles, labels_)
 
     # evaluate placement
@@ -760,7 +761,7 @@ def eval_sols_new(
 def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
                     w: np.array, u: np.array,
                     clustering_dual_values: Dict, constraints_dual: Dict,
-                    tol_clust: float, tol_move_clust: float,
+                    tol_clust: float, tol_move_clust: float, tol_open_clust: float,
                     df_clust: pd.DataFrame, cluster_profiles: np.array, labels_: List) -> np.array:
     """Evaluate current clustering solution and update it if needed."""
     nb_clust_changes_loop = 0
@@ -795,7 +796,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         time_change_clust = time.time()
         (df_clust, labels_, nb_clust_changes_loop) = clt.change_clustering(
             moving_containers, df_clust, labels_,
-            my_instance.dict_id_c)
+            my_instance.dict_id_c, tol_open_clust * ics)
         u = clt.build_adjacency_matrix(labels_)
         print('Time changing clustering : %f s' % (time.time() - time_change_clust))
         (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)

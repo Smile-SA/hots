@@ -1055,17 +1055,25 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                         ct.dual_value > tol * mdl.objective_value
             ):
                 indivs = re.findall(r'\d+\.*', ct.name)
-                print(indivs)
-                print(ct.dual_value)
-                print(constraints_dual_values[ct.name])
                 conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
 
     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
     while len(list_indivs) > 1:
-        print(list_indivs)
         (indiv, occur) = list_indivs[0]
-        print(indiv, occur)
         if occur > 1:
+            it = 1
+            w_deg = conflict_graph.degree(indiv, weight='weight')
+            (indiv_bis, occur_bis) = list_indivs[it]
+            while occur_bis == occur:
+                w_deg_bis = conflict_graph.degree(indiv_bis, weight='weight')
+                if w_deg < w_deg_bis:
+                    w_deg = w_deg_bis
+                    indiv = indiv_bis
+                it += 1
+                if it >= len(list_indivs):
+                    break
+                else:
+                    (indiv_bis, occur_bis) = list_indivs[it]
             mvg_containers.append(dict_id_c[int(indiv)])
             conflict_graph.remove_node(indiv)
         else:
@@ -1084,7 +1092,6 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
             break
         conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph)))
         list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
-        input()
 
     # constraints_kept = dict(sorted(
     #     constraints_kept.items(),

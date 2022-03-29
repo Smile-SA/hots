@@ -369,13 +369,14 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
                     df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
                 )
                 new_cluster = cluster
-        if min_dist >= tol_open_clust:
-            print('We open a new cluster')
-            new_cluster = cluster + 1
-            profiles = np.append(
-                profiles,
-                [df_clust.loc[indiv].drop('cluster').values],
-                axis=0)
+        # TODO not ideal for the moment : consider dynamic threshold for conflict graph
+        # if min_dist >= tol_open_clust:
+        #     print('We open a new cluster')
+        #     new_cluster = cluster + 1
+        #     profiles = np.append(
+        #         profiles,
+        #         [df_clust.loc[indiv].drop('cluster').values],
+        #         axis=0)
 
         if new_cluster != df_clust.loc[indiv, 'cluster']:
             it.results_file.write('%s changes cluster : from %d to %d\n' % (

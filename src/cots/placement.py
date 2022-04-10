@@ -312,6 +312,9 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
                     containers_grouped.append([
                         list_containers_i[c], list_containers_j[c]])
                     done = True
+                    print('Containers %s and %s grouped on node %s' % (
+                        list_containers_i[c], list_containers_j[c], instance.dict_id_n[n]
+                    ))
                 else:
                     i_n += 1
                     if i_n >= min_nodes:
@@ -354,6 +357,9 @@ def allocation_distant_pairwise(
     pbar = tqdm(total=instance.nb_containers)
     containers_grouped = []
 
+    print('matrix for placement heuristic :')
+    print(labels_)
+    print(cluster_var_matrix)
     while not stop:
         # no cluster remaining -> stop allocation
         if (c_it == 0):
@@ -383,6 +389,7 @@ def allocation_distant_pairwise(
             list_containers_j = [
                 instance.dict_id_c[u] for u, value in
                 enumerate(labels_) if value == j]
+            print(valid_idx, min_idx)
             it = colocalize_clusters(list_containers_i, list_containers_j,
                                      containers_grouped, instance, total_time,
                                      min_nodes, conso_nodes, pbar, n)
@@ -640,7 +647,7 @@ def move_list_containers(mvg_conts: List, instance: Instance,
 def move_container(mvg_cont: int, instance: Instance,
                    tmin: int, tmax: int, old_id: str):
     """Move `mvg_cont` to another node."""
-    print('Moving container :', mvg_cont)
+    print('Moving container :', instance.dict_id_c[mvg_cont])
     working_df_indiv = instance.df_indiv[
         (instance.
          df_indiv[it.tick_field] >= tmin) & (
@@ -663,6 +670,7 @@ def move_container(mvg_cont: int, instance: Instance,
     new_n = None
     min_var = float('inf')
     for node in nodes:
+        print('checking with node ', node)
         node_data = instance.df_host.loc[
             (instance.df_host[it.tick_field] >= tmin) & (
                 instance.df_host[it.tick_field] <= tmax) & (
@@ -673,13 +681,15 @@ def move_container(mvg_cont: int, instance: Instance,
         )[it.metrics[0]].sum().to_numpy()
         # if n_int >= nb_open_nodes:
         #     break
+        print(np.all(np.less((node_data + cons_c), cap_node)))
+        print((node_data + cons_c).var())
         if (np.all(np.less((node_data + cons_c), cap_node))) and (
                 (node_data + cons_c).var() < min_var):
             new_n = node
             min_var = (node_data + cons_c).var()
         n_int += 1
     if new_n is None:
-        print('Impossible de move %s on another existing node.' % instance.dict_id_c[mvg_cont])
+        print('Impossible to move %s on another existing node.' % instance.dict_id_c[mvg_cont])
         print('We need to open a new node')
         nb_open_nodes += 1
         n_int += 1

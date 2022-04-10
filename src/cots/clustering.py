@@ -325,18 +325,18 @@ def get_cluster_balance(df_clust: pd.DataFrame):
 def get_far_container(c1: str, c2: str,
                       df_clust: pd.DataFrame, profiles: np.array) -> str:
     """Get the farthest container between c1 and c2 compared to profile."""
-    # print('distance c1')
-    # print(df_clust.loc[c1].drop('cluster').values
-    #       - profiles[int(df_clust.loc[c1]['cluster'])])
-    # print(norm(
-    #     df_clust.loc[c1].drop('cluster').values
-    #     - profiles[int(df_clust.loc[c1]['cluster'])]))
-    # print('distance c2')
-    # print(df_clust.loc[c2].drop('cluster').values
-    #       - profiles[int(df_clust.loc[c2]['cluster'])])
-    # print(norm(
-    #     df_clust.loc[c2].drop('cluster').values
-    #     - profiles[int(df_clust.loc[c2]['cluster'])]))
+    print('distance ', c1)
+    print(df_clust.loc[c1].drop('cluster').values
+          - profiles[int(df_clust.loc[c1]['cluster'])])
+    print(norm(
+        df_clust.loc[c1].drop('cluster').values
+        - profiles[int(df_clust.loc[c1]['cluster'])]))
+    print('distance ', c2)
+    print(df_clust.loc[c2].drop('cluster').values
+          - profiles[int(df_clust.loc[c2]['cluster'])])
+    print(norm(
+        df_clust.loc[c2].drop('cluster').values
+        - profiles[int(df_clust.loc[c2]['cluster'])]))
     if norm(
         df_clust.loc[c1].drop('cluster').values
         - profiles[int(df_clust.loc[c1]['cluster'])]) >= norm(
@@ -358,6 +358,7 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
     df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
     profiles = get_cluster_mean_profile(df_clust_new)
     for indiv in mvg_containers:
+        print('Dealing with indiv ', indiv)
         min_dist = float('inf')
         new_cluster = -1
         for cluster in range(len(profiles)):
@@ -379,7 +380,7 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
         #         profiles,
         #         [df_clust.loc[indiv].drop('cluster').values],
         #         axis=0)
-
+        print(new_cluster)
         if new_cluster != df_clust.loc[indiv, 'cluster']:
             it.results_file.write('%s changes cluster : from %d to %d\n' % (
                 indiv, df_clust.loc[indiv, 'cluster'], new_cluster))

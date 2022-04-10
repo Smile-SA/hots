@@ -1057,6 +1057,7 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                 indivs = re.findall(r'\d+\.*', ct.name)
                 conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
 
+    print(nx.to_pandas_edgelist(conflict_graph))
     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
     while len(list_indivs) > 1:
         (indiv, occur) = list_indivs[0]
@@ -1086,6 +1087,7 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                 df_clust, profiles
             )
             mvg_containers.append(mvg_indiv)
+            print('Added %s in moving containers' % mvg_indiv)
             conflict_graph.remove_node(indiv)
             conflict_graph.remove_node(other_indiv)
         if len(mvg_containers) >= (nb_containers * tol_move):
@@ -1316,11 +1318,24 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                 indivs = re.findall(r'\d+\.*', ct.name)
                 conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
 
+    print(nx.to_pandas_edgelist(conflict_graph))
     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
     while len(list_indivs) > 1:
-        # print(conflict_graph.edges.data())
         (indiv, occur) = list_indivs[0]
         if occur > 1:
+            it = 1
+            w_deg = conflict_graph.degree(indiv, weight='weight')
+            (indiv_bis, occur_bis) = list_indivs[it]
+            while occur_bis == occur:
+                w_deg_bis = conflict_graph.degree(indiv_bis, weight='weight')
+                if w_deg < w_deg_bis:
+                    w_deg = w_deg_bis
+                    indiv = indiv_bis
+                it += 1
+                if it >= len(list_indivs):
+                    break
+                else:
+                    (indiv_bis, occur_bis) = list_indivs[it]
             mvg_containers.append(int(indiv))
             conflict_graph.remove_node(indiv)
         else:
@@ -1334,12 +1349,38 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
             )
             int_indiv = [k for k, v in dict_id_c.items() if v == mvg_indiv][0]
             mvg_containers.append(int(int_indiv))
+            print('Added %s in moving containers' % mvg_indiv)
             conflict_graph.remove_node(indiv)
             conflict_graph.remove_node(other_indiv)
         if len(mvg_containers) >= (nb_containers * tol_move):
             break
         conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph)))
         list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+
+    # list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    # while len(list_indivs) > 1:
+    #     # print(conflict_graph.edges.data())
+    #     (indiv, occur) = list_indivs[0]
+    #     if occur > 1:
+    #         mvg_containers.append(int(indiv))
+    #         conflict_graph.remove_node(indiv)
+    #     else:
+    #         other_indiv = list(conflict_graph.edges(indiv))[0][1]
+    #         if other_indiv == indiv:
+    #             other_indiv = list(conflict_graph.edges(indiv))[0][0]
+    #         mvg_indiv = get_container_tomove(
+    #             dict_id_c[int(indiv)],
+    #             dict_id_c[int(other_indiv)],
+    #             working_df
+    #         )
+    #         int_indiv = [k for k, v in dict_id_c.items() if v == mvg_indiv][0]
+    #         mvg_containers.append(int(int_indiv))
+    #         conflict_graph.remove_node(indiv)
+    #         conflict_graph.remove_node(other_indiv)
+    #     if len(mvg_containers) >= (nb_containers * tol_move):
+    #         break
+    #     conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph)))
+    #     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
 
     # constraints_kept = dict(sorted(
     #     constraints_kept.items(),
@@ -1383,6 +1424,10 @@ def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
     c2_cons = working_df.loc[
         working_df[it.indiv_field] == c2
     ][it.metrics[0]].to_numpy()
+    print('new var - ', c1)
+    print((node_data - c1_cons).var())
+    print('new var - ', c2)
+    print((node_data - c2_cons).var())
     if (node_data - c1_cons).var() < (node_data - c2_cons).var():
         return c1
     else:

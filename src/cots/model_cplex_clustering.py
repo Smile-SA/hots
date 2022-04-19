@@ -1040,7 +1040,7 @@ def dual_changed(mdl: Model, names: List,
 def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                                 tol: float, tol_move: float, nb_containers: int,
                                 dict_id_c: Dict, df_clust: pd.DataFrame, profiles: np.array
-                                ) -> List:
+                                ) -> Tuple[List, int, int]:
     """Get the list of moving containers from constraints dual values."""
     mvg_containers = []
     conflict_graph = nx.Graph()
@@ -1056,6 +1056,8 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                 conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
 
     # print(nx.to_pandas_edgelist(conflict_graph))
+    graph_nodes = conflict_graph.number_of_nodes()
+    graph_edges = conflict_graph.number_of_edges()
     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
     while len(list_indivs) > 1:
         (indiv, occur) = list_indivs[0]
@@ -1153,7 +1155,7 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
     # it.clustering_file.write(str(violated_constraints))
     # it.clustering_file.write('\n\n')
 
-    return mvg_containers
+    return (mvg_containers, graph_nodes, graph_edges)
 
 
 def get_mvg_conts_from_constraints(constraints_rm: List, dict_id_c: Dict,
@@ -1301,7 +1303,7 @@ def set_u_constraints_rm(constraints_rm: List, u: np.array):
 def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                           tol: float, tol_move: float, nb_containers: int,
                           working_df: pd.DataFrame, dict_id_c: Dict
-                          ) -> List:
+                          ) -> Tuple[List, int, int]:
     """Get the list of moving containers from constraints dual values."""
     mvg_containers = []
     conflict_graph = nx.Graph()
@@ -1316,6 +1318,8 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                 conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
 
     # print(nx.to_pandas_edgelist(conflict_graph))
+    graph_nodes = conflict_graph.number_of_nodes()
+    graph_edges = conflict_graph.number_of_edges()
     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
     while len(list_indivs) > 1:
         (indiv, occur) = list_indivs[0]
@@ -1404,7 +1408,7 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
     #         mvg_containers.append(int(int_indiv))
     #         if len(mvg_containers) >= (nb_containers * tol_move):
     #             break
-    return mvg_containers
+    return (mvg_containers, graph_nodes, graph_edges)
 
 
 def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:

@@ -115,7 +115,8 @@ def set_loop_results() -> pd.DataFrame:
     """Create the dataframe for loop results."""
     return pd.DataFrame(columns=[
         'num_loop', 'init_delta',
-        'clust_changes', 'place_changes',
+        'clust_conf_nodes', 'clust_conf_edges', 'clust_changes',
+        'place_conf_nodes', 'place_conf_edges', 'place_changes',
         'end_delta', 'loop_time'
     ])
 

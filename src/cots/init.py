@@ -85,7 +85,8 @@ def init_algo_dfs() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     return (spread_df, heur_df, loop_df)
 
 
-def read_params(path: str, k: int, tau: int, method: str, param: str) -> Dict:
+def read_params(path: str, k: int, tau: int, method: str,
+                param: str, output_path: str) -> Dict:
     """Get parameters from file and build the Dict config object."""
     p_path = Path(path)
     if param is not None:
@@ -103,8 +104,11 @@ def read_params(path: str, k: int, tau: int, method: str, param: str) -> Dict:
         config['loop']['tick'] = tau
     else:
         tau = config['analysis']['window_duration']
-    output_path = Path(path + 'k' + str(
-        config['clustering']['nb_clusters']) + '_' + 'tau' + str(
+    if output_path is not None:
+        output_path = Path(output_path)
+    else:
+        output_path = Path(path + 'k' + str(
+            config['clustering']['nb_clusters']) + '_' + 'tau' + str(
             tau) + '_' + method)
     output_path.mkdir(parents=True, exist_ok=True)
     define_globals(output_path, config)

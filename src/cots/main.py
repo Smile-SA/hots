@@ -50,7 +50,8 @@ from .instance import Instance
 @click.option('-k', required=False, type=int, help='Number of clusters')
 @click.option('-t', '--tau', required=False, type=int, help='Time window size')
 @click.option('-m', '--method', required=False, type=str, default='loop', help='Method used')
-def main(path, k, tau, method):
+@click.option('-p', '--param', required=False, type=str, help='Use a specific parameter file')
+def main(path, k, tau, method, param):
     """Use method to propose a placement solution for micro-services adjusted in time."""
     # Initialization part
     main_time = time.time()
@@ -59,7 +60,7 @@ def main(path, k, tau, method):
         path += '/'
 
     # TODO what if we want tick < tau ?
-    (config, output_path) = it.read_params(path, k, tau, method)
+    (config, output_path) = it.read_params(path, k, tau, method, param)
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')

@@ -18,10 +18,9 @@ allocation, evaluation, access to optimization model...).
 # print(__doc__)
 
 import logging
-import time
-from typing import Dict, List
-
 import math
+import time
+from typing import Dict, List, Tuple
 
 import click
 
@@ -274,7 +273,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    tol_clust: float, tol_move_clust: float, tol_open_clust: float,
                    tol_place: float, tol_move_place: float, tol_step: float,
                    method: str, df_host_evo: pd.DataFrame
-                   ) -> (plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int):
+                   ) -> Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]:
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
         my_instance.df_indiv, my_instance.dict_id_n, my_instance.sep_time,
@@ -516,7 +515,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 def progress_time_noloop(
         instance: Instance, fixing: str, tmin: int, tmax: int, labels_, loop_nb,
         constraints_dual, clustering_dual_values, placement_dual_values,
-        tol_clust, tol_move_clust, tol_place, tol_move_place) -> (pd.DataFrame, int):
+        tol_clust, tol_move_clust, tol_place, tol_move_place) -> Tuple[pd.DataFrame, int]:
     """We progress in time without performing the loop, checking node capacities."""
     df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
     nb_overload = 0

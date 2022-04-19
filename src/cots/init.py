@@ -85,10 +85,12 @@ def init_algo_dfs() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     return (spread_df, heur_df, loop_df)
 
 
-def read_params(path: str, k: int, tau: int, method: str) -> Dict:
+def read_params(path: str, k: int, tau: int, method: str, param: str) -> Dict:
     """Get parameters from file and build the Dict config object."""
     p_path = Path(path)
-    if Path(p_path / 'params.json').exists():
+    if param is not None:
+        config_path = Path(param)
+    elif Path(p_path / 'params.json').exists():
         config_path = p_path / 'params.json'
     else:
         config_path = 'tests/params_default.json'

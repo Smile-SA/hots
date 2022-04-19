@@ -10,7 +10,7 @@ spectral, custom spectral.
 
 import multiprocessing as mp
 from itertools import combinations
-from typing import Callable, Dict, List
+from typing import Callable, Dict, List, Tuple
 
 import networkx as nx
 
@@ -36,7 +36,7 @@ from .instance import Instance
 
 # Functions definitions #
 # TODO add mem cols
-def matrix_line(args: (str, pd.DataFrame)) -> (int, Dict):
+def matrix_line(args: Tuple[str, pd.DataFrame]) -> Tuple[int, Dict]:
     """Build one line for clustering matrix."""
     key, data = args
     line = {}
@@ -46,7 +46,7 @@ def matrix_line(args: (str, pd.DataFrame)) -> (int, Dict):
     return (key, line)
 
 
-def build_matrix_indiv_attr(df: pd.DataFrame) -> (pd.DataFrame, Dict):
+def build_matrix_indiv_attr(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict]:
     """Build entire clustering matrix."""
     print('Setup for clustering ...')
     list_args = list(df.groupby(df[it.indiv_field]))
@@ -323,18 +323,6 @@ def get_cluster_balance(df_clust: pd.DataFrame):
 def get_far_container(c1: str, c2: str,
                       df_clust: pd.DataFrame, profiles: np.array) -> str:
     """Get the farthest container between c1 and c2 compared to profile."""
-    print('distance ', c1)
-    print(df_clust.loc[c1].drop('cluster').values
-          - profiles[int(df_clust.loc[c1]['cluster'])])
-    print(norm(
-        df_clust.loc[c1].drop('cluster').values
-        - profiles[int(df_clust.loc[c1]['cluster'])]))
-    print('distance ', c2)
-    print(df_clust.loc[c2].drop('cluster').values
-          - profiles[int(df_clust.loc[c2]['cluster'])])
-    print(norm(
-        df_clust.loc[c2].drop('cluster').values
-        - profiles[int(df_clust.loc[c2]['cluster'])]))
     if norm(
         df_clust.loc[c1].drop('cluster').values
         - profiles[int(df_clust.loc[c1]['cluster'])]) >= norm(
@@ -350,19 +338,16 @@ def get_far_container(c1: str, c2: str,
 
 
 def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: List,
-                      dict_id_c: Dict, tol_open_clust: float) -> (pd.DataFrame, List, int):
+                      dict_id_c: Dict, tol_open_clust: float) -> Tuple[pd.DataFrame, List, int]:
     """Adjust the clustering with individuals to move to the closest cluster."""
     nb_changes = 0
     df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
     profiles = get_cluster_mean_profile(df_clust_new)
     for indiv in mvg_containers:
-        print('Dealing with indiv ', indiv)
+        # print('Dealing with indiv ', indiv)
         min_dist = float('inf')
         new_cluster = -1
         for cluster in range(len(profiles)):
-            print(min_dist, cluster, norm(
-                df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
-            ))
             if norm(
                 df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
             ) < min_dist:
@@ -378,7 +363,6 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
         #         profiles,
         #         [df_clust.loc[indiv].drop('cluster').values],
         #         axis=0)
-        print(new_cluster)
         if new_cluster != df_clust.loc[indiv, 'cluster']:
             it.results_file.write('%s changes cluster : from %d to %d\n' % (
                 indiv, df_clust.loc[indiv, 'cluster'], new_cluster))
@@ -388,7 +372,7 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
             nb_changes += 1
             c_int = [k for k, v in dict_id_c.items() if v == indiv][0]
             labels_[c_int] = new_cluster
-    print('New clustering : ', labels_)
+    # print('New clustering : ', labels_)
     return (df_clust, labels_, nb_changes)
 
 
@@ -396,7 +380,7 @@ def change_clustering_maxkcut(
     conflict_graph: nx.Graph,
     df_clust: pd.DataFrame, labels_: List,
     dict_id_c: Dict
-) -> (pd.DataFrame, List, int):
+) -> Tuple[pd.DataFrame, List, int]:
     """Change current clustering with max-k-cut on moving containers."""
     nb_changes = 0
     df_clust_new = df_clust

@@ -103,7 +103,7 @@ class Instance:
         )
         self.sep_time = self.df_indiv[it.tick_field].min() + sep_nb_data - 1
         if config['loop']['tick'] == 'default':
-            config['loop']['tick'] = self.window_duration
+            config['loop']['tick'] = self.window_duration - 1
         else:
             config['loop']['tick'] = math.floor(
                 self.time * int(config['loop']['tick']) / 100

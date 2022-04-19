@@ -404,6 +404,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             # )
 
             (nb_clust_changes_loop, nb_place_changes_loop,
+             clust_conf_nodes, clust_conf_edges,
+             place_conf_nodes, place_conf_edges,
              clustering_dual_values, placement_dual_values,
              df_clust, cluster_profiles, labels_) = eval_sols(
                 my_instance, working_df_indiv,
@@ -447,11 +449,16 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             it.results_file.write('Loop time : %f s\n' % loop_time)
             total_loop_time += loop_time
 
+            # TODO append deprecated
             # Save loop indicators in df
             it.loop_results = it.loop_results.append({
                 'num_loop': int(loop_nb),
                 'init_delta': init_loop_obj_delta,
+                'clust_conf_nodes': clust_conf_nodes,
+                'clust_conf_edges': clust_conf_edges,
                 'clust_changes': int(nb_clust_changes_loop),
+                'place_conf_nodes': place_conf_nodes,
+                'place_conf_edges': place_conf_edges,
                 'place_changes': int(nb_place_changes_loop),
                 'end_delta': end_loop_obj_delta,
                 'loop_time': loop_time
@@ -598,7 +605,8 @@ def eval_sols_old(
     """Evaluate and update solutions using old method."""
     # evaluate clustering
     (dv, nb_clust_changes_loop,
-        clustering_dual_values) = eval_clustering(
+        clustering_dual_values,
+        clust_conf_nodes, clust_conf_edges) = eval_clustering(
         my_instance, working_df_indiv,
         w, u, clustering_dual_values, constraints_dual,
         tol_clust, tol_move_clust, tol_open_clust,
@@ -606,7 +614,8 @@ def eval_sols_old(
 
     # evaluate placement
     (nb_place_changes_loop,
-        placement_dual_values) = eval_placement(
+        placement_dual_values,
+        place_conf_nodes, place_conf_edges) = eval_placement(
         my_instance, working_df_indiv,
         w, u, v, dv,
         placement_dual_values, constraints_dual,
@@ -615,6 +624,8 @@ def eval_sols_old(
 
     return (
         nb_clust_changes_loop, nb_place_changes_loop,
+        clust_conf_nodes, clust_conf_edges,
+        place_conf_nodes, place_conf_edges,
         clustering_dual_values, placement_dual_values,
         df_clust, cluster_profiles, labels_
     )
@@ -766,7 +777,9 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
 
     logging.info('Checking for changes in clustering dual values ...')
     # time_get_clust_move = time.time()
-    moving_containers = mc.get_moving_containers_clust(
+    (moving_containers,
+     clust_conflict_nodes,
+     clust_conflict_edges) = mc.get_moving_containers_clust(
         cplex_model.relax_mdl, clustering_dual_values,
         tol_clust, tol_move_clust,
         my_instance.nb_containers, my_instance.dict_id_c,
@@ -831,7 +844,8 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     dv = ctnr.build_var_delta_matrix_cluster(
         df_clust, cluster_var_matrix, my_instance.dict_id_c)
 
-    return (dv, nb_clust_changes_loop, clustering_dual_values)
+    return (dv, nb_clust_changes_loop, clustering_dual_values,
+            clust_conflict_nodes, clust_conflict_edges)
 
 
 def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
@@ -853,11 +867,15 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     # print('Init placement lp solution : ', cplex_model.relax_mdl.objective_value)
     moving_containers = []
     nb_place_changes_loop = 0
+    place_conf_nodes = 0
+    place_conf_edges = 0
 
     if nb_clust_changes_loop > 0:
         logging.info('Checking for changes in placement dual values ...')
         time_get_move = time.time()
-        moving_containers = mc.get_moving_containers(
+        (moving_containers,
+         place_conf_nodes,
+         place_conf_edges) = mc.get_moving_containers(
             cplex_model.relax_mdl, placement_dual_values,
             tol_place, tol_move_place, my_instance.nb_containers,
             working_df_indiv, my_instance.dict_id_c)
@@ -886,7 +904,8 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
         else:
             logging.info('No container to move : we do nothing ...\n')
 
-    return (nb_place_changes_loop, placement_dual_values)
+    return (nb_place_changes_loop, placement_dual_values,
+            place_conf_nodes, place_conf_edges)
 
 
 def eval_clustering_v2(my_instance: Instance, working_df_indiv: pd.DataFrame,

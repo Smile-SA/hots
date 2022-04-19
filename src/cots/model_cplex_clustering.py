@@ -14,7 +14,7 @@ import math
 import re
 import time
 from itertools import combinations, product
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from docplex.mp.linear import LinearExpr
 from docplex.mp.model import Model
@@ -930,7 +930,7 @@ class CPXInstance:
 
 def get_obj_value_heuristic(df_indiv: pd.DataFrame,
                             t_min: int = None,
-                            t_max: int = None) -> (int, float):
+                            t_max: int = None) -> Tuple[int, float]:
     """Get objective value of current solution (max delta)."""
     t_min = t_min or df_indiv[it.tick_field].min()
     t_max = t_max or df_indiv[it.tick_field].max()
@@ -962,7 +962,7 @@ def get_obj_value_heuristic(df_indiv: pd.DataFrame,
 
 def get_obj_value_host(df_host: pd.DataFrame,
                        t_min: int = None,
-                       t_max: int = None) -> (int, float):
+                       t_max: int = None) -> Tuple[int, float]:
     """Get objective value of current solution (max delta)."""
     t_min = t_min or df_host[it.tick_field].min()
     t_max = t_max or df_host[it.tick_field].max()
@@ -1044,11 +1044,9 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
     """Get the list of moving containers from constraints dual values."""
     mvg_containers = []
     conflict_graph = nx.Graph()
-    i = 0
     for ct in mdl.iter_linear_constraints():
         if (ct.name in constraints_dual_values) and (
                 constraints_dual_values[ct.name] > 0.0):
-            i += 1
             if (ct.dual_value > (
                     constraints_dual_values[ct.name]
                     + tol * constraints_dual_values[ct.name])) or (
@@ -1057,7 +1055,7 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                 indivs = re.findall(r'\d+\.*', ct.name)
                 conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
 
-    print(nx.to_pandas_edgelist(conflict_graph))
+    # print(nx.to_pandas_edgelist(conflict_graph))
     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
     while len(list_indivs) > 1:
         (indiv, occur) = list_indivs[0]
@@ -1087,7 +1085,7 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                 df_clust, profiles
             )
             mvg_containers.append(mvg_indiv)
-            print('Added %s in moving containers' % mvg_indiv)
+            # print('Added %s in moving containers' % mvg_indiv)
             conflict_graph.remove_node(indiv)
             conflict_graph.remove_node(other_indiv)
         if len(mvg_containers) >= (nb_containers * tol_move):
@@ -1307,7 +1305,6 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
     """Get the list of moving containers from constraints dual values."""
     mvg_containers = []
     conflict_graph = nx.Graph()
-    # constraints_kept = {}
     for ct in mdl.iter_linear_constraints():
         if ct.name in constraints_dual_values:
             if (ct.dual_value > (
@@ -1318,7 +1315,7 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                 indivs = re.findall(r'\d+\.*', ct.name)
                 conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
 
-    print(nx.to_pandas_edgelist(conflict_graph))
+    # print(nx.to_pandas_edgelist(conflict_graph))
     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
     while len(list_indivs) > 1:
         (indiv, occur) = list_indivs[0]
@@ -1349,7 +1346,7 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
             )
             int_indiv = [k for k, v in dict_id_c.items() if v == mvg_indiv][0]
             mvg_containers.append(int(int_indiv))
-            print('Added %s in moving containers' % mvg_indiv)
+            # print('Added %s in moving containers' % mvg_indiv)
             conflict_graph.remove_node(indiv)
             conflict_graph.remove_node(other_indiv)
         if len(mvg_containers) >= (nb_containers * tol_move):
@@ -1424,10 +1421,6 @@ def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
     c2_cons = working_df.loc[
         working_df[it.indiv_field] == c2
     ][it.metrics[0]].to_numpy()
-    print('new var - ', c1)
-    print((node_data - c1_cons).var())
-    print('new var - ', c2)
-    print((node_data - c2_cons).var())
     if (node_data - c1_cons).var() < (node_data - c2_cons).var():
         return c1
     else:

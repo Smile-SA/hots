@@ -15,7 +15,7 @@ Actually, there are 3 differents placement techniques :
 import math
 import random
 from itertools import combinations
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 
@@ -312,9 +312,6 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
                     containers_grouped.append([
                         list_containers_i[c], list_containers_j[c]])
                     done = True
-                    print('Containers %s and %s grouped on node %s' % (
-                        list_containers_i[c], list_containers_j[c], instance.dict_id_n[n]
-                    ))
                 else:
                     i_n += 1
                     if i_n >= min_nodes:
@@ -327,6 +324,7 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
                         df_host_meta[it.host_field] == instance.dict_id_n[n]
                     ][it.metrics[0]].to_numpy()[0]
             n = (n + 1) % min_nodes
+        # TODO pbar.update not working ?
         pbar.update(2)
     return c
 
@@ -357,9 +355,6 @@ def allocation_distant_pairwise(
     pbar = tqdm(total=instance.nb_containers)
     containers_grouped = []
 
-    print('matrix for placement heuristic :')
-    print(labels_)
-    print(cluster_var_matrix)
     while not stop:
         # no cluster remaining -> stop allocation
         if (c_it == 0):
@@ -389,7 +384,6 @@ def allocation_distant_pairwise(
             list_containers_j = [
                 instance.dict_id_c[u] for u, value in
                 enumerate(labels_) if value == j]
-            print(valid_idx, min_idx)
             it = colocalize_clusters(list_containers_i, list_containers_j,
                                      containers_grouped, instance, total_time,
                                      min_nodes, conso_nodes, pbar, n)
@@ -417,6 +411,7 @@ def allocation_distant_pairwise(
             clusters_done_[i] = 1
             clusters_done_[j] = 1
             c_it = c_it - 2
+            pbar.update(len(list_containers_i) + len(list_containers_j))
     pbar.close()
 
 
@@ -580,7 +575,7 @@ def nb_min_nodes(instance: Instance, total_time: int) -> float:
 def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
                             cluster_var_matrix: np.array, labels_: List,
                             min_nodes: int, conso_nodes: np.array,
-                            pbar: tqdm) -> (np.array, np.array):
+                            pbar: tqdm) -> Tuple[np.array, np.array]:
     """Initialize allocation heuristic by co-localizing distant clusters."""
     total_time = instance.sep_time
     lb = 0.0
@@ -670,7 +665,6 @@ def move_container(mvg_cont: int, instance: Instance,
     new_n = None
     min_var = float('inf')
     for node in nodes:
-        print('checking with node ', node)
         node_data = instance.df_host.loc[
             (instance.df_host[it.tick_field] >= tmin) & (
                 instance.df_host[it.tick_field] <= tmax) & (
@@ -679,10 +673,6 @@ def move_container(mvg_cont: int, instance: Instance,
         ].groupby(
             instance.df_host[it.tick_field]
         )[it.metrics[0]].sum().to_numpy()
-        # if n_int >= nb_open_nodes:
-        #     break
-        print(np.all(np.less((node_data + cons_c), cap_node)))
-        print((node_data + cons_c).var())
         if (np.all(np.less((node_data + cons_c), cap_node))) and (
                 (node_data + cons_c).var() < min_var):
             new_n = node

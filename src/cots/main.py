@@ -143,8 +143,6 @@ def main(path, k, tau, method):
                 (my_instance.
                     df_indiv[it.tick_field] >= start_point) & (
                     my_instance.df_indiv[it.tick_field] <= end_point)]
-            print(working_df_indiv)
-            print(df_indiv_clust)
 
             # evaluate clustering
             # (dv, nb_clust_changes_loop,
@@ -155,7 +153,6 @@ def main(path, k, tau, method):
             #     df_clust, cluster_profiles, labels_)
 
             n_iter = n_iter - 1
-        # input()
 
         # First placement part
         if config['placement']['enable']:
@@ -167,13 +164,6 @@ def main(path, k, tau, method):
         else:
             logging.info('We do not perform placement \n')
 
-        # Loops inside analysis time
-
-        # Display analysis results
-        print(my_instance.df_indiv.loc[
-            my_instance.df_indiv[it.tick_field] == 0
-        ])
-        input('Press anything to enter the loop')
         # Loops for evaluation
         if method in ['loop', 'loop_v2', 'loop_kmeans']:
             # loop 'streaming' progress
@@ -339,9 +329,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         v = place.build_placement_adj_matrix(
             working_df_indiv, my_instance.dict_id_c)
 
-        print(working_df_indiv)
-        print(tmin, tmax)
-
         if loop_nb == 1:
             logging.info('Evaluation of problems with initial solutions')
             cplex_model = mc.CPXInstance(working_df_indiv,
@@ -383,11 +370,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 cplex_model.relax_mdl, constraints_dual
             )
 
+            # TODO manage pre-loop ?
             print('End first (pre-)loop')
-            print(clustering_dual_values)
-            print(cluster_profiles)
-            print(placement_dual_values)
-            input()
             if mode == 'event':
                 (temp_df_host, nb_overload, loop_nb,
                  nb_clust_changes, nb_place_changes) = progress_time_noloop(
@@ -475,8 +459,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 'loop_time': loop_time
             }, ignore_index=True)
 
-        print(it.loop_results)
-        print(tmin, tmax, tick)
+        # print(it.loop_results)
+        # print(tmin, tmax, tick)
         # input('\nPress any key to progress in time ...\n')
         tmin += tick
         tmax += tick
@@ -780,16 +764,16 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     logging.info('# Clustering evaluation #')
     logging.info('Solving linear relaxation ...')
     cplex_model.solve(cplex_model.relax_mdl)
-    print('Init clustering lp solution : ', cplex_model.relax_mdl.objective_value)
+    # print('Init clustering lp solution : ', cplex_model.relax_mdl.objective_value)
 
     logging.info('Checking for changes in clustering dual values ...')
-    time_get_clust_move = time.time()
+    # time_get_clust_move = time.time()
     moving_containers = mc.get_moving_containers_clust(
         cplex_model.relax_mdl, clustering_dual_values,
         tol_clust, tol_move_clust,
         my_instance.nb_containers, my_instance.dict_id_c,
         df_clust, cluster_profiles)
-    print('Time get changing clustering : %f s' % (time.time() - time_get_clust_move))
+    # print('Time get changing clustering : %f s' % (time.time() - time_get_clust_move))
     if len(moving_containers) > 0:
         logging.info('Changing clustering ...')
         time_change_clust = time.time()
@@ -800,8 +784,6 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         print('Time changing clustering : %f s' % (time.time() - time_change_clust))
         (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
         it.clustering_file.write(
-            'ICS and ICD after loop change : %f, %f\n' % (ics, icd))
-        print(
             'ICS and ICD after loop change : %f, %f\n' % (ics, icd))
         it.clustering_file.write(
             'Loop clustering time : %f s\n' % (time.time() - time_loop_clust))
@@ -830,7 +812,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         clustering_dual_values = mc.fill_constraints_dual_values(
             cplex_model.relax_mdl, constraints_dual
         )
-        print('After changes clustering lp solution : ', cplex_model.relax_mdl.objective_value)
+        # print('After changes clustering lp solution : ', cplex_model.relax_mdl.objective_value)
     else:
         logging.info('Clustering seems still right ...')
         it.results_file.write('Clustering seems still right ...')
@@ -870,7 +852,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     print('Solving linear relaxation ...')
     it.optim_file.write('solve without any change\n')
     cplex_model.solve(cplex_model.relax_mdl)
-    print('Init placement lp solution : ', cplex_model.relax_mdl.objective_value)
+    # print('Init placement lp solution : ', cplex_model.relax_mdl.objective_value)
     moving_containers = []
     nb_place_changes_loop = 0
 
@@ -899,7 +881,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
                                          w=w, u=u, v=v, dv=dv, pb_number=3)
             print('Solving linear relaxation after changes ...')
             cplex_model.solve(cplex_model.relax_mdl)
-            print('After changes placement lp solution : ', cplex_model.relax_mdl.objective_value)
+            # print('After changes placement lp solution : ', cplex_model.relax_mdl.objective_value)
             placement_dual_values = mc.fill_constraints_dual_values(
                 cplex_model.relax_mdl, constraints_dual
             )

@@ -1,11 +1,11 @@
 {
     "analysis": {
-      "window_duration": "33",
-      "sep_time": "34"
+      "window_duration": "20",
+      "sep_time": "21"
     },
     "clustering": {
       "algo": "kmeans",
-      "nb_clusters": 3
+      "nb_clusters": 4
     },
     "data": {
       "individuals_file": "container_usage.csv",

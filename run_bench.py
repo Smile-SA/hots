@@ -25,7 +25,7 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
     kstep = kstep or 1
     taustep = taustep or 1
 
-    output_path = '../bench/thesis_ex_10/'
+    output_path = '../bench/eval_epsilons/random_10n_300i/'
 
     tol_clust_min = 1
     tol_clust_max = 9

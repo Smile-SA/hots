@@ -63,18 +63,9 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
     if not path[-1] == '/':
         path += '/'
 
-    # TODO what if we want tick < tau ?
-    (config, output_path) = it.read_params(path, k, tau, method, param, output)
-    config = spec_params(config, [tolclust, tolplace])
-    logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
-                        format='%(message)s', level=logging.INFO)
-    plt.style.use('bmh')
-
-    # Init containers & nodes data, then Instance
-    logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    my_instance = Instance(path, config)
-    it.results_file.write('Method used : %s\n' % method)
-    my_instance.print_times(config['loop']['tick'])
+    (config, output_path, my_instance) = preprocess(
+        path, k, tau, method, param, output, tolclust, tolplace
+    )
 
     # Use pyomo model => to be fully applied after tests
     # my_model = model.create_model(config['optimization']['model'], my_instance)
@@ -261,6 +252,27 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
     write_main_results()
     it.results_file.write('\nTotal computing time : %f s' % (main_time))
     close_files()
+
+
+def preprocess(
+        path: str, k: int, tau: int, method: str,
+        param: str, output: str, tolclust: float, tolplace: float
+):
+    """Load configuration, data and initialize needed objects."""
+    # TODO what if we want tick < tau ?
+    (config, output_path) = it.read_params(path, k, tau, method, param, output)
+    config = spec_params(config, [tolclust, tolplace])
+    logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
+                        format='%(message)s', level=logging.INFO)
+    plt.style.use('bmh')
+
+    # Init containers & nodes data, then Instance
+    logging.info('Loading data and creating Instance (Instance information are in results file)\n')
+    instance = Instance(path, config)
+    it.results_file.write('Method used : %s\n' % method)
+    instance.print_times(config['loop']['tick'])
+
+    return (config, output_path, instance)
 
 
 # TODO use Dict instead of List for genericity ?

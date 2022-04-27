@@ -422,8 +422,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             # )
 
             (nb_clust_changes_loop, nb_place_changes_loop,
-             clust_conf_nodes, clust_conf_edges,
-             place_conf_nodes, place_conf_edges,
+             clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
+             place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
              clustering_dual_values, placement_dual_values,
              df_clust, cluster_profiles, labels_) = eval_sols(
                 my_instance, working_df_indiv,
@@ -474,9 +474,13 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 'init_delta': init_loop_obj_delta,
                 'clust_conf_nodes': clust_conf_nodes,
                 'clust_conf_edges': clust_conf_edges,
+                'clust_max_deg': clust_max_deg,
+                'clust_mean_deg': clust_mean_deg,
                 'clust_changes': int(nb_clust_changes_loop),
                 'place_conf_nodes': place_conf_nodes,
                 'place_conf_edges': place_conf_edges,
+                'place_max_deg': place_max_deg,
+                'place_mean_deg': place_mean_deg,
                 'place_changes': int(nb_place_changes_loop),
                 'end_delta': end_loop_obj_delta,
                 'loop_time': loop_time
@@ -624,7 +628,8 @@ def eval_sols_old(
     # evaluate clustering
     (dv, nb_clust_changes_loop,
         clustering_dual_values,
-        clust_conf_nodes, clust_conf_edges) = eval_clustering(
+        clust_conf_nodes, clust_conf_edges,
+        clust_max_deg, clust_mean_deg) = eval_clustering(
         my_instance, working_df_indiv,
         w, u, clustering_dual_values, constraints_dual,
         tol_clust, tol_move_clust, tol_open_clust,
@@ -633,7 +638,8 @@ def eval_sols_old(
     # evaluate placement
     (nb_place_changes_loop,
         placement_dual_values,
-        place_conf_nodes, place_conf_edges) = eval_placement(
+        place_conf_nodes, place_conf_edges,
+        place_max_deg, place_mean_deg) = eval_placement(
         my_instance, working_df_indiv,
         w, u, v, dv,
         placement_dual_values, constraints_dual,
@@ -643,7 +649,9 @@ def eval_sols_old(
     return (
         nb_clust_changes_loop, nb_place_changes_loop,
         clust_conf_nodes, clust_conf_edges,
+        clust_max_deg, clust_mean_deg,
         place_conf_nodes, place_conf_edges,
+        place_max_deg, place_mean_deg,
         clustering_dual_values, placement_dual_values,
         df_clust, cluster_profiles, labels_
     )
@@ -797,7 +805,8 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     # time_get_clust_move = time.time()
     (moving_containers,
      clust_conflict_nodes,
-     clust_conflict_edges) = mc.get_moving_containers_clust(
+     clust_conflict_edges,
+     clust_max_deg, clust_mean_deg) = mc.get_moving_containers_clust(
         cplex_model.relax_mdl, clustering_dual_values,
         tol_clust, tol_move_clust,
         my_instance.nb_containers, my_instance.dict_id_c,
@@ -863,7 +872,8 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         df_clust, cluster_var_matrix, my_instance.dict_id_c)
 
     return (dv, nb_clust_changes_loop, clustering_dual_values,
-            clust_conflict_nodes, clust_conflict_edges)
+            clust_conflict_nodes, clust_conflict_edges,
+            clust_max_deg, clust_mean_deg)
 
 
 def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
@@ -887,13 +897,16 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     nb_place_changes_loop = 0
     place_conf_nodes = 0
     place_conf_edges = 0
+    place_max_deg = 0
+    place_mean_deg = 0
 
     if nb_clust_changes_loop > 0:
         logging.info('Checking for changes in placement dual values ...')
         time_get_move = time.time()
         (moving_containers,
          place_conf_nodes,
-         place_conf_edges) = mc.get_moving_containers(
+         place_conf_edges,
+         place_max_deg, place_mean_deg) = mc.get_moving_containers(
             cplex_model.relax_mdl, placement_dual_values,
             tol_place, tol_move_place, my_instance.nb_containers,
             working_df_indiv, my_instance.dict_id_c)
@@ -923,7 +936,8 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
             logging.info('No container to move : we do nothing ...\n')
 
     return (nb_place_changes_loop, placement_dual_values,
-            place_conf_nodes, place_conf_edges)
+            place_conf_nodes, place_conf_edges,
+            place_max_deg, place_mean_deg)
 
 
 def eval_clustering_v2(my_instance: Instance, working_df_indiv: pd.DataFrame,

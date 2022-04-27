@@ -1059,10 +1059,14 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
     graph_nodes = conflict_graph.number_of_nodes()
     graph_edges = conflict_graph.number_of_edges()
     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
-    max_deg = list_indivs[0][1]
-    mean_deg = sum(
-        [deg for (node, deg) in list_indivs]
-    ) / float(len(conflict_graph))
+    if len(list_indivs) == 0:
+        max_deg = 0
+        mean_deg = 0
+    else:
+        max_deg = list_indivs[0][1]
+        mean_deg = sum(
+            [deg for (node, deg) in list_indivs]
+        ) / float(len(conflict_graph))
     while len(list_indivs) > 1:
         (indiv, occur) = list_indivs[0]
         if occur > 1:
@@ -1326,10 +1330,14 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
     graph_nodes = conflict_graph.number_of_nodes()
     graph_edges = conflict_graph.number_of_edges()
     list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
-    max_deg = list_indivs[0][1]
-    mean_deg = sum(
-        [deg for (node, deg) in list_indivs]
-    ) / float(len(conflict_graph))
+    if len(list_indivs) == 0:
+        max_deg = 0
+        mean_deg = 0
+    else:
+        max_deg = list_indivs[0][1]
+        mean_deg = sum(
+            [deg for (node, deg) in list_indivs]
+        ) / float(len(conflict_graph))
     while len(list_indivs) > 1:
         (indiv, occur) = list_indivs[0]
         if occur > 1:

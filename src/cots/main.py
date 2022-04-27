@@ -75,40 +75,22 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
             my_instance.df_indiv, sep_time=my_instance.sep_time)
         indivs_cons.savefig(path + '/indivs_cons.svg')
 
+    total_method_time = time.time()
+
     # Analysis period
     (my_instance, df_host_evo,
      df_indiv_clust, labels_) = analysis_period(
         my_instance, config, method
     )
     nb_overloads = 0
-    total_method_time = time.time()
 
-    # Loops for evaluation
-    if method in ['loop', 'loop_v2', 'loop_kmeans']:
-        # loop 'streaming' progress
-        it.results_file.write('\n### Loop process ###\n')
-        (fig_node, fig_clust, fig_mean_clust,
-         main_results, df_host_evo, nb_overloads) = streaming_eval(
-            my_instance, df_indiv_clust, labels_,
-            config['loop']['mode'],
-            config['loop']['tick'],
-            config['loop']['constraints_dual'],
-            config['loop']['tol_dual_clust'],
-            config['loop']['tol_move_clust'],
-            config['loop']['tol_open_clust'],
-            config['loop']['tol_dual_place'],
-            config['loop']['tol_move_place'],
-            config['loop']['tol_step'],
-            method,
-            df_host_evo)
-        fig_node.savefig(output_path + '/node_evo_plot.svg')
-        fig_clust.savefig(output_path + '/clust_evo_plot.svg')
-        fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
-
-    if method in ['heur', 'spread', 'iter-consol']:
-        # TODO adapt after 'progress_time_noloop' changed
-        (df_host_evo, nb_overloads) = progress_time_noloop(
-            my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
+    # Run period
+    (df_host_evo, main_results, nb_overloads,
+     fig_node, fig_clust, fig_mean_clust) = run_period(
+        my_instance, df_host_evo,
+        df_indiv_clust, labels_,
+        config, output_path, method
+    )
     total_method_time = time.time() - total_method_time
 
     # Print objectives of evaluation part
@@ -293,6 +275,43 @@ def analysis_period(
 
     return (my_instance, df_host_evo,
             df_indiv_clust, labels_)
+
+
+def run_period(
+    my_instance: Instance, df_host_evo: pd.DataFrame,
+    df_indiv_clust: pd.DataFrame, labels_: List,
+    config: Dict, output_path: str, method: str
+):
+    """Perform all needed process during evaluation period."""
+    # Loops for evaluation
+    if method in ['loop', 'loop_v2', 'loop_kmeans']:
+        # loop 'streaming' progress
+        it.results_file.write('\n### Loop process ###\n')
+        (fig_node, fig_clust, fig_mean_clust,
+         main_results, df_host_evo, nb_overloads) = streaming_eval(
+            my_instance, df_indiv_clust, labels_,
+            config['loop']['mode'],
+            config['loop']['tick'],
+            config['loop']['constraints_dual'],
+            config['loop']['tol_dual_clust'],
+            config['loop']['tol_move_clust'],
+            config['loop']['tol_open_clust'],
+            config['loop']['tol_dual_place'],
+            config['loop']['tol_move_place'],
+            config['loop']['tol_step'],
+            method,
+            df_host_evo)
+        fig_node.savefig(output_path + '/node_evo_plot.svg')
+        fig_clust.savefig(output_path + '/clust_evo_plot.svg')
+        fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
+
+    elif method in ['heur', 'spread', 'iter-consol']:
+        # TODO adapt after 'progress_time_noloop' changed
+        (df_host_evo, nb_overloads) = progress_time_noloop(
+            my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
+
+    return (df_host_evo, main_results, nb_overloads,
+            fig_node, fig_clust, fig_mean_clust)
 
 
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,

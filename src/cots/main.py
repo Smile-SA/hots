@@ -67,10 +67,6 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
         path, k, tau, method, param, output, tolclust, tolplace
     )
 
-    # Use pyomo model => to be fully applied after tests
-    # my_model = model.create_model(config['optimization']['model'], my_instance)
-    # model.solve_model(my_model, 'glpk')
-
     # Plot initial data (containers)
     if True:
         indivs_cons = ctnr.plot_all_data_all_containers(
@@ -78,114 +74,35 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
         indivs_cons.savefig(path + '/indivs_cons.svg')
 
     # Analysis period
-
-    # Get dataframe of current part
-    # working_df_indiv = my_instance.df_indiv.loc[
-    #     my_instance.df_indiv[it.tick_field] <= my_instance.sep_time
-    # ]
-    df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
+    (my_instance, df_host_evo,
+     df_indiv_clust, labels_) = analysis_period(
+        my_instance, config, method
+    )
     nb_overloads = 0
     total_method_time = time.time()
 
-    if method == 'init':
-        df_host_evo = my_instance.df_host
-    if method in ['heur', 'loop', 'loop_v2', 'loop_kmeans']:
+    # Loops for evaluation
+    if method in ['loop', 'loop_v2', 'loop_kmeans']:
+        # loop 'streaming' progress
+        it.results_file.write('\n### Loop process ###\n')
+        (fig_node, fig_clust, fig_mean_clust,
+         main_results, df_host_evo, nb_overloads) = streaming_eval(
+            my_instance, df_indiv_clust, labels_,
+            config['loop']['mode'],
+            config['loop']['tick'],
+            config['loop']['constraints_dual'],
+            config['loop']['tol_dual_clust'],
+            config['loop']['tol_move_clust'],
+            config['loop']['tol_open_clust'],
+            config['loop']['tol_dual_place'],
+            config['loop']['tol_move_place'],
+            config['loop']['tol_step'],
+            method,
+            df_host_evo)
+        fig_node.savefig(output_path + '/node_evo_plot.svg')
+        fig_clust.savefig(output_path + '/clust_evo_plot.svg')
+        fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
 
-        # Compute starting point
-        n_iter = math.floor((
-            my_instance.sep_time + 1 - my_instance.df_host[it.tick_field].min()
-        ) / my_instance.window_duration)
-        start_point = (
-            my_instance.sep_time - n_iter * my_instance.window_duration
-        ) + 1
-        end_point = (
-            start_point + my_instance.window_duration - 1
-        )
-        working_df_indiv = my_instance.df_indiv[
-            (my_instance.
-                df_indiv[it.tick_field] >= start_point) & (
-                my_instance.df_indiv[it.tick_field] <= end_point)
-        ]
-
-        # First clustering part
-        logging.info('Starting first clustering ...')
-        (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-            working_df_indiv)
-
-        clustering_time = time.time()
-        labels_ = clt.perform_clustering(
-            df_indiv_clust, config['clustering']['algo'], my_instance.nb_clusters)
-        df_indiv_clust['cluster'] = labels_
-        my_instance.nb_clusters = labels_.max() + 1
-
-        # TODO improve this part (distance...)
-        cluster_profiles = clt.get_cluster_mean_profile(
-            df_indiv_clust)
-        cluster_vars = clt.get_cluster_variance(cluster_profiles)
-
-        cluster_var_matrix = clt.get_sum_cluster_variance(
-            cluster_profiles, cluster_vars)
-        it.results_file.write('\nClustering computing time : %f s\n\n' %
-                              (time.time() - clustering_time))
-        n_iter = n_iter - 1
-
-        # Loop for incrementing clustering (during analysis)
-        # TODO finish
-        while n_iter > 0:
-            start_point = end_point + 1
-            end_point = (
-                start_point + my_instance.window_duration - 1
-            )
-            working_df_indiv = my_instance.df_indiv[
-                (my_instance.
-                    df_indiv[it.tick_field] >= start_point) & (
-                    my_instance.df_indiv[it.tick_field] <= end_point)]
-
-            # evaluate clustering
-            # (dv, nb_clust_changes_loop,
-            #     clustering_dual_values) = eval_clustering(
-            #     my_instance, working_df_indiv,
-            #     w, u, clustering_dual_values, constraints_dual,
-            #     tol_clust, tol_move_clust,
-            #     df_clust, cluster_profiles, labels_)
-
-            n_iter = n_iter - 1
-
-        # First placement part
-        if config['placement']['enable']:
-            logging.info('Performing placement ... \n')
-            heur_time = time.time()
-            place.allocation_distant_pairwise(
-                my_instance, cluster_var_matrix, labels_)
-            heur_time = time.time() - heur_time
-        else:
-            logging.info('We do not perform placement \n')
-
-        # Loops for evaluation
-        if method in ['loop', 'loop_v2', 'loop_kmeans']:
-            # loop 'streaming' progress
-            it.results_file.write('\n### Loop process ###\n')
-            (fig_node, fig_clust, fig_mean_clust,
-             main_results, df_host_evo, nb_overloads) = streaming_eval(
-                my_instance, df_indiv_clust, labels_,
-                config['loop']['mode'],
-                config['loop']['tick'],
-                config['loop']['constraints_dual'],
-                config['loop']['tol_dual_clust'],
-                config['loop']['tol_move_clust'],
-                config['loop']['tol_open_clust'],
-                config['loop']['tol_dual_place'],
-                config['loop']['tol_move_place'],
-                config['loop']['tol_step'],
-                method,
-                df_host_evo)
-            fig_node.savefig(output_path + '/node_evo_plot.svg')
-            fig_clust.savefig(output_path + '/clust_evo_plot.svg')
-            fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
-    elif method == 'spread':
-        place.allocation_spread(my_instance, my_instance.nb_nodes)
-    elif method == 'iter-consol':
-        place.allocation_spread(my_instance)
     if method in ['heur', 'spread', 'iter-consol']:
         # TODO adapt after 'progress_time_noloop' changed
         (df_host_evo, nb_overloads) = progress_time_noloop(
@@ -257,7 +174,7 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
 def preprocess(
         path: str, k: int, tau: int, method: str,
         param: str, output: str, tolclust: float, tolplace: float
-):
+) -> Tuple[Dict, str, Instance]:
     """Load configuration, data and initialize needed objects."""
     # TODO what if we want tick < tau ?
     (config, output_path) = it.read_params(path, k, tau, method, param, output)
@@ -283,6 +200,97 @@ def spec_params(config: Dict, list_params: List) -> Dict:
     if list_params[1] is not None:
         config['loop']['tol_dual_place'] = float(list_params[1])
     return config
+
+
+def analysis_period(
+    my_instance: Instance, config: Dict, method: str,
+) -> Tuple[Instance, pd.DataFrame, pd.DataFrame, List]:
+    """Perform all needed process during analysis period (T_init)."""
+    df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
+    df_indiv_clust = pd.DataFrame()
+    labels_ = []
+
+    if method == 'init':
+        return (my_instance, my_instance.df_host,
+                df_indiv_clust, labels_)
+    elif method in ['heur', 'loop', 'loop_v2', 'loop_kmeans']:
+
+        # Compute starting point
+        n_iter = math.floor((
+            my_instance.sep_time + 1 - my_instance.df_host[it.tick_field].min()
+        ) / my_instance.window_duration)
+        start_point = (
+            my_instance.sep_time - n_iter * my_instance.window_duration
+        ) + 1
+        end_point = (
+            start_point + my_instance.window_duration - 1
+        )
+        working_df_indiv = my_instance.df_indiv[
+            (my_instance.
+                df_indiv[it.tick_field] >= start_point) & (
+                my_instance.df_indiv[it.tick_field] <= end_point)
+        ]
+
+        # First clustering part
+        logging.info('Starting first clustering ...')
+        (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
+            working_df_indiv)
+
+        clustering_time = time.time()
+        labels_ = clt.perform_clustering(
+            df_indiv_clust, config['clustering']['algo'], my_instance.nb_clusters)
+        df_indiv_clust['cluster'] = labels_
+        my_instance.nb_clusters = labels_.max() + 1
+
+        # TODO improve this part (distance...)
+        cluster_profiles = clt.get_cluster_mean_profile(
+            df_indiv_clust)
+        cluster_vars = clt.get_cluster_variance(cluster_profiles)
+
+        cluster_var_matrix = clt.get_sum_cluster_variance(
+            cluster_profiles, cluster_vars)
+        it.results_file.write('\nClustering computing time : %f s\n\n' %
+                              (time.time() - clustering_time))
+        n_iter = n_iter - 1
+
+        # Loop for incrementing clustering (during analysis)
+        # TODO finish
+        while n_iter > 0:
+            start_point = end_point + 1
+            end_point = (
+                start_point + my_instance.window_duration - 1
+            )
+            working_df_indiv = my_instance.df_indiv[
+                (my_instance.
+                    df_indiv[it.tick_field] >= start_point) & (
+                    my_instance.df_indiv[it.tick_field] <= end_point)]
+
+            # evaluate clustering
+            # (dv, nb_clust_changes_loop,
+            #     clustering_dual_values) = eval_clustering(
+            #     my_instance, working_df_indiv,
+            #     w, u, clustering_dual_values, constraints_dual,
+            #     tol_clust, tol_move_clust,
+            #     df_clust, cluster_profiles, labels_)
+
+            n_iter = n_iter - 1
+
+        # First placement part
+        if config['placement']['enable']:
+            logging.info('Performing placement ... \n')
+            heur_time = time.time()
+            place.allocation_distant_pairwise(
+                my_instance, cluster_var_matrix, labels_)
+            heur_time = time.time() - heur_time
+        else:
+            logging.info('We do not perform placement \n')
+    elif method == 'spread':
+        place.allocation_spread(my_instance, my_instance.nb_nodes)
+    elif method == 'iter-consol':
+        place.allocation_spread(my_instance)
+
+    return (my_instance, df_host_evo,
+            df_indiv_clust, labels_)
 
 
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,

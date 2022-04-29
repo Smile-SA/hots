@@ -1043,17 +1043,7 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
                                 ) -> Tuple[List, int, int, int, int]:
     """Get the list of moving containers from constraints dual values."""
     mvg_containers = []
-    conflict_graph = nx.Graph()
-    for ct in mdl.iter_linear_constraints():
-        if (ct.name in constraints_dual_values) and (
-                constraints_dual_values[ct.name] > 0.0):
-            if (ct.dual_value > (
-                    constraints_dual_values[ct.name]
-                    + tol * constraints_dual_values[ct.name])) or (
-                        ct.dual_value > tol * mdl.objective_value
-            ):
-                indivs = re.findall(r'\d+\.*', ct.name)
-                conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
+    conflict_graph = get_conflict_graph(mdl, constraints_dual_values, tol)
 
     # print(nx.to_pandas_edgelist(conflict_graph))
     graph_nodes = conflict_graph.number_of_nodes()
@@ -1165,6 +1155,22 @@ def get_moving_containers_clust(mdl: Model, constraints_dual_values: Dict,
 
     return (mvg_containers, graph_nodes, graph_edges,
             max_deg, mean_deg)
+
+
+def get_conflict_graph(mdl: Model, constraints_dual_values: Dict, tol: float):
+    """Build conflict graph from comapring dual variables."""
+    conflict_graph = nx.Graph()
+    for ct in mdl.iter_linear_constraints():
+        if (ct.name in constraints_dual_values) and (
+                constraints_dual_values[ct.name] > 0.0):
+            if (ct.dual_value > (
+                    constraints_dual_values[ct.name]
+                    + tol * constraints_dual_values[ct.name])) or (
+                        ct.dual_value > tol * mdl.objective_value
+            ):
+                indivs = re.findall(r'\d+\.*', ct.name)
+                conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
+    return conflict_graph
 
 
 def get_mvg_conts_from_constraints(constraints_rm: List, dict_id_c: Dict,
@@ -1315,16 +1321,7 @@ def get_moving_containers(mdl: Model, constraints_dual_values: Dict,
                           ) -> Tuple[List, int, int, int, int]:
     """Get the list of moving containers from constraints dual values."""
     mvg_containers = []
-    conflict_graph = nx.Graph()
-    for ct in mdl.iter_linear_constraints():
-        if ct.name in constraints_dual_values:
-            if (ct.dual_value > (
-                    constraints_dual_values[ct.name]
-                    + tol * constraints_dual_values[ct.name])) or (
-                        ct.dual_value > tol * mdl.objective_value
-            ):
-                indivs = re.findall(r'\d+\.*', ct.name)
-                conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
+    conflict_graph = get_conflict_graph(mdl, constraints_dual_values, tol)
 
     # print(nx.to_pandas_edgelist(conflict_graph))
     graph_nodes = conflict_graph.number_of_nodes()

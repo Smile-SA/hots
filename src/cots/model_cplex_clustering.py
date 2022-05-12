@@ -53,6 +53,7 @@ class CPXInstance:
 
     # TODO parallelize all building
     # TODO nice writing in log file
+    # TODO optim : adding constraints by batch
     def __init__(self, df_indiv: pd.DataFrame,
                  df_host_meta: pd.DataFrame, nb_clusters: int,
                  dict_id_c: Dict, dict_id_n: Dict,
@@ -80,6 +81,7 @@ class CPXInstance:
         #     cv = np.ones((self.nb_containers, self.nb_containers))
 
         self.mdl = Model(name=self.get_pb_name(self.pb_number), cts_by_name=True)
+        self.relax_mdl = Model(name='lp_' + self.get_pb_name(self.pb_number), cts_by_name=True)
         if verbose:
             it.optim_file.write('Building names ...\n')
         self.build_names()
@@ -98,7 +100,7 @@ class CPXInstance:
 
         if verbose:
             it.optim_file.write('Building relaxed model ...\n')
-        self.relax_mdl = make_relaxed_model(self.mdl)
+        # self.relax_mdl = make_relaxed_model(self.mdl)
 
         # Init solution for mdl with initial placement
         # self.set_x_from_df(df_indiv, dict_id_c, dict_id_n)
@@ -145,13 +147,17 @@ class CPXInstance:
         # placement variables : if container c is on node n
         self.mdl.x = self.mdl.binary_var_dict(
             idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
+        self.relax_mdl.x = self.relax_mdl.continuous_var_dict(
+            idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
 
         ida = list(self.nodes_names)
         # opened variables : if node n is used or not
         self.mdl.a = self.mdl.binary_var_dict(ida, name=lambda k: 'a_%d' % k)
+        self.relax_mdl.a = self.relax_mdl.continuous_var_dict(ida, name=lambda k: 'a_%d' % k)
 
         # variables for max diff consumption (global delta)
         self.mdl.delta = self.mdl.continuous_var(name='delta')
+        self.relax_mdl.delta = self.relax_mdl.continuous_var(name='delta')
 
         # variables for max diff consumption (n delta)
         # self.mdl.delta = self.mdl.continuous_var_dict(
@@ -162,10 +168,16 @@ class CPXInstance:
         self.mdl.v = self.mdl.binary_var_dict(
             idv, name=lambda k: 'v_%d,%d' % (k[0], k[1])
         )
+        self.relax_mdl.v = self.relax_mdl.continuous_var_dict(
+            idv, name=lambda k: 'v_%d,%d' % (k[0], k[1])
+        )
 
         # specific node coloc variables : if c1 and c2 are in node n
         idxv = [(c1, c2, n) for (c1, c2) in idv for n in self.nodes_names]
         self.mdl.xv = self.mdl.binary_var_dict(
+            idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2])
+        )
+        self.relax_mdl.xv = self.relax_mdl.continuous_var_dict(
             idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2])
         )
 
@@ -190,10 +202,15 @@ class CPXInstance:
         # assignment variables : if container c is on cluster k
         self.mdl.y = self.mdl.binary_var_dict(
             idy, name=lambda k: 'y_%d,%d' % (k[0], k[1]))
+        self.relax_mdl.y = self.relax_mdl.continuous_var_dict(
+            idy, name=lambda k: 'y_%d,%d' % (k[0], k[1]))
 
         idk = list(self.clusters_names)
         # used cluster variables
         self.mdl.b = self.mdl.binary_var_dict(
+            idk, name=lambda k: 'b_%d' % k
+        )
+        self.relax_mdl.b = self.relax_mdl.continuous_var_dict(
             idk, name=lambda k: 'b_%d' % k
         )
 
@@ -202,10 +219,16 @@ class CPXInstance:
         self.mdl.u = self.mdl.binary_var_dict(
             idu, name=lambda k: 'u_%d,%d' % (k[0], k[1])
         )
+        self.relax_mdl.u = self.relax_mdl.continuous_var_dict(
+            idu, name=lambda k: 'u_%d,%d' % (k[0], k[1])
+        )
 
         # specific cluster coloc variables : if c1 and c2 are in cluster k
         idyu = [(c1, c2, k) for (c1, c2) in idu for k in self.clusters_names]
         self.mdl.yu = self.mdl.binary_var_dict(
+            idyu, name=lambda k: 'yu_%d,%d,%d' % (k[0], k[1], k[2])
+        )
+        self.relax_mdl.yu = self.relax_mdl.continuous_var_dict(
             idyu, name=lambda k: 'yu_%d,%d,%d' % (k[0], k[1], k[2])
         )
 
@@ -223,6 +246,24 @@ class CPXInstance:
             self.nodes_data[n] = df_host_meta.loc[
                 df_host_meta[it.host_field] == dict_id_n[n],
                 [it.metrics[0]]].to_numpy()[0]
+
+    def update_clustering_data(self, df_indiv, dict_id_c):
+        """Update the data used by the clustering model."""
+        for c in self.containers_names:
+            self.containers_data[c] = df_indiv.loc[
+                df_indiv[it.indiv_field] == dict_id_c[c],
+                [it.tick_field, it.metrics[0]]].to_numpy()
+
+    def update_placement_data(self, df_indiv, dict_id_c):
+        """Update the data used by the placement model."""
+        for c in self.containers_names:
+            self.containers_data[c] = df_indiv.loc[
+                df_indiv[it.indiv_field] == dict_id_c[c],
+                [it.tick_field, it.metrics[0]]].to_numpy()
+        # for n in self.nodes_names:
+        #     self.nodes_data[n] = df_host_meta.loc[
+        #         df_host_meta[it.host_field] == dict_id_n[n],
+        #         [it.metrics[0]]].to_numpy()[0]
 
     def build_constraints(self, w, u, v):
         """Build all model constraints."""
@@ -282,6 +323,12 @@ class CPXInstance:
                         containers_names) <= self.nodes_data[node][i - 1],
                         it.metrics[i - 1] + 'capacity_' + str(node)
                         + '_' + str(t))
+                    self.relax_mdl.add_constraint(self.relax_mdl.sum(
+                        self.relax_mdl.x[c, node] * self.containers_data[c][t][i]
+                        for c in self.
+                        containers_names) <= self.nodes_data[node][i - 1],
+                        it.metrics[i - 1] + 'capacity_' + str(node)
+                        + '_' + str(t))
 
                 # Assign constraint (x[c,n] = 1 => a[n] = 1)
                 # self.mdl.add_constraint(self.mdl.a[node] >= (self.mdl.sum(
@@ -312,11 +359,18 @@ class CPXInstance:
                 self.mdl.x[c, n] <= self.mdl.a[n],
                 'open_node_' + str(c) + '_' + str(n)
             )
+            self.relax_mdl.add_constraint(
+                self.relax_mdl.x[c, n] <= self.relax_mdl.a[n],
+                'open_node_' + str(c) + '_' + str(n)
+            )
 
         # Container assignment constraint (1 and only 1 x[c,_] = 1 for all c)
         for container in self.containers_names:
             self.mdl.add_constraint(self.mdl.sum(
                 self.mdl.x[container, node] for node in self.nodes_names) == 1,
+                'assign_' + str(container))
+            self.relax_mdl.add_constraint(self.relax_mdl.sum(
+                self.relax_mdl.x[container, node] for node in self.nodes_names) == 1,
                 'assign_' + str(container))
 
         # Constraint the number of open servers
@@ -348,6 +402,97 @@ class CPXInstance:
         #         'fix_v' + str(i) + '_' + str(j)
         #     )
 
+        for(i, j) in combinations(self.containers_names, 2):
+            for n in self.nodes_names:
+                self.mdl.add_constraint(
+                    self.mdl.xv[i, j, n] <= self.mdl.x[i, n],
+                    'linear1_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                self.mdl.add_constraint(
+                    self.mdl.xv[i, j, n] <= self.mdl.x[j, n],
+                    'linear2_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                self.mdl.add_constraint(
+                    self.mdl.x[i, n] + self.mdl.x[j, n] - self.mdl.xv[i, j, n] <= 1,
+                    'linear3_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.xv[i, j, n] <= self.relax_mdl.x[i, n],
+                    'linear1_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.xv[i, j, n] <= self.relax_mdl.x[j, n],
+                    'linear2_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.x[i, n] + self.relax_mdl.x[j, n]
+                    - self.relax_mdl.xv[i, j, n] <= 1,
+                    'linear3_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+
+            # Constraints fixing v
+            self.mdl.add_constraint(
+                self.mdl.v[i, j] == self.mdl.sum(
+                    self.mdl.xv[i, j, n] for n in self.nodes_names),
+                'fix_v' + str(i) + '_' + str(j)
+            )
+            self.relax_mdl.add_constraint(
+                self.relax_mdl.v[i, j] == self.relax_mdl.sum(
+                    self.relax_mdl.xv[i, j, n] for n in self.nodes_names),
+                'fix_v' + str(i) + '_' + str(j)
+            )
+
+    def update_place_constraints(self, v):
+        """Update placement constraints with new data."""
+        print('update capacity')
+        for node in self.nodes_names:
+            for t in range(self.time_window):
+                i = 0
+                for i in range(1, len(it.metrics) + 1):
+                    # Capacity constraint
+                    self.mdl.remove_constraint(
+                        it.metrics[i - 1] + 'capacity_' + str(node)
+                        + '_' + str(t)
+                    )
+                    self.mdl.add_constraint(self.mdl.sum(
+                        self.mdl.x[c, node] * self.containers_data[c][t][i]
+                        for c in self.
+                        containers_names) <= self.nodes_data[node][i - 1],
+                        it.metrics[i - 1] + 'capacity_' + str(node)
+                        + '_' + str(t))
+                    self.relax_mdl.remove_constraint(
+                        it.metrics[i - 1] + 'capacity_' + str(node)
+                        + '_' + str(t)
+                    )
+                    self.relax_mdl.add_constraint(self.relax_mdl.sum(
+                        self.relax_mdl.x[c, node] * self.containers_data[c][t][i]
+                        for c in self.
+                        containers_names) <= self.nodes_data[node][i - 1],
+                        it.metrics[i - 1] + 'capacity_' + str(node)
+                        + '_' + str(t))
+
+        print('update mustlink')
+        for(i, j) in combinations(self.containers_names, 2):
+            ct = self.mdl.get_constraint_by_name(
+                'mustLinkA_' + str(j) + '_' + str(i)
+            )
+            if ct is None and v[i, j]:
+                self.mdl.add_constraint(
+                    self.mdl.v[i, j] == 1,
+                    'mustLinkA_' + str(j) + '_' + str(i)
+                )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.v[i, j] == 1,
+                    'mustLinkA_' + str(j) + '_' + str(i)
+                )
+            elif ct is not None and not v[i, j]:
+                self.mdl.remove_constraint(
+                    'mustLinkA_' + str(j) + '_' + str(i)
+                )
+                self.relax_mdl.remove_constraint(
+                    'mustLinkA_' + str(j) + '_' + str(i)
+                )
+
     def clustering_constraints(self, nb_clusters, w):
         """Build the clustering related constraints."""
         # Cluster assignment constraint
@@ -355,6 +500,9 @@ class CPXInstance:
         for c in self.containers_names:
             self.mdl.add_constraint(self.mdl.sum(
                 self.mdl.y[c, k] for k in self.clusters_names) == 1,
+                'cluster_assign_' + str(c))
+            self.relax_mdl.add_constraint(self.relax_mdl.sum(
+                self.relax_mdl.y[c, k] for k in self.clusters_names) == 1,
                 'cluster_assign_' + str(c))
 
         # Open cluster
@@ -364,11 +512,19 @@ class CPXInstance:
                 self.mdl.y[c, k] <= self.mdl.b[k],
                 'open_cluster_' + str(c) + '_' + str(k)
             )
+            self.relax_mdl.add_constraint(
+                self.relax_mdl.y[c, k] <= self.relax_mdl.b[k],
+                'open_cluster_' + str(c) + '_' + str(k)
+            )
 
         # Number of clusters
         # it.optim_file.write('Number of clusters ...')
         self.mdl.add_constraint(self.mdl.sum(
             self.mdl.b[k] for k in self.clusters_names) <= self.nb_clusters,
+            'nb_clusters'
+        )
+        self.relax_mdl.add_constraint(self.relax_mdl.sum(
+            self.relax_mdl.b[k] for k in self.clusters_names) <= self.nb_clusters,
             'nb_clusters'
         )
 
@@ -386,11 +542,29 @@ class CPXInstance:
                     self.mdl.y[i, k] + self.mdl.y[j, k] - self.mdl.yu[i, j, k] <= 1,
                     'linear3_yu' + str(i) + '_' + str(j) + '_' + str(k)
                 )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.yu[i, j, k] <= self.relax_mdl.y[i, k],
+                    'linear1_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.yu[i, j, k] <= self.relax_mdl.y[j, k],
+                    'linear2_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.y[i, k] + self.relax_mdl.y[j, k]
+                    - self.relax_mdl.yu[i, j, k] <= 1,
+                    'linear3_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                )
 
             # Constraints fixing u
             self.mdl.add_constraint(
                 self.mdl.u[i, j] == self.mdl.sum(
                     self.mdl.yu[i, j, k] for k in self.clusters_names),
+                'fix_u' + str(i) + '_' + str(j)
+            )
+            self.relax_mdl.add_constraint(
+                self.relax_mdl.u[i, j] == self.relax_mdl.sum(
+                    self.relax_mdl.yu[i, j, k] for k in self.clusters_names),
                 'fix_u' + str(i) + '_' + str(j)
             )
 
@@ -434,32 +608,40 @@ class CPXInstance:
 
     def add_adjacency_clust_constraints(self, u):
         """Add constraints fixing u variables from adjacency matrice."""
-        # TODO replace because too many variables
-        # it.optim_file.write('Fixing yu(i,j,n) ...')
         for(i, j) in combinations(self.containers_names, 2):
             if u[i, j]:
-                # for k in self.clusters_names:
-                #     self.mdl.add_constraint(
-                #         self.mdl.yu[i, j, k] <= self.mdl.y[i, k],
-                #         'linear1_yu' + str(i) + '_' + str(j) + '_' + str(k)
-                #     )
-                #     self.mdl.add_constraint(
-                #         self.mdl.yu[i, j, k] <= self.mdl.y[j, k],
-                #         'linear2_yu' + str(i) + '_' + str(j) + '_' + str(k)
-                #     )
-                #     self.mdl.add_constraint(
-                #         self.mdl.y[i, k] + self.mdl.y[j, k] - self.mdl.yu[i, j, k] <= 1,
-                #         'linear3_yu' + str(i) + '_' + str(j) + '_' + str(k)
-                #     )
-
-                # # Constraints fixing u
-                # self.mdl.add_constraint(
-                #     self.mdl.u[i, j] == self.mdl.sum(
-                #         self.mdl.yu[i, j, k] for k in self.clusters_names),
-                #     'fix_u' + str(i) + '_' + str(j)
-                # )
                 self.mdl.add_constraint(
                     self.mdl.u[i, j] == 1,
+                    'mustLinkC_' + str(j) + '_' + str(i)
+                )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.u[i, j] == 1,
+                    'mustLinkC_' + str(j) + '_' + str(i)
+                )
+
+    def update_adjacency_clust_constraints(self, u):
+        """Update constraints fixing u variables from new adjacency matrix."""
+        # for ct in self.mdl.iter_linear_constraints():
+        #     if 'mustLinkC' in ct.name:
+        #         self.mdl.remove_constraint(ct)
+        for(i, j) in combinations(self.containers_names, 2):
+            ct = self.mdl.get_constraint_by_name(
+                'mustLinkC_' + str(j) + '_' + str(i)
+            )
+            if ct is None and u[i, j]:
+                self.mdl.add_constraint(
+                    self.mdl.u[i, j] == 1,
+                    'mustLinkC_' + str(j) + '_' + str(i)
+                )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.u[i, j] == 1,
+                    'mustLinkC_' + str(j) + '_' + str(i)
+                )
+            elif ct is not None and not u[i, j]:
+                self.mdl.remove_constraint(
+                    'mustLinkC_' + str(j) + '_' + str(i)
+                )
+                self.relax_mdl.remove_constraint(
                     'mustLinkC_' + str(j) + '_' + str(i)
                 )
 
@@ -500,29 +682,13 @@ class CPXInstance:
         # TODO replace because too many variables
         for(i, j) in combinations(self.containers_names, 2):
             if v[i, j]:
-                for n in self.nodes_names:
-                    self.mdl.add_constraint(
-                        self.mdl.xv[i, j, n] <= self.mdl.x[i, n],
-                        'linear1_xv' + str(i) + '_' + str(j) + '_' + str(n)
-                    )
-                    self.mdl.add_constraint(
-                        self.mdl.xv[i, j, n] <= self.mdl.x[j, n],
-                        'linear2_xv' + str(i) + '_' + str(j) + '_' + str(n)
-                    )
-                    self.mdl.add_constraint(
-                        self.mdl.x[i, n] + self.mdl.x[j, n] - self.mdl.xv[i, j, n] <= 1,
-                        'linear3_xv' + str(i) + '_' + str(j) + '_' + str(n)
-                    )
-
-                # Constraints fixing v
-                self.mdl.add_constraint(
-                    self.mdl.v[i, j] == self.mdl.sum(
-                        self.mdl.xv[i, j, n] for n in self.nodes_names),
-                    'fix_v' + str(i) + '_' + str(j)
-                )
                 self.mdl.add_constraint(
                     self.mdl.v[i, j] == 1,
-                    'mustLinkP_' + str(j) + '_' + str(i)
+                    'mustLinkA_' + str(j) + '_' + str(i)
+                )
+                self.relax_mdl.add_constraint(
+                    self.relax_mdl.v[i, j] == 1,
+                    'mustLinkA_' + str(j) + '_' + str(i)
                 )
         # for (c1, c2) in combinations(self.containers_names, 2):
         #     if v[c1, c2]:
@@ -649,6 +815,11 @@ class CPXInstance:
                     self.containers_names, 2
                 )
             ))
+            self.relax_mdl.minimize(self.relax_mdl.sum(
+                w[i, j] * self.relax_mdl.u[i, j] for (i, j) in combinations(
+                    self.containers_names, 2
+                )
+            ))
         # elif self.pb_number == 3:
         #     self.mdl.minimize(
         #         self.mdl.delta + self.mdl.sum(
@@ -675,6 +846,18 @@ class CPXInstance:
                     )
                 )
             )
+            self.relax_mdl.minimize(
+                self.relax_mdl.sum(
+                    u[i, j] * self.relax_mdl.v[i, j] for (i, j) in combinations(
+                        self.containers_names, 2
+                    )
+                ) + self.relax_mdl.sum(
+                    (1 - u[i, j]) * self.relax_mdl.v[i, j] * dv[i, j]
+                    for (i, j) in combinations(
+                        self.containers_names, 2
+                    )
+                )
+            )
         elif self.pb_number == 4:
             # Only clustering
             self.mdl.maximize(
@@ -689,6 +872,50 @@ class CPXInstance:
                     )
                 )
             )
+
+    def update_obj_clustering(self, w):
+        """Remove and re-create objective for clustering model."""
+        self.mdl.remove_objective()
+        self.mdl.minimize(self.mdl.sum(
+            w[i, j] * self.mdl.u[i, j] for (i, j) in combinations(
+                self.containers_names, 2
+            )
+        ))
+        self.relax_mdl.remove_objective()
+        self.relax_mdl.minimize(self.relax_mdl.sum(
+            w[i, j] * self.relax_mdl.u[i, j] for (i, j) in combinations(
+                self.containers_names, 2
+            )
+        ))
+
+    def update_obj_placement(self, u, v, dv):
+        """Remove and re-create objective for placement model."""
+        self.mdl.remove_objective()
+        self.mdl.minimize(
+            self.mdl.sum(
+                u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
+                    self.containers_names, 2
+                )
+            ) + self.mdl.sum(
+                (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
+                for (i, j) in combinations(
+                    self.containers_names, 2
+                )
+            )
+        )
+        self.relax_mdl.remove_objective()
+        self.relax_mdl.minimize(
+            self.relax_mdl.sum(
+                u[i, j] * self.relax_mdl.v[i, j] for (i, j) in combinations(
+                    self.containers_names, 2
+                )
+            ) + self.relax_mdl.sum(
+                (1 - u[i, j]) * self.relax_mdl.v[i, j] * dv[i, j]
+                for (i, j) in combinations(
+                    self.containers_names, 2
+                )
+            )
+        )
 
     def set_x_from_df(self, df_indiv: pd.DataFrame,
                       dict_id_c: Dict, dict_id_n: Dict):

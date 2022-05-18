@@ -274,11 +274,33 @@ class CPXInstance:
             self.placement_constraints()
         elif self.pb_number == 2:
             # it.optim_file.write('Add basic clustering constraints ...')
-            self.clustering_constraints(self.nb_clusters, w)
+            # temp_time = time.time()
+            # self.clustering_constraints(self.nb_clusters, w)
+            # print('Building constraints time : %f s' % (
+            #     time.time() - temp_time
+            # ))
+            # self.mdl.clear_constraints()
+            # self.relax_mdl.clear_constraints()
+            # temp_time = time.time()
+            self.clustering_constraints_stack(self.nb_clusters, w)
+            # print('Building constraints time : %f s' % (
+            #     time.time() - temp_time
+            # ))
             # it.optim_file.write('Add adjacency constraints ...')
             self.add_adjacency_clust_constraints(u)
         elif self.pb_number == 3:
-            self.placement_constraints()
+            # temp_time = time.time()
+            # self.placement_constraints()
+            # print('Building constraints time : %f s' % (
+            #     time.time() - temp_time
+            # ))
+            # self.mdl.clear_constraints()
+            # self.relax_mdl.clear_constraints()
+            # temp_time = time.time()
+            self.placement_constraints_stack()
+            # print('Building constraints time : %f s' % (
+            #     time.time() - temp_time
+            # ))
             self.add_adjacency_place_constraints(v)
         elif self.pb_number == 4:
             # it.optim_file.write('Add basic clustering constraints ...')
@@ -442,9 +464,136 @@ class CPXInstance:
                 'fix_v' + str(i) + '_' + str(j)
             )
 
+    def placement_constraints_stack(self):
+        """Build the placement problem related constraints."""
+        added_constr = []
+        names_constr = []
+        added_constr_relax = []
+        names_constr_relax = []
+        for node in self.nodes_names:
+            for t in range(self.time_window):
+                i = 0
+                for i in range(1, len(it.metrics) + 1):
+                    # Capacity constraint
+                    added_constr.append(
+                        self.mdl.sum(
+                            self.mdl.x[c, node] * self.containers_data[c][t][i]
+                            for c in self.
+                            containers_names) <= self.nodes_data[node][i - 1]
+                    )
+                    names_constr.append(
+                        it.metrics[i - 1] + 'capacity_' + str(node)
+                        + '_' + str(t)
+                    )
+                    added_constr_relax.append(
+                        self.relax_mdl.sum(
+                            self.relax_mdl.x[c, node] * self.containers_data[c][t][i]
+                            for c in self.
+                            containers_names) <= self.nodes_data[node][i - 1]
+                    )
+                    names_constr_relax.append(
+                        it.metrics[i - 1] + 'capacity_' + str(node)
+                        + '_' + str(t)
+                    )
+
+        # Open node
+        for (c, n) in product(self.containers_names, self.nodes_names):
+            added_constr.append(
+                self.mdl.x[c, n] <= self.mdl.a[n]
+            )
+            names_constr.append(
+                'open_node_' + str(c) + '_' + str(n)
+            )
+            added_constr_relax.append(
+                self.relax_mdl.x[c, n] <= self.relax_mdl.a[n]
+            )
+            names_constr_relax.append(
+                'open_node_' + str(c) + '_' + str(n) 
+            )
+
+        # Container assignment constraint (1 and only 1 x[c,_] = 1 for all c)
+        for container in self.containers_names:
+            added_constr.append(
+                self.mdl.sum(
+                self.mdl.x[container, node] for node in self.nodes_names) == 1
+            )
+            names_constr.append(
+                'assign_' + str(container)
+            )
+            added_constr_relax.append(
+                self.relax_mdl.sum(
+                self.relax_mdl.x[container, node] for node in self.nodes_names) == 1
+            )
+            names_constr_relax.append(
+                'assign_' + str(container)
+            )
+
+        for(i, j) in combinations(self.containers_names, 2):
+            for n in self.nodes_names:
+                added_constr.append(
+                    self.mdl.xv[i, j, n] <= self.mdl.x[i, n]
+                )
+                names_constr.append(
+                    'linear1_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                added_constr_relax.append(
+                    self.relax_mdl.xv[i, j, n] <= self.relax_mdl.x[i, n]
+                )
+                names_constr_relax.append(
+                    'linear1_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+
+                added_constr.append(
+                    self.mdl.xv[i, j, n] <= self.mdl.x[j, n]
+                )
+                names_constr.append(
+                    'linear2_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                added_constr_relax.append(
+                    self.relax_mdl.xv[i, j, n] <= self.relax_mdl.x[j, n]
+                )
+                names_constr_relax.append(
+                    'linear2_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+
+                added_constr.append(
+                    self.mdl.x[i, n] + self.mdl.x[j, n] - self.mdl.xv[i, j, n] <= 1
+                )
+                names_constr.append(
+                    'linear3_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+                added_constr_relax.append(
+                    self.relax_mdl.x[i, n] + self.relax_mdl.x[j, n]
+                    - self.relax_mdl.xv[i, j, n] <= 1
+                )
+                names_constr_relax.append(
+                    'linear3_xv' + str(i) + '_' + str(j) + '_' + str(n)
+                )
+
+            # Constraints fixing v
+            added_constr.append(
+                self.mdl.v[i, j] == self.mdl.sum(
+                    self.mdl.xv[i, j, n] for n in self.nodes_names)
+            )
+            names_constr.append(
+                'fix_v' + str(i) + '_' + str(j)
+            )
+            added_constr_relax.append(
+                self.relax_mdl.v[i, j] == self.relax_mdl.sum(
+                    self.relax_mdl.xv[i, j, n] for n in self.nodes_names)
+            )
+            names_constr_relax.append(
+                'fix_v' + str(i) + '_' + str(j)
+            )
+        self.mdl.add_constraints(added_constr, names_constr)
+        self.relax_mdl.add_constraints(
+            added_constr_relax, names_constr_relax
+        )
+
     def update_place_constraints(self, v):
         """Update placement constraints with new data."""
-        print('update capacity')
+        # print('update capacity 1')
+        # b_time = time.time()
         for node in self.nodes_names:
             for t in range(self.time_window):
                 i = 0
@@ -470,8 +619,50 @@ class CPXInstance:
                         containers_names) <= self.nodes_data[node][i - 1],
                         it.metrics[i - 1] + 'capacity_' + str(node)
                         + '_' + str(t))
+        # print('updating capacity 1 time : %f s' % (time.time() - b_time))
+        # print('update capacity 2')
+        # b_time = time.time()
+        # remove_constraints = []
+        # add_constraints = []
+        # remove_constraints_relax = []
+        # add_constraints_relax = []
+        # for node in self.nodes_names:
+        #     for t in range(self.time_window):
+        #         i = 0
+        #         for i in range(1, len(it.metrics) + 1):
+        #             # Capacity constraint
+        #             remove_constraints.append(self.mdl.get_constraint_by_name(
+        #                 it.metrics[i - 1] + 'capacity_' + str(node)
+        #                 + '_' + str(t)
+        #             ))
+        #             remove_constraints_relax.append(self.relax_mdl.get_constraint_by_name(
+        #                 it.metrics[i - 1] + 'capacity_' + str(node)
+        #                 + '_' + str(t)
+        #             ))
+        #             self.mdl.remove_constraint(
+        #                 it.metrics[i - 1] + 'capacity_' + str(node)
+        #                 + '_' + str(t)
+        #             )
+        #             self.mdl.add_constraint(self.mdl.sum(
+        #                 self.mdl.x[c, node] * self.containers_data[c][t][i]
+        #                 for c in self.
+        #                 containers_names) <= self.nodes_data[node][i - 1],
+        #                 it.metrics[i - 1] + 'capacity_' + str(node)
+        #                 + '_' + str(t))
+        #             self.relax_mdl.remove_constraint(
+        #                 it.metrics[i - 1] + 'capacity_' + str(node)
+        #                 + '_' + str(t)
+        #             )
+        #             self.relax_mdl.add_constraint(self.relax_mdl.sum(
+        #                 self.relax_mdl.x[c, node] * self.containers_data[c][t][i]
+        #                 for c in self.
+        #                 containers_names) <= self.nodes_data[node][i - 1],
+        #                 it.metrics[i - 1] + 'capacity_' + str(node)
+        #                 + '_' + str(t))
 
-        print('update mustlink')
+        # print('updating capacity 2 time : %f s' % (time.time() - b_time))
+
+        # print('update mustlink')
         for(i, j) in combinations(self.containers_names, 2):
             ct = self.mdl.get_constraint_by_name(
                 'mustLinkA_' + str(j) + '_' + str(i)
@@ -568,6 +759,122 @@ class CPXInstance:
                 'fix_u' + str(i) + '_' + str(j)
             )
 
+    def clustering_constraints_stack(self, nb_clusters, w):
+        """Build the clustering related constraints."""
+        # Cluster assignment constraint
+        # it.optim_file.write('Cluster assignment constraint ...')
+        added_constr = []
+        names_constr = []
+        added_constr_relax = []
+        names_constr_relax = []
+        for c in self.containers_names:
+            added_constr.append(
+                self.mdl.sum(
+                self.mdl.y[c, k] for k in self.clusters_names) == 1
+            )
+            names_constr.append(
+                'cluster_assign_' + str(c)
+            )
+            added_constr_relax.append(
+                self.relax_mdl.sum(
+                self.relax_mdl.y[c, k] for k in self.clusters_names) == 1
+            )
+            names_constr_relax.append(
+                'cluster_assign_' + str(c)
+            )
+
+        # Open cluster
+        # it.optim_file.write('Open cluster ...')
+        for (c, k) in product(self.containers_names, self.clusters_names):
+            added_constr.append(
+                self.mdl.y[c, k] <= self.mdl.b[k]
+            )
+            names_constr.append(
+                'open_cluster_' + str(c) + '_' + str(k)
+            )
+            added_constr_relax.append(
+                self.relax_mdl.y[c, k] <= self.relax_mdl.b[k]
+            )
+            names_constr_relax.append(
+                'open_cluster_' + str(c) + '_' + str(k)
+            )
+
+        # Number of clusters
+        # it.optim_file.write('Number of clusters ...')
+        added_constr.append(
+            self.mdl.sum(
+                self.mdl.b[k] for k in self.clusters_names) <= self.nb_clusters
+        )
+        names_constr.append(
+            'nb_clusters'
+        )
+        added_constr_relax.append(
+            self.relax_mdl.sum(
+                self.relax_mdl.b[k] for k in self.clusters_names) <= self.nb_clusters
+        )
+        names_constr_relax.append(
+            'nb_clusters'
+        )
+
+        for(i, j) in combinations(self.containers_names, 2):
+            for k in self.clusters_names:
+                added_constr.append(
+                    self.mdl.yu[i, j, k] <= self.mdl.y[i, k]
+                )
+                names_constr.append(
+                    'linear1_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                )
+                added_constr_relax.append(
+                    self.relax_mdl.yu[i, j, k] <= self.relax_mdl.y[i, k]
+                )
+                names_constr_relax.append(
+                    'linear1_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                )
+                added_constr.append(
+                    self.mdl.yu[i, j, k] <= self.mdl.y[j, k]
+                )
+                names_constr.append(
+                    'linear2_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                )
+                added_constr_relax.append(
+                    self.relax_mdl.yu[i, j, k] <= self.relax_mdl.y[j, k]
+                )
+                names_constr_relax.append(
+                    'linear2_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                )
+                added_constr.append(
+                    self.mdl.y[i, k] + self.mdl.y[j, k] - self.mdl.yu[i, j, k] <= 1
+                )
+                names_constr.append(
+                    'linear3_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                )
+                added_constr_relax.append(
+                    self.relax_mdl.y[i, k] + self.relax_mdl.y[j, k]
+                    - self.relax_mdl.yu[i, j, k] <= 1
+                )
+                names_constr_relax.append(
+                    'linear3_yu' + str(i) + '_' + str(j) + '_' + str(k)
+                )
+
+            # Constraints fixing u
+            added_constr.append(
+                self.mdl.u[i, j] == self.mdl.sum(
+                    self.mdl.yu[i, j, k] for k in self.clusters_names)
+            )
+            names_constr.append(
+                'fix_u' + str(i) + '_' + str(j)
+            )
+            added_constr_relax.append(
+                self.relax_mdl.u[i, j] == self.relax_mdl.sum(
+                    self.relax_mdl.yu[i, j, k] for k in self.clusters_names)
+            )
+            names_constr_relax.append(
+                'fix_u' + str(i) + '_' + str(j)
+            )
+
+        self.mdl.add_constraints(added_constr, names_constr)
+        self.relax_mdl.add_constraints(added_constr_relax, names_constr_relax)
+
         # Fix u[i,j] = y[i,k]y[j,k]
         # for (i, j) in combinations(self.containers_names, 2):
         #     for k in self.clusters_names:
@@ -608,6 +915,7 @@ class CPXInstance:
 
     def add_adjacency_clust_constraints(self, u):
         """Add constraints fixing u variables from adjacency matrice."""
+        temp_time = time.time()
         for(i, j) in combinations(self.containers_names, 2):
             if u[i, j]:
                 self.mdl.add_constraint(
@@ -618,6 +926,36 @@ class CPXInstance:
                     self.relax_mdl.u[i, j] == 1,
                     'mustLinkC_' + str(j) + '_' + str(i)
                 )
+        print('Building mustlink 1 time : %f s' % (
+            time.time() - temp_time
+        ))
+
+        temp_time = time.time()
+        added_constr = []
+        names_constr = []
+        added_constr_relax = []
+        names_constr_relax = []
+        for(i, j) in combinations(self.containers_names, 2):
+            if u[i, j]:
+                added_constr.append(
+                    self.mdl.u[i, j] == 1
+                )
+                names_constr.append(
+                    'mustLinkC_' + str(j) + '_' + str(i)
+                )
+                added_constr_relax.append(
+                    self.relax_mdl.u[i, j] == 1
+                )
+                names_constr_relax.append(
+                    'mustLinkC_' + str(j) + '_' + str(i)
+                )
+        self.mdl.add_constraints(added_constr, names_constr)
+        self.relax_mdl.add_constraints(
+            added_constr_relax, names_constr_relax
+        )
+        print('Building mustlink 2 time : %f s' % (
+            time.time() - temp_time
+        ))
 
     def update_adjacency_clust_constraints(self, u):
         """Update constraints fixing u variables from new adjacency matrix."""

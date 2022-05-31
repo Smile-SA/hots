@@ -24,6 +24,7 @@ init_setup.sh
 *.log
 *.svg
 *results.csv
+*times.csv
 
 # .lp files (created by CPLEX)
 *.lp

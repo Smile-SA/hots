@@ -80,7 +80,7 @@ class CPXInstance:
         # if cv is None:
         #     cv = np.ones((self.nb_containers, self.nb_containers))
 
-        self.mdl = Model(name=self.get_pb_name(self.pb_number), checker='off')
+        # self.mdl = Model(name=self.get_pb_name(self.pb_number), checker='off')
         self.relax_mdl = Model(name='lp_' + self.get_pb_name(self.pb_number), checker='off')
         # self.mdl = Model(name=self.get_pb_name(self.pb_number), cts_by_name=True)
         # self.relax_mdl = Model(name='lp_' + self.get_pb_name(self.pb_number), cts_by_name=True)
@@ -147,18 +147,18 @@ class CPXInstance:
         """Build placement related variables."""
         idx = [(c, n) for c in self.containers_names for n in self.nodes_names]
         # placement variables : if container c is on node n
-        self.mdl.x = self.mdl.binary_var_dict(
-            idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
+        # self.mdl.x = self.mdl.binary_var_dict(
+        #     idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
         self.relax_mdl.x = self.relax_mdl.continuous_var_dict(
             idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
 
         ida = list(self.nodes_names)
         # opened variables : if node n is used or not
-        self.mdl.a = self.mdl.binary_var_dict(ida, name=lambda k: 'a_%d' % k)
+        # self.mdl.a = self.mdl.binary_var_dict(ida, name=lambda k: 'a_%d' % k)
         self.relax_mdl.a = self.relax_mdl.continuous_var_dict(ida, name=lambda k: 'a_%d' % k)
 
         # variables for max diff consumption (global delta)
-        self.mdl.delta = self.mdl.continuous_var(name='delta')
+        # self.mdl.delta = self.mdl.continuous_var(name='delta')
         self.relax_mdl.delta = self.relax_mdl.continuous_var(name='delta')
 
         # variables for max diff consumption (n delta)
@@ -167,18 +167,18 @@ class CPXInstance:
 
         idv = [(c1, c2) for (c1, c2) in combinations(self.containers_names, 2)]
         # coloc variables : if c1 and c2 are in the same node
-        self.mdl.v = self.mdl.binary_var_dict(
-            idv, name=lambda k: 'v_%d,%d' % (k[0], k[1])
-        )
+        # self.mdl.v = self.mdl.binary_var_dict(
+        #     idv, name=lambda k: 'v_%d,%d' % (k[0], k[1])
+        # )
         self.relax_mdl.v = self.relax_mdl.continuous_var_dict(
             idv, name=lambda k: 'v_%d,%d' % (k[0], k[1])
         )
 
         # specific node coloc variables : if c1 and c2 are in node n
         idxv = [(c1, c2, n) for (c1, c2) in idv for n in self.nodes_names]
-        self.mdl.xv = self.mdl.binary_var_dict(
-            idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2])
-        )
+        # self.mdl.xv = self.mdl.binary_var_dict(
+        #     idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2])
+        # )
         self.relax_mdl.xv = self.relax_mdl.continuous_var_dict(
             idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2])
         )
@@ -188,34 +188,34 @@ class CPXInstance:
         idy = [
             (c, k) for c in self.containers_names for k in self.clusters_names]
         # assignment variables : if container c is on cluster k
-        self.mdl.y = self.mdl.binary_var_dict(
-            idy, name=lambda k: 'y_%d,%d' % (k[0], k[1]))
+        # self.mdl.y = self.mdl.binary_var_dict(
+        #     idy, name=lambda k: 'y_%d,%d' % (k[0], k[1]))
         self.relax_mdl.y = self.relax_mdl.continuous_var_dict(
             idy, name=lambda k: 'y_%d,%d' % (k[0], k[1]))
 
         idk = list(self.clusters_names)
         # used cluster variables
-        self.mdl.b = self.mdl.binary_var_dict(
-            idk, name=lambda k: 'b_%d' % k
-        )
+        # self.mdl.b = self.mdl.binary_var_dict(
+        #     idk, name=lambda k: 'b_%d' % k
+        # )
         self.relax_mdl.b = self.relax_mdl.continuous_var_dict(
             idk, name=lambda k: 'b_%d' % k
         )
 
         idu = [(c1, c2) for (c1, c2) in combinations(self.containers_names, 2)]
         # coloc variables : if containers c1 and c2 are in same cluster
-        self.mdl.u = self.mdl.binary_var_dict(
-            idu, name=lambda k: 'u_%d,%d' % (k[0], k[1])
-        )
+        # self.mdl.u = self.mdl.binary_var_dict(
+        #     idu, name=lambda k: 'u_%d,%d' % (k[0], k[1])
+        # )
         self.relax_mdl.u = self.relax_mdl.continuous_var_dict(
             idu, name=lambda k: 'u_%d,%d' % (k[0], k[1])
         )
 
         # specific cluster coloc variables : if c1 and c2 are in cluster k
         idyu = [(c1, c2, k) for (c1, c2) in idu for k in self.clusters_names]
-        self.mdl.yu = self.mdl.binary_var_dict(
-            idyu, name=lambda k: 'yu_%d,%d,%d' % (k[0], k[1], k[2])
-        )
+        # self.mdl.yu = self.mdl.binary_var_dict(
+        #     idyu, name=lambda k: 'yu_%d,%d,%d' % (k[0], k[1], k[2])
+        # )
         self.relax_mdl.yu = self.relax_mdl.continuous_var_dict(
             idyu, name=lambda k: 'yu_%d,%d,%d' % (k[0], k[1], k[2])
         )
@@ -432,15 +432,15 @@ class CPXInstance:
         """Build the placement problem related constraints."""
         # Capacity constraints
         # TODO if several metrics ?
-        self.mdl.add_constraints(
-            (self.mdl.sum(
-                self.mdl.x[c, n] * self.containers_data[c][t][1]
-                for c in self.containers_names
-            ) <= self.nodes_data[n][0] for (n,t) in product(
-                self.nodes_names, range(self.time_window))),
-            ('capacity_%d_%d' % (n, t) for (n,t) in product(
-                self.nodes_names, range(self.time_window)))
-        )
+        # self.mdl.add_constraints(
+        #     (self.mdl.sum(
+        #         self.mdl.x[c, n] * self.containers_data[c][t][1]
+        #         for c in self.containers_names
+        #     ) <= self.nodes_data[n][0] for (n,t) in product(
+        #         self.nodes_names, range(self.time_window))),
+        #     ('capacity_%d_%d' % (n, t) for (n,t) in product(
+        #         self.nodes_names, range(self.time_window)))
+        # )
         self.relax_mdl.add_constraints(
             (self.relax_mdl.sum(
                 self.relax_mdl.x[c, n] * self.containers_data[c][t][1]
@@ -452,12 +452,12 @@ class CPXInstance:
         )
 
         # Open node
-        self.mdl.add_constraints(
-            ((self.mdl.x[c, n] - self.mdl.a[n]
-            ) <= 0 for (c, n) in product(self.containers_names, self.nodes_names)),
-            ('open_node_%d_%d' % (c,n) for (c, n) in product(
-                self.containers_names, self.nodes_names))
-        )
+        # self.mdl.add_constraints(
+        #     ((self.mdl.x[c, n] - self.mdl.a[n]
+        #     ) <= 0 for (c, n) in product(self.containers_names, self.nodes_names)),
+        #     ('open_node_%d_%d' % (c,n) for (c, n) in product(
+        #         self.containers_names, self.nodes_names))
+        # )
         self.relax_mdl.add_constraints(
             ((self.relax_mdl.x[c, n] - self.relax_mdl.a[n]
             ) <= 0 for (c, n) in product(self.containers_names, self.nodes_names)),
@@ -466,11 +466,11 @@ class CPXInstance:
         )
 
         # Container assignment constraint (1 and only 1 x[c,_] = 1 for all c)
-        self.mdl.add_constraints(
-            (self.mdl.scal_prod(
-            [self.mdl.x[c, n] for n in self.nodes_names], 1
-        ) == 1 for c in self.containers_names),
-        ('assign_%d' % c for c in self.containers_names))
+        # self.mdl.add_constraints(
+        #     (self.mdl.scal_prod(
+        #     [self.mdl.x[c, n] for n in self.nodes_names], 1
+        # ) == 1 for c in self.containers_names),
+        # ('assign_%d' % c for c in self.containers_names))
         self.relax_mdl.add_constraints(
             (self.relax_mdl.scal_prod(
             [self.relax_mdl.x[c, n] for n in self.nodes_names], 1
@@ -579,11 +579,11 @@ class CPXInstance:
     def clustering_constraints_stack(self, nb_clusters, w):
         """Build the clustering related constraints."""
         # Cluster assignment constraint
-        self.mdl.add_constraints(
-            (self.mdl.scal_prod(
-            [self.mdl.y[c, k] for k in self.clusters_names], 1
-        ) == 1 for c in self.containers_names),
-        ('cluster_assign_%d' % c for c in self.containers_names))
+        # self.mdl.add_constraints(
+        #     (self.mdl.scal_prod(
+        #     [self.mdl.y[c, k] for k in self.clusters_names], 1
+        # ) == 1 for c in self.containers_names),
+        # ('cluster_assign_%d' % c for c in self.containers_names))
         self.relax_mdl.add_constraints(
             (self.relax_mdl.scal_prod(
             [self.relax_mdl.y[c, k] for k in self.clusters_names], 1
@@ -591,12 +591,12 @@ class CPXInstance:
         ('cluster_assign_%d' % c for c in self.containers_names))
 
         # Open cluster
-        self.mdl.add_constraints(
-            ((self.mdl.y[c, k] - self.mdl.b[k]
-            ) <= 0 for (c, k) in product(self.containers_names, self.clusters_names)),
-            ('open_cluster_%d_%d' % (c,k) for (c, k) in product(
-                self.containers_names, self.clusters_names))
-        )
+        # self.mdl.add_constraints(
+        #     ((self.mdl.y[c, k] - self.mdl.b[k]
+        #     ) <= 0 for (c, k) in product(self.containers_names, self.clusters_names)),
+        #     ('open_cluster_%d_%d' % (c,k) for (c, k) in product(
+        #         self.containers_names, self.clusters_names))
+        # )
         self.relax_mdl.add_constraints(
             ((self.relax_mdl.y[c, k] - self.relax_mdl.b[k]
             ) <= 0 for (c, k) in product(self.containers_names, self.clusters_names)),
@@ -620,11 +620,11 @@ class CPXInstance:
         # names_constr_relax.append(
         #     'nb_clusters'
         # )
-        self.mdl.add_constraint(
-            self.mdl.sum(
-                self.mdl.b[k] for k in self.clusters_names) <= self.nb_clusters,
-            'nb_clusters'
-        )
+        # self.mdl.add_constraint(
+        #     self.mdl.sum(
+        #         self.mdl.b[k] for k in self.clusters_names) <= self.nb_clusters,
+        #     'nb_clusters'
+        # )
         self.relax_mdl.add_constraint(
             self.relax_mdl.sum(
                 self.relax_mdl.b[k] for k in self.clusters_names) <= self.nb_clusters,
@@ -730,7 +730,7 @@ class CPXInstance:
 
     def add_adjacency_clust_constraints(self, u):
         """Add constraints fixing u variables from adjacency matrice."""
-        self.adj_constr = []
+        # self.adj_constr = []
         self.adj_constr_relax = []
         
         # self.adj_constr.extend(self.mdl.add_constraints(
@@ -760,12 +760,12 @@ class CPXInstance:
         #     ('fix_u_%d_%d' % (i,j) for (i, j) in combinations(
         #         self.containers_names, 2) if u[i, j])
         # ))
-        self.adj_constr.extend(self.mdl.add_constraints(
-            ((self.mdl.u[i, j] == 1) for (i, j) in combinations(
-                self.containers_names, 2) if u[i, j]),
-            ('mustLinkC_%d_%d' % (i,j) for (i, j) in combinations(
-                self.containers_names, 2) if u[i, j])
-        ))
+        # self.adj_constr.extend(self.mdl.add_constraints(
+        #     ((self.mdl.u[i, j] == 1) for (i, j) in combinations(
+        #         self.containers_names, 2) if u[i, j]),
+        #     ('mustLinkC_%d_%d' % (i,j) for (i, j) in combinations(
+        #         self.containers_names, 2) if u[i, j])
+        # ))
         # self.adj_constr_relax.extend(self.relax_mdl.add_constraints(
         #     (self.relax_mdl.yu[i, j, k] - self.relax_mdl.y[i, k] <= 0 for (i, j) in combinations(
         #         self.containers_names, 2) if u[i, j] for k in self.clusters_names),
@@ -802,13 +802,13 @@ class CPXInstance:
 
     def update_adjacency_clust_constraints(self, u):
         """Update constraints fixing u variables from new adjacency matrix."""
-        self.mdl.remove_constraints(self.adj_constr)
+        # self.mdl.remove_constraints(self.adj_constr)
         self.relax_mdl.remove_constraints(self.adj_constr_relax)
         self.add_adjacency_clust_constraints(u)
     
     def update_adjacency_place_constraints(self, v):
         """Update constraints fixing u variables from new adjacency matrix."""
-        self.mdl.remove_constraints(self.adj_constr)
+        # self.mdl.remove_constraints(self.adj_constr)
         self.relax_mdl.remove_constraints(self.adj_constr_relax)
         self.add_adjacency_place_constraints(v)
 
@@ -847,7 +847,7 @@ class CPXInstance:
         """Add constraints fixing v variables from adjacency matrice."""
         # Constraints fixing xv(i, j, n) and mustlinkA constraints
         # TODO replace because too many variables
-        self.adj_constr = []
+        # self.adj_constr = []
         self.adj_constr_relax = []
         
         # self.adj_constr.extend(self.mdl.add_constraints(
@@ -877,12 +877,12 @@ class CPXInstance:
         #     ('fix_v_%d_%d' % (i,j) for (i, j) in combinations(
         #         self.containers_names, 2) if v[i, j])
         # ))
-        self.adj_constr.extend(self.mdl.add_constraints(
-            ((self.mdl.v[i, j] == 1) for (i, j) in combinations(
-                self.containers_names, 2) if v[i, j]),
-            ('mustLinkA_%d_%d' % (i,j) for (i, j) in combinations(
-                self.containers_names, 2) if v[i, j])
-        ))
+        # self.adj_constr.extend(self.mdl.add_constraints(
+        #     ((self.mdl.v[i, j] == 1) for (i, j) in combinations(
+        #         self.containers_names, 2) if v[i, j]),
+        #     ('mustLinkA_%d_%d' % (i,j) for (i, j) in combinations(
+        #         self.containers_names, 2) if v[i, j])
+        # ))
         # self.adj_constr_relax.extend(self.relax_mdl.add_constraints(
         #     (self.relax_mdl.xv[i, j, n] - self.relax_mdl.x[i, n] <= 0 for (i, j) in combinations(
         #         self.containers_names, 2) if v[i, j] for n in self.nodes_names),
@@ -1030,11 +1030,11 @@ class CPXInstance:
             )
         elif self.pb_number == 2:
             # Only clustering
-            self.mdl.minimize(self.mdl.sum(
-                w[i, j] * self.mdl.u[i, j] for (i, j) in combinations(
-                    self.containers_names, 2
-                )
-            ))
+            # self.mdl.minimize(self.mdl.sum(
+            #     w[i, j] * self.mdl.u[i, j] for (i, j) in combinations(
+            #         self.containers_names, 2
+            #     )
+            # ))
             self.relax_mdl.minimize(self.relax_mdl.sum(
                 w[i, j] * self.relax_mdl.u[i, j] for (i, j) in combinations(
                     self.containers_names, 2
@@ -1054,18 +1054,18 @@ class CPXInstance:
         #         )
         #     )
         elif self.pb_number == 3:
-            self.mdl.minimize(
-                self.mdl.sum(
-                    u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
-                        self.containers_names, 2
-                    )
-                ) + self.mdl.sum(
-                    (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
-                    for (i, j) in combinations(
-                        self.containers_names, 2
-                    )
-                )
-            )
+            # self.mdl.minimize(
+            #     self.mdl.sum(
+            #         u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
+            #             self.containers_names, 2
+            #         )
+            #     ) + self.mdl.sum(
+            #         (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
+            #         for (i, j) in combinations(
+            #             self.containers_names, 2
+            #         )
+            #     )
+            # )
             self.relax_mdl.minimize(
                 self.relax_mdl.sum(
                     u[i, j] * self.relax_mdl.v[i, j] for (i, j) in combinations(
@@ -1095,12 +1095,12 @@ class CPXInstance:
 
     def update_obj_clustering(self, w):
         """Remove and re-create objective for clustering model."""
-        self.mdl.remove_objective()
-        self.mdl.minimize(self.mdl.sum(
-            w[i, j] * self.mdl.u[i, j] for (i, j) in combinations(
-                self.containers_names, 2
-            )
-        ))
+        # self.mdl.remove_objective()
+        # self.mdl.minimize(self.mdl.sum(
+        #     w[i, j] * self.mdl.u[i, j] for (i, j) in combinations(
+        #         self.containers_names, 2
+        #     )
+        # ))
         self.relax_mdl.remove_objective()
         self.relax_mdl.minimize(self.relax_mdl.sum(
             w[i, j] * self.relax_mdl.u[i, j] for (i, j) in combinations(
@@ -1110,19 +1110,19 @@ class CPXInstance:
 
     def update_obj_placement(self, u, v, dv):
         """Remove and re-create objective for placement model."""
-        self.mdl.remove_objective()
-        self.mdl.minimize(
-            self.mdl.sum(
-                u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
-                    self.containers_names, 2
-                )
-            ) + self.mdl.sum(
-                (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
-                for (i, j) in combinations(
-                    self.containers_names, 2
-                )
-            )
-        )
+        # self.mdl.remove_objective()
+        # self.mdl.minimize(
+        #     self.mdl.sum(
+        #         u[i, j] * self.mdl.v[i, j] for (i, j) in combinations(
+        #             self.containers_names, 2
+        #         )
+        #     ) + self.mdl.sum(
+        #         (1 - u[i, j]) * self.mdl.v[i, j] * dv[i, j]
+        #         for (i, j) in combinations(
+        #             self.containers_names, 2
+        #         )
+        #     )
+        # )
         self.relax_mdl.remove_objective()
         self.relax_mdl.minimize(
             self.relax_mdl.sum(
@@ -1365,10 +1365,10 @@ class CPXInstance:
             self.mdl.export_as_lp(path='./placement.lp')
             self.relax_mdl.export_as_lp(path='./lp_placement.lp')
         elif self.pb_number == 2:
-            self.mdl.export_as_lp(path='./clustering.lp')
+            # self.mdl.export_as_lp(path='./clustering.lp')
             self.relax_mdl.export_as_lp(path='./lp_clustering.lp')
         elif self.pb_number == 3:
-            self.mdl.export_as_lp(path='./place_f_clust.lp')
+            # self.mdl.export_as_lp(path='./place_f_clust.lp')
             self.relax_mdl.export_as_lp(path='./lp_place_f_clust.lp')
         elif self.pb_number == 4:
             self.mdl.export_as_lp(path='./clustering_bis.lp')

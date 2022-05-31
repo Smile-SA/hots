@@ -15,28 +15,6 @@ import pandas as pd
 
 # Functions definitions #
 
-
-def build_df_from_containers_old(df_indiv: pd.DataFrame) -> pd.DataFrame:
-    """Build the `df_host` from containers df."""
-    df_host = pd.DataFrame(data=None)
-    for time in df_indiv[tick_field].unique():
-        for node in df_indiv[host_field].unique():
-            temp_df = pd.Series({
-                tick_field: time,
-                host_field: node
-            })
-            for metric in metrics:
-                metric_val = df_indiv.loc[
-                    (df_indiv[tick_field] == time) & (
-                        df_indiv[host_field] == node)
-                ][metric].sum()
-                temp_df[metric] = metric_val
-            df_host = df_host.append(
-                temp_df, ignore_index=True
-            )
-    return df_host
-
-
 def build_df_from_containers(df_indiv: pd.DataFrame) -> pd.DataFrame:
     """Build the `df_host` from containers df."""
     dict_agg = {}
@@ -56,7 +34,6 @@ def df_from_csv(file: Path) -> pd.DataFrame:
 
 
 # TODO check if files exist ?
-# TODO optionnal node file ?
 def init_dfs(data: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """Perform CSV files reading in data folder."""
     p_data = Path(data)
@@ -73,16 +50,6 @@ def init_dfs(data: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
         return (df_indiv,
                 df_host,
                 df_from_csv(p_data / 'node_meta.csv'))
-
-
-# TODO generalize
-def init_algo_dfs() -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Initialize host dataframes for specific methods."""
-    spread_df = pd.DataFrame()
-    heur_df = pd.DataFrame()
-    loop_df = pd.DataFrame()
-
-    return (spread_df, heur_df, loop_df)
 
 
 def read_params(path: str, k: int, tau: int, method: str,
@@ -131,6 +98,13 @@ def set_loop_results() -> pd.DataFrame:
     ])
 
 
+def set_times_df() -> pd.DataFrame:
+    """Create the dataframe for times info."""
+    return pd.DataFrame(columns=[
+        'num_loop', 'action', 'time'
+    ])
+
+
 def define_globals(p_path: Path, config: Dict):
     """Define the fields, as global variables, from config."""
     global indiv_field
@@ -142,6 +116,7 @@ def define_globals(p_path: Path, config: Dict):
 
     global main_results
     global loop_results
+    global times_df
     # global node_results
 
     global results_file
@@ -163,6 +138,7 @@ def define_globals(p_path: Path, config: Dict):
 
     main_results = []
     loop_results = set_loop_results()
+    times_df = set_times_df()
 
     results_file = open(p_path / 'results.log', 'w')
     main_results_file = open(p_path / 'main_results.csv', 'w')

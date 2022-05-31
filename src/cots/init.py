@@ -15,6 +15,7 @@ import pandas as pd
 
 # Functions definitions #
 
+
 def build_df_from_containers(df_indiv: pd.DataFrame) -> pd.DataFrame:
     """Build the `df_host` from containers df."""
     dict_agg = {}
@@ -87,14 +88,14 @@ def read_params(path: str, k: int, tau: int, method: str,
 def set_loop_results() -> pd.DataFrame:
     """Create the dataframe for loop results."""
     return pd.DataFrame(columns=[
-        'num_loop', 'init_delta',
+        'num_loop', 'init_silhouette', 'init_delta',
         'clust_conf_nodes', 'clust_conf_edges',
         'clust_max_deg', 'clust_mean_deg',
         'clust_changes',
         'place_conf_nodes', 'place_conf_edges',
         'place_max_deg', 'place_mean_deg',
         'place_changes',
-        'end_delta', 'loop_time'
+        'end_silhouette', 'end_delta', 'loop_time'
     ])
 
 

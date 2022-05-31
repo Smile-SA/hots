@@ -606,9 +606,12 @@ def pre_loop(
     print('Building clustering model time : %f s' % (
         time.time() - build_time
     ))
+    start = time.time()
+    print('Solving first clustering ...')
     logging.info('# Clustering evaluation #')
     logging.info('Solving linear relaxation ...')
     clust_model.solve(clust_model.relax_mdl)
+    print('... time : %f s' % (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
     clustering_dual_values = mc.fill_constraints_dual_values(
         clust_model.relax_mdl, constraints_dual
@@ -636,9 +639,11 @@ def pre_loop(
     print('Building placement model time : %f s' % (
         time.time() - build_time
     ))
-    print('Solving linear relaxation ...')
+    start = time.time()
+    print('Solving first placement ...')
     place_model.solve(place_model.relax_mdl)
     logging.info('Placement problem not evaluated yet\n')
+    print('... time : %f s' % (time.time() - start))
     placement_dual_values = mc.fill_constraints_dual_values(
         place_model.relax_mdl, constraints_dual
     )
@@ -874,9 +879,12 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     """Evaluate current clustering solution and update it if needed."""
     nb_clust_changes_loop = 0
 
-    (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
-    it.clustering_file.write('ICS and ICD before any change : %f, %f\n' % (ics, icd))
-    print('ICS and ICD before any change : %f, %f\n' % (ics, icd))
+    # start = time.time()
+    # print('Compute ICS and ICD before changes ...')
+    # (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
+    # it.clustering_file.write('ICS and ICD before any change : %f, %f\n' % (ics, icd))
+    # print('ICS and ICD before any change : %f, %f\n' % (ics, icd))
+    # print('... Time : %f s' % (time.time() - start))
 
     time_loop_clust = time.time()
     # TODO update model from existing one, not creating new one each time
@@ -913,16 +921,23 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     if len(moving_containers) > 0:
         logging.info('Changing clustering ...')
         time_change_clust = time.time()
+        ics = 0.0
         (df_clust, labels_, nb_clust_changes_loop) = clt.change_clustering(
             moving_containers, df_clust, labels_,
             my_instance.dict_id_c, tol_open_clust * ics)
         u = clt.build_adjacency_matrix(labels_)
         print('Time changing clustering : %f s' % (time.time() - time_change_clust))
-        (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
-        it.clustering_file.write(
-            'ICS and ICD after loop change : %f, %f\n' % (ics, icd))
+        # print('Evaluating clustering ...')
+        # time_solve = time.time()
+        # (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
+        # print('.. time : %f s\n' % (time.time() - time_solve))
+        # start = time.time()
+        # print('Writing scores in file ...')
+        # it.clustering_file.write(
+        #     'ICS and ICD after loop change : %f, %f\n' % (ics, icd))
         it.clustering_file.write(
             'Loop clustering time : %f s\n' % (time.time() - time_loop_clust))
+        # print('... Time : %f s' % (time.time() - start))
 
         # Perform k-means from scratch (compare with loop changing)
         # time_kmeans = time.time()
@@ -943,15 +958,21 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         #                              my_instance.dict_id_c,
         #                              my_instance.dict_id_n,
         #                              w=w, u=u, pb_number=2)
+        start = time.time()
+        print('Updating u in model ...')
         clust_model.update_adjacency_clust_constraints(u)
+        print('... Time : %f s' % (time.time() - start))
         # clust_model.relax_mdl = mc.make_relaxed_model(clust_model.mdl)
         logging.info('Solving linear relaxation after changes ...')
         time_solve = time.time()
         clust_model.solve(clust_model.relax_mdl)
         print('Solving new clustering model : %f s\n' % (time.time() - time_solve))
+        time_solve = time.time()
+        print('Filling dual values ...')
         clustering_dual_values = mc.fill_constraints_dual_values(
             clust_model.relax_mdl, constraints_dual
         )
+        print('Filling dual values time : %f s\n' % (time.time() - time_solve))
         # print('After changes clustering lp solution : ', cplex_model.relax_mdl.objective_value)
     else:
         logging.info('Clustering seems still right ...')
@@ -965,6 +986,8 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
 
     # TODO improve this part (distance...)
     # Compute new clusters profiles
+    time_solve = time.time()
+    print('Updating clustering matrices ...')
     cluster_profiles = clt.get_cluster_mean_profile(
         df_clust)
     cluster_vars = clt.get_cluster_variance(cluster_profiles)
@@ -972,6 +995,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         cluster_profiles, cluster_vars)
     dv = ctnr.build_var_delta_matrix_cluster(
         df_clust, cluster_var_matrix, my_instance.dict_id_c)
+    print('.. time : %f s\n' % (time.time() - time_solve))
 
     return (dv, nb_clust_changes_loop, clustering_dual_values, clust_model,
             clust_conflict_nodes, clust_conflict_edges,
@@ -1046,14 +1070,11 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
             print('Time moving containers : %f s' % (time.time() - time_move_place))
             v = place.build_placement_adj_matrix(
                 working_df_indiv, my_instance.dict_id_c)
-            # cplex_model = mc.CPXInstance(working_df_indiv,
-            #                              my_instance.df_host_meta,
-            #                              my_instance.nb_clusters,
-            #                              my_instance.dict_id_c,
-            #                              my_instance.dict_id_n,
-            #                              w=w, u=u, v=v, dv=dv, pb_number=3)
-            place_model.update_place_constraints(v)
+            start = time.time()
+            print('Re-updating placement model ...')
+            place_model.update_adjacency_place_constraints(v)
             place_model.update_obj_placement(u, v, dv)
+            print('... time : %f s' % (time.time() - start))
             print('Solving linear relaxation after changes ...')
             time_solve = time.time()
             place_model.solve(place_model.relax_mdl)

@@ -20,10 +20,11 @@ from numpy.linalg import multi_dot, norm
 import pandas as pd
 
 import scipy.cluster.hierarchy as hac
-import multiprocessing as mp
-import numpy as np
-import pandas as pd
-from numpy.linalg import multi_dot, norm
+from scipy.linalg import fractional_matrix_power
+from scipy.linalg.lapack import dsyevr
+from scipy.spatial.distance import pdist, squareform
+
+from sklearn import metrics
 from sklearn.cluster import KMeans
 from sklearn.cluster import SpectralClustering
 from sklearn.metrics.pairwise import pairwise_distances
@@ -459,3 +460,10 @@ def eval_clustering(df_clust: pd.DataFrame, w: np.array, dict_id_c: Dict):
         else:
             icd += w[c1][c2]
     return (ics, icd)
+
+
+def get_silhouette(df_clust: pd.DataFrame, labels_: List):
+    """Get the Silhouette score from clustering."""
+    return metrics.silhouette_score(
+        df_clust.drop('cluster', axis=1), labels_, metric='euclidean'
+    )

@@ -425,6 +425,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         #     working_df_indiv, my_instance.dict_id_c, labels_)
 
         (nb_clust_changes_loop, nb_place_changes_loop,
+            init_loop_silhouette, end_loop_silhouette,
             clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
             place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
             clust_model, place_model,
@@ -476,6 +477,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         # Save loop indicators in df
         it.loop_results = it.loop_results.append({
             'num_loop': int(loop_nb),
+            'init_silhouette': init_loop_silhouette,
             'init_delta': init_loop_obj_delta,
             'clust_conf_nodes': clust_conf_nodes,
             'clust_conf_edges': clust_conf_edges,
@@ -487,6 +489,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             'place_max_deg': place_max_deg,
             'place_mean_deg': place_mean_deg,
             'place_changes': int(nb_place_changes_loop),
+            'end_silhouette': end_loop_silhouette,
             'end_delta': end_loop_obj_delta,
             'loop_time': loop_time
         }, ignore_index=True)
@@ -711,6 +714,7 @@ def eval_sols_old(
     # evaluate clustering
     start = time.time()
     (dv, nb_clust_changes_loop,
+        init_loop_silhouette, end_loop_silhouette,
         clustering_dual_values, clust_model,
         clust_conf_nodes, clust_conf_edges,
         clust_max_deg, clust_mean_deg) = eval_clustering(
@@ -737,6 +741,7 @@ def eval_sols_old(
 
     return (
         nb_clust_changes_loop, nb_place_changes_loop,
+        init_loop_silhouette, end_loop_silhouette,
         clust_conf_nodes, clust_conf_edges,
         clust_max_deg, clust_mean_deg,
         place_conf_nodes, place_conf_edges,
@@ -881,6 +886,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     # it.clustering_file.write('ICS and ICD before any change : %f, %f\n' % (ics, icd))
     # print('ICS and ICD before any change : %f, %f\n' % (ics, icd))
     # print('... Time : %f s' % (time.time() - start))
+    init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 
     # time_loop_clust = time.time()
     start = time.time()
@@ -973,7 +979,11 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     dv = ctnr.build_var_delta_matrix_cluster(
         df_clust, cluster_var_matrix, my_instance.dict_id_c)
 
-    return (dv, nb_clust_changes_loop, clustering_dual_values, clust_model,
+    end_loop_silhouette = clt.get_silhouette(df_clust, labels_)
+
+    return (dv, nb_clust_changes_loop,
+            init_loop_silhouette, end_loop_silhouette,
+            clustering_dual_values, clust_model,
             clust_conflict_nodes, clust_conflict_edges,
             clust_max_deg, clust_mean_deg)
 

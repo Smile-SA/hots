@@ -67,14 +67,10 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
     (config, output_path, my_instance) = preprocess(
         path, k, tau, method, param, output, tolclust, tolplace
     )
-    it.times_df = it.times_df.append({
-        'num_loop': -1,
-        'action': 'preprocess',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(-1, 'preprocess', (time.time() - start))
 
     # Plot initial data (containers)
-    if True:
+    if False:
         indivs_cons = ctnr.plot_all_data_all_containers(
             my_instance.df_indiv, sep_time=my_instance.sep_time)
         indivs_cons.savefig(path + '/indivs_cons.svg')
@@ -87,11 +83,7 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
      df_indiv_clust, labels_) = analysis_period(
         my_instance, config, method
     )
-    it.times_df = it.times_df.append({
-        'num_loop': -1,
-        'action': 'total_t_obs',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(-1, 'total_t_obs', (time.time() - start))
 
     # Run period
     nb_overloads = 0
@@ -102,11 +94,7 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
         df_indiv_clust, labels_,
         config, output_path, method
     )
-    it.times_df = it.times_df.append({
-        'num_loop': -1,
-        'action': 'total_t_run',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(-1, 'total_t_run', (time.time() - start))
     total_method_time = time.time() - total_method_time
 
     # Print objectives of evaluation part
@@ -163,11 +151,7 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
     #     logging.info('We do not perform allocation \n')
 
     main_time = time.time() - main_time
-    it.times_df = it.times_df.append({
-        'num_loop': -1,
-        'action': 'total_time',
-        'time': main_time
-    }, ignore_index=True)
+    add_time(-1, 'total_time', main_time)
     it.main_results.append(main_time)
     node_results.to_csv(output_path + '/node_results.csv')
     it.loop_results.to_csv(output_path + '/loop_results.csv', index=False)
@@ -245,7 +229,6 @@ def analysis_period(
         (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
             working_df_indiv)
 
-        
         labels_ = clt.perform_clustering(
             df_indiv_clust, config['clustering']['algo'], my_instance.nb_clusters)
         df_indiv_clust['cluster'] = labels_
@@ -261,12 +244,8 @@ def analysis_period(
         it.results_file.write('\nClustering computing time : %f s\n\n' %
                               (time.time() - start))
         print('\nClustering computing time : %f s\n\n' %
-                              (time.time() - start))
-        it.times_df = it.times_df.append({
-            'num_loop': -1,
-            'action': 'clustering_0',
-            'time': (time.time() - start)
-        }, ignore_index=True)
+              (time.time() - start))
+        add_time(-1, 'clustering_0', (time.time() - start))
         n_iter = n_iter - 1
 
         # Loop for incrementing clustering (during analysis)
@@ -281,15 +260,15 @@ def analysis_period(
         #             df_indiv[it.tick_field] >= start_point) & (
         #             my_instance.df_indiv[it.tick_field] <= end_point)]
 
-            # evaluate clustering
-            # (dv, nb_clust_changes_loop,
-            #     clustering_dual_values) = eval_clustering(
-            #     my_instance, working_df_indiv,
-            #     w, u, clustering_dual_values, constraints_dual,
-            #     tol_clust, tol_move_clust,
-            #     df_clust, cluster_profiles, labels_)
+        # evaluate clustering
+        # (dv, nb_clust_changes_loop,
+        #     clustering_dual_values) = eval_clustering(
+        #     my_instance, working_df_indiv,
+        #     w, u, clustering_dual_values, constraints_dual,
+        #     tol_clust, tol_move_clust,
+        #     df_clust, cluster_profiles, labels_)
 
-            # n_iter = n_iter - 1
+        # n_iter = n_iter - 1
 
         # First placement part
         if config['placement']['enable']:
@@ -298,11 +277,7 @@ def analysis_period(
             place.allocation_distant_pairwise(
                 my_instance, cluster_var_matrix, labels_)
             print('Placement heuristic time : %f s' % (time.time() - start))
-            it.times_df = it.times_df.append({
-                'num_loop': -1,
-                'action': 'placement_0',
-                'time': (time.time() - start)
-            }, ignore_index=True)
+            add_time(-1, 'placement_0', (time.time() - start))
         else:
             logging.info('We do not perform placement \n')
     elif method == 'spread':
@@ -394,11 +369,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         my_instance, working_df_indiv, df_clust,
         w, u, constraints_dual, v
     )
-    it.times_df = it.times_df.append({
-        'num_loop': 0,
-        'action': 'total_loop',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(0, 'total_loop', (time.time() - start))
 
     tmin = my_instance.sep_time
     if mode == 'event':
@@ -440,11 +411,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         (working_df_indiv, df_clust, w, u, v) = build_matrices(
             my_instance, tmin, tmax, labels_
         )
-        it.times_df = it.times_df.append({
-            'num_loop': loop_nb,
-            'action': 'build_matrices',
-            'time': (time.time() - start)
-        }, ignore_index=True)
+        add_time(loop_nb, 'build_matrices', (time.time() - start))
         nb_clust_changes_loop = 0
         nb_place_changes_loop = 0
 
@@ -500,11 +467,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         it.results_file.write('Loop delta before changes : %f\n' % init_loop_obj_delta)
         it.results_file.write('Loop delta after changes : %f\n' % end_loop_obj_delta)
         it.results_file.write('Loop time : %f s\n' % loop_time)
-        it.times_df = it.times_df.append({
-            'num_loop': loop_nb,
-            'action': 'total_loop',
-            'time': loop_time
-        }, ignore_index=True)
+        add_time(loop_nb, 'total_loop', loop_time)
         total_loop_time += loop_time
 
         # TODO append deprecated
@@ -639,21 +602,13 @@ def pre_loop(
                                  my_instance.dict_id_c,
                                  my_instance.dict_id_n,
                                  w=w, u=u, pb_number=2)
-    it.times_df = it.times_df.append({
-        'num_loop': 0,
-        'action': 'build_clustering_model',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(0, 'build_clustering_model', (time.time() - start))
     start = time.time()
     print('Solving first clustering ...')
     logging.info('# Clustering evaluation #')
     logging.info('Solving linear relaxation ...')
     clust_model.solve(clust_model.relax_mdl)
-    it.times_df = it.times_df.append({
-        'num_loop': 0,
-        'action': 'solve_clustering_model',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(0, 'solve_clustering_model', (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
     clustering_dual_values = mc.fill_constraints_dual_values(
         clust_model.relax_mdl, constraints_dual
@@ -679,20 +634,12 @@ def pre_loop(
                                  my_instance.dict_id_c,
                                  my_instance.dict_id_n,
                                  w=w, u=u, v=v, dv=dv, pb_number=3)
-    it.times_df = it.times_df.append({
-        'num_loop': 0,
-        'action': 'build_placement_model',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(0, 'build_placement_model', (time.time() - start))
     start = time.time()
     print('Solving first placement ...')
     place_model.solve(place_model.relax_mdl)
     logging.info('Placement problem not evaluated yet\n')
-    it.times_df = it.times_df.append({
-        'num_loop': 0,
-        'action': 'solve_placement_model',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(0, 'solve_placement_model', (time.time() - start))
     placement_dual_values = mc.fill_constraints_dual_values(
         place_model.relax_mdl, constraints_dual
     )
@@ -769,11 +716,7 @@ def eval_sols_old(
         clust_model, clustering_dual_values, constraints_dual,
         tol_clust, tol_move_clust, tol_open_clust,
         df_clust, cluster_profiles, labels_, loop_nb)
-    it.times_df = it.times_df.append({
-        'num_loop': loop_nb,
-        'action': 'loop_clustering',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(loop_nb, 'loop_clustering', (time.time() - start))
     it.clustering_file.write(
         'Loop clustering time : %f s\n' % (time.time() - start))
 
@@ -788,11 +731,7 @@ def eval_sols_old(
         placement_dual_values, constraints_dual, place_model,
         tol_place, tol_move_place, nb_clust_changes_loop, loop_nb
     )
-    it.times_df = it.times_df.append({
-        'num_loop': loop_nb,
-        'action': 'loop_placement',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(loop_nb, 'loop_placement', (time.time() - start))
 
     return (
         nb_clust_changes_loop, nb_place_changes_loop,
@@ -945,19 +884,11 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     start = time.time()
     clust_model.update_adjacency_clust_constraints(u)
     clust_model.update_obj_clustering(w)
-    it.times_df = it.times_df.append({
-        'num_loop': loop_nb,
-        'action': 'update_clustering_model',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(loop_nb, 'update_clustering_model', (time.time() - start))
     logging.info('Solving clustering linear relaxation ...')
     start = time.time()
     clust_model.solve(clust_model.relax_mdl)
-    it.times_df = it.times_df.append({
-        'num_loop': loop_nb,
-        'action': 'solve_clustering',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(loop_nb, 'solve_clustering', (time.time() - start))
     # print('Init clustering lp solution : ', clust_model.relax_mdl.objective_value)
 
     logging.info('Checking for changes in clustering dual values ...')
@@ -970,11 +901,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         tol_clust, tol_move_clust,
         my_instance.nb_containers, my_instance.dict_id_c,
         df_clust, cluster_profiles)
-    it.times_df = it.times_df.append({
-        'num_loop': loop_nb,
-        'action': 'get_moves_clustering',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(loop_nb, 'get_moves_clustering', (time.time() - start))
     if len(moving_containers) > 0:
         logging.info('Changing clustering ...')
         start = time.time()
@@ -983,11 +910,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
             moving_containers, df_clust, labels_,
             my_instance.dict_id_c, tol_open_clust * ics)
         u = clt.build_adjacency_matrix(labels_)
-        it.times_df = it.times_df.append({
-            'num_loop': loop_nb,
-            'action': 'move_clustering',
-            'time': (time.time() - start)
-        }, ignore_index=True)
+        add_time(loop_nb, 'move_clustering', (time.time() - start))
         # print('Evaluating clustering ...')
         # time_solve = time.time()
         # (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
@@ -996,7 +919,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         # print('Writing scores in file ...')
         # it.clustering_file.write(
         #     'ICS and ICD after loop change : %f, %f\n' % (ics, icd))
-        
+
         # print('... Time : %f s' % (time.time() - start))
 
         # Perform k-means from scratch (compare with loop changing)
@@ -1018,7 +941,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         #                              my_instance.dict_id_c,
         #                              my_instance.dict_id_n,
         #                              w=w, u=u, pb_number=2)
-        
+
         clust_model.update_adjacency_clust_constraints(u)
         logging.info('Solving linear relaxation after changes ...')
         start = time.time()
@@ -1026,11 +949,7 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         clustering_dual_values = mc.fill_constraints_dual_values(
             clust_model.relax_mdl, constraints_dual
         )
-        it.times_df = it.times_df.append({
-            'num_loop': loop_nb,
-            'action': 'solve_new_clustering',
-            'time': (time.time() - start)
-        }, ignore_index=True)
+        add_time(loop_nb, 'solve_new_clustering', (time.time() - start))
         # print('After changes clustering lp solution : ', cplex_model.relax_mdl.objective_value)
     else:
         logging.info('Clustering seems still right ...')
@@ -1075,19 +994,11 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     place_model.placement_constraints_stack()
     place_model.add_adjacency_place_constraints(v)
     place_model.update_obj_placement(u, v, dv)
-    it.times_df = it.times_df.append({
-        'num_loop': loop_nb,
-        'action': 'update_placement_model',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(loop_nb, 'update_placement_model', (time.time() - start))
     it.optim_file.write('solve without any change\n')
     start = time.time()
     place_model.solve(place_model.relax_mdl)
-    it.times_df = it.times_df.append({
-        'num_loop': loop_nb,
-        'action': 'solve_placement',
-        'time': (time.time() - start)
-    }, ignore_index=True)
+    add_time(loop_nb, 'solve_placement', (time.time() - start))
     # print('Init placement lp solution : ', place_model.relax_mdl.objective_value)
     moving_containers = []
     nb_place_changes_loop = 0
@@ -1106,22 +1017,14 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
             place_model.relax_mdl, placement_dual_values,
             tol_place, tol_move_place, my_instance.nb_containers,
             working_df_indiv, my_instance.dict_id_c)
-        it.times_df = it.times_df.append({
-            'num_loop': loop_nb,
-            'action': 'get_moves_placement',
-            'time': (time.time() - start)
-        }, ignore_index=True)
+        add_time(loop_nb, 'get_moves_placement', (time.time() - start))
         if len(moving_containers) > 0:
             nb_place_changes_loop = len(moving_containers)
             start = time.time()
             place.move_list_containers(moving_containers, my_instance,
                                        working_df_indiv[it.tick_field].min(),
                                        working_df_indiv[it.tick_field].max())
-            it.times_df = it.times_df.append({
-                'num_loop': loop_nb,
-                'action': 'move_placement',
-                'time': (time.time() - start)
-            }, ignore_index=True)
+            add_time(loop_nb, 'move_placement', (time.time() - start))
             v = place.build_placement_adj_matrix(
                 working_df_indiv, my_instance.dict_id_c)
             start = time.time()
@@ -1132,11 +1035,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
             placement_dual_values = mc.fill_constraints_dual_values(
                 place_model.relax_mdl, constraints_dual
             )
-            it.times_df = it.times_df.append({
-                'num_loop': loop_nb,
-                'action': 'solve_new_placement',
-                'time': (time.time() - start)
-            }, ignore_index=True)
+            add_time(loop_nb, 'solve_new_placement', (time.time() - start))
         else:
             logging.info('No container to move : we do nothing ...\n')
 
@@ -1411,6 +1310,15 @@ def write_main_results():
             i += 1
         else:
             it.main_results_file.write('%f' % e)
+
+
+def add_time(loop_nb: int, action: str, time: float):
+    """Add an action time in times dataframe."""
+    it.times_df = it.times_df.append({
+        'num_loop': loop_nb,
+        'action': action,
+        'time': time
+    }, ignore_index=True)
 
 
 def close_files():

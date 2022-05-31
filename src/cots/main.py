@@ -48,6 +48,8 @@ from .instance import Instance
 @click.option('-k', required=False, type=int, help='Number of clusters')
 @click.option('-t', '--tau', required=False, type=int, help='Time window size')
 @click.option('-m', '--method', required=False, type=str, default='loop', help='Method used')
+@click.option('-c', '--cluster_method', required=False, type=str, default='loop-cluster',
+              help='Method used for updating clustering')
 @click.option('-p', '--param', required=False, type=str, help='Use a specific parameter file')
 @click.option('-o', '--output', required=False, type=str,
               help='Use a specific directory for output')
@@ -55,7 +57,7 @@ from .instance import Instance
               help='Use specific value for epsilonC')
 @click.option('-ea', '--tolplace', required=False, type=str,
               help='Use specific value for epsilonA')
-def main(path, k, tau, method, param, output, tolclust, tolplace):
+def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace):
     """Use method to propose a placement solution for micro-services adjusted in time."""
     # Initialization part
     main_time = time.time()
@@ -65,7 +67,7 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
 
     start = time.time()
     (config, output_path, my_instance) = preprocess(
-        path, k, tau, method, param, output, tolclust, tolplace
+        path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     )
     add_time(-1, 'preprocess', (time.time() - start))
 
@@ -92,7 +94,7 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
      fig_node, fig_clust, fig_mean_clust) = run_period(
         my_instance, df_host_evo,
         df_indiv_clust, labels_,
-        config, output_path, method
+        config, output_path, method, cluster_method
     )
     add_time(-1, 'total_t_run', (time.time() - start))
     total_method_time = time.time() - total_method_time
@@ -162,13 +164,13 @@ def main(path, k, tau, method, param, output, tolclust, tolplace):
 
 
 def preprocess(
-        path: str, k: int, tau: int, method: str,
+        path: str, k: int, tau: int, method: str, cluster_method: str,
         param: str, output: str, tolclust: float, tolplace: float
 ) -> Tuple[Dict, str, Instance]:
     """Load configuration, data and initialize needed objects."""
     # TODO what if we want tick < tau ?
     print('Preprocessing ...')
-    (config, output_path) = it.read_params(path, k, tau, method, param, output)
+    (config, output_path) = it.read_params(path, k, tau, method, cluster_method, param, output)
     config = spec_params(config, [tolclust, tolplace])
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
@@ -204,7 +206,7 @@ def analysis_period(
     if method == 'init':
         return (my_instance, my_instance.df_host,
                 df_indiv_clust, labels_)
-    elif method in ['heur', 'loop', 'loop_v2', 'loop_kmeans']:
+    elif method in ['heur', 'loop']:
 
         # Compute starting point
         n_iter = math.floor((
@@ -292,11 +294,11 @@ def analysis_period(
 def run_period(
     my_instance: Instance, df_host_evo: pd.DataFrame,
     df_indiv_clust: pd.DataFrame, labels_: List,
-    config: Dict, output_path: str, method: str
+    config: Dict, output_path: str, method: str, cluster_method: str
 ):
     """Perform all needed process during evaluation period."""
     # Loops for evaluation
-    if method in ['loop', 'loop_v2', 'loop_kmeans']:
+    if method in ['loop']:
         # loop 'streaming' progress
         it.results_file.write('\n### Loop process ###\n')
         (fig_node, fig_clust, fig_mean_clust,
@@ -311,7 +313,7 @@ def run_period(
             config['loop']['tol_dual_place'],
             config['loop']['tol_move_place'],
             config['loop']['tol_step'],
-            method,
+            cluster_method,
             df_host_evo)
         fig_node.savefig(output_path + '/node_evo_plot.svg')
         fig_clust.savefig(output_path + '/clust_evo_plot.svg')
@@ -331,7 +333,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    constraints_dual: List,
                    tol_clust: float, tol_move_clust: float, tol_open_clust: float,
                    tol_place: float, tol_move_place: float, tol_step: float,
-                   method: str, df_host_evo: pd.DataFrame
+                   cluster_method: str, df_host_evo: pd.DataFrame
                    ) -> Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]:
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
@@ -429,7 +431,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             clust_model, place_model,
             clustering_dual_values, placement_dual_values,
             df_clust, cluster_profiles, labels_) = eval_sols(
-            my_instance, working_df_indiv,
+            my_instance, working_df_indiv, cluster_method,
             w, u, v, clust_model, place_model,
             constraints_dual, clustering_dual_values, placement_dual_values,
             tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
@@ -672,55 +674,34 @@ def build_matrices(
 
 def eval_sols(
         my_instance: Instance, working_df_indiv: pd.DataFrame,
-        w: np.array, u, v, clust_model, place_model,
+        cluster_method: str, w: np.array, u, v, clust_model, place_model,
         constraints_dual, clustering_dual_values, placement_dual_values,
         tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
-        df_clust, cluster_profiles, labels_, loop_nb,
-        method: str = 'loop'
+        df_clust, cluster_profiles, labels_, loop_nb
 ):
-    """Evaluate clustering and placement solutions with method technique."""
-    if method == 'loop_kmeans':
-        return eval_sol_scratch(
-            my_instance, working_df_indiv,
-            w, u, v,
-            constraints_dual, clustering_dual_values, placement_dual_values,
-            tol_clust, tol_move_clust, tol_place, tol_move_place,
-            df_clust, cluster_profiles, labels_)
-    elif method == 'loop_v2':
-        return eval_sols_new(
-            my_instance, working_df_indiv,
-            w, u, v,
-            constraints_dual, clustering_dual_values, placement_dual_values,
-            tol_clust, tol_move_clust, tol_place, tol_move_place,
-            df_clust, cluster_profiles, labels_)
-    else:
-        return eval_sols_old(
-            my_instance, working_df_indiv,
-            w, u, v, clust_model, place_model,
-            constraints_dual, clustering_dual_values, placement_dual_values,
-            tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
-            df_clust, cluster_profiles, labels_, loop_nb)
+    """Evaluate clustering and placement solutions."""
 
-
-def eval_sols_old(
-        my_instance: Instance, working_df_indiv: pd.DataFrame,
-        w: np.array, u, v, clust_model, place_model,
-        constraints_dual, clustering_dual_values, placement_dual_values,
-        tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
-        df_clust, cluster_profiles, labels_, loop_nb):
-    """Evaluate and update solutions using old method."""
     # evaluate clustering
     start = time.time()
-    (dv, nb_clust_changes_loop,
-        init_loop_silhouette, end_loop_silhouette,
-        clustering_dual_values, clust_model,
-        clust_conf_nodes, clust_conf_edges,
-        clust_max_deg, clust_mean_deg) = eval_clustering(
-        my_instance, working_df_indiv, w, u,
-        clust_model, clustering_dual_values, constraints_dual,
-        tol_clust, tol_move_clust, tol_open_clust,
-        df_clust, cluster_profiles, labels_, loop_nb)
-    add_time(loop_nb, 'loop_clustering', (time.time() - start))
+    if cluster_method == 'loop-cluster':
+        (dv, nb_clust_changes_loop,
+            init_loop_silhouette, end_loop_silhouette,
+            clustering_dual_values, clust_model,
+            clust_conf_nodes, clust_conf_edges,
+            clust_max_deg, clust_mean_deg) = eval_clustering(
+            my_instance, w, u,
+            clust_model, clustering_dual_values, constraints_dual,
+            tol_clust, tol_move_clust, tol_open_clust,
+            df_clust, cluster_profiles, labels_, loop_nb)
+    elif cluster_method == 'kmeans-scratch':
+        (dv, nb_clust_changes_loop,
+            init_loop_silhouette, end_loop_silhouette,
+            clustering_dual_values, clust_model,
+            clust_conf_nodes, clust_conf_edges,
+            clust_max_deg, clust_mean_deg) = loop_kmeans(
+                my_instance, df_clust, labels_
+        )
+    add_time(loop_nb, 'loop-clustering', (time.time() - start))
     it.clustering_file.write(
         'Loop clustering time : %f s\n' % (time.time() - start))
 
@@ -745,52 +726,6 @@ def eval_sols_old(
         place_conf_nodes, place_conf_edges,
         place_max_deg, place_mean_deg,
         clust_model, place_model,
-        clustering_dual_values, placement_dual_values,
-        df_clust, cluster_profiles, labels_
-    )
-
-
-def eval_sol_scratch(
-    my_instance: Instance, working_df_indiv: pd.DataFrame,
-        w: np.array, u, v,
-        constraints_dual, clustering_dual_values, placement_dual_values,
-        tol_clust, tol_move_clust, tol_place, tol_move_place,
-        df_clust, cluster_profiles, labels_
-):
-    """Evaluate and update placement solution after new kmeans clustering."""
-    (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
-    it.clustering_file.write('ICS and ICD before any change : %f, %f\n' % (ics, icd))
-    print('ICS and ICD before any change : %f, %f\n' % (ics, icd))
-
-    (df_clust_scratch, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-        working_df_indiv)
-    labels_scratch = clt.perform_clustering(
-        df_clust_scratch, 'kmeans', my_instance.nb_clusters)
-    df_clust_scratch['cluster'] = labels_scratch
-    (ics, icd) = clt.eval_clustering(df_clust_scratch, w, my_instance.dict_id_c)
-    it.clustering_file.write(
-        'ICS and ICD after new k-means : %f, %f\n' % (ics, icd))
-    # Compute new clusters profiles
-    cluster_profiles = clt.get_cluster_mean_profile(
-        df_clust)
-    cluster_vars = clt.get_cluster_variance(cluster_profiles)
-    cluster_var_matrix = clt.get_sum_cluster_variance(
-        cluster_profiles, cluster_vars)
-    dv = ctnr.build_var_delta_matrix_cluster(
-        df_clust, cluster_var_matrix, my_instance.dict_id_c)
-
-    nb_clust_changes_loop = 1
-    # evaluate placement
-    (nb_place_changes_loop,
-        placement_dual_values) = eval_placement(
-        my_instance, working_df_indiv,
-        w, u, v, dv,
-        placement_dual_values, constraints_dual,
-        tol_place, tol_move_place, nb_clust_changes_loop
-    )
-
-    return (
-        nb_clust_changes_loop, nb_place_changes_loop,
         clustering_dual_values, placement_dual_values,
         df_clust, cluster_profiles, labels_
     )
@@ -869,7 +804,7 @@ def eval_sols_new(
     )
 
 
-def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
+def eval_clustering(my_instance: Instance,
                     w: np.array, u: np.array, clust_model,
                     clustering_dual_values: Dict, constraints_dual: Dict,
                     tol_clust: float, tol_move_clust: float, tol_open_clust: float,
@@ -878,15 +813,9 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
     """Evaluate current clustering solution and update it if needed."""
     nb_clust_changes_loop = 0
     logging.info('# Clustering evaluation #')
-    # start = time.time()
-    # print('Compute ICS and ICD before changes ...')
-    # (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
-    # it.clustering_file.write('ICS and ICD before any change : %f, %f\n' % (ics, icd))
-    # print('ICS and ICD before any change : %f, %f\n' % (ics, icd))
-    # print('... Time : %f s' % (time.time() - start))
+
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 
-    # time_loop_clust = time.time()
     start = time.time()
     clust_model.update_adjacency_clust_constraints(u)
     clust_model.update_obj_clustering(w)
@@ -917,36 +846,6 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
             my_instance.dict_id_c, tol_open_clust * ics)
         u = clt.build_adjacency_matrix(labels_)
         add_time(loop_nb, 'move_clustering', (time.time() - start))
-        # print('Evaluating clustering ...')
-        # time_solve = time.time()
-        # (ics, icd) = clt.eval_clustering(df_clust, w, my_instance.dict_id_c)
-        # print('.. time : %f s\n' % (time.time() - time_solve))
-        # start = time.time()
-        # print('Writing scores in file ...')
-        # it.clustering_file.write(
-        #     'ICS and ICD after loop change : %f, %f\n' % (ics, icd))
-
-        # print('... Time : %f s' % (time.time() - start))
-
-        # Perform k-means from scratch (compare with loop changing)
-        # time_kmeans = time.time()
-        # (df_clust_scratch, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-        #     working_df_indiv)
-        # labels_scratch = clt.perform_clustering(
-        #     df_clust_scratch, 'kmeans', my_instance.nb_clusters)
-        # df_clust_scratch['cluster'] = labels_scratch
-        # (ics, icd) = clt.eval_clustering(df_clust_scratch, w, my_instance.dict_id_c)
-        # it.clustering_file.write(
-        #     'ICS and ICD after new k-means : %f, %f\n' % (ics, icd))
-        # it.clustering_file.write(
-        #     'Kmeans clustering time : %f s\n\n' % (time.time() - time_kmeans))
-
-        # cplex_model = mc.CPXInstance(working_df_indiv,
-        #                              my_instance.df_host_meta,
-        #                              my_instance.nb_clusters,
-        #                              my_instance.dict_id_c,
-        #                              my_instance.dict_id_n,
-        #                              w=w, u=u, pb_number=2)
 
         clust_model.update_adjacency_clust_constraints(u)
         logging.info('Solving linear relaxation after changes ...')
@@ -961,13 +860,8 @@ def eval_clustering(my_instance: Instance, working_df_indiv: pd.DataFrame,
         logging.info('Clustering seems still right ...')
         it.results_file.write('Clustering seems still right ...')
 
-    # TODO improve this part (use cluster profiles)
-    # temp_time = time.time()
-    # dv = ctnr.build_var_delta_matrix(
-    #     working_df_indiv, my_instance.dict_id_c)
-    # print('Building var_delta matrices time : %f s' % (time.time() - temp_time))
-
     # TODO improve this part (distance...)
+    # TODO factorize
     # Compute new clusters profiles
     cluster_profiles = clt.get_cluster_mean_profile(
         df_clust)
@@ -1052,6 +946,36 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     return (nb_place_changes_loop, placement_dual_values, place_model,
             place_conf_nodes, place_conf_edges,
             place_max_deg, place_mean_deg)
+
+
+def loop_kmeans(my_instance: Instance,
+                df_clust: pd.DataFrame, labels_: List):
+    """Update clustering via kmeans from scratch."""
+    logging.info('# Clustering via k-means from scratch #')
+    init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
+
+    new_labels_ = clt.perform_clustering(
+        df_clust.drop('cluster', axis=1), 'kmeans', my_instance.nb_clusters)
+    nb_clust_changes_loop = len(
+        [i for i, j in zip(labels_, new_labels_) if i != j])
+    labels_ = new_labels_
+    df_clust['cluster'] = labels_
+
+    # TODO factorize
+    # Compute new clusters profiles
+    cluster_profiles = clt.get_cluster_mean_profile(
+        df_clust)
+    cluster_vars = clt.get_cluster_variance(cluster_profiles)
+    cluster_var_matrix = clt.get_sum_cluster_variance(
+        cluster_profiles, cluster_vars)
+    dv = ctnr.build_var_delta_matrix_cluster(
+        df_clust, cluster_var_matrix, my_instance.dict_id_c)
+
+    end_loop_silhouette = clt.get_silhouette(df_clust, labels_)
+
+    return (dv, nb_clust_changes_loop,
+            init_loop_silhouette, end_loop_silhouette,
+            {}, None, 0, 0, 0, 0)
 
 
 def eval_clustering_v2(my_instance: Instance, working_df_indiv: pd.DataFrame,

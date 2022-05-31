@@ -53,7 +53,8 @@ def init_dfs(data: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 df_from_csv(p_data / 'node_meta.csv'))
 
 
-def read_params(path: str, k: int, tau: int, method: str,
+def read_params(path: str, k: int, tau: int,
+                method: str, cluster_method: str,
                 param: str, output_path: str) -> Dict:
     """Get parameters from file and build the Dict config object."""
     p_path = Path(path)
@@ -75,13 +76,19 @@ def read_params(path: str, k: int, tau: int, method: str,
     if output_path is not None:
         output_path = Path(output_path)
     else:
-        output_path = Path(path + 'k' + str(
-            config['clustering']['nb_clusters']) + '_' + 'tau' + str(
-            tau) + '_' + method)
+        output_path = Path(
+            '%sk%d_tau%d_%s_%s' % (
+                path,
+                config['clustering']['nb_clusters'],
+                tau,
+                method, cluster_method
+            ))
     output_path.mkdir(parents=True, exist_ok=True)
     define_globals(output_path, config)
     if method not in methods:
         raise ValueError('Method %s is not accepted' % method)
+    if cluster_method not in cluster_methods:
+        raise ValueError('Updating clustering method %s is not accepted' % cluster_method)
     return (config, str(output_path))
 
 
@@ -114,6 +121,7 @@ def define_globals(p_path: Path, config: Dict):
     global metrics
 
     global methods
+    global cluster_methods
 
     global main_results
     global loop_results
@@ -135,7 +143,10 @@ def define_globals(p_path: Path, config: Dict):
     tick_field = config['data']['tick_field']
     metrics = config['data']['metrics']
 
-    methods = ['init', 'spread', 'iter-consol', 'heur', 'loop', 'loop_v2', 'loop_kmeans']
+    methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
+    cluster_methods = ['loop-cluster',
+                       'kmeans-scratch',
+                       'dynamic-kmeans']
 
     main_results = []
     loop_results = set_loop_results()

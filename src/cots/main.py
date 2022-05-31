@@ -73,12 +73,17 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     )
     add_time(-1, 'preprocess', (time.time() - start))
 
-    # Plot initial data (containers)
-    if False:
+    # Plot initial data
+    if True:
         indivs_cons = ctnr.plot_all_data_all_containers(
             my_instance.df_indiv, sep_time=my_instance.sep_time)
         indivs_cons.savefig(path + '/indivs_cons.svg')
-
+        node_evo_fig = plot.plot_containers_groupby_nodes(
+            my_instance.df_indiv,
+            my_instance.df_host_meta[it.metrics[0]].max(),
+            my_instance.sep_time,
+            title='Initial Node consumption')
+        node_evo_fig.savefig(path + '/init_node_plot.svg')
     total_method_time = time.time()
 
     # Analysis period
@@ -92,8 +97,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     # Run period
     nb_overloads = 0
     start = time.time()
-    (df_host_evo, main_results, nb_overloads,
-     fig_node, fig_clust, fig_mean_clust) = run_period(
+    (df_host_evo, nb_overloads) = run_period(
         my_instance, df_host_evo,
         df_indiv_clust, labels_,
         config, output_path, method, cluster_method
@@ -103,7 +107,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
     # Print objectives of evaluation part
     (obj_nodes, obj_delta) = mc.get_obj_value_host(df_host_evo)
-    it.results_file.write('Number of nodes : %d, Delta : %f\n' % (
+    it.results_file.write('Number of nodes : %d, Ampli max : %f\n' % (
         obj_nodes, obj_delta))
     it.results_file.write('Number of overloads : %d\n' % nb_overloads)
     it.results_file.write('Total execution time : %f s\n\n' % (total_method_time))
@@ -111,10 +115,14 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     it.clustering_file.write('\nFinal k : %d' % my_instance.nb_clusters)
 
     # Save evaluation results in files
-    it.main_results.append(obj_nodes)
-    it.main_results.append(obj_delta)
     node_results = node.get_nodes_load_info(
         df_host_evo, my_instance.df_host_meta)
+    it.global_results = pd.DataFrame([{
+        'c1': obj_nodes,
+        'c2': obj_delta,
+        'c3': node_results['load_var'].mean(),
+        'c4': nb_overloads
+    }])
 
     # Plot nodes consumption
     # TODO plot from df_host_evo
@@ -156,11 +164,10 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
     main_time = time.time() - main_time
     add_time(-1, 'total_time', main_time)
-    it.main_results.append(main_time)
+    it.global_results.to_csv(output_path + '/global_results.csv', index=False)
     node_results.to_csv(output_path + '/node_results.csv')
     it.loop_results.to_csv(output_path + '/loop_results.csv', index=False)
     it.times_df.to_csv(output_path + '/times.csv', index=False)
-    write_main_results()
     it.results_file.write('\nTotal computing time : %f s' % (main_time))
     close_files()
 
@@ -304,7 +311,7 @@ def run_period(
         # loop 'streaming' progress
         it.results_file.write('\n### Loop process ###\n')
         (fig_node, fig_clust, fig_mean_clust,
-         main_results, df_host_evo, nb_overloads) = streaming_eval(
+         df_host_evo, nb_overloads) = streaming_eval(
             my_instance, df_indiv_clust, labels_,
             config['loop']['mode'],
             config['loop']['tick'],
@@ -326,8 +333,7 @@ def run_period(
         (df_host_evo, nb_overloads) = progress_time_noloop(
             my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
 
-    return (df_host_evo, main_results, nb_overloads,
-            fig_node, fig_clust, fig_mean_clust)
+    return (df_host_evo, nb_overloads)
 
 
 def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
@@ -527,8 +533,10 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                            total_nb_overload, total_loop_time, loop_nb, df_host_evo)
 
     return (fig_node, fig_clust, fig_mean_clust,
-            [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb],
             df_host_evo, total_nb_overload)
+    # return (fig_node, fig_clust, fig_mean_clust,
+    #         [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb],
+    #         df_host_evo, total_nb_overload)
 
 
 def progress_time_noloop(
@@ -1237,17 +1245,6 @@ def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
     return df_host_evo
 
 
-def write_main_results():
-    """Write the main results in the .csv file."""
-    i = 1
-    for e in it.main_results:
-        if i < len(it.main_results):
-            it.main_results_file.write('%f,' % e)
-            i += 1
-        else:
-            it.main_results_file.write('%f' % e)
-
-
 def add_time(loop_nb: int, action: str, time: float):
     """Add an action time in times dataframe."""
     it.times_df = it.times_df.append({
@@ -1260,7 +1257,6 @@ def add_time(loop_nb: int, action: str, time: float):
 def close_files():
     """Write the final files and close all open files."""
     it.results_file.close()
-    it.main_results_file.close()
 
 
 if __name__ == '__main__':

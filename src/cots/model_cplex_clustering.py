@@ -431,7 +431,7 @@ class CPXInstance:
     def placement_constraints_stack(self):
         """Build the placement problem related constraints."""
         # Capacity constraints
-        # TODO if several metrics ?
+        # TODO if several metrics ?
         # self.mdl.add_constraints(
         #     (self.mdl.sum(
         #         self.mdl.x[c, n] * self.containers_data[c][t][1]
@@ -445,9 +445,9 @@ class CPXInstance:
             (self.relax_mdl.sum(
                 self.relax_mdl.x[c, n] * self.containers_data[c][t][1]
                 for c in self.containers_names
-            ) <= self.nodes_data[n][0] for (n,t) in product(
+            ) <= self.nodes_data[n][0] for (n, t) in product(
                 self.nodes_names, range(self.time_window))),
-            ('capacity_%d_%d' % (n, t) for (n,t) in product(
+            ('capacity_%d_%d' % (n, t) for (n, t) in product(
                 self.nodes_names, range(self.time_window)))
         )
 
@@ -460,8 +460,8 @@ class CPXInstance:
         # )
         self.relax_mdl.add_constraints(
             ((self.relax_mdl.x[c, n] - self.relax_mdl.a[n]
-            ) <= 0 for (c, n) in product(self.containers_names, self.nodes_names)),
-            ('open_node_%d_%d' % (c,n) for (c, n) in product(
+              ) <= 0 for (c, n) in product(self.containers_names, self.nodes_names)),
+            ('open_node_%d_%d' % (c, n) for (c, n) in product(
                 self.containers_names, self.nodes_names))
         )
 
@@ -473,9 +473,9 @@ class CPXInstance:
         # ('assign_%d' % c for c in self.containers_names))
         self.relax_mdl.add_constraints(
             (self.relax_mdl.scal_prod(
-            [self.relax_mdl.x[c, n] for n in self.nodes_names], 1
-        ) == 1 for c in self.containers_names),
-        ('assign_%d' % c for c in self.containers_names))
+                [self.relax_mdl.x[c, n] for n in self.nodes_names], 1
+            ) == 1 for c in self.containers_names),
+            ('assign_%d' % c for c in self.containers_names))
 
     def update_place_constraints(self, v):
         """Update placement constraints with new data."""
@@ -586,9 +586,9 @@ class CPXInstance:
         # ('cluster_assign_%d' % c for c in self.containers_names))
         self.relax_mdl.add_constraints(
             (self.relax_mdl.scal_prod(
-            [self.relax_mdl.y[c, k] for k in self.clusters_names], 1
-        ) == 1 for c in self.containers_names),
-        ('cluster_assign_%d' % c for c in self.containers_names))
+                [self.relax_mdl.y[c, k] for k in self.clusters_names], 1
+            ) == 1 for c in self.containers_names),
+            ('cluster_assign_%d' % c for c in self.containers_names))
 
         # Open cluster
         # self.mdl.add_constraints(
@@ -599,8 +599,8 @@ class CPXInstance:
         # )
         self.relax_mdl.add_constraints(
             ((self.relax_mdl.y[c, k] - self.relax_mdl.b[k]
-            ) <= 0 for (c, k) in product(self.containers_names, self.clusters_names)),
-            ('open_cluster_%d_%d' % (c,k) for (c, k) in product(
+              ) <= 0 for (c, k) in product(self.containers_names, self.clusters_names)),
+            ('open_cluster_%d_%d' % (c, k) for (c, k) in product(
                 self.containers_names, self.clusters_names))
         )
 
@@ -732,7 +732,7 @@ class CPXInstance:
         """Add constraints fixing u variables from adjacency matrice."""
         # self.adj_constr = []
         self.adj_constr_relax = []
-        
+
         # self.adj_constr.extend(self.mdl.add_constraints(
         #     (self.mdl.yu[i, j, k] - self.mdl.y[i, k] <= 0 for (i, j) in combinations(
         #         self.containers_names, 2) if u[i, j] for k in self.clusters_names),
@@ -796,7 +796,7 @@ class CPXInstance:
         self.adj_constr_relax.extend(self.relax_mdl.add_constraints(
             ((self.relax_mdl.u[i, j] == 1) for (i, j) in combinations(
                 self.containers_names, 2) if u[i, j]),
-            ('mustLinkC_%d_%d' % (i,j) for (i, j) in combinations(
+            ('mustLinkC_%d_%d' % (i, j) for (i, j) in combinations(
                 self.containers_names, 2) if u[i, j])
         ))
 
@@ -805,7 +805,7 @@ class CPXInstance:
         # self.mdl.remove_constraints(self.adj_constr)
         self.relax_mdl.remove_constraints(self.adj_constr_relax)
         self.add_adjacency_clust_constraints(u)
-    
+
     def update_adjacency_place_constraints(self, v):
         """Update constraints fixing u variables from new adjacency matrix."""
         # self.mdl.remove_constraints(self.adj_constr)
@@ -849,7 +849,7 @@ class CPXInstance:
         # TODO replace because too many variables
         # self.adj_constr = []
         self.adj_constr_relax = []
-        
+
         # self.adj_constr.extend(self.mdl.add_constraints(
         #     (self.mdl.xv[i, j, n] - self.mdl.x[i, n] <= 0 for (i, j) in combinations(
         #         self.containers_names, 2) if v[i, j] for n in self.nodes_names),
@@ -913,7 +913,7 @@ class CPXInstance:
         self.adj_constr_relax.extend(self.relax_mdl.add_constraints(
             ((self.relax_mdl.v[i, j] == 1) for (i, j) in combinations(
                 self.containers_names, 2) if v[i, j]),
-            ('mustLinkA_%d_%d' % (i,j) for (i, j) in combinations(
+            ('mustLinkA_%d_%d' % (i, j) for (i, j) in combinations(
                 self.containers_names, 2) if v[i, j])
         ))
 
@@ -1412,23 +1412,23 @@ def get_obj_value_heuristic(df_indiv: pd.DataFrame,
 def get_obj_value_host(df_host: pd.DataFrame,
                        t_min: int = None,
                        t_max: int = None) -> Tuple[int, float]:
-    """Get objective value of current solution (max delta)."""
+    """Get objectives value of current solution."""
     t_min = t_min or df_host[it.tick_field].min()
     t_max = t_max or df_host[it.tick_field].max()
     df_host = df_host[
         (df_host[it.tick_field] >= t_min)
         & (df_host[it.tick_field] <= t_max)]
     df_host.reset_index(drop=True, inplace=True)
-    delta = 0.0
+    c2 = 0.0
     nb_nodes = 0
     for n, n_data in df_host.groupby(
             df_host[it.host_field]):
         if n_data[it.metrics[0]].mean() > 1e-6:
             nb_nodes += 1
-            delta_n = n_data[it.metrics[0]].max() - n_data[it.metrics[0]].min()
-            if delta_n > delta:
-                delta = delta_n
-    return (nb_nodes, delta)
+            c2_n = n_data[it.metrics[0]].max() - n_data[it.metrics[0]].min()
+            if c2_n > c2:
+                c2 = c2_n
+    return (nb_nodes, c2)
 
 
 def print_constraints(mdl: Model):

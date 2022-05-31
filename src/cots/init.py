@@ -80,7 +80,7 @@ def read_params(path: str, k: int, tau: int,
             '%sk%d_tau%d_%s_%s' % (
                 path,
                 config['clustering']['nb_clusters'],
-                tau,
+                int(tau),
                 method, cluster_method
             ))
     output_path.mkdir(parents=True, exist_ok=True)
@@ -123,13 +123,12 @@ def define_globals(p_path: Path, config: Dict):
     global methods
     global cluster_methods
 
-    global main_results
+    global global_results
     global loop_results
     global times_df
     # global node_results
 
     global results_file
-    global main_results_file
     global additional_results_file
     global optim_file
     global clustering_file
@@ -148,12 +147,10 @@ def define_globals(p_path: Path, config: Dict):
                        'kmeans-scratch',
                        'dynamic-kmeans']
 
-    main_results = []
     loop_results = set_loop_results()
     times_df = set_times_df()
 
     results_file = open(p_path / 'results.log', 'w')
-    main_results_file = open(p_path / 'main_results.csv', 'w')
     # additional_results_file = open(p_path / 'results.log', 'w')
     optim_file = open(p_path / 'optim_logs.log', 'w')
     clustering_file = open(p_path / 'clustering_logs.log', 'w')

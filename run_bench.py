@@ -11,6 +11,11 @@ import click
 
 # TODO add 'help' message
 
+# methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
+methods = ['loop']
+cluster_methods = ['loop-cluster',
+                   'kmeans-scratch']
+
 
 @click.command()
 @click.option('--path', required=True, type=click.Path(exists=True))
@@ -23,21 +28,33 @@ import click
 def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
     """Perform the bench."""
     kstep = kstep or 1
-    taustep = taustep or 1
+    taustep = taustep or 5
 
-    output_path = '../bench/eval_epsilons/profiles_5n_45i_bis/'
+    # output_path = '../data/generated/profiles_change_5n_71i/'
 
-    tol_clust_min = 1
-    tol_clust_max = 9
-    tol_place_min = 1
-    tol_place_max = 9
+    # tol_clust_min = 4
+    # tol_clust_max = 4
+    # tol_place_min = 4
+    # tol_place_max = 4
 
-    # for k in range(kmin, kmax + 1, kstep):
-    #     for tau in range(taumin, taumax + 1, taustep):
-    #         bash_command = 'cots ' + path + ' -k ' + str(k) + ' -t ' + str(tau)
-    #         print('\n%s\n' % bash_command)
-    #         process = subprocess.Popen(bash_command.split())
-    #         output, error = process.communicate()
+    for k in range(kmin, kmax + 1, kstep):
+        for tau in range(taumin, taumax + 1, taustep):
+            for method in methods:
+                if method == 'loop':
+                    for cluster_method in cluster_methods:
+                        bash_command = 'cots %s -k %d -t %d -m %s -c %s' % (
+                            path, k, tau, method, cluster_method
+                        )
+                        print('\n%s\n' % bash_command)
+                        process = subprocess.Popen(bash_command.split())
+                        output, error = process.communicate()
+                else:
+                    bash_command = 'cots %s -k %d -t %d -m %s' % (
+                        path, k, tau, method
+                    )
+                    print('\n%s\n' % bash_command)
+                    process = subprocess.Popen(bash_command.split())
+                    output, error = process.communicate()
 
     # bash_command =
     # 'cots ' + path + ' -k ' + str(k) + ' -t ' + str(tau) + ' -m loop_v2'
@@ -51,16 +68,16 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
     # process = subprocess.Popen(bash_command.split())
     # output, error = process.communicate()
 
-    for tol_c in range(tol_clust_min, tol_clust_max):
-        epsilon_c = tol_c / 10
-        for tol_a in range(tol_place_min, tol_place_max):
-            epsilon_a = tol_a / 10
-            temp_output = output_path + str(tol_c) + '_' + str(tol_a) + '/'
-            bash_command = 'cots ' + path + ' -o ' + temp_output + \
-                ' -ec ' + str(epsilon_c) + ' -ea ' + str(epsilon_a)
-            print('\n%s\n' % bash_command)
-            process = subprocess.Popen(bash_command.split())
-            output, error = process.communicate()
+    # for tol_c in range(tol_clust_min, tol_clust_max):
+    #     epsilon_c = tol_c / 10
+    #     for tol_a in range(tol_place_min, tol_place_max):
+    #         epsilon_a = tol_a / 10
+    #         temp_output = output_path + str(tol_c) + '_' + str(tol_a) + '/'
+    #         bash_command = 'cots ' + path + ' -o ' + temp_output + \
+    #             ' -ec ' + str(epsilon_c) + ' -ea ' + str(epsilon_a)
+    #         print('\n%s\n' % bash_command)
+    #         process = subprocess.Popen(bash_command.split())
+    #         output, error = process.communicate()
 
 
 if __name__ == '__main__':

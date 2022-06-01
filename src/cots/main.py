@@ -95,7 +95,6 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     add_time(-1, 'total_t_obs', (time.time() - start))
 
     # Run period
-    nb_overloads = 0
     start = time.time()
     (df_host_evo, nb_overloads) = run_period(
         my_instance, df_host_evo,
@@ -306,6 +305,7 @@ def run_period(
     config: Dict, output_path: str, method: str, cluster_method: str
 ):
     """Perform all needed process during evaluation period."""
+    nb_overloads = 0
     # Loops for evaluation
     if method in ['loop']:
         # loop 'streaming' progress
@@ -330,8 +330,16 @@ def run_period(
 
     elif method in ['heur', 'spread', 'iter-consol']:
         # TODO adapt after 'progress_time_noloop' changed
-        (df_host_evo, nb_overloads) = progress_time_noloop(
-            my_instance, my_instance.sep_time, my_instance.df_indiv[it.tick_field].max())
+        (df_host_evo, nb_overloads, _, _, _) = progress_time_noloop(
+            my_instance, 'local',
+            my_instance.sep_time, my_instance.df_indiv[it.tick_field].max(),
+            labels_,
+            0, config['loop']['constraints_dual'], {}, {},
+            config['loop']['tol_dual_clust'],
+            config['loop']['tol_move_clust'],
+            config['loop']['tol_dual_place'],
+            config['loop']['tol_move_place']
+        )
 
     return (df_host_evo, nb_overloads)
 
@@ -548,7 +556,6 @@ def progress_time_noloop(
     nb_overload = 0
     nb_clust_changes = 0
     nb_place_changes = 0
-
     for tick in range(tmin, tmax + 1):
         df_host_tick = instance.df_indiv.loc[
             instance.df_indiv[it.tick_field] == tick

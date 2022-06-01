@@ -12,7 +12,8 @@ import click
 # TODO add 'help' message
 
 # methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
-methods = ['loop']
+methods = ['init', 'spread', 'iter-consol', 'heur']
+# methods = ['loop']
 cluster_methods = ['loop-cluster',
                    'kmeans-scratch']
 
@@ -30,7 +31,7 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
     kstep = kstep or 1
     taustep = taustep or 5
 
-    # output_path = '../data/generated/profiles_change_5n_71i/'
+    output_path = '../bench/global_eval/AlibabaV1_50n/'
 
     # tol_clust_min = 4
     # tol_clust_max = 4
@@ -42,15 +43,21 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
             for method in methods:
                 if method == 'loop':
                     for cluster_method in cluster_methods:
-                        bash_command = 'cots %s -k %d -t %d -m %s -c %s' % (
-                            path, k, tau, method, cluster_method
+                        temp_output = '%sk%d_tau%d_%s_%s' % (
+                            output_path, k, tau, method, cluster_method
+                        )
+                        bash_command = 'cots %s -k %d -t %d -m %s -c %s -o %s' % (
+                            path, k, tau, method, cluster_method, temp_output
                         )
                         print('\n%s\n' % bash_command)
                         process = subprocess.Popen(bash_command.split())
                         output, error = process.communicate()
                 else:
-                    bash_command = 'cots %s -k %d -t %d -m %s' % (
-                        path, k, tau, method
+                    temp_output = '%sk%d_tau%d_%s' % (
+                        output_path, k, tau, method
+                    )
+                    bash_command = 'cots %s -k %d -t %d -m %s -o %s' % (
+                        path, k, tau, method, temp_output
                     )
                     print('\n%s\n' % bash_command)
                     process = subprocess.Popen(bash_command.split())

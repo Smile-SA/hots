@@ -11,8 +11,8 @@ import click
 
 # TODO add 'help' message
 
-# methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
-methods = ['init', 'spread', 'iter-consol', 'heur']
+methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
+# methods = ['init', 'spread', 'iter-consol', 'heur']
 # methods = ['loop']
 cluster_methods = ['loop-cluster',
                    'kmeans-scratch']
@@ -31,7 +31,8 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
     kstep = kstep or 1
     taustep = taustep or 5
 
-    output_path = '../bench/global_eval/AlibabaV1_50n/'
+    output_path = '../bench/global_eval/%s/' % path.split('/')[3]
+    # output_path = '../bench/global_eval/Alter_way_7d/'
 
     # tol_clust_min = 4
     # tol_clust_max = 4

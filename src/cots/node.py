@@ -8,7 +8,7 @@ for node IDs, compute different statistic measures ...)
 """
 
 import math
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from matplotlib import gridspec as gridspec
 from matplotlib import pyplot as plt
@@ -28,12 +28,13 @@ def plot_data_all_nodes(df_host: pd.DataFrame, metric: str):
     """Plot specific metric consumption for all nodes."""
     # TODO create temp df is bad...
     fig, ax = plt.subplots()
-    temp_df = df_host.reset_index(drop=True)
-    pvt = pd.pivot_table(temp_df, columns=it.host_field,
+    # temp_df = df_host.reset_index(drop=True)
+    pvt = pd.pivot_table(df_host.reset_index(drop=True), columns=it.host_field,
                          index=it.tick_field, aggfunc='sum', values=metric)
     pvt.plot(ax=ax)
     fig.suptitle('%s use on all nodes' % metric)
     plt.draw()
+    return fig
 
 
 def plot_all_data_all_nodes_end(df_host: pd.DataFrame, total_time: int):
@@ -104,7 +105,7 @@ def get_mean_consumption(df_host: pd.DataFrame):
             global_mean / df_host[it.tick_field].nunique()))
 
 
-def get_list_mean(df_host: pd.DataFrame, total_time: int) -> (Dict, Dict):
+def get_list_mean(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
     """Return list of mean for each metric in each node."""
     dict_mean_cpu = {}
     dict_mean_mem = {}
@@ -116,7 +117,7 @@ def get_list_mean(df_host: pd.DataFrame, total_time: int) -> (Dict, Dict):
     return (dict_mean_cpu, dict_mean_mem)
 
 
-def get_list_var(df_host: pd.DataFrame, total_time: int) -> (Dict, Dict):
+def get_list_var(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
     """Return list of variance for each metric in each node."""
     dict_var_cpu = {}
     dict_var_mem = {}
@@ -178,7 +179,7 @@ def print_vmr(df_host: pd.DataFrame, total_time: int, part: int):
             global_vmr / df_host.machine_id.nunique()))
 
 
-def get_list_vmr(df_host: pd.DataFrame, total_time: int) -> (Dict, Dict):
+def get_list_vmr(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
     """Return list of VMR (Variance-to-Mean Ratio) each metric each node."""
     dict_vmr_cpu = {}
     dict_vmr_mem = {}

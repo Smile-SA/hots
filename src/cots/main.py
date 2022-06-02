@@ -72,7 +72,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     add_time(-1, 'preprocess', (time.time() - start))
 
     # Plot initial data
-    if True:
+    if False:
         indivs_cons = ctnr.plot_all_data_all_containers(
             my_instance.df_indiv, sep_time=my_instance.sep_time)
         indivs_cons.savefig(path + '/indivs_cons.svg')
@@ -161,6 +161,9 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
     main_time = time.time() - main_time
     add_time(-1, 'total_time', main_time)
+    node.plot_data_all_nodes(df_host_evo, it.metrics[0]).savefig(
+        output_path + '/node_usage_evo.svg')
+    df_host_evo.to_csv(output_path + '/node_usage_evo.csv', index=False)
     it.global_results.to_csv(output_path + '/global_results.csv', index=False)
     node_results.to_csv(output_path + '/node_results.csv')
     it.loop_results.to_csv(output_path + '/loop_results.csv', index=False)

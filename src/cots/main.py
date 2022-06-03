@@ -163,7 +163,10 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
     main_time = time.time() - main_time
     add_time(-1, 'total_time', main_time)
-    node.plot_data_all_nodes(df_host_evo, it.metrics[0]).savefig(
+    node.plot_data_all_nodes(
+        df_host_evo, it.metrics[0],
+        my_instance.df_host_meta[it.metrics[0]].max(),
+        my_instance.sep_time).savefig(
         output_path + '/node_usage_evo.svg')
     df_host_evo.to_csv(output_path + '/node_usage_evo.csv', index=False)
     it.global_results.to_csv(output_path + '/global_results.csv', index=False)
@@ -297,7 +300,9 @@ def analysis_period(
         place.allocation_spread(my_instance, my_instance.nb_nodes)
     elif method == 'iter-consol':
         place.allocation_spread(my_instance)
-
+    df_host_evo = my_instance.df_host.loc[
+        my_instance.df_host[it.tick_field] <= my_instance.sep_time
+    ]
     return (my_instance, df_host_evo,
             df_indiv_clust, labels_)
 
@@ -333,7 +338,7 @@ def run_period(
 
     elif method in ['heur', 'spread', 'iter-consol']:
         # TODO adapt after 'progress_time_noloop' changed
-        (df_host_evo, nb_overloads, _, _, _) = progress_time_noloop(
+        (temp_df_host, nb_overloads, _, _, _) = progress_time_noloop(
             my_instance, 'local',
             my_instance.sep_time, my_instance.df_indiv[it.tick_field].max(),
             labels_,
@@ -343,6 +348,9 @@ def run_period(
             config['loop']['tol_dual_place'],
             config['loop']['tol_move_place']
         )
+        df_host_evo = df_host_evo.append(
+            temp_df_host[~temp_df_host[it.tick_field].isin(
+                df_host_evo[it.tick_field].unique())], ignore_index=True)
 
     return (df_host_evo, nb_overloads)
 

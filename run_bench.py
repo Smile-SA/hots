@@ -11,6 +11,16 @@ import click
 
 # TODO add 'help' message
 
+datasets = [
+    'profiles_stab_5n_50i',
+    'profiles_stab_10n_217i',
+    'profiles_add_5n_68i',
+    'profiles_add_10n_477i',
+    'profiles_change_5n_71i',
+    'profiles_change_10n_197i',
+    'profiles_del_5n_57i',
+    'profiles_del_10n_261i'
+]
 methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
 # methods = ['init', 'spread', 'iter-consol', 'heur']
 # methods = ['loop']

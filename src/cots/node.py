@@ -24,15 +24,18 @@ from . import init as it
 # Definition of Node-related functions #
 
 
-def plot_data_all_nodes(df_host: pd.DataFrame, metric: str):
+def plot_data_all_nodes(df_host: pd.DataFrame, metric: str, max_cap, sep_time):
     """Plot specific metric consumption for all nodes."""
     # TODO create temp df is bad...
     fig, ax = plt.subplots()
     # temp_df = df_host.reset_index(drop=True)
+    ax.set_ylim([0, max_cap + (max_cap * 0.2)])
     pvt = pd.pivot_table(df_host.reset_index(drop=True), columns=it.host_field,
                          index=it.tick_field, aggfunc='sum', values=metric)
-    pvt.plot(ax=ax)
-    fig.suptitle('%s use on all nodes' % metric)
+    pvt.plot(ax=ax, legend=False)
+    # fig.suptitle('%s use on all nodes' % metric)
+    ax.axvline(x=sep_time, color='red', linestyle='--')
+    ax.axhline(y=max_cap, color='red')
     plt.draw()
     return fig
 

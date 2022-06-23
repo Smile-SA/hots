@@ -21,8 +21,6 @@ import numpy as np
 
 import pandas as pd
 
-from tqdm import tqdm
-
 from . import init as it
 from .instance import Instance
 
@@ -146,7 +144,7 @@ def assign_indiv_initial_placement(instance: Instance, indiv_id: str,
             instance.df_indiv[it.tick_field] <= tmax
         )
     ][it.metrics[0]].to_numpy()
-    i_n = 0
+    checked_nodes = 1
     done = False
     while not done:
         cap_node = instance.df_host_meta.loc[
@@ -162,10 +160,19 @@ def assign_indiv_initial_placement(instance: Instance, indiv_id: str,
                 instance)
             done = True
         else:
-            i_n += 1
-            if i_n >= min_nodes:
-                min_nodes += 1
-                n = i_n
+            checked_nodes += 1
+            if checked_nodes >= min_nodes:
+                print('Impossible to move %s on another existing node.' % indiv_id)
+                if (instance.dict_id_n[checked_nodes] in
+                    instance.df_host_meta[it.host_field].unique()) & (
+                        np.all(np.less(cons_c, cap_node))):
+                    print('We can open node %s' % (instance.dict_id_n[checked_nodes]))
+                    min_nodes += 1
+                    assign_container_node(
+                        instance.dict_id_n[checked_nodes],
+                        indiv_id,
+                        instance)
+                    done = True
             else:
                 n = (n + 1) % min_nodes
             cap_node = instance.df_host_meta.loc[
@@ -243,7 +250,6 @@ def spread_containers(list_containers: List, instance: Instance,
                 done = True
                 assign_container_node(
                     instance.dict_id_n[n], c, instance)
-                # pbar.update(1)
             else:
                 checked_nodes += 1
                 if checked_nodes > min_nodes:
@@ -260,7 +266,7 @@ def spread_containers(list_containers: List, instance: Instance,
 def colocalize_clusters(list_containers_i: List, list_containers_j: List,
                         containers_grouped: List, instance: Instance,
                         total_time: int, min_nodes: int, conso_nodes: List,
-                        pbar: tqdm, n: int = 0) -> int:
+                        n: int = 0) -> int:
     """Allocate containers of 2 clusters grouping by pairs."""
     for c in range(min(len(list_containers_i),
                        len(list_containers_j))):
@@ -324,8 +330,6 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
                         df_host_meta[it.host_field] == instance.dict_id_n[n]
                     ][it.metrics[0]].to_numpy()[0]
             n = (n + 1) % min_nodes
-        # TODO pbar.update not working ?
-        pbar.update(2)
     return c
 
 
@@ -343,7 +347,6 @@ def allocation_distant_pairwise(
     stop = False
 
     total_time = instance.sep_time
-
     min_nodes = nb_nodes or nb_min_nodes(instance, total_time)
     conso_nodes = np.zeros((instance.nb_nodes, total_time))
     n = 0
@@ -352,7 +355,6 @@ def allocation_distant_pairwise(
     clusters_done_ = np.zeros(instance.nb_clusters, dtype=int)
     c_it = instance.nb_clusters
 
-    pbar = tqdm(total=instance.nb_containers)
     containers_grouped = []
 
     while not stop:
@@ -368,7 +370,6 @@ def allocation_distant_pairwise(
                 labels_) if value == c]
             spread_containers(list_containers, instance, conso_nodes,
                               total_time, min_nodes)
-            pbar.update(len(list_containers))
             stop = True
 
         # > 1 cluster remaining -> co-localize 2 more distant
@@ -384,25 +385,22 @@ def allocation_distant_pairwise(
             list_containers_j = [
                 instance.dict_id_c[u] for u, value in
                 enumerate(labels_) if value == j]
-            it = colocalize_clusters(list_containers_i, list_containers_j,
-                                     containers_grouped, instance, total_time,
-                                     min_nodes, conso_nodes, pbar, n)
-
+            it_cont = colocalize_clusters(list_containers_i, list_containers_j,
+                                          containers_grouped, instance, total_time,
+                                          min_nodes, conso_nodes, n)
             # TODO factorization of container allocation
             if not (len(list_containers_i) == len(list_containers_j)):
                 # we have to place remaining containers
-                it += 1
-                if it < len(list_containers_j):
-                    list_containers = list_containers_j[it:]
+                it_cont += 1
+                if it_cont < len(list_containers_j):
+                    list_containers = list_containers_j[it_cont:]
                     spread_containers(list_containers, instance, conso_nodes,
                                       total_time, min_nodes)
-                    pbar.update(len(list_containers))
 
-                elif it < len(list_containers_i):
-                    list_containers = list_containers_i[it:]
+                elif it_cont < len(list_containers_i):
+                    list_containers = list_containers_i[it_cont:]
                     spread_containers(list_containers, instance, conso_nodes,
                                       total_time, min_nodes)
-                    pbar.update(len(list_containers))
 
             cluster_var_matrix_copy[i, :] = -1.0
             cluster_var_matrix_copy[:, i] = -1.0
@@ -411,8 +409,6 @@ def allocation_distant_pairwise(
             clusters_done_[i] = 1
             clusters_done_[j] = 1
             c_it = c_it - 2
-            pbar.update(len(list_containers_i) + len(list_containers_j))
-    pbar.close()
 
 
 def allocation_ffd(instance: Instance,
@@ -437,31 +433,24 @@ def allocation_ffd(instance: Instance,
     idx_cluster_vars = np.argsort(cluster_vars)[::-1]
     conso_nodes = np.zeros((min_nodes, total_time))
 
-    pbar = tqdm(total=instance.nb_containers)
-
     # try to place "opposite clusters" first
     conso_nodes, cluster_done = place_opposite_clusters(
         instance, cluster_vars,
         cluster_var_matrix, labels_,
-        min_nodes, conso_nodes, pbar)
+        min_nodes, conso_nodes)
 
     nodes_vars = conso_nodes.var(axis=1)
     idx_nodes_vars = np.argsort(nodes_vars)[::-1]
-
-    for cluster in np.where(cluster_done == 1)[0]:
-        pbar.update(np.count_nonzero(labels_ == cluster))
 
     # We browse the clusters by variance decreasing
     for i in range(instance.nb_clusters):
         # check if cluster i has not be placed in init
         if not cluster_done[idx_cluster_vars[i]]:
-            # print("We are in cluster ", idx_cluster_vars[i])
             list_containers = [instance.dict_id_c[j] for j, value in enumerate(
                 labels_) if value == idx_cluster_vars[i]]
 
             # We browse containers in cluster i
             for container in list_containers:
-                # print("We assign container ", container)
                 consu_cont = instance.df_indiv.loc[
                     instance.
                     df_indiv[it.indiv_field] == container
@@ -473,8 +462,6 @@ def allocation_ffd(instance: Instance,
 
                 # we run through already open nodes
                 for idx_node in idx_nodes_vars:
-                    # print("We try node ",
-                    #       instance.dict_id_n[idx_node], idx_node)
                     cap_node = instance.df_host_meta.loc[
                         instance.
                         df_host_meta[it.host_field] == instance.dict_id_n[idx_node]
@@ -512,24 +499,19 @@ def allocation_ffd(instance: Instance,
 
                 # Finally we assign the container
                 assign_container = assign_container - 1
-                # print("Finally assign ", assign_container)
                 conso_nodes[assign_container] += consu_cont
                 nodes_vars[assign_container
                            ] = conso_nodes[assign_container].var()
                 idx_nodes_vars = np.argsort(nodes_vars)[::-1]
                 assign_container_node(
                     instance.dict_id_n[assign_container], container, instance)
-                pbar.update(1)
-    pbar.close()
 
 
 def allocation_spread(instance: Instance, min_nodes: int = None):
     """Spread technique for placement."""
     total_time = instance.sep_time
-
     min_nodes = min_nodes or nb_min_nodes(instance, total_time)
     conso_nodes = np.zeros((instance.nb_nodes, total_time))
-
     spread_containers(
         instance.df_indiv[it.indiv_field].unique(),
         instance, conso_nodes, total_time, min_nodes
@@ -574,8 +556,7 @@ def nb_min_nodes(instance: Instance, total_time: int) -> float:
 # TODO integrate upper bound for considering all clusters sum variance < ub
 def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
                             cluster_var_matrix: np.array, labels_: List,
-                            min_nodes: int, conso_nodes: np.array,
-                            pbar: tqdm) -> Tuple[np.array, np.array]:
+                            min_nodes: int, conso_nodes: np.array) -> Tuple[np.array, np.array]:
     """Initialize allocation heuristic by co-localizing distant clusters."""
     total_time = instance.sep_time
     lb = 0.0
@@ -590,22 +571,22 @@ def place_opposite_clusters(instance: Instance, cluster_vars: np.array,
     list_containers_j = [instance.dict_id_c[u] for u, value in enumerate(
         labels_) if value == j]
 
-    it = colocalize_clusters(list_containers_i, list_containers_j,
-                             instance, total_time, min_nodes,
-                             conso_nodes, pbar)
+    it_cont = colocalize_clusters(list_containers_i, list_containers_j,
+                                  instance, total_time, min_nodes,
+                                  conso_nodes)
 
     if not (len(list_containers_i) == len(list_containers_j)):
         # we have to place remaining containers
 
-        if it < len(list_containers_j):
-            list_containers = list_containers_j[it:]
+        if it_cont < len(list_containers_j):
+            list_containers = list_containers_j[it_cont:]
             spread_containers(list_containers, instance, conso_nodes,
-                              total_time, min_nodes, pbar)
+                              total_time, min_nodes)
 
-        elif it < len(list_containers_i):
-            list_containers = list_containers_i[it:]
+        elif it_cont < len(list_containers_i):
+            list_containers = list_containers_i[it_cont:]
             spread_containers(list_containers, instance, conso_nodes,
-                              total_time, min_nodes, pbar)
+                              total_time, min_nodes)
 
     cluster_done[i] = 1
     cluster_done[j] = 1

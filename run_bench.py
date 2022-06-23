@@ -21,11 +21,14 @@ datasets = [
     'profiles_del_5n_57i',
     'profiles_del_10n_261i'
 ]
-methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
-# methods = ['init', 'spread', 'iter-consol', 'heur']
-# methods = ['loop']
+# methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
+# methods = ['iter-consol', 'heur', 'loop']
+# methods = ['init', 'spread']
+methods = ['loop']
 cluster_methods = ['loop-cluster',
-                   'kmeans-scratch']
+                   'kmeans-scratch',
+                   'stream-km']
+# cluster_methods = ['loop-cluster']
 
 
 @click.command()
@@ -42,7 +45,7 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
     taustep = taustep or 5
 
     output_path = '../bench/global_eval/%s/' % path.split('/')[3]
-    # output_path = '../bench/global_eval/Alter_way_7d/'
+    # output_path = '../bench/global_eval/real/Alter_way_7d/'
 
     # tol_clust_min = 4
     # tol_clust_max = 4

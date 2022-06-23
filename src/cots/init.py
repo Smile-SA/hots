@@ -137,6 +137,8 @@ def define_globals(p_path: Path, config: Dict):
 
     global renderer
 
+    global streamkm_model
+
     indiv_field = config['data']['individual_field']
     host_field = config['data']['host_field']
     tick_field = config['data']['tick_field']
@@ -145,7 +147,7 @@ def define_globals(p_path: Path, config: Dict):
     methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
     cluster_methods = ['loop-cluster',
                        'kmeans-scratch',
-                       'dynamic-kmeans']
+                       'stream-km']
 
     loop_results = set_loop_results()
     times_df = set_times_df()

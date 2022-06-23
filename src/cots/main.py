@@ -24,6 +24,8 @@ from typing import Dict, List, Tuple
 
 import click
 
+from clusopt_core.cluster import Streamkm
+
 from matplotlib import pyplot as plt
 
 import numpy as np
@@ -396,7 +398,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     (clust_model, place_model,
      clustering_dual_values, placement_dual_values) = pre_loop(
         my_instance, working_df_indiv, df_clust,
-        w, u, constraints_dual, v
+        w, u, constraints_dual, v, cluster_method
     )
     add_time(0, 'total_loop', (time.time() - start))
 
@@ -623,7 +625,7 @@ def progress_time_noloop(
 def pre_loop(
     my_instance: Instance, working_df_indiv: pd.DataFrame,
     df_clust: pd.DataFrame, w: np.array, u: np.array,
-    constraints_dual: List, v: np.array
+    constraints_dual: List, v: np.array, cluster_method: str
 ):
     """Build optimization problems and solve them with T_init solutions."""
     logging.info('Evaluation of problems with initial solutions')
@@ -646,6 +648,17 @@ def pre_loop(
     clustering_dual_values = mc.fill_constraints_dual_values(
         clust_model.relax_mdl, constraints_dual
     )
+
+    if cluster_method == 'stream-km':
+        it.streamkm_model = Streamkm(
+            coresetsize=my_instance.nb_containers,
+            length=my_instance.time * my_instance.nb_containers,
+            seed=my_instance.nb_clusters,
+        )
+        it.streamkm_model.partial_fit(df_clust.drop('cluster', axis=1))
+        _, labels_ = it.streamkm_model.get_final_clusters(
+            my_instance.nb_clusters, seed=my_instance.nb_clusters)
+        df_clust['cluster'] = labels_
 
     # TODO improve this part (distance...)
     cluster_profiles = clt.get_cluster_mean_profile(
@@ -708,7 +721,6 @@ def eval_sols(
         df_clust, cluster_profiles, labels_, loop_nb
 ):
     """Evaluate clustering and placement solutions."""
-
     # evaluate clustering
     start = time.time()
     if cluster_method == 'loop-cluster':
@@ -727,6 +739,14 @@ def eval_sols(
             clustering_dual_values, clust_model,
             clust_conf_nodes, clust_conf_edges,
             clust_max_deg, clust_mean_deg) = loop_kmeans(
+                my_instance, df_clust, labels_
+        )
+    elif cluster_method == 'stream-km':
+        (dv, nb_clust_changes_loop,
+            init_loop_silhouette, end_loop_silhouette,
+            clustering_dual_values, clust_model,
+            clust_conf_nodes, clust_conf_edges,
+            clust_max_deg, clust_mean_deg) = stream_km(
                 my_instance, df_clust, labels_
         )
     add_time(loop_nb, 'loop-clustering', (time.time() - start))
@@ -921,7 +941,6 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
         working_df_indiv,
         my_instance.dict_id_c
     )
-    # place_model.mdl.clear_constraints()
     place_model.relax_mdl.clear_constraints()
     place_model.placement_constraints_stack()
     place_model.add_adjacency_place_constraints(v)
@@ -984,6 +1003,38 @@ def loop_kmeans(my_instance: Instance,
 
     new_labels_ = clt.perform_clustering(
         df_clust.drop('cluster', axis=1), 'kmeans', my_instance.nb_clusters)
+    nb_clust_changes_loop = len(
+        [i for i, j in zip(labels_, new_labels_) if i != j])
+    labels_ = new_labels_
+    df_clust['cluster'] = labels_
+
+    # TODO factorize
+    # Compute new clusters profiles
+    cluster_profiles = clt.get_cluster_mean_profile(
+        df_clust)
+    cluster_vars = clt.get_cluster_variance(cluster_profiles)
+    cluster_var_matrix = clt.get_sum_cluster_variance(
+        cluster_profiles, cluster_vars)
+    dv = ctnr.build_var_delta_matrix_cluster(
+        df_clust, cluster_var_matrix, my_instance.dict_id_c)
+
+    end_loop_silhouette = clt.get_silhouette(df_clust, labels_)
+
+    return (dv, nb_clust_changes_loop,
+            init_loop_silhouette, end_loop_silhouette,
+            {}, None, 0, 0, 0, 0)
+
+
+def stream_km(my_instance: Instance,
+              df_clust: pd.DataFrame, labels_: List):
+    """Update clustering via kmeans from scratch."""
+    logging.info('# Clustering via streamkm #')
+    init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
+
+    it.streamkm_model.partial_fit(df_clust.drop('cluster', axis=1))
+    _, new_labels_ = it.streamkm_model.get_final_clusters(
+        my_instance.nb_clusters, seed=my_instance.nb_clusters)
+
     nb_clust_changes_loop = len(
         [i for i, j in zip(labels_, new_labels_) if i != j])
     labels_ = new_labels_

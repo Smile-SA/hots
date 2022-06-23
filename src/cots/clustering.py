@@ -245,7 +245,7 @@ def get_cluster_mean_profile(df_clust: pd.DataFrame) -> np.array:
 def get_sum_cluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
     """Compute a matrix of sum of variances of each pair of cluster."""
     k = len(profiles_)
-    sum_profiles_matrix = np.zeros((k, k), dtype=float)
+    sum_profiles_matrix = np.full((k, k), -1, dtype=float)
     # for i in range(k):
     #     for j in range(i + 1, k):
     #         if vars_[i] + vars_[j] == 0.0:
@@ -259,7 +259,7 @@ def get_sum_cluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
     # print(sum_profiles_matrix)
     # sum_profiles_matrix = np.zeros((k, k), dtype=float)
     for i in range(k):
-        for j in range(i, k):
+        for j in range(i + 1, k):
             sum_profiles_matrix[i, j] = (
                 (profiles_[i, :] + profiles_[j, :]).var(ddof=0))
             sum_profiles_matrix[j, i] = sum_profiles_matrix[i, j]

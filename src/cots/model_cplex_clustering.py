@@ -16,6 +16,7 @@ import time
 from itertools import combinations, product
 from typing import Dict, List, Tuple
 
+# from docplex.mp.conflict_refiner import ConflictRefiner
 from docplex.mp.linear import LinearExpr
 from docplex.mp.model import Model
 from docplex.mp.solution import SolveSolution
@@ -1157,15 +1158,18 @@ class CPXInstance:
 
     def solve(self, my_mdl: Model, verbose: bool = False):
         """Solve the given problem."""
+        # refiner = ConflictRefiner()
+        # res = refiner.refine_conflict(self.relax_mdl)
+        # res.display()  # Show conflicting constraints
         if not my_mdl.solve(
             clean_before_solve=True, log_output=verbose
         ):
             it.optim_file.write('*** Problem has no solution ***')
         else:
             it.optim_file.write('*** Model %s solved as function:' % self.pb_number)
-            if verbose:
-                my_mdl.print_solution()
-                my_mdl.report()
+            # if verbose:
+            #     my_mdl.print_solution()
+            #     my_mdl.report()
             it.optim_file.write('%f\n' % my_mdl.objective_value)
             # my_mdl.report_kpis()
 

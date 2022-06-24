@@ -21,15 +21,16 @@ datasets = [
     'profiles_del_5n_57i',
     'profiles_del_10n_261i'
 ]
-# methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
+methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
 # methods = ['iter-consol', 'heur', 'loop']
 # methods = ['init', 'spread']
-methods = ['loop']
+# methods = ['loop']
 cluster_methods = ['loop-cluster',
                    'kmeans-scratch',
                    'stream-km']
 # cluster_methods = ['loop-cluster']
 
+# command = python run_bench.py --path ../data/v17/v1_50n --kmin 2 --kmax 3 --taumin 5 --taumax 25
 
 @click.command()
 @click.option('--path', required=True, type=click.Path(exists=True))
@@ -44,8 +45,9 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
     kstep = kstep or 1
     taustep = taustep or 5
 
-    output_path = '../bench/global_eval/%s/' % path.split('/')[3]
+    # output_path = '../bench/global_eval/%s/' % path.split('/')[3]
     # output_path = '../bench/global_eval/real/Alter_way_7d/'
+    output_path = '../bench/global_eval/AlibabaV1_50n/'
 
     # tol_clust_min = 4
     # tol_clust_max = 4

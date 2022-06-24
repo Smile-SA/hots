@@ -151,12 +151,14 @@ class CPXInstance:
         # self.mdl.x = self.mdl.binary_var_dict(
         #     idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
         self.relax_mdl.x = self.relax_mdl.continuous_var_dict(
-            idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
+            idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]),
+            lb=0, ub=1)
 
         ida = list(self.nodes_names)
         # opened variables : if node n is used or not
         # self.mdl.a = self.mdl.binary_var_dict(ida, name=lambda k: 'a_%d' % k)
-        self.relax_mdl.a = self.relax_mdl.continuous_var_dict(ida, name=lambda k: 'a_%d' % k)
+        self.relax_mdl.a = self.relax_mdl.continuous_var_dict(ida, name=lambda k: 'a_%d' % k,
+            lb=0, ub=1)
 
         # variables for max diff consumption (global delta)
         # self.mdl.delta = self.mdl.continuous_var(name='delta')
@@ -172,7 +174,8 @@ class CPXInstance:
         #     idv, name=lambda k: 'v_%d,%d' % (k[0], k[1])
         # )
         self.relax_mdl.v = self.relax_mdl.continuous_var_dict(
-            idv, name=lambda k: 'v_%d,%d' % (k[0], k[1])
+            idv, name=lambda k: 'v_%d,%d' % (k[0], k[1]),
+            lb=0, ub=1
         )
 
         # specific node coloc variables : if c1 and c2 are in node n
@@ -181,7 +184,8 @@ class CPXInstance:
         #     idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2])
         # )
         self.relax_mdl.xv = self.relax_mdl.continuous_var_dict(
-            idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2])
+            idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2]),
+            lb=0, ub=1
         )
 
     def build_clustering_variables(self):
@@ -1165,6 +1169,7 @@ class CPXInstance:
             clean_before_solve=True, log_output=verbose
         ):
             it.optim_file.write('*** Problem has no solution ***')
+            it.optim_file.write(my_mdl.solve_details.status)
         else:
             it.optim_file.write('*** Model %s solved as function:' % self.pb_number)
             # if verbose:

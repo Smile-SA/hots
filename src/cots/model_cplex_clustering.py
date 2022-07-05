@@ -148,45 +148,46 @@ class CPXInstance:
         """Build placement related variables."""
         idx = [(c, n) for c in self.containers_names for n in self.nodes_names]
         # placement variables : if container c is on node n
-        # self.mdl.x = self.mdl.binary_var_dict(
-        #     idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
-        self.relax_mdl.x = self.relax_mdl.continuous_var_dict(
-            idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]),
-            lb=0, ub=1)
+        self.relax_mdl.x = self.relax_mdl.binary_var_dict(
+            idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]))
+        # self.relax_mdl.x = self.relax_mdl.continuous_var_dict(
+        #     idx, name=lambda k: 'x_%d,%d' % (k[0], k[1]),
+        #     lb=0, ub=1)
 
         ida = list(self.nodes_names)
         # opened variables : if node n is used or not
-        # self.mdl.a = self.mdl.binary_var_dict(ida, name=lambda k: 'a_%d' % k)
-        self.relax_mdl.a = self.relax_mdl.continuous_var_dict(ida, name=lambda k: 'a_%d' % k,
-            lb=0, ub=1)
+        self.relax_mdl.a = self.relax_mdl.binary_var_dict(ida, name=lambda k: 'a_%d' % k)
+        # self.relax_mdl.a = self.relax_mdl.continuous_var_dict(
+        #     ida, name=lambda k: 'a_%d' % k, lb=0, ub=1
+        # )
 
         # variables for max diff consumption (global delta)
-        # self.mdl.delta = self.mdl.continuous_var(name='delta')
         self.relax_mdl.delta = self.relax_mdl.continuous_var(name='delta')
+        # self.relax_mdl.delta = self.relax_mdl.continuous_var(name='delta')
 
         # variables for max diff consumption (n delta)
-        # self.mdl.delta = self.mdl.continuous_var_dict(
+        # self.relax_mdl.delta = self.relax_mdl.continuous_var_dict(
         #     ida, name=lambda k: 'delta_%d' % k)
 
         idv = [(c1, c2) for (c1, c2) in combinations(self.containers_names, 2)]
         # coloc variables : if c1 and c2 are in the same node
-        # self.mdl.v = self.mdl.binary_var_dict(
-        #     idv, name=lambda k: 'v_%d,%d' % (k[0], k[1])
-        # )
-        self.relax_mdl.v = self.relax_mdl.continuous_var_dict(
-            idv, name=lambda k: 'v_%d,%d' % (k[0], k[1]),
-            lb=0, ub=1
+        self.relax_mdl.v = self.relax_mdl.binary_var_dict(
+            idv, name=lambda k: 'v_%d,%d' % (k[0], k[1])
         )
+        # self.relax_mdl.v = self.relax_mdl.continuous_var_dict(
+        #     idv, name=lambda k: 'v_%d,%d' % (k[0], k[1]),
+        #     lb=0, ub=1
+        # )
 
         # specific node coloc variables : if c1 and c2 are in node n
         idxv = [(c1, c2, n) for (c1, c2) in idv for n in self.nodes_names]
-        # self.mdl.xv = self.mdl.binary_var_dict(
-        #     idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2])
-        # )
-        self.relax_mdl.xv = self.relax_mdl.continuous_var_dict(
-            idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2]),
-            lb=0, ub=1
+        self.relax_mdl.xv = self.relax_mdl.binary_var_dict(
+            idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2])
         )
+        # self.relax_mdl.xv = self.relax_mdl.continuous_var_dict(
+        #     idxv, name=lambda k: 'xv_%d,%d,%d' % (k[0], k[1], k[2]),
+        #     lb=0, ub=1
+        # )
 
     def build_clustering_variables(self):
         """Build clustering related variables."""
@@ -195,35 +196,37 @@ class CPXInstance:
         # assignment variables : if container c is on cluster k
         # self.mdl.y = self.mdl.binary_var_dict(
         #     idy, name=lambda k: 'y_%d,%d' % (k[0], k[1]))
-        self.relax_mdl.y = self.relax_mdl.continuous_var_dict(
+        self.relax_mdl.y = self.relax_mdl.binary_var_dict(
             idy, name=lambda k: 'y_%d,%d' % (k[0], k[1]))
+        # self.relax_mdl.y = self.relax_mdl.continuous_var_dict(
+        #     idy, name=lambda k: 'y_%d,%d' % (k[0], k[1]))
 
         idk = list(self.clusters_names)
         # used cluster variables
-        # self.mdl.b = self.mdl.binary_var_dict(
-        #     idk, name=lambda k: 'b_%d' % k
-        # )
-        self.relax_mdl.b = self.relax_mdl.continuous_var_dict(
+        self.relax_mdl.b = self.relax_mdl.binary_var_dict(
             idk, name=lambda k: 'b_%d' % k
         )
+        # self.relax_mdl.b = self.relax_mdl.continuous_var_dict(
+        #     idk, name=lambda k: 'b_%d' % k
+        # )
 
         idu = [(c1, c2) for (c1, c2) in combinations(self.containers_names, 2)]
         # coloc variables : if containers c1 and c2 are in same cluster
-        # self.mdl.u = self.mdl.binary_var_dict(
-        #     idu, name=lambda k: 'u_%d,%d' % (k[0], k[1])
-        # )
-        self.relax_mdl.u = self.relax_mdl.continuous_var_dict(
+        self.relax_mdl.u = self.relax_mdl.binary_var_dict(
             idu, name=lambda k: 'u_%d,%d' % (k[0], k[1])
         )
+        # self.relax_mdl.u = self.relax_mdl.continuous_var_dict(
+        #     idu, name=lambda k: 'u_%d,%d' % (k[0], k[1])
+        # )
 
         # specific cluster coloc variables : if c1 and c2 are in cluster k
         idyu = [(c1, c2, k) for (c1, c2) in idu for k in self.clusters_names]
-        # self.mdl.yu = self.mdl.binary_var_dict(
-        #     idyu, name=lambda k: 'yu_%d,%d,%d' % (k[0], k[1], k[2])
-        # )
-        self.relax_mdl.yu = self.relax_mdl.continuous_var_dict(
+        self.relax_mdl.yu = self.relax_mdl.binary_var_dict(
             idyu, name=lambda k: 'yu_%d,%d,%d' % (k[0], k[1], k[2])
         )
+        # self.relax_mdl.yu = self.relax_mdl.continuous_var_dict(
+        #     idyu, name=lambda k: 'yu_%d,%d,%d' % (k[0], k[1], k[2])
+        # )
 
     def build_data(self, df_indiv: pd.DataFrame,
                    df_host_meta: pd.DataFrame,

@@ -643,9 +643,10 @@ def pre_loop(
     clust_model.solve(clust_model.relax_mdl)
     add_time(0, 'solve_clustering_model', (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
-    clustering_dual_values = mc.fill_constraints_dual_values(
-        clust_model.relax_mdl, constraints_dual
-    )
+    # clustering_dual_values = mc.fill_constraints_dual_values(
+    #     clust_model.relax_mdl, constraints_dual
+    # )
+    clustering_dual_values = {}
 
     if cluster_method == 'stream-km':
         it.streamkm_model = Streamkm(
@@ -684,6 +685,7 @@ def pre_loop(
     place_model.solve(place_model.relax_mdl)
     logging.info('Placement problem not evaluated yet\n')
     add_time(0, 'solve_placement_model', (time.time() - start))
+    print(it.times_df)
     placement_dual_values = mc.fill_constraints_dual_values(
         place_model.relax_mdl, constraints_dual
     )

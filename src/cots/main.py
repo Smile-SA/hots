@@ -416,7 +416,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
         # TODO not fully tested (replace containers)
         (temp_df_host, nb_overload, loop_nb,
-         nb_clust_changes, nb_place_changes) = progress_time_noloop(
+         nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
             my_instance, 'local', tmin, tmax, labels_, loop_nb,
             constraints_dual, clustering_dual_values, placement_dual_values,
             tol_clust, tol_move_clust, tol_place, tol_move_place)
@@ -424,6 +424,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             temp_df_host[~temp_df_host[it.tick_field].isin(
                 df_host_evo[it.tick_field].unique())], ignore_index=True)
         total_nb_overload += nb_overload
+        nb_clust_changes += nb_clust_changes_loop
+        nb_place_changes += nb_place_changes_loop
 
         if mode == 'event':
             (temp_df_host, nb_overload, loop_nb,
@@ -643,10 +645,10 @@ def pre_loop(
     clust_model.solve(clust_model.relax_mdl)
     add_time(0, 'solve_clustering_model', (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
-    # clustering_dual_values = mc.fill_constraints_dual_values(
-    #     clust_model.relax_mdl, constraints_dual
-    # )
-    clustering_dual_values = {}
+    clustering_dual_values = mc.fill_constraints_dual_values(
+        clust_model.relax_mdl, constraints_dual
+    )
+    # clustering_dual_values = {}
 
     if cluster_method == 'stream-km':
         it.streamkm_model = Streamkm(
@@ -685,7 +687,7 @@ def pre_loop(
     place_model.solve(place_model.relax_mdl)
     logging.info('Placement problem not evaluated yet\n')
     add_time(0, 'solve_placement_model', (time.time() - start))
-    print(it.times_df)
+    # print(it.times_df)
     placement_dual_values = mc.fill_constraints_dual_values(
         place_model.relax_mdl, constraints_dual
     )
@@ -723,6 +725,13 @@ def eval_sols(
     """Evaluate clustering and placement solutions."""
     # evaluate clustering
     start = time.time()
+    it.clustering_file.write(
+        'labels before change\n'
+    )
+    it.clustering_file.write(
+        np.array2string(labels_, separator=',')
+    )
+    it.clustering_file.write('\n')
     if cluster_method == 'loop-cluster':
         (dv, nb_clust_changes_loop,
             init_loop_silhouette, end_loop_silhouette,
@@ -749,6 +758,13 @@ def eval_sols(
             clust_max_deg, clust_mean_deg) = stream_km(
                 my_instance, df_clust, labels_
         )
+    it.clustering_file.write(
+        'labels after change\n'
+    )
+    it.clustering_file.write(
+        np.array2string(labels_, separator=',')
+    )
+    it.clustering_file.write('\n')
     add_time(loop_nb, 'loop-clustering', (time.time() - start))
     it.clustering_file.write(
         'Loop clustering time : %f s\n' % (time.time() - start))

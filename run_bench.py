@@ -21,10 +21,10 @@ datasets = [
     'profiles_del_5n_57i',
     'profiles_del_10n_261i'
 ]
-methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
+# methods = ['init', 'spread', 'iter-consol', 'heur', 'loop']
 # methods = ['iter-consol', 'heur', 'loop']
 # methods = ['init', 'spread']
-# methods = ['loop']
+methods = ['loop']
 cluster_methods = ['loop-cluster',
                    'kmeans-scratch',
                    'stream-km']

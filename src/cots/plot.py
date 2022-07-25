@@ -411,9 +411,10 @@ def init_plot_clustering(df_clust: pd.DataFrame,
     for row in df_clust.iterrows():
         cluster = int(row[1]['cluster'])
         values = row[1].drop(labels='cluster')
-        ax.plot(values, colors[cluster], label=cluster)
+        # ax.plot(values, colors[cluster], label=cluster)
+        ax.plot(values, colors[cluster])
     ax.axvline(x=df_clust.columns[-2], color='red', linestyle='--')
-    ax.legend()
+    # ax.legend()
     return (fig, ax)
 
 
@@ -474,7 +475,8 @@ def update_clustering_plot(fig, ax, df_clust: pd.DataFrame,
     for row in df_clust.iterrows():
         cluster = int(row[1]['cluster'])
         values = row[1].drop(labels='cluster')
-        ax.plot(values, colors[cluster], label=row[0])
+        # ax.plot(values, colors[cluster], label=row[0])
+        ax.plot(values, colors[cluster])
     ax.axvline(x=df_clust.columns[-2], color='red', linestyle='--')
 
 

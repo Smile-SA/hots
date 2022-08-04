@@ -58,8 +58,8 @@ class CPXInstance:
     def __init__(self, df_indiv: pd.DataFrame,
                  df_host_meta: pd.DataFrame, nb_clusters: int,
                  dict_id_c: Dict, dict_id_n: Dict,
-                 w: np.array = None, u: np.array = None, v: np.array = None,
-                 dv: np.array = None, cv: np.array = None,
+                 w: np.array = None, u: np.array = None,
+                 v: np.array = None, dv: np.array = None,
                  nb_nodes: int = None, pb_number: int = None, verbose: bool = False):
         """Initialize CPXInstance with data in Instance."""
         model_time = time.time()
@@ -77,9 +77,6 @@ class CPXInstance:
         # - 2 = only clustering
         # - 3 = placement from clustering
         self.pb_number = pb_number or 0
-
-        # if cv is None:
-        #     cv = np.ones((self.nb_containers, self.nb_containers))
 
         # self.mdl = Model(name=self.get_pb_name(self.pb_number), checker='off')
         self.relax_mdl = Model(name='lp_' + self.get_pb_name(self.pb_number), checker='off')
@@ -99,7 +96,7 @@ class CPXInstance:
         self.build_constraints(w, u, v)
         if verbose:
             it.optim_file.write('Building objective ...\n')
-        self.build_objective(w, u, dv, cv)
+        self.build_objective(w, u, dv)
 
         if verbose:
             it.optim_file.write('Building relaxed model ...\n')
@@ -395,7 +392,7 @@ class CPXInstance:
         #         'fix_v' + str(i) + '_' + str(j)
         #     )
 
-        for(i, j) in combinations(self.containers_names, 2):
+        for (i, j) in combinations(self.containers_names, 2):
             for n in self.nodes_names:
                 self.mdl.add_constraint(
                     self.mdl.xv[i, j, n] <= self.mdl.x[i, n],
@@ -487,7 +484,7 @@ class CPXInstance:
     def update_place_constraints(self, v):
         """Update placement constraints with new data."""
         # print('update mustlink')
-        for(i, j) in combinations(self.containers_names, 2):
+        for (i, j) in combinations(self.containers_names, 2):
             ct = self.mdl.get_constraint_by_name(
                 'mustLinkA_' + str(j) + '_' + str(i)
             )
@@ -543,7 +540,7 @@ class CPXInstance:
             'nb_clusters'
         )
 
-        for(i, j) in combinations(self.containers_names, 2):
+        for (i, j) in combinations(self.containers_names, 2):
             for k in self.clusters_names:
                 self.mdl.add_constraint(
                     self.mdl.yu[i, j, k] <= self.mdl.y[i, k],
@@ -823,7 +820,7 @@ class CPXInstance:
         """Add constraints fixing u variables from adjacency matrice."""
         # TODO replace because too many variables
         # it.optim_file.write('Fixing yu(i,j,n) ...')
-        for(i, j) in combinations(self.containers_names, 2):
+        for (i, j) in combinations(self.containers_names, 2):
             if not u[i, j]:
                 for k in self.clusters_names:
                     self.mdl.add_constraint(
@@ -974,7 +971,7 @@ class CPXInstance:
             'nb_clusters'
         )
 
-    def build_objective(self, w, u, dv, cv):
+    def build_objective(self, w, u, dv):
         """Build objective."""
         # Minimize sum of a[n] (number of open nodes)
         # self.mdl.minimize(self.mdl.sum(

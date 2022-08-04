@@ -882,12 +882,12 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     logging.info('# Placement evaluation #')
 
     start = time.time()
-    place_model.update_placement_data(
+    place_model.update_data(
         working_df_indiv,
         my_instance.dict_id_c
     )
     place_model.relax_mdl.clear_constraints()
-    place_model.placement_constraints_stack()
+    place_model.placement_constraints()
     place_model.add_adjacency_place_constraints(v)
     place_model.update_obj_placement(u, v, dv)
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
@@ -909,7 +909,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
         (moving_containers,
          place_conf_nodes,
          place_conf_edges,
-         place_max_deg, place_mean_deg) = mc.get_moving_containers(
+         place_max_deg, place_mean_deg) = mc.get_moving_containers_place(
             place_model.relax_mdl, placement_dual_values,
             tol_place, tol_move_place, my_instance.nb_containers,
             working_df_indiv, my_instance.dict_id_c)

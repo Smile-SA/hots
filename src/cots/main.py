@@ -642,9 +642,8 @@ def pre_loop(
                                working_df_indiv,
                                my_instance.dict_id_c,
                                nb_clusters=my_instance.nb_clusters,
-                               w=w)
+                               w=w, sol_u=u)
     pyomo_clust.write_infile()
-    input()
     add_time(0, 'build_clustering_model', (time.time() - start))
     start = time.time()
     print('Solving first clustering ...')
@@ -656,6 +655,8 @@ def pre_loop(
     clustering_dual_values = mc.fill_constraints_dual_values(
         clust_model.relax_mdl, constraints_dual
     )
+    pyomo_clust.solve()
+    input()
     # clustering_dual_values = {}
 
     if cluster_method == 'stream-km':

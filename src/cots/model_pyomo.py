@@ -8,7 +8,7 @@ One model instance, made as an example alternative to the
 """
 
 from typing import Dict
-
+# import cplex
 import pandas as pd
 
 from pyomo import environ as pe
@@ -31,7 +31,7 @@ class Model:
                  dict_id_c: Dict,
                  df_host_meta: pd.DataFrame = None,
                  nb_clusters: int = None,
-                 w: np.array = None):
+                 w: np.array = None, sol_u: np.array = None):
         """Initialize Pyomo model with data in Instance."""
         print('Building of pyomo model ...')
 
@@ -44,16 +44,14 @@ class Model:
         self.mdl = pe.AbstractModel()
 
         # Prepare the sets and parameters
-        w_d = dict(
-            ((j, i), w[i][j]) for i in range(len(w)) for j in range(len(w[0]))
-        )
-        self.build_parameters(w_d)
+        self.build_parameters(w, sol_u)
 
         # Build decision variables
         self.build_variables()
 
         # Build constraints of the problem
         self.build_constraints()
+        self.add_mustLink()
 
         # Build the objective function
         self.build_objective()
@@ -69,12 +67,18 @@ class Model:
         # self.instance_model.pprint()
         # self.instance_model.write('place_pyomo.lp')
 
-    def build_parameters(self, w):
+    def build_parameters(self, w, u):
         """Build all Params and Sets."""
         # number of containers
         self.mdl.c = pe.Param(within=pe.NonNegativeIntegers)
         # set of containers
         self.mdl.C = pe.Set(dimen=1)
+        # current clustering solution
+        sol_u_d = dict(
+            ((j, i), u[i][j]) for i in range(len(u)) for j in range(len(u[0]))
+        )
+        self.mdl.sol_u = pe.Param(self.mdl.C, self.mdl.C,
+                                  initialize=sol_u_d)
 
         # clustering case
         if self.pb_number == 1:
@@ -83,8 +87,11 @@ class Model:
             # set of clusters
             self.mdl.K = pe.Set(dimen=1)
             # distances
+            w_d = dict(
+                ((j, i), w[i][j]) for i in range(len(w)) for j in range(len(w[0]))
+            )
             self.mdl.w = pe.Param(self.mdl.C, self.mdl.C,
-                                  initialize=w)
+                                  initialize=w_d)
         # placement case
         elif self.pb_number == 2:
             # number of nodes
@@ -135,6 +142,13 @@ class Model:
             self.mdl.clust_assign = pe.Constraint(
                 self.mdl.C, rule=clust_assign_
             )
+            self.mdl.open_cluster = pe.Constraint(
+                self.mdl.C, self.mdl.K,
+                rule=open_cluster_
+            )
+            self.mdl.max_clusters = pe.Constraint(
+                rule=open_clusters_
+            )
         elif self.pb_number == 2:
             self.mdl.capacity = pe.Constraint(self.mdl.N, self.mdl.T,
                                               rule=capacity_)
@@ -142,6 +156,14 @@ class Model:
                                                rule=open_node_)
             self.mdl.assignment = pe.Constraint(self.mdl.C,
                                                 rule=assignment_)
+
+    def add_mustLink(self):
+        """Add mustLink constraints for fixing solution."""
+        if self.pb_number == 1:
+            self.mdl.must_link_c = pe.Constraint(
+                self.mdl.C, self.mdl.C,
+                rule=must_link_c_
+            )
 
     def build_objective(self):
         """Build the objective."""
@@ -205,6 +227,12 @@ class Model:
         elif self.pb_number == 2:
             self.instance_model.write('./py_placement.lp')
 
+    def solve(self, solver='glpk'):
+        """Solve the model using a specific solver."""
+        opt = pe.SolverFactory(solver)
+        solution = opt.solve(self.instance_model)
+        print(solution)
+
 
 def clust_assign_(mdl, container):
     """Express the assignment constraint."""
@@ -240,7 +268,25 @@ def delta_2(mdl, node, time):
 
 def open_nodes_(mdl):
     """Express the numbers of open nodes."""
-    return sum(mdl.a[i] for i in mdl.N)
+    return sum(mdl.a[m] for m in mdl.N)
+
+
+def open_cluster_(mdl, container, cluster):
+    """Express the opening cluster constraint."""
+    return mdl.y[container, cluster] <= mdl.b[cluster]
+
+
+def open_clusters_(mdl):
+    """Express the numbers of open clusters."""
+    return sum(mdl.b[k] for k in mdl.K) <= mdl.k
+
+
+def must_link_c_(mdl, i, j):
+    """Express the clustering mustlink constraint."""
+    if mdl.sol_u[(i, j)]:
+        return mdl.u[(i, j)] == 1
+    else:
+        return pe.Constraint.Skip
 
 
 def min_dissim_(mdl):

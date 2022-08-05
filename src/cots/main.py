@@ -39,6 +39,7 @@ from . import init as it
 # TODO set in params
 # from . import model_cplex as mc
 from . import model_cplex_clustering as mc
+from . import model_pyomo as mdl_py
 from . import node
 from . import placement as place
 from . import plot
@@ -637,6 +638,13 @@ def pre_loop(
                                  my_instance.dict_id_c,
                                  my_instance.dict_id_n,
                                  w=w, u=u, pb_number=2)
+    pyomo_clust = mdl_py.Model(1,
+                               working_df_indiv,
+                               my_instance.dict_id_c,
+                               nb_clusters=my_instance.nb_clusters,
+                               w=w)
+    pyomo_clust.write_infile()
+    input()
     add_time(0, 'build_clustering_model', (time.time() - start))
     start = time.time()
     print('Solving first clustering ...')
@@ -681,6 +689,10 @@ def pre_loop(
                                  my_instance.dict_id_c,
                                  my_instance.dict_id_n,
                                  w=w, u=u, v=v, dv=dv, pb_number=3)
+    pyomo_mdl = mdl_py.Model(working_df_indiv,
+                             my_instance.df_host_meta)
+    pyomo_mdl.write_infile()
+    input('compare models')
     add_time(0, 'build_placement_model', (time.time() - start))
     start = time.time()
     print('Solving first placement ...')

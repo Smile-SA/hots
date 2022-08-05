@@ -563,19 +563,14 @@ class CPXInstance:
         """Write the problem in LP file."""
         # TODO write these files in data folder
         if self.pb_number == 0:
-            self.mdl.export_as_lp(path='./place_w_clust.lp')
             self.relax_mdl.export_as_lp(path='./lp_place_w_clust.lp')
         elif self.pb_number == 1:
-            self.mdl.export_as_lp(path='./placement.lp')
             self.relax_mdl.export_as_lp(path='./lp_placement.lp')
         elif self.pb_number == 2:
-            # self.mdl.export_as_lp(path='./clustering.lp')
             self.relax_mdl.export_as_lp(path='./lp_clustering.lp')
         elif self.pb_number == 3:
-            # self.mdl.export_as_lp(path='./place_f_clust.lp')
             self.relax_mdl.export_as_lp(path='./lp_place_f_clust.lp')
         elif self.pb_number == 4:
-            self.mdl.export_as_lp(path='./clustering_bis.lp')
             self.relax_mdl.export_as_lp(path='./clustering_bis.lp')
 
 

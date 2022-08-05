@@ -65,15 +65,17 @@ class Model:
         self.build_objective()
 
         # Put data in attribute
+        # self.create_data(df_indiv, dict_id_c,
+        #                  dict_id_n, df_host_meta,
+        #                  nb_clusters
+        #                  )
         self.create_data(df_indiv, dict_id_c,
-                         dict_id_n, df_host_meta,
+                         df_host_meta,
                          nb_clusters
                          )
 
         # Create the instance by feeding the model with the data
         self.instance_model = self.mdl.create_instance(self.data)
-        # self.instance_model.pprint()
-        # self.instance_model.write('place_pyomo.lp')
 
     def build_parameters(self, w, u):
         """Build all Params and Sets."""

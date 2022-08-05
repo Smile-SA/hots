@@ -8,7 +8,7 @@ One model instance, made as an example alternative to the
 """
 
 from typing import Dict
-# import cplex
+
 import pandas as pd
 
 from pyomo import environ as pe
@@ -23,15 +23,23 @@ class Model:
     Class with a very small minimalist use of pyomo (for translation).
 
     Attributes :
-    - mdl : pyomo Model (Abstract) Instance (basis)
+    - pb_number : problem type (clustering or placement)
+    - df_indiv : DataFrame describing containers data
+    - dict_id_c : int id for containers with matching string id
+    - dict_id_n : int id for nodes with matching string id
+    - df_host_meta : DataFrame describing node info (capacity)
+    - nb_clusters : number of clusters for clustering
+    - w : similarity matrix for clustering
+    - sol_u : adjacency matrix from current clustering solution
+    - sol_v : adjacency matric from current placement solution
     """
 
     def __init__(self, pb_number: int,
-                 df_indiv: pd.DataFrame,
-                 dict_id_c: Dict,
-                 df_host_meta: pd.DataFrame = None,
-                 nb_clusters: int = None,
-                 w: np.array = None, sol_u: np.array = None):
+                 df_indiv: pd.DataFrame, dict_id_c: Dict,
+                 dict_id_n: Dict = None, df_host_meta: pd.DataFrame = None,
+                 nb_clusters: int = None, w: np.array = None,
+                 sol_u: np.array = None, sol_v: np.array = None
+                 ):
         """Initialize Pyomo model with data in Instance."""
         print('Building of pyomo model ...')
 
@@ -58,7 +66,7 @@ class Model:
 
         # Put data in attribute
         self.create_data(df_indiv, dict_id_c,
-                         df_host_meta,
+                         dict_id_n, df_host_meta,
                          nb_clusters
                          )
 
@@ -150,12 +158,15 @@ class Model:
                 rule=open_clusters_
             )
         elif self.pb_number == 2:
-            self.mdl.capacity = pe.Constraint(self.mdl.N, self.mdl.T,
-                                              rule=capacity_)
-            self.mdl.open_node = pe.Constraint(self.mdl.C, self.mdl.N,
-                                               rule=open_node_)
-            self.mdl.assignment = pe.Constraint(self.mdl.C,
-                                                rule=assignment_)
+            self.mdl.capacity = pe.Constraint(
+                self.mdl.N, self.mdl.T,
+                rule=capacity_)
+            self.mdl.open_node = pe.Constraint(
+                self.mdl.C, self.mdl.N,
+                rule=open_node_)
+            self.mdl.assignment = pe.Constraint(
+                self.mdl.C,
+                rule=assignment_)
 
     def add_mustLink(self):
         """Add mustLink constraints for fixing solution."""
@@ -202,7 +213,7 @@ class Model:
                 'c': {None: df_indiv[it.indiv_field].nunique()},
                 't': {None: df_indiv[it.tick_field].nunique()},
                 'N': {None: df_indiv[it.host_field].unique().tolist()},
-                'C': {None: df_indiv[it.indiv_field].unique().tolist()},
+                'C': {None: list(dict_id_c.keys())},
                 'cap': self.cap,
                 'T': {None: df_indiv[it.tick_field].unique().tolist()},
                 'cons': self.cons,
@@ -230,8 +241,9 @@ class Model:
     def solve(self, solver='glpk'):
         """Solve the model using a specific solver."""
         opt = pe.SolverFactory(solver)
-        solution = opt.solve(self.instance_model)
-        print(solution)
+        opt.solve(self.instance_model, tee=True)
+        self.instance_model.display()
+        print(pe.value(self.instance_model.obj))
 
 
 def clust_assign_(mdl, container):

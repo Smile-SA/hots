@@ -464,7 +464,7 @@ class CPXInstance:
         self.current_sol = SolveSolution(self.mdl, start_sol)
         self.mdl.add_mip_start(self.current_sol)
 
-    def solve(self, my_mdl: Model, verbose: bool = False):
+    def solve(self, my_mdl: Model, verbose: bool = True):
         """Solve the given problem."""
         if not my_mdl.solve(
             clean_before_solve=True, log_output=verbose

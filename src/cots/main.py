@@ -690,8 +690,12 @@ def pre_loop(
                                  my_instance.dict_id_c,
                                  my_instance.dict_id_n,
                                  w=w, u=u, v=v, dv=dv, pb_number=3)
-    pyomo_place = mdl_py.Model(working_df_indiv,
-                               my_instance.df_host_meta)
+    pyomo_place = mdl_py.Model(2,
+                               working_df_indiv,
+                               my_instance.dict_id_c,
+                               my_instance.dict_id_n,
+                               my_instance.df_host_meta,
+                               sol_u=u, sol_v=v)
     pyomo_place.write_infile()
     input('compare models')
     add_time(0, 'build_placement_model', (time.time() - start))

@@ -29,7 +29,7 @@ evolution of these consumptions. We perform a clustering on these timeseries
 for grouping individuals into similar profile groups.
 
 Then we apply a heuristic, developped using clustering information (like
-consumption profiles) for *smartly* allocate individuals (containers) on the
+consumption profiles) to *smartly* allocate individuals (containers) on the
 nodes, trying to save resources and prevent from overflows or other problems.
 
 Then we initiate a loop in which we retrieve new data as things progress (the

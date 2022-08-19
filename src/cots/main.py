@@ -710,6 +710,9 @@ def pre_loop(
     placement_dual_values = mc.fill_constraints_dual_values(
         place_model.relax_mdl, constraints_dual
     )
+    pyomo_place.solve()
+    input()
+    # placement_dual_values = {}
 
     return (clust_model, place_model,
             clustering_dual_values, placement_dual_values)

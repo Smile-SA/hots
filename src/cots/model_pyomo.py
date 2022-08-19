@@ -7,6 +7,8 @@ One model instance, made as an example alternative to the
 'model_small_cplex' example made with CPLEX.
 """
 
+from itertools import product as prod
+
 from typing import Dict
 
 import pandas as pd
@@ -52,7 +54,7 @@ class Model:
         self.mdl = pe.AbstractModel()
 
         # Prepare the sets and parameters
-        self.build_parameters(w, sol_u)
+        self.build_parameters(w, sol_u, sol_v)
 
         # Build decision variables
         self.build_variables()
@@ -76,8 +78,9 @@ class Model:
 
         # Create the instance by feeding the model with the data
         self.instance_model = self.mdl.create_instance(self.data)
+        
 
-    def build_parameters(self, w, u):
+    def build_parameters(self, w, u, v):
         """Build all Params and Sets."""
         # number of containers
         self.mdl.c = pe.Param(within=pe.NonNegativeIntegers)
@@ -85,7 +88,7 @@ class Model:
         self.mdl.C = pe.Set(dimen=1)
         # current clustering solution
         sol_u_d = dict(
-            ((j, i), u[i][j]) for i in range(len(u)) for j in range(len(u[0]))
+            ((j, i), u[i][j]) for i,j in prod(range(len(u)),range(len(u[0])))
         )
         self.mdl.sol_u = pe.Param(self.mdl.C, self.mdl.C,
                                   initialize=sol_u_d)
@@ -98,7 +101,7 @@ class Model:
             self.mdl.K = pe.Set(dimen=1)
             # distances
             w_d = dict(
-                ((j, i), w[i][j]) for i in range(len(w)) for j in range(len(w[0]))
+                ((j, i), w[i][j]) for i,j in prod(range(len(w)),range(len(w[0])))
             )
             self.mdl.w = pe.Param(self.mdl.C, self.mdl.C,
                                   initialize=w_d)
@@ -114,8 +117,16 @@ class Model:
             self.mdl.cap = pe.Param(self.mdl.N)
             # time window
             self.mdl.T = pe.Set(dimen=1)
+            # set of containers applied to container usage problem
+            self.mdl.Ccons = pe.Set(dimen=1)
             # containers usage
-            self.mdl.cons = pe.Param(self.mdl.C, self.mdl.T)
+            self.mdl.cons = pe.Param(self.mdl.Ccons, self.mdl.T)
+            # current placement solution
+            sol_v_d = dict(
+                ((j, i), v[i][j]) for i,j in prod(range(len(v)),range(len(v[0])))
+            )
+            self.mdl.sol_v = pe.Param(self.mdl.C, self.mdl.C,
+                                      initialize=sol_v_d)
 
     def build_variables(self):
         """Build all model variables."""
@@ -177,6 +188,11 @@ class Model:
                 self.mdl.C, self.mdl.C,
                 rule=must_link_c_
             )
+        if self.pb_number == 2:
+            self.mdl.must_link_n = pe.Constraint(
+                self.mdl.C, self.mdl.C,
+                rule=must_link_n_
+            )
 
     def build_objective(self):
         """Build the objective."""
@@ -216,6 +232,7 @@ class Model:
                 't': {None: df_indiv[it.tick_field].nunique()},
                 'N': {None: df_indiv[it.host_field].unique().tolist()},
                 'C': {None: list(dict_id_c.keys())},
+                'Ccons': {None: df_indiv[it.indiv_field].unique().tolist()},
                 'cap': self.cap,
                 'T': {None: df_indiv[it.tick_field].unique().tolist()},
                 'cons': self.cons,
@@ -224,8 +241,8 @@ class Model:
     def conso_n_t(self, mdl, node, t):
         """Express the total consumption of node at time t."""
         return sum(
-            mdl.x[cont, node] * self.cons[cont][t]
-            for cont in mdl.C)
+            mdl.x[cont, node] * self.cons[contC][t]
+            for cont,contC in zip(mdl.C, mdl.Ccons))
 
     def mean(self, mdl, node):
         """Express the mean consumption of node."""
@@ -256,7 +273,7 @@ def clust_assign_(mdl, container):
 def capacity_(mdl, node, time):
     """Express the capacity constraints."""
     return (sum(
-        mdl.x[i, node] * mdl.cons[i, time] for i in mdl.C
+        mdl.x[i, node] * mdl.cons[j, time] for i,j in zip(mdl.C, mdl.Ccons)
     ) <= mdl.cap[node])
 
 
@@ -302,9 +319,16 @@ def must_link_c_(mdl, i, j):
     else:
         return pe.Constraint.Skip
 
+def must_link_n_(mdl, i, j):
+    """Express the placement mustlink constraint."""
+    if mdl.sol_v[(i, j)]:
+        return mdl.v[(i, j)] == 1
+    else:
+        return pe.Constraint.Skip
+
 
 def min_dissim_(mdl):
     """Express the within clusters dissimilarities."""
     return sum([
-        mdl.u[(i, j)] * mdl.w[(i, j)] for i in mdl.C for j in mdl.C if i < j
+        mdl.u[(i, j)] * mdl.w[(i, j)] for i,j in prod(mdl.C,mdl.C) if i < j
     ])

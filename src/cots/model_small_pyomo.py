@@ -140,5 +140,5 @@ def assignment_(mdl, container):
 
 
 def open_nodes_(mdl):
-    """Express the numbers of open nodes."""
+    """Express the number of open nodes."""
     return sum(mdl.a[i] for i in mdl.N)

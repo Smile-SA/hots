@@ -24,7 +24,7 @@ from typing import Dict, List, Tuple
 
 import click
 
-from clusopt_core.cluster import Streamkm
+#from clusopt_core.cluster import Streamkm
 
 from matplotlib import pyplot as plt
 

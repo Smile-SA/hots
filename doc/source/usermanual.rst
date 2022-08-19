@@ -86,7 +86,7 @@ When the application is launched, the whole initial data is displayed :
 
 The separation time (between the two phases) is plotted by a red line.
 
-Then the first part of the methdology is performed (clustering on first time
+Then the first part of the methodology is performed (clustering on first time
 period), and the allocation resulting from heuristic applied. The clustering
 results and new nodes resource usage (based on new allocation) are displayed.
 

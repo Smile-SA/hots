@@ -4,7 +4,7 @@
 Release history
 ===============
 
-.. This section will enumerate all releases of cots in reverse chronological order. For each releas,
+.. This section will enumerate all releases of cots in reverse chronological order. For each release,
 .. provide:
 ..
 .. - The version, and release date.

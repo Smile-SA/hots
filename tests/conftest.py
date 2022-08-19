@@ -17,7 +17,7 @@ def tests_directory():
 
 @pytest.fixture
 def package_directory(tests_directory):
-    """Get test paretn dir"""
+    """Get test parent dir"""
     return tests_directory.parent
 
 

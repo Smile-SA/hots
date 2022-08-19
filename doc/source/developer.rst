@@ -4,7 +4,7 @@
 The developer and maintainer corner
 ===================================
 
-This chapter is a kind ow unstructured "howto" that states the various development and maintenance
+This chapter is a kind of unstructured "howto" that states the various development and maintenance
 rules for the :term:`cots` project. The poor man's quality assurance plan.
 
 This chapter is opened to be restructured in the future.

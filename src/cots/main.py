@@ -655,6 +655,7 @@ def pre_loop(
     clustering_dual_values = mc.fill_constraints_dual_values(
         clust_model.relax_mdl, constraints_dual
     )
+    print('\n ## Pyomo solve ## \n\n')
     pyomo_clust.solve()
     input()
     # clustering_dual_values = {}
@@ -695,7 +696,7 @@ def pre_loop(
                                my_instance.dict_id_c,
                                my_instance.dict_id_n,
                                my_instance.df_host_meta,
-                               sol_u=u, sol_v=v)
+                               dv=dv, sol_u=u, sol_v=v)
     pyomo_place.write_infile()
     input('compare models')
     add_time(0, 'build_placement_model', (time.time() - start))
@@ -708,6 +709,7 @@ def pre_loop(
     placement_dual_values = mc.fill_constraints_dual_values(
         place_model.relax_mdl, constraints_dual
     )
+    print('\n ## Pyomo solve ## \n\n')
     pyomo_place.solve()
     input()
     # placement_dual_values = {}

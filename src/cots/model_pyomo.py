@@ -39,7 +39,7 @@ class Model:
     def __init__(self, pb_number: int,
                  df_indiv: pd.DataFrame, dict_id_c: Dict,
                  dict_id_n: Dict = None, df_host_meta: pd.DataFrame = None,
-                 nb_clusters: int = None, w: np.array = None,
+                 nb_clusters: int = None, w: np.array = None, dv: np.array = None,
                  sol_u: np.array = None, sol_v: np.array = None
                  ):
         """Initialize Pyomo model with data in Instance."""
@@ -54,7 +54,7 @@ class Model:
         self.mdl = pe.AbstractModel()
 
         # Prepare the sets and parameters
-        self.build_parameters(w, sol_u, sol_v)
+        self.build_parameters(w, dv, sol_u, sol_v)
 
         # Build decision variables
         self.build_variables()
@@ -80,7 +80,7 @@ class Model:
         self.instance_model = self.mdl.create_instance(self.data)
         
 
-    def build_parameters(self, w, u, v):
+    def build_parameters(self, w, dv, u, v):
         """Build all Params and Sets."""
         # number of containers
         self.mdl.c = pe.Param(within=pe.NonNegativeIntegers)
@@ -121,6 +121,12 @@ class Model:
             self.mdl.Ccons = pe.Set(dimen=1)
             # containers usage
             self.mdl.cons = pe.Param(self.mdl.Ccons, self.mdl.T)
+            # dv matrix for distance placement
+            dv_d = dict(
+                ((j, i), dv[i][j]) for i,j in prod(range(len(dv)),range(len(dv[0])))
+            )
+            self.mdl.dv = pe.Param(self.mdl.C, self.mdl.C,
+                                      initialize=dv_d)
             # current placement solution
             sol_v_d = dict(
                 ((j, i), v[i][j]) for i,j in prod(range(len(v)),range(len(v[0])))
@@ -202,7 +208,7 @@ class Model:
             )
         elif self.pb_number == 2:
             self.mdl.obj = pe.Objective(
-                rule=open_nodes_, sense=pe.minimize)
+                rule=min_coloc_cluster_, sense=pe.minimize)
 
     def create_data(self,
                     df_indiv, dict_id_c,
@@ -261,7 +267,8 @@ class Model:
         """Solve the model using a specific solver."""
         opt = pe.SolverFactory(solver)
         opt.solve(self.instance_model, tee=True)
-        self.instance_model.display()
+        # self.instance_model.display()
+        # TODO verbose option ?
         print(pe.value(self.instance_model.obj))
 
 
@@ -330,5 +337,14 @@ def must_link_n_(mdl, i, j):
 def min_dissim_(mdl):
     """Express the within clusters dissimilarities."""
     return sum([
-        mdl.u[(i, j)] * mdl.w[(i, j)] for i,j in prod(mdl.C,mdl.C) if i < j
+        mdl.u[(i, j)] * mdl.w[(i, j)] for i,j in prod(mdl.C, mdl.C) if i < j
+    ])
+
+
+def min_coloc_cluster_(mdl):
+    """Express the placement minimization objective from clustering."""
+    return sum([
+        mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i,j in prod(mdl.C, mdl.C) if i < j
+    ]) + sum([
+        (1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)] for i,j in prod(mdl.C, mdl.C) if i < j
     ])

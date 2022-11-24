@@ -632,32 +632,32 @@ def pre_loop(
     logging.info('Evaluation of problems with initial solutions')
     print('Building clustering model ...')
     start = time.time()
-    clust_model = mc.CPXInstance(working_df_indiv,
-                                 my_instance.df_host_meta,
-                                 my_instance.nb_clusters,
-                                 my_instance.dict_id_c,
-                                 my_instance.dict_id_n,
-                                 w=w, u=u, pb_number=2)
-    pyomo_clust = mdl_py.Model(1,
+    # clust_model = mc.CPXInstance(working_df_indiv,
+    #                              my_instance.df_host_meta,
+    #                              my_instance.nb_clusters,
+    #                              my_instance.dict_id_c,
+    #                              my_instance.dict_id_n,
+    #                              w=w, u=u, pb_number=2)
+    clust_model = mdl_py.Model(1,
                                working_df_indiv,
                                my_instance.dict_id_c,
                                nb_clusters=my_instance.nb_clusters,
                                w=w, sol_u=u)
-    pyomo_clust.write_infile()
+    clust_model.write_infile()
     add_time(0, 'build_clustering_model', (time.time() - start))
     start = time.time()
     print('Solving first clustering ...')
     logging.info('# Clustering evaluation #')
     logging.info('Solving linear relaxation ...')
-    clust_model.solve(clust_model.relax_mdl)
+    # clust_model.solve(clust_model.relax_mdl)
     add_time(0, 'solve_clustering_model', (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
     # clustering_dual_values = mc.fill_constraints_dual_values(
     #     clust_model.relax_mdl, constraints_dual
     # )
     print('\n ## Pyomo solve ## \n\n')
-    pyomo_clust.solve()
-    clustering_dual_values = mdl_py.fill_dual_values(pyomo_clust)
+    clust_model.solve()
+    clustering_dual_values = mdl_py.fill_dual_values(clust_model)
     # clustering_dual_values = {}
 
     if cluster_method == 'stream-km':
@@ -685,23 +685,23 @@ def pre_loop(
     logging.info('# Placement evaluation #')
     print('Building placement model ...')
     start = time.time()
-    place_model = mc.CPXInstance(working_df_indiv,
-                                 my_instance.df_host_meta,
-                                 my_instance.nb_clusters,
-                                 my_instance.dict_id_c,
-                                 my_instance.dict_id_n,
-                                 w=w, u=u, v=v, dv=dv, pb_number=3)
-    pyomo_place = mdl_py.Model(2,
+    # place_model = mc.CPXInstance(working_df_indiv,
+    #                              my_instance.df_host_meta,
+    #                              my_instance.nb_clusters,
+    #                              my_instance.dict_id_c,
+    #                              my_instance.dict_id_n,
+    #                              w=w, u=u, v=v, dv=dv, pb_number=3)
+    place_model = mdl_py.Model(2,
                                working_df_indiv,
                                my_instance.dict_id_c,
                                my_instance.dict_id_n,
                                my_instance.df_host_meta,
                                dv=dv, sol_u=u, sol_v=v)
-    pyomo_place.write_infile()
+    # pyomo_place.write_infile()
     add_time(0, 'build_placement_model', (time.time() - start))
     start = time.time()
     print('Solving first placement ...')
-    place_model.solve(place_model.relax_mdl)
+    # place_model.solve(place_model.relax_mdl)
     logging.info('Placement problem not evaluated yet\n')
     add_time(0, 'solve_placement_model', (time.time() - start))
     # print(it.times_df)
@@ -709,8 +709,8 @@ def pre_loop(
     #     place_model.relax_mdl, constraints_dual
     # )
     print('\n ## Pyomo solve ## \n\n')
-    pyomo_place.solve()
-    placement_dual_values = mdl_py.fill_dual_values(pyomo_place)
+    place_model.solve()
+    placement_dual_values = mdl_py.fill_dual_values(place_model)
     # placement_dual_values = {}
 
     return (clust_model, place_model,
@@ -834,7 +834,7 @@ def eval_clustering(my_instance: Instance,
     add_time(loop_nb, 'update_clustering_model', (time.time() - start))
     logging.info('Solving clustering linear relaxation ...')
     start = time.time()
-    clust_model.solve(clust_model.relax_mdl)
+    clust_model.solve()
     add_time(loop_nb, 'solve_clustering', (time.time() - start))
     # print('Init clustering lp solution : ', clust_model.relax_mdl.objective_value)
 
@@ -843,8 +843,8 @@ def eval_clustering(my_instance: Instance,
     (moving_containers,
      clust_conflict_nodes,
      clust_conflict_edges,
-     clust_max_deg, clust_mean_deg) = mc.get_moving_containers_clust(
-        clust_model.relax_mdl, clustering_dual_values,
+     clust_max_deg, clust_mean_deg) = mdl_py.get_moving_containers_clust(
+        clust_model, clustering_dual_values,
         tol_clust, tol_move_clust,
         my_instance.nb_containers, my_instance.dict_id_c,
         df_clust, cluster_profiles)
@@ -912,7 +912,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
     it.optim_file.write('solve without any change\n')
     start = time.time()
-    place_model.solve(place_model.relax_mdl)
+    place_model.solve()
     add_time(loop_nb, 'solve_placement', (time.time() - start))
     # print('Init placement lp solution : ', place_model.relax_mdl.objective_value)
     moving_containers = []
@@ -928,7 +928,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
         (moving_containers,
          place_conf_nodes,
          place_conf_edges,
-         place_max_deg, place_mean_deg) = mc.get_moving_containers_place(
+         place_max_deg, place_mean_deg) = mdl_py.get_moving_containers_place(
             place_model.relax_mdl, placement_dual_values,
             tol_place, tol_move_place, my_instance.nb_containers,
             working_df_indiv, my_instance.dict_id_c)

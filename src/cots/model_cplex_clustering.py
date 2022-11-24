@@ -695,9 +695,7 @@ def get_conflict_graph(mdl: Model, constraints_dual_values: Dict, tol: float):
             ):
                 indivs = re.findall(r'\d+\.*', ct.name)
                 conflict_graph.add_edge(indivs[0], indivs[1], weight=ct.dual_value)
-    print('\n conflict graph \n')
-    print(conflict_graph.edges)
-    input()
+
     return conflict_graph
 
 

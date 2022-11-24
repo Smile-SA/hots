@@ -862,10 +862,8 @@ def eval_clustering(my_instance: Instance,
         clust_model.update_adjacency_clust_constraints(u)
         logging.info('Solving linear relaxation after changes ...')
         start = time.time()
-        clust_model.solve(clust_model.relax_mdl)
-        clustering_dual_values = mc.fill_constraints_dual_values(
-            clust_model.relax_mdl, constraints_dual
-        )
+        clust_model.solve()
+        clustering_dual_values = mdl_py.fill_dual_values(clust_model)
         add_time(loop_nb, 'solve_new_clustering', (time.time() - start))
         # print('After changes clustering lp solution : ', cplex_model.relax_mdl.objective_value)
     else:

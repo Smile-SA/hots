@@ -9,7 +9,7 @@ One model instance, made as an example alternative to the
 
 from itertools import product as prod
 
-from typing import Dict
+from typing import Dict, List
 
 import pandas as pd
 
@@ -78,6 +78,7 @@ class Model:
 
         # Create the instance by feeding the model with the data
         self.instance_model = self.mdl.create_instance(self.data)
+        self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
         
 
     def build_parameters(self, w, dv, u, v):
@@ -341,10 +342,29 @@ def min_dissim_(mdl):
     ])
 
 
-def min_coloc_cluster_(mdl):
+def min_coloc_cluster_(mdl: pe.AbstractModel):
     """Express the placement minimization objective from clustering."""
     return sum([
         mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i,j in prod(mdl.C, mdl.C) if i < j
     ]) + sum([
         (1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)] for i,j in prod(mdl.C, mdl.C) if i < j
     ])
+
+
+def fill_dual_values(my_mdl: Model):
+    """Fill dual values from specific constraints."""
+    dual_values = {}
+    #TODO generalize with constraints in variables ?
+    # Clustering case
+    if my_mdl.pb_number == 1:
+        for index_c in my_mdl.instance_model.must_link_c:
+            dual_values[index_c] = my_mdl.instance_model.dual[
+                my_mdl.instance_model.must_link_c[index_c]
+            ]
+    # Placement case
+    if my_mdl.pb_number == 2:
+        for index_c in my_mdl.instance_model.must_link_n:
+            dual_values[index_c] = my_mdl.instance_model.dual[
+                my_mdl.instance_model.must_link_n[index_c]
+            ]
+    return dual_values

@@ -654,12 +654,12 @@ def pre_loop(
     clust_model.solve(clust_model.relax_mdl)
     add_time(0, 'solve_clustering_model', (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
-    clustering_dual_values = mc.fill_constraints_dual_values(
-        clust_model.relax_mdl, constraints_dual
-    )
+    # clustering_dual_values = mc.fill_constraints_dual_values(
+    #     clust_model.relax_mdl, constraints_dual
+    # )
     print('\n ## Pyomo solve ## \n\n')
     pyomo_clust.solve()
-    input()
+    clustering_dual_values = mdl_py.fill_dual_values(pyomo_clust)
     # clustering_dual_values = {}
 
     if cluster_method == 'stream-km':
@@ -700,7 +700,6 @@ def pre_loop(
                                my_instance.df_host_meta,
                                dv=dv, sol_u=u, sol_v=v)
     pyomo_place.write_infile()
-    input('compare models')
     add_time(0, 'build_placement_model', (time.time() - start))
     start = time.time()
     print('Solving first placement ...')
@@ -708,12 +707,12 @@ def pre_loop(
     logging.info('Placement problem not evaluated yet\n')
     add_time(0, 'solve_placement_model', (time.time() - start))
     # print(it.times_df)
-    placement_dual_values = mc.fill_constraints_dual_values(
-        place_model.relax_mdl, constraints_dual
-    )
+    # placement_dual_values = mc.fill_constraints_dual_values(
+    #     place_model.relax_mdl, constraints_dual
+    # )
     print('\n ## Pyomo solve ## \n\n')
     pyomo_place.solve()
-    input()
+    placement_dual_values = mdl_py.fill_dual_values(pyomo_place)
     # placement_dual_values = {}
 
     return (clust_model, place_model,

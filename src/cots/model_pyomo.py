@@ -9,7 +9,9 @@ One model instance, made as an example alternative to the
 
 from itertools import product as prod
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
+
+import networkx as nx
 
 import pandas as pd
 
@@ -92,7 +94,7 @@ class Model:
             ((j, i), u[i][j]) for i,j in prod(range(len(u)),range(len(u[0])))
         )
         self.mdl.sol_u = pe.Param(self.mdl.C, self.mdl.C,
-                                  initialize=sol_u_d)
+                                  initialize=sol_u_d, mutable=True)
 
         # clustering case
         if self.pb_number == 1:
@@ -105,7 +107,7 @@ class Model:
                 ((j, i), w[i][j]) for i,j in prod(range(len(w)),range(len(w[0])))
             )
             self.mdl.w = pe.Param(self.mdl.C, self.mdl.C,
-                                  initialize=w_d)
+                                  initialize=w_d, mutable=True)
         # placement case
         elif self.pb_number == 2:
             # number of nodes
@@ -127,13 +129,13 @@ class Model:
                 ((j, i), dv[i][j]) for i,j in prod(range(len(dv)),range(len(dv[0])))
             )
             self.mdl.dv = pe.Param(self.mdl.C, self.mdl.C,
-                                      initialize=dv_d)
+                                      initialize=dv_d, mutable=True)
             # current placement solution
             sol_v_d = dict(
                 ((j, i), v[i][j]) for i,j in prod(range(len(v)),range(len(v[0])))
             )
             self.mdl.sol_v = pe.Param(self.mdl.C, self.mdl.C,
-                                      initialize=sol_v_d)
+                                      initialize=sol_v_d, mutable=True)
 
     def build_variables(self):
         """Build all model variables."""
@@ -200,6 +202,21 @@ class Model:
                 self.mdl.C, self.mdl.C,
                 rule=must_link_n_
             )
+
+    
+    def add_mustLink_instance(self):
+        """Add mustLink constraints for fixing solution."""
+        if self.pb_number == 1:
+            self.instance_model.must_link_c = pe.Constraint(
+                self.instance_model.C, self.instance_model.C,
+                rule=must_link_c_
+            )
+        if self.pb_number == 2:
+            self.instance_model.must_link_n = pe.Constraint(
+                self.instance_model.C, self.instance_model.C,
+                rule=must_link_n_
+            )
+
 
     def build_objective(self):
         """Build the objective."""
@@ -271,7 +288,72 @@ class Model:
         # self.instance_model.display()
         # TODO verbose option ?
         print(pe.value(self.instance_model.obj))
+    
 
+    #TODO generalize with others constraints than mustlink
+    def update_adjacency_clust_constraints(self, u):
+        """Update constraints fixing u variables from new adjacency matrix (clustering)."""
+        self.instance_model.del_component(self.instance_model.must_link_c)
+        self.instance_model.del_component(self.instance_model.must_link_c_index)
+        self.update_sol_u(u)
+        self.add_mustLink_instance()
+
+
+    def update_sol_u(self, u):
+        """Update directly the sol_u param in instance from new u matrix."""
+        for i,j in prod(range(len(u)),range(len(u[0]))):
+            self.instance_model.sol_u[(i,j)] = u[i][j]
+
+
+    #TODO generalize with others constraints than mustlink
+    def update_adjacency_place_constraints(self, v):
+        """Update constraints fixing u variables from new adjacency matrix (placement)."""
+        self.instance_model.del_component(self.instance_model.must_link_n)
+        self.instance_model.del_component(self.instance_model.must_link_n_index)
+        self.update_sol_v(v)
+        self.add_mustLink_instance()
+
+
+    def update_sol_v(self, v):
+        """Update directly the sol_v param in instance from new v matrix."""
+        for i,j in prod(range(len(v)),range(len(v[0]))):
+            self.instance_model.sol_v[(i,j)] = v[i][j]
+
+
+    def update_obj_clustering(self, w):
+        """Update the objective for clustering with new w matrix."""
+        self.update_w(w)
+        self.instance_model.obj = sum([
+            self.instance_model.u[(i, j)] * self.instance_model.w[(i, j)] for i,j in prod(
+                self.instance_model.C, self.instance_model.C
+            ) if i < j
+        ])
+
+
+    def update_w(self, w):
+        """Update directly the w param in instance from new w matrix."""
+        for i,j in prod(range(len(w)),range(len(w[0]))):
+            self.instance_model.w[(i,j)] = w[i][j]
+
+
+    def update_obj_place(self, dv):
+        """Update the objective for placement with new dv matrix."""
+        self.update_dv(dv)
+        self.instance_model.obj = sum([
+            self.instance_model.sol_u[(i, j)] * self.instance_model.v[(i, j)] for i,j in prod(
+                self.instance_model.C, self.instance_model.C
+            ) if i < j
+        ]) + sum([
+            (1 - self.instance_model.sol_u[(i, j)]) * (
+                self.instance_model.v[(i, j)] * self.instance_model.dv[(i, j)]
+            ) for i,j in prod(self.instance_model.C, self.instance_model.C) if i < j
+        ])
+
+
+    def update_dv(self, dv):
+        """Update directly the dv param in instance from new dv matrix."""
+        for i,j in prod(range(len(dv)),range(len(dv[0]))):
+            self.instance_model.dv[(i,j)] = dv[i][j]
 
 def clust_assign_(mdl, container):
     """Express the assignment constraint."""
@@ -322,14 +404,16 @@ def open_clusters_(mdl):
 
 def must_link_c_(mdl, i, j):
     """Express the clustering mustlink constraint."""
-    if mdl.sol_u[(i, j)]:
+    uu = mdl.sol_u[(i, j)].value
+    if uu == 1:
         return mdl.u[(i, j)] == 1
     else:
         return pe.Constraint.Skip
 
 def must_link_n_(mdl, i, j):
     """Express the placement mustlink constraint."""
-    if mdl.sol_v[(i, j)]:
+    vv = mdl.sol_v[(i, j)].value
+    if vv == 1:
         return mdl.v[(i, j)] == 1
     else:
         return pe.Constraint.Skip
@@ -368,3 +452,137 @@ def fill_dual_values(my_mdl: Model):
                 my_mdl.instance_model.must_link_n[index_c]
             ]
     return dual_values
+
+
+def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float):
+    """Build conflict graph from comapring dual variables."""
+    conflict_graph = nx.Graph()
+    if my_mdl.pb_number == 1:
+        for index_c in my_mdl.instance_model.must_link_c:
+            if index_c in constraints_dual_values:
+                print(index_c, my_mdl.instance_model.dual[
+                my_mdl.instance_model.must_link_c[index_c]])
+                print(constraints_dual_values[index_c])
+    print('\n conflict graph \n')
+    print(conflict_graph.edges)
+    input()
+    return conflict_graph
+
+
+def get_moving_containers_clust(my_mdl: Model, constraints_dual_values: Dict,
+                                tol: float, tol_move: float, nb_containers: int,
+                                dict_id_c: Dict, df_clust: pd.DataFrame, profiles: np.array
+                                ) -> Tuple[List, int, int, int, int]:
+    """Get the list of moving containers from constraints dual values."""
+    mvg_containers = []
+    conflict_graph = get_conflict_graph(my_mdl, constraints_dual_values, tol)
+
+    graph_nodes = conflict_graph.number_of_nodes()
+    graph_edges = conflict_graph.number_of_edges()
+    list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    if len(list_indivs) == 0:
+        max_deg = 0
+        mean_deg = 0
+    else:
+        max_deg = list_indivs[0][1]
+        mean_deg = sum(
+            [deg for (node, deg) in list_indivs]
+        ) / float(len(conflict_graph))
+    while len(list_indivs) > 1:
+        (indiv, occur) = list_indivs[0]
+        if occur > 1:
+            it = 1
+            w_deg = conflict_graph.degree(indiv, weight='weight')
+            (indiv_bis, occur_bis) = list_indivs[it]
+            while occur_bis == occur:
+                w_deg_bis = conflict_graph.degree(indiv_bis, weight='weight')
+                if w_deg < w_deg_bis:
+                    w_deg = w_deg_bis
+                    indiv = indiv_bis
+                it += 1
+                if it >= len(list_indivs):
+                    break
+                else:
+                    (indiv_bis, occur_bis) = list_indivs[it]
+            mvg_containers.append(dict_id_c[int(indiv)])
+            conflict_graph.remove_node(indiv)
+        else:
+            other_indiv = list(conflict_graph.edges(indiv))[0][1]
+            if other_indiv == indiv:
+                other_indiv = list(conflict_graph.edges(indiv))[0][0]
+            mvg_indiv = get_far_container(
+                dict_id_c[int(indiv)],
+                dict_id_c[int(other_indiv)],
+                df_clust, profiles
+            )
+            mvg_containers.append(mvg_indiv)
+            conflict_graph.remove_node(indiv)
+            conflict_graph.remove_node(other_indiv)
+        if len(mvg_containers) >= (nb_containers * tol_move):
+            break
+        conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph)))
+        list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+
+    return (mvg_containers, graph_nodes, graph_edges,
+            max_deg, mean_deg)
+
+
+# TODO to improve : very low dual values can change easily
+# TODO choose container by most changing profile ?
+def get_moving_containers_place(my_mdl: Model, constraints_dual_values: Dict,
+                                tol: float, tol_move: float, nb_containers: int,
+                                working_df: pd.DataFrame, dict_id_c: Dict
+                                ) -> Tuple[List, int, int, int, int]:
+    """Get the list of moving containers from constraints dual values."""
+    mvg_containers = []
+    conflict_graph = get_conflict_graph(my_mdl, constraints_dual_values, tol)
+
+    graph_nodes = conflict_graph.number_of_nodes()
+    graph_edges = conflict_graph.number_of_edges()
+    list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    if len(list_indivs) == 0:
+        max_deg = 0
+        mean_deg = 0
+    else:
+        max_deg = list_indivs[0][1]
+        mean_deg = sum(
+            [deg for (node, deg) in list_indivs]
+        ) / float(len(conflict_graph))
+    while len(list_indivs) > 1:
+        (indiv, occur) = list_indivs[0]
+        if occur > 1:
+            it = 1
+            w_deg = conflict_graph.degree(indiv, weight='weight')
+            (indiv_bis, occur_bis) = list_indivs[it]
+            while occur_bis == occur:
+                w_deg_bis = conflict_graph.degree(indiv_bis, weight='weight')
+                if w_deg < w_deg_bis:
+                    w_deg = w_deg_bis
+                    indiv = indiv_bis
+                it += 1
+                if it >= len(list_indivs):
+                    break
+                else:
+                    (indiv_bis, occur_bis) = list_indivs[it]
+            mvg_containers.append(int(indiv))
+            conflict_graph.remove_node(indiv)
+        else:
+            other_indiv = list(conflict_graph.edges(indiv))[0][1]
+            if other_indiv == indiv:
+                other_indiv = list(conflict_graph.edges(indiv))[0][0]
+            mvg_indiv = get_container_tomove(
+                dict_id_c[int(indiv)],
+                dict_id_c[int(other_indiv)],
+                working_df
+            )
+            int_indiv = [k for k, v in dict_id_c.items() if v == mvg_indiv][0]
+            mvg_containers.append(int(int_indiv))
+            conflict_graph.remove_node(indiv)
+            conflict_graph.remove_node(other_indiv)
+        if len(mvg_containers) >= (nb_containers * tol_move):
+            break
+        conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph)))
+        list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+
+    return (mvg_containers, graph_nodes, graph_edges,
+            max_deg, mean_deg)

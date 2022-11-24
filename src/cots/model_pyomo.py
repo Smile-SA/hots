@@ -459,10 +459,20 @@ def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float)
     conflict_graph = nx.Graph()
     if my_mdl.pb_number == 1:
         for index_c in my_mdl.instance_model.must_link_c:
-            if index_c in constraints_dual_values:
-                print(index_c, my_mdl.instance_model.dual[
-                my_mdl.instance_model.must_link_c[index_c]])
-                print(constraints_dual_values[index_c])
+            if (index_c in constraints_dual_values) and (
+                constraints_dual_values[index_c] > 0.0
+            ):
+                if (my_mdl.instance_model.dual[
+                my_mdl.instance_model.must_link_c[index_c]] > (
+                    constraints_dual_values[index_c]
+                    + tol * constraints_dual_values[index_c])) or (
+                        my_mdl.instance_model.dual[
+                            my_mdl.instance_model.must_link_c[index_c]
+                        ] > tol * pe.value(my_mdl.instance_model.obj)
+                ):
+                    conflict_graph.add_edge(index_c[0], index_c[1],
+                        weight=my_mdl.instance_model.dual[
+                            my_mdl.instance_model.must_link_c[index_c]])
     print('\n conflict graph \n')
     print(conflict_graph.edges)
     input()

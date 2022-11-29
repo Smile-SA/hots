@@ -330,6 +330,7 @@ def run_period(
             config['loop']['tol_move_place'],
             config['loop']['tol_step'],
             cluster_method,
+            config['optimization']['solver'],
             df_host_evo)
         fig_node.savefig(output_path + '/node_evo_plot.svg')
         fig_clust.savefig(output_path + '/clust_evo_plot.svg')
@@ -359,7 +360,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    constraints_dual: List,
                    tol_clust: float, tol_move_clust: float, tol_open_clust: float,
                    tol_place: float, tol_move_place: float, tol_step: float,
-                   cluster_method: str, df_host_evo: pd.DataFrame
+                   cluster_method: str, solver: str, df_host_evo: pd.DataFrame
                    ) -> Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]:
     """Define the streaming process for evaluation."""
     fig_node, ax_node = plot.init_nodes_plot(
@@ -395,7 +396,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     (clust_model, place_model,
      clustering_dual_values, placement_dual_values) = pre_loop(
         my_instance, working_df_indiv, df_clust,
-        w, u, constraints_dual, v, cluster_method
+        w, u, constraints_dual, v, cluster_method, solver
     )
     add_time(0, 'total_loop', (time.time() - start))
 
@@ -463,7 +464,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             w, u, v, clust_model, place_model,
             constraints_dual, clustering_dual_values, placement_dual_values,
             tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
-            df_clust, cluster_profiles, labels_, loop_nb
+            df_clust, cluster_profiles, labels_, loop_nb, solver
         )
 
         it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
@@ -624,7 +625,7 @@ def progress_time_noloop(
 def pre_loop(
     my_instance: Instance, working_df_indiv: pd.DataFrame,
     df_clust: pd.DataFrame, w: np.array, u: np.array,
-    constraints_dual: List, v: np.array, cluster_method: str
+    constraints_dual: List, v: np.array, cluster_method: str, solver: str
 ):
     """Build optimization problems and solve them with T_init solutions."""
     logging.info('Evaluation of problems with initial solutions')
@@ -641,11 +642,10 @@ def pre_loop(
     print('Solving first clustering ...')
     logging.info('# Clustering evaluation #')
     logging.info('Solving linear relaxation ...')
-    # clust_model.solve(clust_model.relax_mdl)
     add_time(0, 'solve_clustering_model', (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
     print('\n ## Pyomo solve ## \n\n')
-    clust_model.solve()
+    clust_model.solve(solver)
     clustering_dual_values = mdl.fill_dual_values(clust_model)
 
     if cluster_method == 'stream-km':
@@ -682,11 +682,10 @@ def pre_loop(
     add_time(0, 'build_placement_model', (time.time() - start))
     start = time.time()
     print('Solving first placement ...')
-    # place_model.solve(place_model.relax_mdl)
     logging.info('Placement problem not evaluated yet\n')
     add_time(0, 'solve_placement_model', (time.time() - start))
     print('\n ## Pyomo solve ## \n\n')
-    place_model.solve()
+    place_model.solve(solver)
     placement_dual_values = mdl.fill_dual_values(place_model)
 
     return (clust_model, place_model,
@@ -717,7 +716,7 @@ def eval_sols(
         cluster_method: str, w: np.array, u, v, clust_model, place_model,
         constraints_dual, clustering_dual_values, placement_dual_values,
         tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
-        df_clust, cluster_profiles, labels_, loop_nb
+        df_clust, cluster_profiles, labels_, loop_nb, solver
 ):
     """Evaluate clustering and placement solutions."""
     # evaluate clustering
@@ -738,7 +737,7 @@ def eval_sols(
             my_instance, w, u,
             clust_model, clustering_dual_values, constraints_dual,
             tol_clust, tol_move_clust, tol_open_clust,
-            df_clust, cluster_profiles, labels_, loop_nb)
+            df_clust, cluster_profiles, labels_, loop_nb, solver)
     elif cluster_method == 'kmeans-scratch':
         (dv, nb_clust_changes_loop,
             init_loop_silhouette, end_loop_silhouette,
@@ -775,7 +774,7 @@ def eval_sols(
         my_instance, working_df_indiv,
         w, u, v, dv,
         placement_dual_values, constraints_dual, place_model,
-        tol_place, tol_move_place, nb_clust_changes_loop, loop_nb
+        tol_place, tol_move_place, nb_clust_changes_loop, loop_nb, solver
     )
     add_time(loop_nb, 'loop_placement', (time.time() - start))
 
@@ -797,7 +796,7 @@ def eval_clustering(my_instance: Instance,
                     clustering_dual_values: Dict, constraints_dual: Dict,
                     tol_clust: float, tol_move_clust: float, tol_open_clust: float,
                     df_clust: pd.DataFrame, cluster_profiles: np.array, labels_: List,
-                    loop_nb) -> np.array:
+                    loop_nb, solver) -> np.array:
     """Evaluate current clustering solution and update it if needed."""
     nb_clust_changes_loop = 0
     logging.info('# Clustering evaluation #')
@@ -810,7 +809,7 @@ def eval_clustering(my_instance: Instance,
     add_time(loop_nb, 'update_clustering_model', (time.time() - start))
     logging.info('Solving clustering linear relaxation ...')
     start = time.time()
-    clust_model.solve()
+    clust_model.solve(solver)
     add_time(loop_nb, 'solve_clustering', (time.time() - start))
     # print('Init clustering lp solution : ', clust_model.relax_mdl.objective_value)
 
@@ -838,7 +837,7 @@ def eval_clustering(my_instance: Instance,
         clust_model.update_adjacency_clust_constraints(u)
         logging.info('Solving linear relaxation after changes ...')
         start = time.time()
-        clust_model.solve()
+        clust_model.solve(solver)
         clustering_dual_values = mdl.fill_dual_values(clust_model)
         add_time(loop_nb, 'solve_new_clustering', (time.time() - start))
     else:
@@ -869,7 +868,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
                    w: np.array, u: np.array, v: np.array, dv: np.array,
                    placement_dual_values: Dict, constraints_dual: Dict, place_model,
                    tol_place: float, tol_move_place: float,
-                   nb_clust_changes_loop: int, loop_nb):
+                   nb_clust_changes_loop: int, loop_nb, solver: str):
     """Evaluate current clustering solution and update it if needed."""
     logging.info('# Placement evaluation #')
 
@@ -884,7 +883,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
     it.optim_file.write('solve without any change\n')
     start = time.time()
-    place_model.solve()
+    place_model.solve(solver)
     add_time(loop_nb, 'solve_placement', (time.time() - start))
     # print('Init placement lp solution : ', place_model.relax_mdl.objective_value)
     moving_containers = []
@@ -917,7 +916,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
             start = time.time()
             place_model.update_adjacency_place_constraints(v)
             place_model.update_obj_place(dv)
-            place_model.solve()
+            place_model.solve(solver)
             # print('After changes placement lp solution : ', place_model.relax_mdl.objective_value)
             placement_dual_values = mdl.fill_dual_values(place_model)
             add_time(loop_nb, 'solve_new_placement', (time.time() - start))

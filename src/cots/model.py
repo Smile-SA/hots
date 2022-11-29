@@ -146,28 +146,34 @@ class Model:
             # Variables Containers x Clusters
             self.mdl.y = pe.Var(self.mdl.C, self.mdl.K,
                                 domain=pe.NonNegativeReals,
-                                bounds=(0, 1))
+                                bounds=(0, 1),
+                                initialize=0)
             # Variables Containers x Containers
             self.mdl.u = pe.Var(self.mdl.C, self.mdl.C,
                                 domain=pe.NonNegativeReals,
-                                bounds=(0, 1))
+                                bounds=(0, 1),
+                                initialize=0)
             # Variables Clusters
             self.mdl.b = pe.Var(self.mdl.K,
                                 domain=pe.NonNegativeReals,
-                                bounds=(0, 1))
+                                bounds=(0, 1),
+                                initialize=0)
         elif self.pb_number == 2:
             # Variables Containers x Nodes
             self.mdl.x = pe.Var(self.mdl.C, self.mdl.N,
                                 domain=pe.NonNegativeReals,
-                                bounds=(0, 1))
+                                bounds=(0, 1),
+                                initialize=0)
             # Variables Nodes
             self.mdl.a = pe.Var(self.mdl.N,
                                 domain=pe.NonNegativeReals,
-                                bounds=(0, 1))
+                                bounds=(0, 1),
+                                initialize=0)
             # Variables Containers x Containers
             self.mdl.v = pe.Var(self.mdl.C, self.mdl.C,
                                 domain=pe.NonNegativeReals,
-                                bounds=(0, 1))
+                                bounds=(0, 1),
+                                initialize=0)
 
     def build_constraints(self):
         """Build all the constraints."""
@@ -290,7 +296,7 @@ class Model:
         opt.solve(self.instance_model, tee=True)
         # self.instance_model.display()
         # TODO verbose option ?
-        print(pe.value(self.instance_model.obj))
+        # print(pe.value(self.instance_model.obj))
     
 
     #TODO generalize with others constraints than mustlink

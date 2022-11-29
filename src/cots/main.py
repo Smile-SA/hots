@@ -35,10 +35,6 @@ import pandas as pd
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
-# from . import model
-# TODO set in params
-# from . import model_cplex as mc
-from . import model_cplex_clustering as mc
 from . import model_pyomo as mdl_py
 from . import node
 from . import placement as place

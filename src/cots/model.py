@@ -260,10 +260,10 @@ class Model:
                 self.cons.update({key: c_data['cpu'].values[0]})
 
             self.data = {None: {
-                'n': {None: df_indiv[it.host_field].nunique()},
+                'n': {None: df_host_meta[it.host_field].nunique()},
                 'c': {None: df_indiv[it.indiv_field].nunique()},
                 't': {None: df_indiv[it.tick_field].nunique()},
-                'N': {None: df_indiv[it.host_field].unique().tolist()},
+                'N': {None: df_host_meta[it.host_field].unique().tolist()},
                 'C': {None: list(dict_id_c.keys())},
                 'Ccons': {None: df_indiv[it.indiv_field].unique().tolist()},
                 'cap': self.cap,

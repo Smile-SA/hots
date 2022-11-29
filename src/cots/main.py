@@ -102,7 +102,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     total_method_time = time.time() - total_method_time
 
     # Print objectives of evaluation part
-    (obj_nodes, obj_delta) = mc.get_obj_value_host(df_host_evo)
+    (obj_nodes, obj_delta) = mdl.get_obj_value_host(df_host_evo)
     it.results_file.write('Number of nodes : %d, Ampli max : %f\n' % (
         obj_nodes, obj_delta))
     it.results_file.write('Number of overloads : %d\n' % nb_overloads)
@@ -403,7 +403,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     else:
         tmax += tick
 
-    # TODO improve cplex model builds
+    # TODO improve model builds
     while not end:
         loop_time = time.time()
         logging.info('\n # Enter loop number %d #\n' % loop_nb)
@@ -443,7 +443,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         nb_clust_changes_loop = 0
         nb_place_changes_loop = 0
 
-        (init_loop_obj_nodes, init_loop_obj_delta) = mc.get_obj_value_heuristic(
+        (init_loop_obj_nodes, init_loop_obj_delta) = mdl.get_obj_value_indivs(
             working_df_indiv)
 
         # TODO not very practical
@@ -491,7 +491,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                     df_host_evo[it.tick_field].unique())], ignore_index=True)
 
         loop_time = (time.time() - loop_time)
-        (end_loop_obj_nodes, end_loop_obj_delta) = mc.get_obj_value_host(
+        (end_loop_obj_nodes, end_loop_obj_delta) = mdl.get_obj_value_host(
             working_df_host)
         it.results_file.write('Loop delta before changes : %f\n' % init_loop_obj_delta)
         it.results_file.write('Loop delta after changes : %f\n' % end_loop_obj_delta)
@@ -1028,7 +1028,7 @@ def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
         [working_df_indiv[it.tick_field], it.host_field],
         as_index=False).agg(it.dict_agg_metrics)
 
-    (end_loop_obj_nodes, end_loop_obj_delta) = mc.get_obj_value_host(
+    (end_loop_obj_nodes, end_loop_obj_delta) = mdl.get_obj_value_host(
         working_df_host)
     it.results_file.write('Final loop delta : %f\n' % end_loop_obj_delta)
 

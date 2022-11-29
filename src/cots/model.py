@@ -633,3 +633,52 @@ def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
         return c1
     else:
         return c2
+    
+
+def get_obj_value_host(df_host: pd.DataFrame,
+                       t_min: int = None,
+                       t_max: int = None) -> Tuple[int, float]:
+    """Get objectives value of current solution."""
+    t_min = t_min or df_host[it.tick_field].min()
+    t_max = t_max or df_host[it.tick_field].max()
+    df_host = df_host[
+        (df_host[it.tick_field] >= t_min)
+        & (df_host[it.tick_field] <= t_max)]
+    df_host.reset_index(drop=True, inplace=True)
+    c2 = 0.0
+    nb_nodes = 0
+    for n, n_data in df_host.groupby(
+            df_host[it.host_field]):
+        if n_data[it.metrics[0]].mean() > 1e-6:
+            nb_nodes += 1
+            c2_n = n_data[it.metrics[0]].max() - n_data[it.metrics[0]].min()
+            if c2_n > c2:
+                c2 = c2_n
+    return (nb_nodes, c2)
+
+
+def get_obj_value_indivs(df_indiv: pd.DataFrame,
+                            t_min: int = None,
+                            t_max: int = None) -> Tuple[int, float]:
+    """Get objective value of current solution (max delta)."""
+    t_min = t_min or df_indiv[it.tick_field].min()
+    t_max = t_max or df_indiv[it.tick_field].max()
+    df_indiv = df_indiv[
+        (df_indiv[it.tick_field] >= t_min)
+        & (df_indiv[it.tick_field] <= t_max)]
+    df_indiv.reset_index(drop=True, inplace=True)
+    obj_val = 0.0
+    for n, n_data in df_indiv.groupby(
+            [it.host_field]):
+        max_n = 0.0
+        min_n = -1.0
+        for t, nt_data in n_data.groupby(it.tick_field):
+            if nt_data[it.metrics[0]].sum() > max_n:
+                max_n = nt_data[it.metrics[0]].sum()
+            if (nt_data[it.metrics[0]].sum() < min_n) or (
+                    min_n < 0.0):
+                min_n = nt_data[it.metrics[0]].sum()
+        delta_n = max_n - min_n
+        if obj_val < delta_n:
+            obj_val = delta_n
+    return (df_indiv[it.host_field].nunique(), obj_val)

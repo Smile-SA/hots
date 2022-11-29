@@ -491,9 +491,6 @@ def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float)
                     conflict_graph.add_edge(index_c[0], index_c[1],
                         weight=my_mdl.instance_model.dual[
                             my_mdl.instance_model.must_link_n[index_c]])
-    print('\n conflict graph \n')
-    print(conflict_graph.edges)
-    input()
     return conflict_graph
 
 

@@ -1,10 +1,12 @@
 """
 =========
-cots small_pyomo
+cots model
 =========
 
-One model instance, made as an example alternative to the
-'model_small_cplex' example made with CPLEX.
+Define the optimization models we have, with its objective, constraints,
+variables, and build it from the ``Instance``. Provide all optimization models
+related methods.
+The optimization model description is based on Pyomo.
 """
 
 from itertools import product as prod

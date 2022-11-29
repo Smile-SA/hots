@@ -37,7 +37,7 @@ import pandas as pd
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
-from . import model_pyomo as mdl_py
+from . import model as mdl
 from . import node
 from . import placement as place
 from . import plot
@@ -636,7 +636,7 @@ def pre_loop(
     #                              my_instance.dict_id_c,
     #                              my_instance.dict_id_n,
     #                              w=w, u=u, pb_number=2)
-    clust_model = mdl_py.Model(1,
+    clust_model = mdl.Model(1,
                                working_df_indiv,
                                my_instance.dict_id_c,
                                nb_clusters=my_instance.nb_clusters,
@@ -655,7 +655,7 @@ def pre_loop(
     # )
     print('\n ## Pyomo solve ## \n\n')
     clust_model.solve()
-    clustering_dual_values = mdl_py.fill_dual_values(clust_model)
+    clustering_dual_values = mdl.fill_dual_values(clust_model)
     # clustering_dual_values = {}
 
     if cluster_method == 'stream-km':
@@ -689,7 +689,7 @@ def pre_loop(
     #                              my_instance.dict_id_c,
     #                              my_instance.dict_id_n,
     #                              w=w, u=u, v=v, dv=dv, pb_number=3)
-    place_model = mdl_py.Model(2,
+    place_model = mdl.Model(2,
                                working_df_indiv,
                                my_instance.dict_id_c,
                                my_instance.dict_id_n,
@@ -708,7 +708,7 @@ def pre_loop(
     # )
     print('\n ## Pyomo solve ## \n\n')
     place_model.solve()
-    placement_dual_values = mdl_py.fill_dual_values(place_model)
+    placement_dual_values = mdl.fill_dual_values(place_model)
     # placement_dual_values = {}
 
     return (clust_model, place_model,
@@ -841,7 +841,7 @@ def eval_clustering(my_instance: Instance,
     (moving_containers,
      clust_conflict_nodes,
      clust_conflict_edges,
-     clust_max_deg, clust_mean_deg) = mdl_py.get_moving_containers_clust(
+     clust_max_deg, clust_mean_deg) = mdl.get_moving_containers_clust(
         clust_model, clustering_dual_values,
         tol_clust, tol_move_clust,
         my_instance.nb_containers, my_instance.dict_id_c,
@@ -861,7 +861,7 @@ def eval_clustering(my_instance: Instance,
         logging.info('Solving linear relaxation after changes ...')
         start = time.time()
         clust_model.solve()
-        clustering_dual_values = mdl_py.fill_dual_values(clust_model)
+        clustering_dual_values = mdl.fill_dual_values(clust_model)
         add_time(loop_nb, 'solve_new_clustering', (time.time() - start))
         # print('After changes clustering lp solution : ', cplex_model.relax_mdl.objective_value)
     else:
@@ -898,7 +898,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
 
     start = time.time()
     #TODO update without re-creating from scratch ? Study
-    place_model = mdl_py.Model(2,
+    place_model = mdl.Model(2,
                                working_df_indiv,
                                my_instance.dict_id_c,
                                my_instance.dict_id_n,
@@ -931,7 +931,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
         (moving_containers,
          place_conf_nodes,
          place_conf_edges,
-         place_max_deg, place_mean_deg) = mdl_py.get_moving_containers_place(
+         place_max_deg, place_mean_deg) = mdl.get_moving_containers_place(
             place_model, placement_dual_values,
             tol_place, tol_move_place, my_instance.nb_containers,
             working_df_indiv, my_instance.dict_id_c)
@@ -950,7 +950,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
             place_model.update_obj_place(dv)
             place_model.solve()
             # print('After changes placement lp solution : ', place_model.relax_mdl.objective_value)
-            placement_dual_values = mdl_py.fill_dual_values(place_model)
+            placement_dual_values = mdl.fill_dual_values(place_model)
             add_time(loop_nb, 'solve_new_placement', (time.time() - start))
         else:
             logging.info('No container to move : we do nothing ...\n')

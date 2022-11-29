@@ -630,12 +630,6 @@ def pre_loop(
     logging.info('Evaluation of problems with initial solutions')
     print('Building clustering model ...')
     start = time.time()
-    # clust_model = mc.CPXInstance(working_df_indiv,
-    #                              my_instance.df_host_meta,
-    #                              my_instance.nb_clusters,
-    #                              my_instance.dict_id_c,
-    #                              my_instance.dict_id_n,
-    #                              w=w, u=u, pb_number=2)
     clust_model = mdl.Model(1,
                                working_df_indiv,
                                my_instance.dict_id_c,
@@ -650,13 +644,9 @@ def pre_loop(
     # clust_model.solve(clust_model.relax_mdl)
     add_time(0, 'solve_clustering_model', (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
-    # clustering_dual_values = mc.fill_constraints_dual_values(
-    #     clust_model.relax_mdl, constraints_dual
-    # )
     print('\n ## Pyomo solve ## \n\n')
     clust_model.solve()
     clustering_dual_values = mdl.fill_dual_values(clust_model)
-    # clustering_dual_values = {}
 
     if cluster_method == 'stream-km':
         it.streamkm_model = Streamkm(
@@ -683,33 +673,21 @@ def pre_loop(
     logging.info('# Placement evaluation #')
     print('Building placement model ...')
     start = time.time()
-    # place_model = mc.CPXInstance(working_df_indiv,
-    #                              my_instance.df_host_meta,
-    #                              my_instance.nb_clusters,
-    #                              my_instance.dict_id_c,
-    #                              my_instance.dict_id_n,
-    #                              w=w, u=u, v=v, dv=dv, pb_number=3)
     place_model = mdl.Model(2,
                                working_df_indiv,
                                my_instance.dict_id_c,
                                my_instance.dict_id_n,
                                my_instance.df_host_meta,
                                dv=dv, sol_u=u, sol_v=v)
-    # pyomo_place.write_infile()
     add_time(0, 'build_placement_model', (time.time() - start))
     start = time.time()
     print('Solving first placement ...')
     # place_model.solve(place_model.relax_mdl)
     logging.info('Placement problem not evaluated yet\n')
     add_time(0, 'solve_placement_model', (time.time() - start))
-    # print(it.times_df)
-    # placement_dual_values = mc.fill_constraints_dual_values(
-    #     place_model.relax_mdl, constraints_dual
-    # )
     print('\n ## Pyomo solve ## \n\n')
     place_model.solve()
     placement_dual_values = mdl.fill_dual_values(place_model)
-    # placement_dual_values = {}
 
     return (clust_model, place_model,
             clustering_dual_values, placement_dual_values)
@@ -863,7 +841,6 @@ def eval_clustering(my_instance: Instance,
         clust_model.solve()
         clustering_dual_values = mdl.fill_dual_values(clust_model)
         add_time(loop_nb, 'solve_new_clustering', (time.time() - start))
-        # print('After changes clustering lp solution : ', cplex_model.relax_mdl.objective_value)
     else:
         logging.info('Clustering seems still right ...')
         it.results_file.write('Clustering seems still right ...')
@@ -904,14 +881,6 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
                                my_instance.dict_id_n,
                                my_instance.df_host_meta,
                                dv=dv, sol_u=u, sol_v=v)
-    # place_model.update_data(
-    #     working_df_indiv,
-    #     my_instance.dict_id_c
-    # )
-    # place_model.relax_mdl.clear_constraints()
-    # place_model.placement_constraints()
-    # place_model.add_adjacency_place_constraints(v)
-    # place_model.update_obj_placement(u, v, dv)
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
     it.optim_file.write('solve without any change\n')
     start = time.time()

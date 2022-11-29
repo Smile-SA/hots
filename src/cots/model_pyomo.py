@@ -20,6 +20,7 @@ from pyomo import environ as pe
 import numpy as np
 
 from . import init as it
+from .clustering import get_far_container
 
 
 class Model:
@@ -355,6 +356,17 @@ class Model:
         for i,j in prod(range(len(dv)),range(len(dv[0]))):
             self.instance_model.dv[(i,j)] = dv[i][j]
 
+    
+    #TODO to finish
+    def update_instance(self, df_indiv):
+        """Update the model instance from new data."""
+        # Clear data and constraints
+        for c in self.instance_model.component_objects(pe.Constraint):
+            self.instance_model.del_component(c)
+        # Re-create data
+
+        # Re-create constraints
+
 def clust_assign_(mdl, container):
     """Express the assignment constraint."""
     return sum(mdl.y[container, cluster] for cluster in mdl.K) == 1
@@ -463,6 +475,22 @@ def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float)
                     conflict_graph.add_edge(index_c[0], index_c[1],
                         weight=my_mdl.instance_model.dual[
                             my_mdl.instance_model.must_link_c[index_c]])
+    elif my_mdl.pb_number == 2:
+        for index_c in my_mdl.instance_model.must_link_n:
+            if (index_c in constraints_dual_values) and (
+                constraints_dual_values[index_c] > 0.0
+            ):
+                if (my_mdl.instance_model.dual[
+                my_mdl.instance_model.must_link_n[index_c]] > (
+                    constraints_dual_values[index_c]
+                    + tol * constraints_dual_values[index_c])) or (
+                        my_mdl.instance_model.dual[
+                            my_mdl.instance_model.must_link_n[index_c]
+                        ] > tol * pe.value(my_mdl.instance_model.obj)
+                ):
+                    conflict_graph.add_edge(index_c[0], index_c[1],
+                        weight=my_mdl.instance_model.dual[
+                            my_mdl.instance_model.must_link_n[index_c]])
     print('\n conflict graph \n')
     print(conflict_graph.edges)
     input()
@@ -586,3 +614,23 @@ def get_moving_containers_place(my_mdl: Model, constraints_dual_values: Dict,
 
     return (mvg_containers, graph_nodes, graph_edges,
             max_deg, mean_deg)
+
+        
+def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
+    """Get the container we want to move between c1 and c2."""
+    node = working_df.loc[
+        working_df[it.indiv_field] == c1][it.host_field].to_numpy()[0]
+    node_data = working_df.loc[
+        working_df[it.host_field] == node].groupby(
+            working_df[it.tick_field]
+    )[it.metrics[0]].sum().to_numpy()
+    c1_cons = working_df.loc[
+        working_df[it.indiv_field] == c1
+    ][it.metrics[0]].to_numpy()
+    c2_cons = working_df.loc[
+        working_df[it.indiv_field] == c2
+    ][it.metrics[0]].to_numpy()
+    if (node_data - c1_cons).var() < (node_data - c2_cons).var():
+        return c1
+    else:
+        return c2

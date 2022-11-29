@@ -377,16 +377,6 @@ def assignment_(mdl, container):
     return sum(mdl.x[container, node] for node in mdl.N) == 1
 
 
-def delta_1(mdl, node, time):
-    """Express first inequality for delta."""
-    # expr_n =
-    # return ()
-
-
-def delta_2(mdl, node, time):
-    """Express second inequality for delta."""
-
-
 def open_nodes_(mdl):
     """Express the numbers of open nodes."""
     return sum(mdl.a[m] for m in mdl.N)

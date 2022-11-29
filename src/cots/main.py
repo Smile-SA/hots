@@ -899,14 +899,21 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     logging.info('# Placement evaluation #')
 
     start = time.time()
-    place_model.update_data(
-        working_df_indiv,
-        my_instance.dict_id_c
-    )
-    place_model.relax_mdl.clear_constraints()
-    place_model.placement_constraints()
-    place_model.add_adjacency_place_constraints(v)
-    place_model.update_obj_placement(u, v, dv)
+    #TODO update without re-creating from scratch ? Study
+    place_model = mdl_py.Model(2,
+                               working_df_indiv,
+                               my_instance.dict_id_c,
+                               my_instance.dict_id_n,
+                               my_instance.df_host_meta,
+                               dv=dv, sol_u=u, sol_v=v)
+    # place_model.update_data(
+    #     working_df_indiv,
+    #     my_instance.dict_id_c
+    # )
+    # place_model.relax_mdl.clear_constraints()
+    # place_model.placement_constraints()
+    # place_model.add_adjacency_place_constraints(v)
+    # place_model.update_obj_placement(u, v, dv)
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
     it.optim_file.write('solve without any change\n')
     start = time.time()
@@ -927,7 +934,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
          place_conf_nodes,
          place_conf_edges,
          place_max_deg, place_mean_deg) = mdl_py.get_moving_containers_place(
-            place_model.relax_mdl, placement_dual_values,
+            place_model, placement_dual_values,
             tol_place, tol_move_place, my_instance.nb_containers,
             working_df_indiv, my_instance.dict_id_c)
         add_time(loop_nb, 'get_moves_placement', (time.time() - start))
@@ -942,12 +949,10 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
                 working_df_indiv, my_instance.dict_id_c)
             start = time.time()
             place_model.update_adjacency_place_constraints(v)
-            place_model.update_obj_placement(u, v, dv)
-            place_model.solve(place_model.relax_mdl)
+            place_model.update_obj_place(dv)
+            place_model.solve()
             # print('After changes placement lp solution : ', place_model.relax_mdl.objective_value)
-            placement_dual_values = mc.fill_constraints_dual_values(
-                place_model.relax_mdl, constraints_dual
-            )
+            placement_dual_values = mdl_py.fill_dual_values(place_model)
             add_time(loop_nb, 'solve_new_placement', (time.time() - start))
         else:
             logging.info('No container to move : we do nothing ...\n')

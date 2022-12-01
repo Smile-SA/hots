@@ -346,9 +346,11 @@ def run_period(
             config['loop']['tol_dual_place'],
             config['loop']['tol_move_place']
         )
-        df_host_evo = df_host_evo.append(
+        df_host_evo = pd.concat([
+            df_host_evo,
             temp_df_host[~temp_df_host[it.tick_field].isin(
-                df_host_evo[it.tick_field].unique())], ignore_index=True)
+                df_host_evo[it.tick_field].unique())]
+        ])
 
     return (df_host_evo, nb_overloads)
 
@@ -433,9 +435,11 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 my_instance, 'loop', tmin, tmax, labels_, loop_nb,
                 constraints_dual, clustering_dual_values, placement_dual_values,
                 tol_clust, tol_move_clust, tol_place, tol_move_place)
-            df_host_evo = df_host_evo.append(
+            df_host_evo = pd.concat([
+                df_host_evo,
                 temp_df_host[~temp_df_host[it.tick_field].isin(
-                    df_host_evo[it.tick_field].unique())], ignore_index=True)
+                    df_host_evo[it.tick_field].unique())]
+            ])
             total_nb_overload += nb_overload
 
         start = time.time()
@@ -504,7 +508,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         add_time(loop_nb, 'total_loop', loop_time)
         total_loop_time += loop_time
 
-        # TODO append deprecated
         # Save loop indicators in df
         it.loop_results = pd.concat(
             [it.loop_results,

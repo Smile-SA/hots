@@ -276,16 +276,19 @@ def get_nodes_load_info(df_host: pd.DataFrame, df_host_meta: pd.DataFrame) -> pd
         node_cap = df_host_meta.loc[
             df_host_meta[it.host_field] == node
         ][metric].to_numpy()[0]
-        results_df = results_df.append({
-            it.host_field: node,
-            'load_var': data_n[metric].var(),
-            'avg_load': data_n[metric].mean() / node_cap * 100,
-            'min_load': data_n[metric].min() / node_cap * 100,
-            'max_load': data_n[metric].max() / node_cap * 100,
-            'avg_cons': data_n[metric].mean(),
-            'min_cons': data_n[metric].min(),
-            'max_cons': data_n[metric].max()
-        }, ignore_index=True)
+        results_df = pd.concat(
+            [results_df,
+            pd.DataFrame.from_records([{
+                it.host_field: node,
+                'load_var': data_n[metric].var(),
+                'avg_load': data_n[metric].mean() / node_cap * 100,
+                'min_load': data_n[metric].min() / node_cap * 100,
+                'max_load': data_n[metric].max() / node_cap * 100,
+                'avg_cons': data_n[metric].mean(),
+                'min_cons': data_n[metric].min(),
+                'max_cons': data_n[metric].max()
+            }])]
+        )
     results_df.set_index(it.host_field, inplace=True)
 
     return results_df

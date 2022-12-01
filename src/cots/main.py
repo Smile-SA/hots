@@ -418,9 +418,11 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             my_instance, 'local', tmin, tmax, labels_, loop_nb,
             constraints_dual, clustering_dual_values, placement_dual_values,
             tol_clust, tol_move_clust, tol_place, tol_move_place)
-        df_host_evo = df_host_evo.append(
+        df_host_evo = pd.concat([
+            df_host_evo,
             temp_df_host[~temp_df_host[it.tick_field].isin(
-                df_host_evo[it.tick_field].unique())], ignore_index=True)
+                df_host_evo[it.tick_field].unique())]
+        ])
         total_nb_overload += nb_overload
         nb_clust_changes += nb_clust_changes_loop
         nb_place_changes += nb_place_changes_loop
@@ -487,9 +489,11 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             as_index=False).agg(it.dict_agg_metrics)
 
         if loop_nb > 1:
-            df_host_evo = df_host_evo.append(
+            df_host_evo = pd.concat(
+                [df_host_evo,
                 working_df_host[~working_df_host[it.tick_field].isin(
-                    df_host_evo[it.tick_field].unique())], ignore_index=True)
+                    df_host_evo[it.tick_field].unique())]]
+            )
 
         loop_time = (time.time() - loop_time)
         (end_loop_obj_nodes, end_loop_obj_delta) = mdl.get_obj_value_host(
@@ -502,24 +506,28 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
         # TODO append deprecated
         # Save loop indicators in df
-        it.loop_results = it.loop_results.append({
-            'num_loop': int(loop_nb),
-            'init_silhouette': init_loop_silhouette,
-            'init_delta': init_loop_obj_delta,
-            'clust_conf_nodes': clust_conf_nodes,
-            'clust_conf_edges': clust_conf_edges,
-            'clust_max_deg': clust_max_deg,
-            'clust_mean_deg': clust_mean_deg,
-            'clust_changes': int(nb_clust_changes_loop),
-            'place_conf_nodes': place_conf_nodes,
-            'place_conf_edges': place_conf_edges,
-            'place_max_deg': place_max_deg,
-            'place_mean_deg': place_mean_deg,
-            'place_changes': int(nb_place_changes_loop),
-            'end_silhouette': end_loop_silhouette,
-            'end_delta': end_loop_obj_delta,
-            'loop_time': loop_time
-        }, ignore_index=True)
+        it.loop_results = pd.concat(
+            [it.loop_results,
+                pd.DataFrame.from_records([{
+                    'num_loop': int(loop_nb),
+                    'init_silhouette': init_loop_silhouette,
+                    'init_delta': init_loop_obj_delta,
+                    'clust_conf_nodes': clust_conf_nodes,
+                    'clust_conf_edges': clust_conf_edges,
+                    'clust_max_deg': clust_max_deg,
+                    'clust_mean_deg': clust_mean_deg,
+                    'clust_changes': int(nb_clust_changes_loop),
+                    'place_conf_nodes': place_conf_nodes,
+                    'place_conf_edges': place_conf_edges,
+                    'place_max_deg': place_max_deg,
+                    'place_mean_deg': place_mean_deg,
+                    'place_changes': int(nb_place_changes_loop),
+                    'end_silhouette': end_loop_silhouette,
+                    'end_delta': end_loop_obj_delta,
+                    'loop_time': loop_time
+                }])
+            ]
+        )
 
         # input('\nPress any key to progress in time ...\n')
         tmin += tick
@@ -576,8 +584,9 @@ def progress_time_noloop(
 
         host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
         df_host_tick[it.tick_field] = tick
-        df_host_evo = df_host_evo.append(
-            df_host_tick, ignore_index=True)
+        df_host_evo = pd.concat([
+            df_host_evo, df_host_tick
+        ])
         if len(host_overload) > 0:
             print('Overload : We must move containers')
             nb_overload += len(host_overload)
@@ -1011,19 +1020,24 @@ def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
             [working_df_indiv[it.tick_field], it.host_field],
             as_index=False).agg(it.dict_agg_metrics)
     else:
-        df_host_evo = df_host_evo.append(
+        df_host_evo = pd.concat(
+            [df_host_evo,
             working_df_host[~working_df_host[it.tick_field].isin(
-                df_host_evo[it.tick_field].unique())], ignore_index=True)
+                df_host_evo[it.tick_field].unique())]]
+        )
     return df_host_evo
 
 
 def add_time(loop_nb: int, action: str, time: float):
     """Add an action time in times dataframe."""
-    it.times_df = it.times_df.append({
-        'num_loop': loop_nb,
-        'action': action,
-        'time': time
-    }, ignore_index=True)
+    it.times_df = pd.concat(
+        [it.times_df,
+        pd.DataFrame.from_records([{
+            'num_loop': loop_nb,
+            'action': action,
+            'time': time
+        }])]
+    )
 
 
 def close_files():

@@ -252,7 +252,7 @@ class Model:
             }}
         elif self.pb_number == 2:
             self.cap = {}
-            for n, n_data in df_host_meta.groupby([it.host_field]):
+            for n, n_data in df_host_meta.groupby(it.host_field):
                 self.cap.update({n: n_data['cpu'].values[0]})
             self.cons = {}
             df_indiv.reset_index(drop=True, inplace=True)
@@ -674,8 +674,7 @@ def get_obj_value_indivs(df_indiv: pd.DataFrame,
         & (df_indiv[it.tick_field] <= t_max)]
     df_indiv.reset_index(drop=True, inplace=True)
     obj_val = 0.0
-    for n, n_data in df_indiv.groupby(
-            [it.host_field]):
+    for n, n_data in df_indiv.groupby(it.host_field):
         max_n = 0.0
         min_n = -1.0
         for t, nt_data in n_data.groupby(it.tick_field):

@@ -232,7 +232,7 @@ def get_cluster_mean_profile(df_clust: pd.DataFrame) -> np.array:
     profiles_ = np.zeros((
         df_clust['cluster'].nunique(),
         len(df_clust.columns) - 1), dtype=float)
-    for key, data in df_clust.groupby(['cluster']):
+    for key, data in df_clust.groupby('cluster'):
         t = 0
         for c, c_data in data.iloc[:, :-1].items():
             profiles_[key, t] = c_data.mean()

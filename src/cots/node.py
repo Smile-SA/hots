@@ -10,13 +10,10 @@ for node IDs, compute different statistic measures ...)
 import math
 from typing import Dict, List, Tuple
 
-from matplotlib import gridspec as gridspec
-from matplotlib import pyplot as plt
-
 import numpy as np
 import pandas as pd
-from matplotlib import pyplot as plt
 from matplotlib import gridspec as gridspec
+from matplotlib import pyplot as plt
 from tqdm import tqdm
 
 from . import init as it

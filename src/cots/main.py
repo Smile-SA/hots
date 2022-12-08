@@ -23,14 +23,10 @@ import time
 from typing import Dict, List, Tuple
 
 import click
-
-from clusopt_core.cluster import Streamkm
-
-from matplotlib import pyplot as plt
-
 import numpy as np
-
 import pandas as pd
+from clusopt_core.cluster import Streamkm
+from matplotlib import pyplot as plt
 
 # Personnal imports
 # from . import allocation as alloc

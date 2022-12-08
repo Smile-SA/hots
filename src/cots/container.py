@@ -10,16 +10,11 @@ build dictionnary for container IDs ...)
 from itertools import combinations
 from typing import Dict, List
 
-from matplotlib import gridspec as gridspec
-from matplotlib import pyplot as plt
-
 import numpy as np
-
 import pandas as pd
-from matplotlib import pyplot as plt
-from matplotlib import gridspec as gridspec
-
 import plotly.express as px
+from matplotlib import gridspec as gridspec
+from matplotlib import pyplot as plt
 
 from . import init as it
 from . import plot

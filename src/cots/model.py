@@ -10,16 +10,12 @@ The optimization model description is based on Pyomo.
 """
 
 from itertools import product as prod
-
 from typing import Dict, List, Tuple
 
 import networkx as nx
-
-import pandas as pd
-
-from pyomo import environ as pe
-
 import numpy as np
+import pandas as pd
+from pyomo import environ as pe
 
 from . import init as it
 from .clustering import get_far_container

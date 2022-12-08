@@ -65,7 +65,7 @@ class Model:
 
         # Build constraints of the problem
         self.build_constraints()
-        self.add_mustLink()
+        self.add_mustlink()
 
         # Build the objective function
         self.build_objective()
@@ -91,7 +91,7 @@ class Model:
         # set of containers
         self.mdl.C = pe.Set(dimen=1)
         # current clustering solution
-        sol_u_d = (
+        sol_u_d = dict(
             ((j, i), u[i][j]) for i, j in prod(range(len(u)), range(len(u[0])))
         )
         self.mdl.sol_u = pe.Param(self.mdl.C, self.mdl.C,
@@ -104,7 +104,7 @@ class Model:
             # set of clusters
             self.mdl.K = pe.Set(dimen=1)
             # distances
-            w_d = (
+            w_d = dict(
                 ((j, i), w[i][j]) for i, j in prod(range(len(w)), range(len(w[0])))
             )
             self.mdl.w = pe.Param(self.mdl.C, self.mdl.C,
@@ -126,13 +126,13 @@ class Model:
             # containers usage
             self.mdl.cons = pe.Param(self.mdl.Ccons, self.mdl.T)
             # dv matrix for distance placement
-            dv_d = (
+            dv_d = dict(
                 ((j, i), dv[i][j]) for i, j in prod(range(len(dv)), range(len(dv[0])))
             )
             self.mdl.dv = pe.Param(
                 self.mdl.C, self.mdl.C, initialize=dv_d, mutable=True)
             # current placement solution
-            sol_v_d = (
+            sol_v_d = dict(
                 ((j, i), v[i][j]) for i, j in prod(range(len(v)), range(len(v[0])))
             )
             self.mdl.sol_v = pe.Param(self.mdl.C, self.mdl.C,
@@ -197,7 +197,7 @@ class Model:
                 self.mdl.C,
                 rule=assignment_)
 
-    def add_mustLink(self):
+    def add_mustlink(self):
         """Add mustLink constraints for fixing solution."""
         if self.pb_number == 1:
             self.mdl.must_link_c = pe.Constraint(
@@ -300,7 +300,7 @@ class Model:
         self.instance_model.del_component(self.instance_model.must_link_c)
         self.instance_model.del_component(self.instance_model.must_link_c_index)
         self.update_sol_u(u)
-        self.add_mustLink_instance()
+        self.add_mustlink_instance()
 
     def update_sol_u(self, u):
         """Update directly the sol_u param in instance from new u matrix."""
@@ -313,7 +313,7 @@ class Model:
         self.instance_model.del_component(self.instance_model.must_link_n)
         self.instance_model.del_component(self.instance_model.must_link_n_index)
         self.update_sol_v(v)
-        self.add_mustLink_instance()
+        self.add_mustlink_instance()
 
     def update_sol_v(self, v):
         """Update directly the sol_v param in instance from new v matrix."""

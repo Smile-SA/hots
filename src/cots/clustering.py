@@ -13,16 +13,21 @@ from itertools import combinations
 from typing import Callable, Dict, List, Tuple
 
 import networkx as nx
+
 import numpy as np
-import pandas as pd
-import scipy.cluster.hierarchy as hac
 from numpy.linalg import multi_dot, norm
+
+import pandas as pd
+
+import scipy.cluster.hierarchy as hac
 from scipy.linalg import fractional_matrix_power
 from scipy.linalg.lapack import dsyevr
 from scipy.spatial.distance import pdist, squareform
+
 from sklearn import metrics
 from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.metrics.pairwise import pairwise_distances
+
 from tqdm import tqdm
 
 from . import init as it
@@ -150,7 +155,7 @@ def perso_spectral_clustering(data: pd.DataFrame, k: int) -> np.array:
     print('Vecteurs propres u=(u1, ..., up) :')
     print(u)
 
-    return(np.asarray(weighted_kmeans(w, d, u, k)))
+    return (np.asarray(weighted_kmeans(w, d, u, k)))
 
 
 def compute_mu_r(w: np.array, d: np.array, labels_: List, r: int, u: np.array

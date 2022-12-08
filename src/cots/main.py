@@ -21,10 +21,14 @@ import time
 from typing import Dict, List, Tuple
 
 import click
-import numpy as np
-import pandas as pd
+
 from clusopt_core.cluster import Streamkm
+
 from matplotlib import pyplot as plt
+
+import numpy as np
+
+import pandas as pd
 
 # Personnal imports
 # from . import allocation as alloc
@@ -490,9 +494,11 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
         if loop_nb > 1:
             df_host_evo = pd.concat(
-                [df_host_evo,
-                working_df_host[~working_df_host[it.tick_field].isin(
-                    df_host_evo[it.tick_field].unique())]]
+                [
+                    df_host_evo,
+                    working_df_host[~working_df_host[it.tick_field].isin(
+                        df_host_evo[it.tick_field].unique())]
+                ]
             )
 
         loop_time = (time.time() - loop_time)
@@ -506,7 +512,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
         # Save loop indicators in df
         it.loop_results = pd.concat(
-            [it.loop_results,
+            [
+                it.loop_results,
                 pd.DataFrame.from_records([{
                     'num_loop': int(loop_nb),
                     'init_silhouette': init_loop_silhouette,
@@ -637,11 +644,13 @@ def pre_loop(
     logging.info('Evaluation of problems with initial solutions')
     print('Building clustering model ...')
     start = time.time()
-    clust_model = mdl.Model(1,
-                               working_df_indiv,
-                               my_instance.dict_id_c,
-                               nb_clusters=my_instance.nb_clusters,
-                               w=w, sol_u=u)
+    clust_model = mdl.Model(
+        1,
+        working_df_indiv,
+        my_instance.dict_id_c,
+        nb_clusters=my_instance.nb_clusters,
+        w=w, sol_u=u
+    )
     clust_model.write_infile()
     add_time(0, 'build_clustering_model', (time.time() - start))
     start = time.time()
@@ -679,12 +688,14 @@ def pre_loop(
     logging.info('# Placement evaluation #')
     print('Building placement model ...')
     start = time.time()
-    place_model = mdl.Model(2,
-                               working_df_indiv,
-                               my_instance.dict_id_c,
-                               my_instance.dict_id_n,
-                               my_instance.df_host_meta,
-                               dv=dv, sol_u=u, sol_v=v)
+    place_model = mdl.Model(
+        2,
+        working_df_indiv,
+        my_instance.dict_id_c,
+        my_instance.dict_id_n,
+        my_instance.df_host_meta,
+        dv=dv, sol_u=u, sol_v=v
+    )
     add_time(0, 'build_placement_model', (time.time() - start))
     start = time.time()
     print('Solving first placement ...')
@@ -879,13 +890,15 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
     logging.info('# Placement evaluation #')
 
     start = time.time()
-    #TODO update without re-creating from scratch ? Study
-    place_model = mdl.Model(2,
-                               working_df_indiv,
-                               my_instance.dict_id_c,
-                               my_instance.dict_id_n,
-                               my_instance.df_host_meta,
-                               dv=dv, sol_u=u, sol_v=v)
+    # TODO update without re-creating from scratch ? Study
+    place_model = mdl.Model(
+        2,
+        working_df_indiv,
+        my_instance.dict_id_c,
+        my_instance.dict_id_n,
+        my_instance.df_host_meta,
+        dv=dv, sol_u=u, sol_v=v
+    )
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
     it.optim_file.write('solve without any change\n')
     start = time.time()
@@ -1020,9 +1033,11 @@ def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
             as_index=False).agg(it.dict_agg_metrics)
     else:
         df_host_evo = pd.concat(
-            [df_host_evo,
-            working_df_host[~working_df_host[it.tick_field].isin(
-                df_host_evo[it.tick_field].unique())]]
+            [
+                df_host_evo,
+                working_df_host[~working_df_host[it.tick_field].isin(
+                    df_host_evo[it.tick_field].unique())]
+            ]
         )
     return df_host_evo
 
@@ -1030,12 +1045,14 @@ def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
 def add_time(loop_nb: int, action: str, time: float):
     """Add an action time in times dataframe."""
     it.times_df = pd.concat(
-        [it.times_df,
-        pd.DataFrame.from_records([{
-            'num_loop': loop_nb,
-            'action': action,
-            'time': time
-        }])]
+        [
+            it.times_df,
+            pd.DataFrame.from_records([{
+                'num_loop': loop_nb,
+                'action': action,
+                'time': time
+            }])
+        ]
     )
 
 

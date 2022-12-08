@@ -1,6 +1,6 @@
 """
 =========
-cots placement
+hots placement
 =========
 
 Provide placement heuristics and all placement-related methods

@@ -1,6 +1,6 @@
 """
 =========
-cots node
+hots node
 =========
 
 Provide actions specific to nodes (plot nodes data, build dictionnary

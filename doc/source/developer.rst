@@ -5,7 +5,7 @@ The developer and maintainer corner
 ===================================
 
 This chapter is a kind of unstructured "howto" that states the various development and maintenance
-rules for the :term:`cots` project. The poor man's quality assurance plan.
+rules for the :term:`hots` project. The poor man's quality assurance plan.
 
 This chapter is opened to be restructured in the future.
 
@@ -15,7 +15,7 @@ Git workflow and life cycle
 The "master" git branch
 -----------------------
 
-The "master" branch contains the source trees from which the public releases of the :term:`cots`
+The "master" branch contains the source trees from which the public releases of the :term:`hots`
 software products are built and distributed to the registries (PyPI, Docker hub, doc site).
 
 Each release is identified by a Git tag named with the software distribution version.
@@ -30,7 +30,7 @@ from a milestone are considered as fixed, tested and relevant documentation chan
 The "testing" branch
 --------------------
 
-The "testing" branch contains the "bleeding edge" version of the :term:`cots` software, tests and
+The "testing" branch contains the "bleeding edge" version of the :term:`hots` software, tests and
 documentation.
 
 The changes in the "testing" branch are processed by merging a personal branch when the issues from the personal branch are considered closed, and **the unit tests don't report any failure**.

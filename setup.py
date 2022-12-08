@@ -1,6 +1,6 @@
 """
 =========
-cots setup
+hots setup
 =========
 
 Provide packaging operations through ``python setup.py [command]`` and

@@ -1,8 +1,8 @@
 """
 =========
-run bench cots
+run bench hots
 =========
-Run the bench of cots with one dataset, specifying the parameters k and tau you want.
+Run the bench of hots with one dataset, specifying the parameters k and tau you want.
 """
 
 import subprocess
@@ -63,7 +63,7 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
                         temp_output = '%sk%d_tau%d_%s_%s' % (
                             output_path, k, tau, method, cluster_method
                         )
-                        bash_command = 'cots %s -k %d -t %d -m %s -c %s -o %s' % (
+                        bash_command = 'hots %s -k %d -t %d -m %s -c %s -o %s' % (
                             path, k, tau, method, cluster_method, temp_output
                         )
                         print('\n%s\n' % bash_command)
@@ -73,7 +73,7 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
                     temp_output = '%sk%d_tau%d_%s' % (
                         output_path, k, tau, method
                     )
-                    bash_command = 'cots %s -k %d -t %d -m %s -o %s' % (
+                    bash_command = 'hots %s -k %d -t %d -m %s -o %s' % (
                         path, k, tau, method, temp_output
                     )
                     print('\n%s\n' % bash_command)
@@ -81,13 +81,13 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
                     output, error = process.communicate()
 
     # bash_command =
-    # 'cots ' + path + ' -k ' + str(k) + ' -t ' + str(tau) + ' -m loop_v2'
+    # 'hots ' + path + ' -k ' + str(k) + ' -t ' + str(tau) + ' -m loop_v2'
     # print('\n%s\n' % bash_command)
     # process = subprocess.Popen(bash_command.split())
     # output, error = process.communicate()
 
     # bash_command =
-    # 'cots ' + path + ' -k ' + str(k) + ' -t ' + str(tau) + ' -m loop_kmeans'
+    # 'hots ' + path + ' -k ' + str(k) + ' -t ' + str(tau) + ' -m loop_kmeans'
     # print('\n%s\n' % bash_command)
     # process = subprocess.Popen(bash_command.split())
     # output, error = process.communicate()
@@ -97,7 +97,7 @@ def main(path, kmin, kmax, taumin, taumax, kstep, taustep):
     #     for tol_a in range(tol_place_min, tol_place_max):
     #         epsilon_a = tol_a / 10
     #         temp_output = output_path + str(tol_c) + '_' + str(tol_a) + '/'
-    #         bash_command = 'cots ' + path + ' -o ' + temp_output + \
+    #         bash_command = 'hots ' + path + ' -o ' + temp_output + \
     #             ' -ec ' + str(epsilon_c) + ' -ea ' + str(epsilon_a)
     #         print('\n%s\n' % bash_command)
     #         process = subprocess.Popen(bash_command.split())

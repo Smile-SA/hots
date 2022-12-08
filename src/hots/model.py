@@ -1,6 +1,6 @@
 """
 =========
-cots model
+hots model
 =========
 
 Define the optimization models we have, with its objective, constraints,

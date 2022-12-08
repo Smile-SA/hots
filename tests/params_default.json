@@ -19,7 +19,7 @@
       "algo": "distant_pairwise"
     },
     "optimization": {
-      "model": "src/cots/model_small_pyomo.py",
+      "model": "src/hots/model_small_pyomo.py",
       "solver": "glpk"
     },
     "loop": {

@@ -1,11 +1,11 @@
-# **cots**
+# **hots**
 
 > Application for testing a hybrid resource allocation method using machine learning and optimization.
 
-This is a version for testing COTS in a Docker containers
+This is a version for testing HOTS in a Docker containers
 This version includes test data with all nodes
 
-# current issue to fix in the cots package --> crashing on data with all nodes
+# current issue to fix in the hots package --> crashing on data with all nodes
 
 ## Requirements for running
 
@@ -44,21 +44,21 @@ Else edit the Dockerfile
 look for the comments 'Replace 1000 with your user / group id'
 Change 1000 to your uid and gid from the /etc/passwd file
 
-### Running the COTS testing via docker
+### Running the HOTS testing via docker
 
 Run the following commands in a bash shell at the root of the directory where ther is the Dockerfile:
 
-# build the cots image
+# build the hots image
 ```bash
-docker build -t cots .
+docker build -t hots .
 ```
 
-# run the cots image in a container with export of display
+# run the hots image in a container with export of display
 ```bash
-docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix cots
+docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix hots
 ```
 
-This last command will run the cots image and drop you in a bash shell of the cots container
+This last command will run the hots image and drop you in a bash shell of the hots container
 You will be at /home/developer which is empty
 
 # check the content of /rac where the repo has been copied
@@ -67,15 +67,15 @@ ls /rac
 ```
 
 
-At the shell run the cots testing with the command:
+At the shell run the hots testing with the command:
 
-# run cots testing on test data
+# run hots testing on test data
 ```bash
-cots --data /rac/tests/data/generated_30 --params /rac/tests/data/params.json 
+hots --data /rac/tests/data/generated_30 --params /rac/tests/data/params.json 
 ```
-# run cots testing on test data with all nodes
+# run hots testing on test data with all nodes
 ```bash
-cots --data /rac/tests/alibaba_short_time_interval_test_data --params /rac/tests/alibaba_short_time_interval_test_data/params.json 
+hots --data /rac/tests/alibaba_short_time_interval_test_data --params /rac/tests/alibaba_short_time_interval_test_data/params.json 
 ```
 
 

@@ -1,6 +1,6 @@
 """
 ===
-cots
+hots
 ===
 
 Package for testing resource allocation via clustering.
@@ -14,7 +14,7 @@ LOG = logging.getLogger(name=__name__)
 
 # PEP 396 style version marker
 try:
-    __version__ = pkg_resources.get_distribution('cots').version
+    __version__ = pkg_resources.get_distribution('hots').version
 except pkg_resources.DistributionNotFound:
     LOG.warning('Could not get the package version from pkg_resources')
     __version__ = 'unknown'

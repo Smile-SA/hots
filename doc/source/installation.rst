@@ -7,9 +7,9 @@ Installation
 Requirements
 ============
 
-:term:`cots` works on any platform with Python 3.6 and up, a graphic display on any OS (\*nix or
+:term:`hots` works on any platform with Python 3.6 and up, a graphic display on any OS (\*nix or
 Windows)?
-Moreover, `cots` module needs `IBM CPLEX` solver to be installed on the machine to
+Moreover, `hots` module needs `IBM CPLEX` solver to be installed on the machine to
 solve the optimization problem. To see details, visit their website_.
 Once you have `CPLEX` installed on the machine, you have to add in your
 ``#PYTHONPATH`` the ``/path/to/cplex/python/[python-version]/[your-distribution]``.
@@ -25,7 +25,7 @@ Production
 
 .. code:: console
 
-   pip install cots
+   pip install hots
 
 .. hint::
 
@@ -49,10 +49,10 @@ Clone the source code from the |vcs_server|, then:
 
 .. code:: console
 
-   cd /where/you/cloned/cots
+   cd /where/you/cloned/hots
    pip install -e .[dev]
 
-This last command installs the :command:`cots` command and the :term:`cots` package in the virtual
+This last command installs the :command:`hots` command and the :term:`hots` package in the virtual
 environment in "editable" mode. This means that every change you make in the Python source code is
 immediately active (you don't need to reinstall after each change).
 

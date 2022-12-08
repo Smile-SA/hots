@@ -5,7 +5,7 @@ Pyomo use
 =========
 
 This page aims to give some useful information about the use of pyomo module in
-:term:`cots`.
+:term:`hots`.
 
 What is pyomo ?
 ===============

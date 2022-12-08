@@ -1,8 +1,8 @@
 """
 =========
-cots main
+hots main
 =========
-Entry point of cots module through ``cots --path [--k --tau]``.
+Entry point of hots module through ``hots --path [--k --tau]``.
 
     - path is the folder where we find the files
         x container_usage.csv : describes container resource consumption

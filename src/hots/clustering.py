@@ -1,6 +1,6 @@
 """
 =========
-cots clustering
+hots clustering
 =========
 
 Provide clustering algorithms and all clustering-related methods.

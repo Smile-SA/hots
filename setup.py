@@ -1,6 +1,6 @@
 """
 =========
-cots setup
+hots setup
 =========
 
 import src.rac

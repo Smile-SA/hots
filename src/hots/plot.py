@@ -1,6 +1,6 @@
 """
 =========
-cots plot
+hots plot
 =========
 
 Provide all plotting methods : different clustering results views,

@@ -22,7 +22,7 @@
 import time
 
 import pkg_resources
-project = 'cots'
+project = 'hots'
 copyright = '2020, AlterWay R&D team'
 author = 'AlterWay R&D team'
 
@@ -136,7 +136,7 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-    (master_doc, 'cots.tex', 'cots Documentation',
+    (master_doc, 'hots.tex', 'hots Documentation',
      'AlterWay R\\&D team', 'manual'),
 ]
 
@@ -146,7 +146,7 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    (master_doc, 'cots', 'cots Documentation',
+    (master_doc, 'hots', 'hots Documentation',
      [author], 1)
 ]
 
@@ -157,8 +157,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-    (master_doc, 'cots', 'cots Documentation',
-     author, 'cots', 'One line description of project.',
+    (master_doc, 'hots', 'hots Documentation',
+     author, 'hots', 'One line description of project.',
      'Miscellaneous'),
 ]
 
@@ -191,7 +191,7 @@ todo_include_todos = True
 
 # -- Customization --------------------------
 
-project = "cots"
+project = "hots"
 
 # The short X.Y version.
 version = pkg_resources.get_distribution(project).version
@@ -210,7 +210,7 @@ rst_epilog = """
 .. _"PEP 8 - Style Guide for Python code": https://www.python.org/dev/peps/pep-0008/
 .. |pep_484| replace:: `"PEP 484 - Type hints"`_
 .. _"PEP 484 - Type hints": https://www.python.org/dev/peps/pep-0484/
-.. |vcs_server| replace:: `cots Git repository`_
+.. |vcs_server| replace:: `hots Git repository`_
 .. _cots Git repository: https://git.rnd.alterway.fr/overboard/soft_clustering/rac
 .. |alterway| replace:: `Alter Way`_
 .. _Alter Way: https://www.alterway.fr/

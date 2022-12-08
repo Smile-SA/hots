@@ -1,6 +1,6 @@
 """
 =========
-cots container
+hots container
 =========
 
 Provide actions specific to containers (plot containers data,

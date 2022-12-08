@@ -1,8 +1,8 @@
 .. _instance_module:
 
 ============
-cots.instance
+hots.instance
 ============
 
-.. automodule:: cots.instance
+.. automodule:: hots.instance
    :members:

@@ -1,6 +1,6 @@
 """
 =========
-cots tools
+hots tools
 =========
 
 Provide external tools usefull for the code.

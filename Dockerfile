@@ -54,7 +54,7 @@ ENV PYTHONPATH ${PYTHONPATH}:${COSDIR}/cplex/python/${CPX_PYVERSION}/x86-64_linu
 ENV CPX_PYVERSION ${CPX_PYVERSION}
 
 
-# STEP 2 INSTALL THE COTS LOCAL PYTHON PACKAGE
+# STEP 2 INSTALL THE HOTS LOCAL PYTHON PACKAGE
 
 RUN apt-get -qq update \
     && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends \
@@ -68,14 +68,14 @@ RUN apt-get -qq update \
 
 
 
-# copy the cots package
+# copy the hots package
 ADD . /rac
 WORKDIR /rac
 
 # remove the cplex_installer dir which got copied with everything
 RUN rm -r /rac/cplex_installer
 
-# install the cots package
+# install the hots package
 # shellcheck disable=DL3013
 RUN pip install . \
     && apt -y purge python-dev build-essential \

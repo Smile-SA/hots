@@ -18,12 +18,10 @@ from itertools import combinations
 from typing import Dict, List, Tuple
 
 import numpy as np
-
 import pandas as pd
 
 from . import init as it
 from .instance import Instance
-
 
 #####################################################################
 # Functions definitions

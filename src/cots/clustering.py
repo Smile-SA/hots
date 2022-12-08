@@ -13,22 +13,16 @@ from itertools import combinations
 from typing import Callable, Dict, List, Tuple
 
 import networkx as nx
-
 import numpy as np
-from numpy.linalg import multi_dot, norm
-
 import pandas as pd
-
 import scipy.cluster.hierarchy as hac
+from numpy.linalg import multi_dot, norm
 from scipy.linalg import fractional_matrix_power
 from scipy.linalg.lapack import dsyevr
 from scipy.spatial.distance import pdist, squareform
-
 from sklearn import metrics
-from sklearn.cluster import KMeans
-from sklearn.cluster import SpectralClustering
+from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.metrics.pairwise import pairwise_distances
-
 from tqdm import tqdm
 
 from . import init as it

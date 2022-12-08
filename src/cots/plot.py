@@ -10,25 +10,26 @@ containers data, nodes data, continous plot in evaluation step.
 import math
 from typing import Dict, List
 
+import networkx as nx
+import numpy as np
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
+import scipy.cluster.hierarchy as hac
 from matplotlib import gridspec as gridspec
 from matplotlib import patches as mpatches
 from matplotlib import pyplot as plt
-
-import networkx as nx
-# from networkx.drawing.nx_agraph import graphviz_layout
-
-import numpy as np
-
-import pandas as pd
-
-import plotly.express as px
-import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-
-import scipy.cluster.hierarchy as hac
 
 from . import init as it
 from .instance import Instance
+
+# from networkx.drawing.nx_agraph import graphviz_layout
+
+
+
+
+
 
 # Global variables
 # TODO manage big number of colors

@@ -18,6 +18,7 @@ from itertools import combinations
 from typing import Dict, List, Tuple
 
 import numpy as np
+
 import pandas as pd
 
 from . import init as it
@@ -26,8 +27,8 @@ from .instance import Instance
 #####################################################################
 # Functions definitions
 
-# TODO factorize many functions (assign indiv, change node during assign indiv..)
 
+# TODO factorize many functions (assign indiv, change node during assign indiv..)
 def assign_container_node(node_id: str, container_id: str, instance: Instance,
                           remove: bool = True):
     """Assign container_id to node_id, and remove it from old node."""
@@ -548,7 +549,7 @@ def nb_min_nodes(instance: Instance, total_time: int) -> float:
             max_metric = max_t_metric
 
     cap_metric = instance.df_host_meta[it.metrics[0]].to_numpy()[0]
-    return(math.ceil(max_metric / cap_metric))
+    return (math.ceil(max_metric / cap_metric))
 
 
 # TODO integrate upper bound for considering all clusters sum variance < ub

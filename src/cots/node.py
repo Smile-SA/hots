@@ -10,10 +10,13 @@ for node IDs, compute different statistic measures ...)
 import math
 from typing import Dict, List, Tuple
 
-import numpy as np
-import pandas as pd
 from matplotlib import gridspec as gridspec
 from matplotlib import pyplot as plt
+
+import numpy as np
+
+import pandas as pd
+
 from tqdm import tqdm
 
 from . import init as it
@@ -273,8 +276,8 @@ def get_nodes_load_info(df_host: pd.DataFrame, df_host_meta: pd.DataFrame) -> pd
         node_cap = df_host_meta.loc[
             df_host_meta[it.host_field] == node
         ][metric].to_numpy()[0]
-        results_df = pd.concat(
-            [results_df,
+        results_df = pd.concat([
+            results_df,
             pd.DataFrame.from_records([{
                 it.host_field: node,
                 'load_var': data_n[metric].var(),

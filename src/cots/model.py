@@ -13,8 +13,11 @@ from itertools import product as prod
 from typing import Dict, List, Tuple
 
 import networkx as nx
+
 import numpy as np
+
 import pandas as pd
+
 from pyomo import environ as pe
 
 from . import init as it
@@ -80,7 +83,6 @@ class Model:
         # Create the instance by feeding the model with the data
         self.instance_model = self.mdl.create_instance(self.data)
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
-        
 
     def build_parameters(self, w, dv, u, v):
         """Build all Params and Sets."""
@@ -89,8 +91,8 @@ class Model:
         # set of containers
         self.mdl.C = pe.Set(dimen=1)
         # current clustering solution
-        sol_u_d = dict(
-            ((j, i), u[i][j]) for i,j in prod(range(len(u)),range(len(u[0])))
+        sol_u_d = (
+            ((j, i), u[i][j]) for i, j in prod(range(len(u)), range(len(u[0])))
         )
         self.mdl.sol_u = pe.Param(self.mdl.C, self.mdl.C,
                                   initialize=sol_u_d, mutable=True)
@@ -102,8 +104,8 @@ class Model:
             # set of clusters
             self.mdl.K = pe.Set(dimen=1)
             # distances
-            w_d = dict(
-                ((j, i), w[i][j]) for i,j in prod(range(len(w)),range(len(w[0])))
+            w_d = (
+                ((j, i), w[i][j]) for i, j in prod(range(len(w)), range(len(w[0])))
             )
             self.mdl.w = pe.Param(self.mdl.C, self.mdl.C,
                                   initialize=w_d, mutable=True)
@@ -124,14 +126,14 @@ class Model:
             # containers usage
             self.mdl.cons = pe.Param(self.mdl.Ccons, self.mdl.T)
             # dv matrix for distance placement
-            dv_d = dict(
-                ((j, i), dv[i][j]) for i,j in prod(range(len(dv)),range(len(dv[0])))
+            dv_d = (
+                ((j, i), dv[i][j]) for i, j in prod(range(len(dv)), range(len(dv[0])))
             )
-            self.mdl.dv = pe.Param(self.mdl.C, self.mdl.C,
-                                      initialize=dv_d, mutable=True)
+            self.mdl.dv = pe.Param(
+                self.mdl.C, self.mdl.C, initialize=dv_d, mutable=True)
             # current placement solution
-            sol_v_d = dict(
-                ((j, i), v[i][j]) for i,j in prod(range(len(v)),range(len(v[0])))
+            sol_v_d = (
+                ((j, i), v[i][j]) for i, j in prod(range(len(v)), range(len(v[0])))
             )
             self.mdl.sol_v = pe.Param(self.mdl.C, self.mdl.C,
                                       initialize=sol_v_d, mutable=True)
@@ -208,8 +210,7 @@ class Model:
                 rule=must_link_n_
             )
 
-    
-    def add_mustLink_instance(self):
+    def add_mustlink_instance(self):
         """Add mustLink constraints for fixing solution."""
         if self.pb_number == 1:
             self.instance_model.must_link_c = pe.Constraint(
@@ -221,7 +222,6 @@ class Model:
                 self.instance_model.C, self.instance_model.C,
                 rule=must_link_n_
             )
-
 
     def build_objective(self):
         """Build the objective."""
@@ -270,8 +270,8 @@ class Model:
     def conso_n_t(self, mdl, node, t):
         """Express the total consumption of node at time t."""
         return sum(
-            mdl.x[cont, node] * self.cons[contC][t]
-            for cont,contC in zip(mdl.C, mdl.Ccons))
+            mdl.x[cont, node] * self.cons[cont_c][t]
+            for cont, cont_c in zip(mdl.C, mdl.Ccons))
 
     def mean(self, mdl, node):
         """Express the mean consumption of node."""
@@ -293,9 +293,8 @@ class Model:
         # self.instance_model.display()
         # TODO verbose option ?
         # print(pe.value(self.instance_model.obj))
-    
 
-    #TODO generalize with others constraints than mustlink
+    # TODO generalize with others constraints than mustlink
     def update_adjacency_clust_constraints(self, u):
         """Update constraints fixing u variables from new adjacency matrix (clustering)."""
         self.instance_model.del_component(self.instance_model.must_link_c)
@@ -303,14 +302,12 @@ class Model:
         self.update_sol_u(u)
         self.add_mustLink_instance()
 
-
     def update_sol_u(self, u):
         """Update directly the sol_u param in instance from new u matrix."""
-        for i,j in prod(range(len(u)),range(len(u[0]))):
-            self.instance_model.sol_u[(i,j)] = u[i][j]
+        for i, j in prod(range(len(u)), range(len(u[0]))):
+            self.instance_model.sol_u[(i, j)] = u[i][j]
 
-
-    #TODO generalize with others constraints than mustlink
+    # TODO generalize with others constraints than mustlink
     def update_adjacency_place_constraints(self, v):
         """Update constraints fixing u variables from new adjacency matrix (placement)."""
         self.instance_model.del_component(self.instance_model.must_link_n)
@@ -318,50 +315,44 @@ class Model:
         self.update_sol_v(v)
         self.add_mustLink_instance()
 
-
     def update_sol_v(self, v):
         """Update directly the sol_v param in instance from new v matrix."""
-        for i,j in prod(range(len(v)),range(len(v[0]))):
-            self.instance_model.sol_v[(i,j)] = v[i][j]
-
+        for i, j in prod(range(len(v)), range(len(v[0]))):
+            self.instance_model.sol_v[(i, j)] = v[i][j]
 
     def update_obj_clustering(self, w):
         """Update the objective for clustering with new w matrix."""
         self.update_w(w)
         self.instance_model.obj = sum([
-            self.instance_model.u[(i, j)] * self.instance_model.w[(i, j)] for i,j in prod(
+            self.instance_model.u[(i, j)] * self.instance_model.w[(i, j)] for i, j in prod(
                 self.instance_model.C, self.instance_model.C
             ) if i < j
         ])
 
-
     def update_w(self, w):
         """Update directly the w param in instance from new w matrix."""
-        for i,j in prod(range(len(w)),range(len(w[0]))):
-            self.instance_model.w[(i,j)] = w[i][j]
-
+        for i, j in prod(range(len(w)), range(len(w[0]))):
+            self.instance_model.w[(i, j)] = w[i][j]
 
     def update_obj_place(self, dv):
         """Update the objective for placement with new dv matrix."""
         self.update_dv(dv)
         self.instance_model.obj = sum([
-            self.instance_model.sol_u[(i, j)] * self.instance_model.v[(i, j)] for i,j in prod(
+            self.instance_model.sol_u[(i, j)] * self.instance_model.v[(i, j)] for i, j in prod(
                 self.instance_model.C, self.instance_model.C
             ) if i < j
         ]) + sum([
             (1 - self.instance_model.sol_u[(i, j)]) * (
                 self.instance_model.v[(i, j)] * self.instance_model.dv[(i, j)]
-            ) for i,j in prod(self.instance_model.C, self.instance_model.C) if i < j
+            ) for i, j in prod(self.instance_model.C, self.instance_model.C) if i < j
         ])
-
 
     def update_dv(self, dv):
         """Update directly the dv param in instance from new dv matrix."""
-        for i,j in prod(range(len(dv)),range(len(dv[0]))):
-            self.instance_model.dv[(i,j)] = dv[i][j]
+        for i, j in prod(range(len(dv)), range(len(dv[0]))):
+            self.instance_model.dv[(i, j)] = dv[i][j]
 
-    
-    #TODO to finish
+    # TODO to finish
     def update_instance(self, df_indiv):
         """Update the model instance from new data."""
         # Clear data and constraints
@@ -371,6 +362,7 @@ class Model:
 
         # Re-create constraints
 
+
 def clust_assign_(mdl, container):
     """Express the assignment constraint."""
     return sum(mdl.y[container, cluster] for cluster in mdl.K) == 1
@@ -379,7 +371,7 @@ def clust_assign_(mdl, container):
 def capacity_(mdl, node, time):
     """Express the capacity constraints."""
     return (sum(
-        mdl.x[i, node] * mdl.cons[j, time] for i,j in zip(mdl.C, mdl.Ccons)
+        mdl.x[i, node] * mdl.cons[j, time] for i, j in zip(mdl.C, mdl.Ccons)
     ) <= mdl.cap[node])
 
 
@@ -416,6 +408,7 @@ def must_link_c_(mdl, i, j):
     else:
         return pe.Constraint.Skip
 
+
 def must_link_n_(mdl, i, j):
     """Express the placement mustlink constraint."""
     vv = mdl.sol_v[(i, j)].value
@@ -428,23 +421,23 @@ def must_link_n_(mdl, i, j):
 def min_dissim_(mdl):
     """Express the within clusters dissimilarities."""
     return sum([
-        mdl.u[(i, j)] * mdl.w[(i, j)] for i,j in prod(mdl.C, mdl.C) if i < j
+        mdl.u[(i, j)] * mdl.w[(i, j)] for i, j in prod(mdl.C, mdl.C) if i < j
     ])
 
 
 def min_coloc_cluster_(mdl: pe.AbstractModel):
     """Express the placement minimization objective from clustering."""
     return sum([
-        mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i,j in prod(mdl.C, mdl.C) if i < j
-    ]) + sum([
-        (1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)] for i,j in prod(mdl.C, mdl.C) if i < j
-    ])
+        mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in prod(mdl.C, mdl.C) if i < j
+    ]) + sum([(
+            (1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)]
+    ) for i, j in prod(mdl.C, mdl.C) if i < j])
 
 
 def fill_dual_values(my_mdl: Model):
     """Fill dual values from specific constraints."""
     dual_values = {}
-    #TODO generalize with constraints in variables ?
+    # TODO generalize with constraints in variables ?
     # Clustering case
     if my_mdl.pb_number == 1:
         for index_c in my_mdl.instance_model.must_link_c:
@@ -469,14 +462,15 @@ def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float)
                 constraints_dual_values[index_c] > 0.0
             ):
                 if (my_mdl.instance_model.dual[
-                my_mdl.instance_model.must_link_c[index_c]] > (
+                    my_mdl.instance_model.must_link_c[index_c]] > (
                     constraints_dual_values[index_c]
                     + tol * constraints_dual_values[index_c])) or (
                         my_mdl.instance_model.dual[
                             my_mdl.instance_model.must_link_c[index_c]
                         ] > tol * pe.value(my_mdl.instance_model.obj)
                 ):
-                    conflict_graph.add_edge(index_c[0], index_c[1],
+                    conflict_graph.add_edge(
+                        index_c[0], index_c[1],
                         weight=my_mdl.instance_model.dual[
                             my_mdl.instance_model.must_link_c[index_c]])
     elif my_mdl.pb_number == 2:
@@ -485,14 +479,15 @@ def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float)
                 constraints_dual_values[index_c] > 0.0
             ):
                 if (my_mdl.instance_model.dual[
-                my_mdl.instance_model.must_link_n[index_c]] > (
+                    my_mdl.instance_model.must_link_n[index_c]] > (
                     constraints_dual_values[index_c]
                     + tol * constraints_dual_values[index_c])) or (
                         my_mdl.instance_model.dual[
                             my_mdl.instance_model.must_link_n[index_c]
                         ] > tol * pe.value(my_mdl.instance_model.obj)
                 ):
-                    conflict_graph.add_edge(index_c[0], index_c[1],
+                    conflict_graph.add_edge(
+                        index_c[0], index_c[1],
                         weight=my_mdl.instance_model.dual[
                             my_mdl.instance_model.must_link_n[index_c]])
     return conflict_graph
@@ -616,7 +611,7 @@ def get_moving_containers_place(my_mdl: Model, constraints_dual_values: Dict,
     return (mvg_containers, graph_nodes, graph_edges,
             max_deg, mean_deg)
 
-        
+
 def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
     """Get the container we want to move between c1 and c2."""
     node = working_df.loc[
@@ -635,7 +630,7 @@ def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
         return c1
     else:
         return c2
-    
+
 
 def get_obj_value_host(df_host: pd.DataFrame,
                        t_min: int = None,
@@ -659,9 +654,11 @@ def get_obj_value_host(df_host: pd.DataFrame,
     return (nb_nodes, c2)
 
 
-def get_obj_value_indivs(df_indiv: pd.DataFrame,
-                            t_min: int = None,
-                            t_max: int = None) -> Tuple[int, float]:
+def get_obj_value_indivs(
+    df_indiv: pd.DataFrame,
+    t_min: int = None,
+    t_max: int = None
+) -> Tuple[int, float]:
     """Get objective value of current solution (max delta)."""
     t_min = t_min or df_indiv[it.tick_field].min()
     t_max = t_max or df_indiv[it.tick_field].max()

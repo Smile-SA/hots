@@ -1,7 +1,7 @@
 all: venv install done
 
 venv:
-	python3.8 -m venv venv
+	python3.10 -m venv venv
 
 .PHONY: install
 install: venv

@@ -286,10 +286,10 @@ class Model:
         elif self.pb_number == 2:
             self.instance_model.write('./py_placement.lp')
 
-    def solve(self, solver='glpk'):
+    def solve(self, solver='glpk', verbose=False):
         """Solve the model using a specific solver."""
         opt = pe.SolverFactory(solver)
-        opt.solve(self.instance_model, tee=True)
+        opt.solve(self.instance_model, tee=verbose)
         # self.instance_model.display()
         # TODO verbose option ?
         # print(pe.value(self.instance_model.obj))

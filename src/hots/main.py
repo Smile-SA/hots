@@ -653,7 +653,6 @@ def pre_loop(
         nb_clusters=my_instance.nb_clusters,
         w=w, sol_u=u
     )
-    clust_model.write_infile()
     add_time(0, 'build_clustering_model', (time.time() - start))
     start = time.time()
     print('Solving first clustering ...')

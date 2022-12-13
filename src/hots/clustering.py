@@ -98,7 +98,7 @@ def perform_clustering(data: pd.DataFrame, algo: str, k: int
 
 def k_means(data: pd.DataFrame, k: int) -> List:
     """Perform the K-means clustering."""
-    return KMeans(n_clusters=k).fit(data).labels_
+    return KMeans(n_clusters=k, n_init='auto').fit(data).labels_
 
 
 def p_dist(data: pd.DataFrame, metric: str = 'euclidean') -> np.array:

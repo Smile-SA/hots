@@ -16,8 +16,10 @@ doc:
 	
 .PHONY: done
 done:
-	@ echo "Installation finished succesfully. Run 'hots --data=/path/to/data/folder \
-	--path/path/to/params_file' to start the application"
+	@ echo "Installation finished succesfully. \
+	Run 'hots path/to/data_folder' to start the application or \
+	'hots --help' for command description"
+
 
 .PHONY: clean
 clean:

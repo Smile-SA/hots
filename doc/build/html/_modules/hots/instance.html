@@ -1,0 +1,219 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>hots.instance &#8212; hots v0.1.0</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/bizstyle.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/custom.css" />
+    
+    <script data-url_root="../../" id="documentation_options" src="../../_static/documentation_options.js"></script>
+    <script src="../../_static/jquery.js"></script>
+    <script src="../../_static/underscore.js"></script>
+    <script src="../../_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="../../_static/doctools.js"></script>
+    <script src="../../_static/sphinx_highlight.js"></script>
+    <script src="../../_static/bizstyle.js"></script>
+    <link rel="shortcut icon" href="../../_static/smile_logo.png"/>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">hots v0.1.0</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" accesskey="U">Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">hots.instance</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <h1>Source code for hots.instance</h1><div class="highlight"><pre>
+<span></span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">============</span>
+<span class="sd">hots.instance</span>
+<span class="sd">============</span>
+
+<span class="sd">Define the Instance class, which represents the problem we are facing, with its data, information,</span>
+<span class="sd">parameters. Provide Instance-related methods.</span>
+<span class="sd">&quot;&quot;&quot;</span>
+
+<span class="kn">import</span> <span class="nn">math</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="kn">import</span> <span class="n">Dict</span>
+
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">init</span> <span class="k">as</span> <span class="n">it</span>
+<span class="kn">from</span> <span class="nn">.</span> <span class="kn">import</span> <span class="n">node</span> <span class="k">as</span> <span class="n">nd</span>
+
+
+<div class="viewcode-block" id="Instance"><a class="viewcode-back" href="../../api/instance.html#hots.instance.Instance">[docs]</a><span class="k">class</span> <span class="nc">Instance</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot;Description of a problem instance.</span>
+
+<span class="sd">    Attributes:</span>
+<span class="sd">        time: total time of dataset</span>
+<span class="sd">        sep_time: time separating analysis and evaluation period</span>
+<span class="sd">        window_duration: duration of time window for clustering</span>
+<span class="sd">        nb_nodes: TODO: explain this data</span>
+<span class="sd">        nb_containers: TODO: explain this data</span>
+<span class="sd">        nb_clusters: TODO: explain this data</span>
+<span class="sd">        df_indiv: TODO: explain this data</span>
+<span class="sd">        df_host: TODO: explain this data</span>
+<span class="sd">        df_host_meta: TODO: explain this data</span>
+<span class="sd">        dict_id_n: TODO: explain this data</span>
+<span class="sd">        dict_id_c: TODO: explain this data</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="Instance.__init__"><a class="viewcode-back" href="../../api/instance.html#hots.instance.Instance.__init__">[docs]</a>    <span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">path</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Instance initialization</span>
+
+<span class="sd">        Args:</span>
+<span class="sd">            path: Filesystem path to the input files</span>
+<span class="sd">            config: Configuration dict from config file</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span><span class="p">,</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">df_host</span><span class="p">,</span>
+         <span class="bp">self</span><span class="o">.</span><span class="n">df_host_meta</span><span class="p">)</span> <span class="o">=</span> <span class="n">it</span><span class="o">.</span><span class="n">init_dfs</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">:</span> <span class="nb">int</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span><span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">tick_field</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">nb_nodes</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_host_meta</span><span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">host_field</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nb_containers</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span><span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">indiv_field</span><span class="p">]</span><span class="o">.</span><span class="n">nunique</span><span class="p">()</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">nb_clusters</span> <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;clustering&#39;</span><span class="p">][</span><span class="s1">&#39;nb_clusters&#39;</span><span class="p">]</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span>
+            <span class="n">it</span><span class="o">.</span><span class="n">indiv_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">it</span><span class="o">.</span><span class="n">host_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">it</span><span class="o">.</span><span class="n">tick_field</span><span class="p">:</span> <span class="nb">int</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_host</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_host</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span>
+            <span class="n">it</span><span class="o">.</span><span class="n">host_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span>
+            <span class="n">it</span><span class="o">.</span><span class="n">tick_field</span><span class="p">:</span> <span class="nb">int</span><span class="p">})</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_host_meta</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_host_meta</span><span class="o">.</span><span class="n">astype</span><span class="p">({</span><span class="n">it</span><span class="o">.</span><span class="n">host_field</span><span class="p">:</span> <span class="nb">str</span><span class="p">})</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_host</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">it</span><span class="o">.</span><span class="n">tick_field</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="n">it</span><span class="o">.</span><span class="n">tick_field</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_host</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">tick_field</span><span class="p">,</span> <span class="n">it</span><span class="o">.</span><span class="n">host_field</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span>
+            <span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">tick_field</span><span class="p">,</span> <span class="n">it</span><span class="o">.</span><span class="n">indiv_field</span><span class="p">],</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">drop</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">percentage_to_timestamp</span><span class="p">(</span><span class="n">config</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">dict_id_n</span> <span class="o">=</span> <span class="n">nd</span><span class="o">.</span><span class="n">build_dict_id_nodes</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_host_meta</span><span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">dict_id_c</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">print</span><span class="p">()</span></div>
+
+    <span class="c1"># TODO rewrite with __str__</span>
+<div class="viewcode-block" id="Instance.print"><a class="viewcode-back" href="../../api/instance.html#hots.instance.Instance.print">[docs]</a>    <span class="k">def</span> <span class="nf">print</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Print Instance information.&quot;&quot;&quot;</span>
+        <span class="n">it</span><span class="o">.</span><span class="n">results_file</span><span class="o">.</span><span class="n">writelines</span><span class="p">([</span><span class="s1">&#39;### Problem instance informations ###</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">,</span>
+                                    <span class="s1">&#39;Time considered : </span><span class="si">%d</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">,</span>
+                                    <span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> nodes -- &#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">nb_nodes</span><span class="p">,</span>
+                                    <span class="s1">&#39;</span><span class="si">%d</span><span class="s1"> containers</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">nb_containers</span><span class="p">,</span>
+                                    <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">### Parameters ###</span><span class="se">\n</span><span class="s1">&#39;</span>
+                                    <span class="s1">&#39;clusters : </span><span class="si">%d</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="bp">self</span><span class="o">.</span><span class="n">nb_clusters</span><span class="p">,</span>
+                                    <span class="s1">&#39;tau : </span><span class="si">%d</span><span class="s1"> (</span><span class="si">%f%%</span><span class="s1">)</span><span class="se">\n</span><span class="s1">&#39;</span> <span class="o">%</span> <span class="p">(</span>
+                                        <span class="bp">self</span><span class="o">.</span><span class="n">window_duration</span><span class="p">,</span>
+                                        <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">window_duration</span> <span class="o">/</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">)),</span>
+                                    <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">])</span></div>
+
+<div class="viewcode-block" id="Instance.print_times"><a class="viewcode-back" href="../../api/instance.html#hots.instance.Instance.print_times">[docs]</a>    <span class="k">def</span> <span class="nf">print_times</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">tick</span><span class="p">:</span> <span class="nb">int</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Print time informations.&quot;&quot;&quot;</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Total time : &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">time</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Window duration : &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">window_duration</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Separation time : &#39;</span><span class="p">,</span> <span class="bp">self</span><span class="o">.</span><span class="n">sep_time</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Ticks : &#39;</span><span class="p">,</span> <span class="n">tick</span><span class="p">)</span></div>
+
+<div class="viewcode-block" id="Instance.percentage_to_timestamp"><a class="viewcode-back" href="../../api/instance.html#hots.instance.Instance.percentage_to_timestamp">[docs]</a>    <span class="k">def</span> <span class="nf">percentage_to_timestamp</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">config</span><span class="p">:</span> <span class="n">Dict</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;Transform percentage config time to timestamp.&quot;&quot;&quot;</span>
+        <span class="c1"># TODO consider &#39;tick&#39; param as absolute, not percent ?</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">window_duration</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;analysis&#39;</span><span class="p">][</span><span class="s1">&#39;window_duration&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">100</span>
+        <span class="p">)</span>
+        <span class="n">sep_nb_data</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;analysis&#39;</span><span class="p">][</span><span class="s1">&#39;sep_time&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">100</span>
+        <span class="p">)</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">sep_time</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span><span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">tick_field</span><span class="p">]</span><span class="o">.</span><span class="n">min</span><span class="p">()</span> <span class="o">+</span> <span class="n">sep_nb_data</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;loop&#39;</span><span class="p">][</span><span class="s1">&#39;tick&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;default&#39;</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s1">&#39;loop&#39;</span><span class="p">][</span><span class="s1">&#39;tick&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">window_duration</span> <span class="o">-</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s1">&#39;loop&#39;</span><span class="p">][</span><span class="s1">&#39;tick&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">math</span><span class="o">.</span><span class="n">floor</span><span class="p">(</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">time</span> <span class="o">*</span> <span class="nb">int</span><span class="p">(</span><span class="n">config</span><span class="p">[</span><span class="s1">&#39;loop&#39;</span><span class="p">][</span><span class="s1">&#39;tick&#39;</span><span class="p">])</span> <span class="o">/</span> <span class="mi">100</span>
+            <span class="p">)</span> <span class="o">-</span> <span class="mi">1</span>
+
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">window_duration</span> <span class="o">&lt;=</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">window_duration</span> <span class="o">+=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">sep_time</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">sep_time</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">if</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;loop&#39;</span><span class="p">][</span><span class="s1">&#39;tick&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">config</span><span class="p">[</span><span class="s1">&#39;loop&#39;</span><span class="p">][</span><span class="s1">&#39;tick&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span></div>
+        <span class="c1"># if self.window_duration == config[&#39;loop&#39;][&#39;tick&#39;]:</span>
+        <span class="c1">#     self.window_duration += 1</span>
+
+<div class="viewcode-block" id="Instance.get_node_from_container"><a class="viewcode-back" href="../../api/instance.html#hots.instance.Instance.get_node_from_container">[docs]</a>    <span class="k">def</span> <span class="nf">get_node_from_container</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">container_id</span><span class="p">:</span> <span class="nb">str</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">str</span><span class="p">:</span>
+        <span class="sd">&quot;&quot;&quot;Get node ID from container ID.&quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span><span class="o">.</span><span class="n">loc</span><span class="p">[</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">df_indiv</span><span class="p">[</span><span class="n">it</span><span class="o">.</span><span class="n">indiv_field</span><span class="p">]</span> <span class="o">==</span> <span class="n">container_id</span>
+        <span class="p">][</span><span class="n">it</span><span class="o">.</span><span class="n">host_field</span><span class="p">]</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()[</span><span class="mi">0</span><span class="p">])</span></div></div>
+</pre></div>
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="../../index.html">
+              <img class="logo" src="../../_static/smile_logo.png" alt="Logo"/>
+            </a></p>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="../../genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="../../py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="nav-item nav-item-0"><a href="../../index.html">hots v0.1.0</a> &#187;</li>
+          <li class="nav-item nav-item-1"><a href="../index.html" >Module code</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">hots.instance</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020-2023, Smile.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
+    </div>
+  </body>
+</html>

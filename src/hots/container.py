@@ -55,7 +55,7 @@ def plot_all_data_all_containers_px(
 
 def plot_all_data_all_containers(
         df_indiv: pd.DataFrame,
-        sep_time: int, metrics: List[str] = None):
+        sep_time: int, metrics: List[str] = None) -> plt.Figure:
     """Plot all metrics containers consumption."""
     # TODO several metrics ?
     plt.style.use('bmh')
@@ -127,7 +127,7 @@ def build_var_delta_matrix_cluster(
 
 
 def build_vars_matrix_indivs(
-        df_clust: pd.DataFrame, vars_: np.array, dict_id_c: Dict):
+        df_clust: pd.DataFrame, vars_: np.array, dict_id_c: Dict) -> np.array:
     """Build containers matrix with clusters variance."""
     c = len(df_clust)
     vars_matrix = np.zeros((c, c), dtype=float)

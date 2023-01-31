@@ -24,7 +24,8 @@ from . import init as it
 # Definition of Node-related functions #
 
 
-def plot_data_all_nodes(df_host: pd.DataFrame, metric: str, max_cap, sep_time):
+def plot_data_all_nodes(df_host: pd.DataFrame, metric: str, max_cap, sep_time
+    ) -> plt.Figure:
     """Plot specific metric consumption for all nodes."""
     # TODO create temp df is bad...
     fig, ax = plt.subplots()
@@ -65,7 +66,8 @@ def plot_all_data_all_nodes_end(df_host: pd.DataFrame, total_time: int):
 
 
 def plot_total_usage(df_host: pd.DataFrame,
-                     title: str = 'Total conso on all nodes'):
+                     title: str = 'Total conso on all nodes'
+                     ) -> Tuple[float, float]:
     """
     Plot the global resources consumption and return the global
     maximum usage for each metric.
@@ -199,7 +201,8 @@ def get_list_vmr(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
 
 
 def get_nodes_variance(
-        df_host: pd.DataFrame, total_time: int, part: int):
+        df_host: pd.DataFrame, total_time: int, part: int
+        ) -> Tuple[np.array, np.array]:
     """
     Compute the Variance for each metric in each node and return the results
     in two numpy arrays.

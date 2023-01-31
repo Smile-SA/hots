@@ -12,7 +12,8 @@ What is pyomo ?
 
 Pyomo is a Python-based open-source software package that supports a diverse
 set of optimization capabilities for formulating, solving, and analyzing
-optimization models.
+optimization models. See `the Pyomo home page <https://pyomo.readthedocs.io>`_
+for more information about it.
 
 How is it used ?
 ================
@@ -26,7 +27,7 @@ to be user-defined.
 The module provide a :term:`ModelInterface` which will call the provided file
 for building the wanted model. This building can be done following any method,
 as long as it provides an instance (a ConcreteModel or an instance of
-AbstractModel created with :term:`create_instance` method.
+AbstractModel created with :term:`create_instance` method).
 
 Some explanation about example
 ==============================
@@ -47,3 +48,5 @@ Here is the problem built in the example :
          &             &        & x_{c,n} \leq a_{n},                           & \qquad \forall c \in C, n \in N \\
          &             &        & x_{c,n} \in \{0,1\}, a_{n} \in \{0,1\}
     \end{alignat}
+
+.. todo:: Adapt with last code version

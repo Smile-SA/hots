@@ -1,0 +1,319 @@
+
+
+<!doctype html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="generator" content="Docutils 0.19: https://docutils.sourceforge.io/" />
+
+    <title>User manual &#8212; hots v0.1.0</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/bizstyle.css" />
+    <link rel="stylesheet" type="text/css" href="_static/custom.css" />
+    
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/jquery.js"></script>
+    <script src="_static/underscore.js"></script>
+    <script src="_static/_sphinx_javascript_frameworks_compat.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/bizstyle.js"></script>
+    <link rel="shortcut icon" href="_static/smile_logo.png"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation.html" />
+    <link rel="prev" title="Introduction to hots" href="introduction.html" />
+    <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+    <!--[if lt IE 9]>
+    <script src="_static/css3-mediaqueries.js"></script>
+    <![endif]-->
+  </head><body>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             accesskey="I">index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             accesskey="N">next</a> |</li>
+        <li class="right" >
+          <a href="introduction.html" title="Introduction to hots"
+             accesskey="P">previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">hots v0.1.0</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">User manual</a></li> 
+      </ul>
+    </div>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <section id="user-manual">
+<span id="usermanual"></span><h1>User manual<a class="headerlink" href="#user-manual" title="Permalink to this heading">¶</a></h1>
+<section id="preparing-data">
+<h2>Preparing data<a class="headerlink" href="#preparing-data" title="Permalink to this heading">¶</a></h2>
+<p>Input data are provided in 3 CSV files hosted in the same directory:</p>
+<ul class="simple">
+<li><p><code class="file docutils literal notranslate"><span class="pre">container_usage.csv</span></code> : describes containers resource consumption</p></li>
+<li><p><code class="file docutils literal notranslate"><span class="pre">node_meta.csv</span></code> : provides nodes capacities (and other additional data)</p></li>
+<li><p><code class="file docutils literal notranslate"><span class="pre">node_usage.csv</span></code> : describes nodes resource consumption</p></li>
+</ul>
+<p>Each file have the following formats :</p>
+<ul>
+<li><dl>
+<dt><code class="file docutils literal notranslate"><span class="pre">container_usage.csv</span></code> :</dt><dd><table class="docutils align-default">
+<colgroup>
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+<col style="width: 20.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>timestamp</p></th>
+<th class="head"><p>container_id</p></th>
+<th class="head"><p>metric_1</p></th>
+<th class="head"><p>metric_2</p></th>
+<th class="head"><p>machine_id</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>t1</p></td>
+<td><p>c_10</p></td>
+<td><p>10</p></td>
+<td><p>50</p></td>
+<td><p>m_2</p></td>
+</tr>
+<tr class="row-odd"><td><p>…</p></td>
+<td><p>…</p></td>
+<td><p>…</p></td>
+<td><p>…</p></td>
+<td><p>…</p></td>
+</tr>
+<tr class="row-even"><td><p>tmax</p></td>
+<td><p>c_48</p></td>
+<td><p>6.5</p></td>
+<td><p>24</p></td>
+<td><p>m_5</p></td>
+</tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><code class="file docutils literal notranslate"><span class="pre">node_meta.csv</span></code> :</dt><dd><table class="docutils align-default">
+<colgroup>
+<col style="width: 33.3%" />
+<col style="width: 33.3%" />
+<col style="width: 33.3%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>machine_id</p></th>
+<th class="head"><p>metric_1</p></th>
+<th class="head"><p>metric_2</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>m_2</p></td>
+<td><p>30</p></td>
+<td><p>150</p></td>
+</tr>
+<tr class="row-odd"><td><p>m_5</p></td>
+<td><p>24</p></td>
+<td><p>80</p></td>
+</tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</li>
+<li><dl>
+<dt><code class="file docutils literal notranslate"><span class="pre">container_usage.csv</span></code> :</dt><dd><table class="docutils align-default">
+<colgroup>
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+<col style="width: 25.0%" />
+</colgroup>
+<thead>
+<tr class="row-odd"><th class="head"><p>timestamp</p></th>
+<th class="head"><p>machine_id</p></th>
+<th class="head"><p>metric_1</p></th>
+<th class="head"><p>metric_2</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>t1</p></td>
+<td><p>m_2</p></td>
+<td><p>25</p></td>
+<td><p>65</p></td>
+</tr>
+<tr class="row-odd"><td><p>…</p></td>
+<td><p>…</p></td>
+<td><p>…</p></td>
+<td><p>…</p></td>
+</tr>
+<tr class="row-even"><td><p>tmax</p></td>
+<td><p>m_5</p></td>
+<td><p>17.5</p></td>
+<td><p>52</p></td>
+</tr>
+</tbody>
+</table>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Note that the file <cite>node_usage.csv</cite> is not mandatory : if it does not exist in
+the directory, it will be built using <cite>container_usage.csv</cite> data.</p>
+</section>
+<section id="preparing-the-parameters">
+<h2>Preparing the parameters<a class="headerlink" href="#preparing-the-parameters" title="Permalink to this heading">¶</a></h2>
+<p>The parameters inputs are provided from a JSON file, which has the following format :</p>
+<div class="highlight-JSON notranslate"><div class="highlight"><pre><span></span><span class="p">{</span><span class="w"></span>
+<span class="w">   </span><span class="nt">&quot;analysis&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="nt">&quot;window_duration&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;default&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">      </span><span class="nt">&quot;step&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"></span>
+<span class="w">   </span><span class="p">},</span><span class="w"></span>
+<span class="w">   </span><span class="nt">&quot;clustering&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="nt">&quot;algo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;hierarchical&quot;</span><span class="p">,</span><span class="w"></span>
+<span class="w">      </span><span class="nt">&quot;nb_clusters&quot;</span><span class="p">:</span><span class="w"> </span><span class="mi">4</span><span class="w"></span>
+<span class="w">   </span><span class="p">},</span><span class="w"></span>
+<span class="w">   </span><span class="nt">&quot;heuristic&quot;</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"></span>
+<span class="w">      </span><span class="nt">&quot;algo&quot;</span><span class="p">:</span><span class="w"> </span><span class="s2">&quot;distant_pairwise&quot;</span><span class="w"></span>
+<span class="w">   </span><span class="p">}</span><span class="w"></span>
+<span class="p">}</span><span class="w"></span>
+</pre></div>
+</div>
+<dl class="simple">
+<dt>There is 2 ways to specify the parameter file to use :</dt><dd><ul class="simple">
+<li><p>with the options <code class="code docutils literal notranslate"><span class="pre">--params</span></code> (or <code class="code docutils literal notranslate"><span class="pre">-p</span></code>)</p></li>
+<li><p>by including a file named <code class="file docutils literal notranslate"><span class="pre">params.json</span></code> in the data folder</p></li>
+</ul>
+</dd>
+</dl>
+<p>An parameter example file can be found in  <code class="file docutils literal notranslate"><span class="pre">~/tests/params_default.json</span></code> file.
+Note that if no parameter file is provided, this example parameter file will be used.</p>
+</section>
+<section id="running-the-app">
+<h2>Running the app<a class="headerlink" href="#running-the-app" title="Permalink to this heading">¶</a></h2>
+<p>Having the first 3 above mentioned files in an arbitrary directory - say <code class="file docutils literal notranslate"><span class="pre">~/path/to/data/</span></code> -
+issue the command:</p>
+<div class="highlight-console notranslate"><div class="highlight"><pre><span></span><span class="go">hots ~/path/to/data/</span>
+</pre></div>
+</div>
+<div class="admonition-todo admonition" id="id1">
+<p class="admonition-title">Todo</p>
+<p>Using the application in a Docker container.</p>
+</div>
+<div class="admonition-todo admonition" id="id2">
+<p class="admonition-title">Todo</p>
+<p>Give all CLI options</p>
+</div>
+</section>
+<section id="reading-the-results">
+<h2>Reading the results<a class="headerlink" href="#reading-the-results" title="Permalink to this heading">¶</a></h2>
+<p>When the application is launched, the whole initial data is displayed :</p>
+<ul class="simple">
+<li><p>the container resource usage</p></li>
+<li><p>the node resource usage (based on initial allocation)</p></li>
+</ul>
+<p>The separation time (between the two phases) is plotted by a red line.</p>
+<p>Then the first part of the methodology is performed (clustering on first time
+period), and the allocation resulting from heuristic applied. The clustering
+results and new nodes resource usage (based on new allocation) are displayed.</p>
+<p>Finally, clustering results, containers and nodes consumptions are plotted and
+updated in time, for the second phase.</p>
+<div class="admonition-todo admonition" id="id3">
+<p class="admonition-title">Todo</p>
+<p>Explain what happens and how to read the various figures that raise in new windows.</p>
+</div>
+</section>
+</section>
+
+
+            <div class="clearer"></div>
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/smile_logo.png" alt="Logo"/>
+            </a></p>
+  <div>
+    <h3><a href="index.html">Table of Contents</a></h3>
+    <ul>
+<li><a class="reference internal" href="#">User manual</a><ul>
+<li><a class="reference internal" href="#preparing-data">Preparing data</a></li>
+<li><a class="reference internal" href="#preparing-the-parameters">Preparing the parameters</a></li>
+<li><a class="reference internal" href="#running-the-app">Running the app</a></li>
+<li><a class="reference internal" href="#reading-the-results">Reading the results</a></li>
+</ul>
+</li>
+</ul>
+
+  </div>
+  <div>
+    <h4>Previous topic</h4>
+    <p class="topless"><a href="introduction.html"
+                          title="previous chapter">Introduction to hots</a></p>
+  </div>
+  <div>
+    <h4>Next topic</h4>
+    <p class="topless"><a href="installation.html"
+                          title="next chapter">Installation</a></p>
+  </div>
+  <div role="note" aria-label="source link">
+    <h3>This Page</h3>
+    <ul class="this-page-menu">
+      <li><a href="_sources/usermanual.rst.txt"
+            rel="nofollow">Show Source</a></li>
+    </ul>
+   </div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="related" role="navigation" aria-label="related navigation">
+      <h3>Navigation</h3>
+      <ul>
+        <li class="right" style="margin-right: 10px">
+          <a href="genindex.html" title="General Index"
+             >index</a></li>
+        <li class="right" >
+          <a href="py-modindex.html" title="Python Module Index"
+             >modules</a> |</li>
+        <li class="right" >
+          <a href="installation.html" title="Installation"
+             >next</a> |</li>
+        <li class="right" >
+          <a href="introduction.html" title="Introduction to hots"
+             >previous</a> |</li>
+        <li class="nav-item nav-item-0"><a href="index.html">hots v0.1.0</a> &#187;</li>
+        <li class="nav-item nav-item-this"><a href="">User manual</a></li> 
+      </ul>
+    </div>
+    <div class="footer" role="contentinfo">
+        &#169; Copyright 2020-2023, Smile.
+      Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 5.3.0.
+    </div>
+  </body>
+</html>

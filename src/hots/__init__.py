@@ -3,7 +3,7 @@
 hots
 ===
 
-Package for testing resource allocation via clustering.
+Package for testing containers resource allocation via clustering.
 """
 import logging
 
@@ -19,6 +19,6 @@ except pkg_resources.DistributionNotFound:
     LOG.warning('Could not get the package version from pkg_resources')
     __version__ = 'unknown'
 
-__author__ = 'AlterWay R&D team'
-__author_email__ = 'rnd@alterway.fr'
+__author__ = 'Smile R&D team'
+__author_email__ = 'rnd@smile.fr'
 __license__ = 'MIT'

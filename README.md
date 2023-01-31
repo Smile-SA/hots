@@ -1,4 +1,4 @@
-# **hots**
+# **HOTS**
 
 > Application for testing a hybrid resource allocation method using machine learning and optimization.
 
@@ -71,12 +71,12 @@ At the shell run the hots testing with the command:
 
 # run hots testing on test data
 ```bash
-hots --data /rac/tests/data/generated_30 --params /rac/tests/data/params.json 
+hots /rac/tests/data/generated_7
 ```
-# run hots testing on test data with all nodes
+<!-- # run hots testing on test data with all nodes
 ```bash
 hots --data /rac/tests/alibaba_short_time_interval_test_data --params /rac/tests/alibaba_short_time_interval_test_data/params.json 
-```
+``` -->
 
 
 #outputs
@@ -84,7 +84,7 @@ terminal output and matplotlib graphs
 
 ## Credits
 
-This software is sponsored by [Alter Way](https://www.alterway.fr/).
+This software is sponsored by [Smile](https://www.smile.fr/).
 
 The team:
 
@@ -95,8 +95,8 @@ The team:
 
 ## Links
 
-- [Project home](https://git.rnd.alterway.fr/overboard/soft_clustering/rac)
-- [File issues (bugs, ...)](https://git.rnd.alterway.fr/overboard/soft_clustering/rac/-/issues)
+- [Project home](https://git.rnd.smile.fr/overboard/soft_clustering/rac)
+- [File issues (bugs, ...)](https://git.rnd.smile.fr/overboard/soft_clustering/rac/-/issues)
 
 ## License
 

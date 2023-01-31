@@ -20,7 +20,7 @@ def print_size_vars(list_vars: List):
         print('{:>30}: {:>8}'.format(name, sizeof_fmt(size)))
 
 
-def sizeof_fmt(num, suffix='B'):
+def sizeof_fmt(num, suffix='B') -> str:
     """Ease display of memory sizes."""
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
         if abs(num) < 1024.0:

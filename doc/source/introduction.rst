@@ -1,8 +1,8 @@
 .. _introduction:
 
-===================
+====================
 Introduction to hots
-===================
+====================
 
 :term:`hots` is an application for testing a hybrid resource allocation method using machine learning
 and optimization.
@@ -18,7 +18,7 @@ context, or more extended), but at the moment the methodology is not generic
 enough.
 
 What is hots
-===========
+============
 
 The main goal of :term:`hots` is to optimize the resource usage in the context
 we are. 
@@ -45,8 +45,7 @@ not work with a *real* environment, but with a dataset of historical resource
 usage data. In order to simulate the method, we split the dataset in two,
 based on the time :
 
-- the first half is used to have the first timeseries, on which we perform
-    the clustering
-- the second half is used to *simulate* the *streaming* process, in which
-    we retrieve data, incrementing timestamp, and perform the evaluation
-    described above.
+- the first part is used to have the first timeseries, on which we perform the clustering
+- the second part is used to *simulate* the *streaming* process, in which we retrieve data, incrementing timestamp, and perform the evaluation described above.
+
+.. todo:: More detailed example

@@ -68,7 +68,7 @@ Refresh your clone of the testing branch:
    The name of the branch must contain your name or nick, a
    very short title of the planned change and the issue numbers (usually only one).
 
-   Example: `glenfant-cmdline-24`
+   Example: `eleclercq-cmdline-24`
 
 .. rubric:: Step 3: Share your changes to the "testing" branch
 

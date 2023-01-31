@@ -43,7 +43,7 @@ other_colors = ['violet', 'lightcoral', 'navy', 'chocolate', 'turquoise']
 
 
 def plot_clustering(df_clust: pd.DataFrame, dict_id_c: Dict,
-                    metric: str = None, title: str = None):
+                    metric: str = None, title: str = None) -> plt.Figure:
     """Plot metric containers consumption, grouped by cluster."""
     metric = metric or it.metrics[0]
     fig = plt.figure()
@@ -112,7 +112,7 @@ def plot_containers_clustering_together(df_clust: pd.DataFrame,
 
 def plot_clustering_containers_by_node(
         df_indiv: pd.DataFrame, dict_id_c: Dict, labels_: List,
-        filter_big: bool = False, metric: str = None):
+        filter_big: bool = False, metric: str = None) -> plt.Figure:
     """
     Plot containers consumption grouped by node, one container added above
     another, with their cluster color
@@ -297,7 +297,8 @@ def plot_nodes_wout_containers(instance: Instance):
 
 
 def init_containers_plot(df_indiv: pd.DataFrame,
-                         sep_time: int, metric: str = 'cpu'):
+                         sep_time: int, metric: str = 'cpu'
+                         ) -> Tuple[plt.Figure, plt.axes.Axes]:
     """Initialize containers consumption plot."""
     fig, ax = plt.subplots()
     fig.suptitle('Containers consumption evolution')
@@ -326,7 +327,7 @@ def update_containers_plot(fig, ax, df: pd.DataFrame, t: int):
 
 
 def init_nodes_plot(df_indiv: pd.DataFrame, dict_id_n: Dict, sep_time: int,
-                    max_cap: int, metric: str = None):
+                    max_cap: int, metric: str = None) -> Tuple[plt.Figure, plt.axes.Axes]:
     """Initialize nodes consumption plot."""
     metric = metric or it.metrics[0]
     fig, ax = plt.subplots()
@@ -355,7 +356,7 @@ def init_nodes_plot(df_indiv: pd.DataFrame, dict_id_n: Dict, sep_time: int,
 
 
 def init_nodes_plot_px(df_indiv: pd.DataFrame, sep_time: int,
-                       max_cap: int, metric: str = None):
+                       max_cap: int, metric: str = None) -> plt.Figure:
     """Initialize nodes consumption plot."""
     metric = metric or it.metrics[0]
     pvt = pd.pivot_table(
@@ -397,7 +398,7 @@ def update_nodes_plot_px(fig, df: pd.DataFrame, metric: str = None):
 
 
 def init_plot_clustering(df_clust: pd.DataFrame,
-                         metric: str = None):
+                         metric: str = None) -> Tuple[plt.Figure, plt.axes.Axes]:
     """Initialize clustering plot."""
     # TODO add title, same scale, smooth curves..
     metric = metric or it.metrics[0]
@@ -414,7 +415,7 @@ def init_plot_clustering(df_clust: pd.DataFrame,
 
 
 def init_plot_cluster_profiles(profiles: np.array,
-                               metric: str = None):
+                               metric: str = None) -> Tuple[plt.Figure, plt.axes.Axes]:
     """Initialize clusters mean profiles plot."""
     # TODO add title, same scale, smooth curves..
     metric = metric or it.metrics[0]
@@ -426,7 +427,7 @@ def init_plot_cluster_profiles(profiles: np.array,
 
 
 def init_plot_clustering_axes(df_clust: pd.DataFrame, dict_id_c: Dict,
-                              metric: str = 'cpu'):
+                              metric: str = 'cpu') -> Tuple[plt.Figure, plt.axes.Axes]:
     """Initialize clustering plot."""
     # TODO add title, same scale, smooth curves..
     fig = plt.figure()
@@ -447,7 +448,7 @@ def init_plot_clustering_axes(df_clust: pd.DataFrame, dict_id_c: Dict,
 
 
 def init_plot_clustering_px(df_clust: pd.DataFrame, dict_id_c: Dict,
-                            metric: str = None):
+                            metric: str = None) -> plt.Figure:
     """Initialize clustering plot."""
     metric = metric or it.metrics[0]
     fig = make_subplots(rows=int(df_clust.cluster.max() + 1),

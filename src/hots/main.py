@@ -2,14 +2,13 @@
 =========
 hots main
 =========
-Entry point of hots module through ``hots --path [--k --tau]``.
+Entry point of hots module through ``hots --path [OPTIONS]``.
 
     - path is the folder where we find the files
         x container_usage.csv : describes container resource consumption
         x node_meta.csv : describes nodes capacities
         (x node_usage.csv : describes nodes resource consumption)
-    - k is the number of cluster to use for the clustering part
-    - tau is the size of one time window (for analysis and solution evaluation)
+    - type 'hots --help' for options description
 
 The entire methodology is called from here (initialization, clustering,
 allocation, evaluation, access to optimization model...).
@@ -308,7 +307,7 @@ def run_period(
     my_instance: Instance, df_host_evo: pd.DataFrame,
     df_indiv_clust: pd.DataFrame, labels_: List,
     config: Dict, output_path: str, method: str, cluster_method: str
-):
+) -> Tuple[pd.Dict, int]:
     """Perform all needed process during evaluation period."""
     nb_overloads = 0
     # Loops for evaluation
@@ -639,7 +638,7 @@ def pre_loop(
     my_instance: Instance, working_df_indiv: pd.DataFrame,
     df_clust: pd.DataFrame, w: np.array, u: np.array,
     constraints_dual: List, v: np.array, cluster_method: str, solver: str
-):
+) -> Tuple[mdl.Model, mdl.Model, Dict, Dict]:
     """Build optimization problems and solve them with T_init solutions."""
     logging.info('Evaluation of problems with initial solutions')
     print('Building clustering model ...')
@@ -710,7 +709,7 @@ def pre_loop(
 
 def build_matrices(
     my_instance: Instance, tmin: int, tmax: int, labels_: List
-):
+) -> Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array]:
     """Build period dataframe and matrices to be used."""
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
@@ -733,7 +732,11 @@ def eval_sols(
         constraints_dual, clustering_dual_values, placement_dual_values,
         tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
         df_clust, cluster_profiles, labels_, loop_nb, solver
-):
+) -> Tuple[
+    int, int, float, float, int, int, float, float,
+    int, int, float, float, mdl.Model, mdl.Model,
+    Dict, Dict, pd.DataFrame, np.array, List
+]:
     """Evaluate clustering and placement solutions."""
     # evaluate clustering
     start = time.time()
@@ -807,12 +810,13 @@ def eval_sols(
     )
 
 
+#TODO update return type
 def eval_clustering(my_instance: Instance,
                     w: np.array, u: np.array, clust_model,
                     clustering_dual_values: Dict, constraints_dual: Dict,
                     tol_clust: float, tol_move_clust: float, tol_open_clust: float,
                     df_clust: pd.DataFrame, cluster_profiles: np.array, labels_: List,
-                    loop_nb, solver) -> np.array:
+                    loop_nb, solver) -> Tuple:
     """Evaluate current clustering solution and update it if needed."""
     nb_clust_changes_loop = 0
     logging.info('# Clustering evaluation #')
@@ -884,7 +888,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
                    w: np.array, u: np.array, v: np.array, dv: np.array,
                    placement_dual_values: Dict, constraints_dual: Dict, place_model,
                    tol_place: float, tol_move_place: float,
-                   nb_clust_changes_loop: int, loop_nb, solver: str):
+                   nb_clust_changes_loop: int, loop_nb, solver: str) -> Tuple:
     """Evaluate current clustering solution and update it if needed."""
     logging.info('# Placement evaluation #')
 
@@ -947,7 +951,7 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
 
 
 def loop_kmeans(my_instance: Instance,
-                df_clust: pd.DataFrame, labels_: List):
+                df_clust: pd.DataFrame, labels_: List) -> Tuple:
     """Update clustering via kmeans from scratch."""
     logging.info('# Clustering via k-means from scratch #')
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
@@ -977,7 +981,7 @@ def loop_kmeans(my_instance: Instance,
 
 
 def stream_km(my_instance: Instance,
-              df_clust: pd.DataFrame, labels_: List):
+              df_clust: pd.DataFrame, labels_: List) -> Tuple:
     """Update clustering via kmeans from scratch."""
     logging.info('# Clustering via streamkm #')
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
@@ -1010,7 +1014,8 @@ def stream_km(my_instance: Instance,
 
 def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
              nb_clust_changes: int, nb_place_changes: int, nb_overload: int,
-             total_loop_time: float, loop_nb: int, df_host_evo: pd.DataFrame):
+             total_loop_time: float, loop_nb: int, df_host_evo: pd.DataFrame
+             ) -> pd.DataFrame:
     """Perform all stuffs after last loop."""
     working_df_host = working_df_indiv.groupby(
         [working_df_indiv[it.tick_field], it.host_field],

@@ -32,3 +32,6 @@ init_setup.sh
 
 # ide files
 .idea/
+
+# doc built
+*/build

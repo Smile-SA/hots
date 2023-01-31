@@ -23,8 +23,8 @@ import time
 
 import pkg_resources
 project = 'hots'
-copyright = '2020, AlterWay R&D team'
-author = 'AlterWay R&D team'
+copyright = '2022, Smile R&D team'
+author = 'Smile R&D team'
 
 # The short X.Y version
 version = ''
@@ -66,7 +66,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = 'en'
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -137,7 +137,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'hots.tex', 'hots Documentation',
-     'AlterWay R\\&D team', 'manual'),
+     'Smile R\\&D team', 'manual'),
 ]
 
 
@@ -201,9 +201,9 @@ html_title = "{0} v{1}".format(project, release)
 creation_year = 2020
 this_year = time.localtime().tm_year
 if this_year > creation_year:
-    copyright = f"{creation_year}-{this_year}, Alter Way"
+    copyright = f"{creation_year}-{this_year}, Smile"
 else:
-    copyright = f"{creation_year}, Alter Way"
+    copyright = f"{creation_year}, Smile"
 
 rst_epilog = """
 .. |pep_8| replace:: `"PEP 8 - Style Guide for Python code"`_
@@ -211,15 +211,15 @@ rst_epilog = """
 .. |pep_484| replace:: `"PEP 484 - Type hints"`_
 .. _"PEP 484 - Type hints": https://www.python.org/dev/peps/pep-0484/
 .. |vcs_server| replace:: `hots Git repository`_
-.. _cots Git repository: https://git.rnd.alterway.fr/overboard/soft_clustering/rac
-.. |alterway| replace:: `Alter Way`_
-.. _Alter Way: https://www.alterway.fr/
+.. _hots Git repository: https://git.rnd.smile.fr/overboard/soft_clustering/rac
+.. |smile| replace:: `Smile`_
+.. _Smile: https://www.smile.fr/
 """
 
 # Theming
 html_theme = "bizstyle"
-html_logo = "_static/aw_logo.png"
-html_favicon = "_static/aw_favicon.png"
+html_logo = "_static/smile_logo.png"
+html_favicon = "_static/smile_logo.png"
 html_css_files = ["custom.css"]
 
 # sphinx.ext.napoleon settings for Google style docstrings

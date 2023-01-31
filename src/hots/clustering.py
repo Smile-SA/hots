@@ -445,7 +445,8 @@ def change_clustering_maxkcut(
     # return (df_clust_new, labels_new, nb_changes)
 
 
-def eval_clustering(df_clust: pd.DataFrame, w: np.array, dict_id_c: Dict):
+def eval_clustering(df_clust: pd.DataFrame, w: np.array, dict_id_c: Dict
+    ) -> Tuple[float, float]:
     """Evaluate the clustering with ICS and ICD."""
     ics = 0.0
     icd = 0.0
@@ -459,7 +460,7 @@ def eval_clustering(df_clust: pd.DataFrame, w: np.array, dict_id_c: Dict):
     return (ics, icd)
 
 
-def get_silhouette(df_clust: pd.DataFrame, labels_: List):
+def get_silhouette(df_clust: pd.DataFrame, labels_: List) -> float:
     """Get the Silhouette score from clustering."""
     return metrics.silhouette_score(
         df_clust.drop('cluster', axis=1), labels_, metric='euclidean'

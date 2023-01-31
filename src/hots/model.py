@@ -434,7 +434,7 @@ def min_coloc_cluster_(mdl: pe.AbstractModel):
     ) for i, j in prod(mdl.C, mdl.C) if i < j])
 
 
-def fill_dual_values(my_mdl: Model):
+def fill_dual_values(my_mdl: Model) -> Dict:
     """Fill dual values from specific constraints."""
     dual_values = {}
     # TODO generalize with constraints in variables ?
@@ -453,7 +453,8 @@ def fill_dual_values(my_mdl: Model):
     return dual_values
 
 
-def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float):
+def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float
+    ) -> nx.Graph:
     """Build conflict graph from comapring dual variables."""
     conflict_graph = nx.Graph()
     if my_mdl.pb_number == 1:

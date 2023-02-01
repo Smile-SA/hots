@@ -8,7 +8,7 @@ containers data, nodes data, continous plot in evaluation step.
 """
 
 import math
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from matplotlib import gridspec as gridspec
 from matplotlib import patches as mpatches
@@ -298,7 +298,7 @@ def plot_nodes_wout_containers(instance: Instance):
 
 def init_containers_plot(df_indiv: pd.DataFrame,
                          sep_time: int, metric: str = 'cpu'
-                         ) -> Tuple[plt.Figure, plt.axes.Axes]:
+                         ) -> Tuple:
     """Initialize containers consumption plot."""
     fig, ax = plt.subplots()
     fig.suptitle('Containers consumption evolution')
@@ -327,7 +327,7 @@ def update_containers_plot(fig, ax, df: pd.DataFrame, t: int):
 
 
 def init_nodes_plot(df_indiv: pd.DataFrame, dict_id_n: Dict, sep_time: int,
-                    max_cap: int, metric: str = None) -> Tuple[plt.Figure, plt.axes.Axes]:
+                    max_cap: int, metric: str = None) -> Tuple:
     """Initialize nodes consumption plot."""
     metric = metric or it.metrics[0]
     fig, ax = plt.subplots()
@@ -398,7 +398,7 @@ def update_nodes_plot_px(fig, df: pd.DataFrame, metric: str = None):
 
 
 def init_plot_clustering(df_clust: pd.DataFrame,
-                         metric: str = None) -> Tuple[plt.Figure, plt.axes.Axes]:
+                         metric: str = None) -> Tuple:
     """Initialize clustering plot."""
     # TODO add title, same scale, smooth curves..
     metric = metric or it.metrics[0]
@@ -415,7 +415,7 @@ def init_plot_clustering(df_clust: pd.DataFrame,
 
 
 def init_plot_cluster_profiles(profiles: np.array,
-                               metric: str = None) -> Tuple[plt.Figure, plt.axes.Axes]:
+                               metric: str = None) -> Tuple:
     """Initialize clusters mean profiles plot."""
     # TODO add title, same scale, smooth curves..
     metric = metric or it.metrics[0]
@@ -427,7 +427,7 @@ def init_plot_cluster_profiles(profiles: np.array,
 
 
 def init_plot_clustering_axes(df_clust: pd.DataFrame, dict_id_c: Dict,
-                              metric: str = 'cpu') -> Tuple[plt.Figure, plt.axes.Axes]:
+                              metric: str = 'cpu') -> Tuple:
     """Initialize clustering plot."""
     # TODO add title, same scale, smooth curves..
     fig = plt.figure()

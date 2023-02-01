@@ -2,85 +2,47 @@
 
 > Application for testing a hybrid resource allocation method using machine learning and optimization.
 
-This is a version for testing HOTS in a Docker containers
-This version includes test data with all nodes
+## Requirements for running HOTS
 
-# current issue to fix in the hots package --> crashing on data with all nodes
+HOTS works on any platform with Python 3.8 and up.
 
-## Requirements for running
+The dev Python version must be used to install the package (for example install the package
+python3.10-dev in order to use Python 3.10).
 
+A solver needs to be installed for using HOTS. By default, GLPK is installed with HOTS, but the
+user needs to install the following packages before using HOTS :
+ * libglpk-dev
+ * glpk-utils
 
-### Install docker on local machine
+## Installing HOTS
 
-Installation steps:
-https://docs.docker.com/engine/install/ubuntu/
+A Makefile is given, which creates a virtual environment and install HOTS. You can do :
 
-### Install docker-compose
-
-Installation steps:
-https://docs.docker.com/compose/install/
-
-##Known issues:
-On running docker there may be issues with connection denied.
-
-This page proposes the remedy to this problem:
-https://docs.docker.com/engine/install/linux-postinstall/
-
-run the following commands:
 ```bash
-sudo groupadd docker
-sudo usermod -aG docker $USER
-newgrp docker
+make
 ```
 
-### Check the Dockerfile to see if the uid is 1000, change otherwise
+## Running HOTS
 
-check the uid of the local machine user
 ```bash
-more /etc/passwd
-```
-if the uid of the user is 1000 then no need to edit the Dockerfile
-Else edit the Dockerfile
-look for the comments 'Replace 1000 with your user / group id'
-Change 1000 to your uid and gid from the /etc/passwd file
-
-### Running the HOTS testing via docker
-
-Run the following commands in a bash shell at the root of the directory where ther is the Dockerfile:
-
-# build the hots image
-```bash
-docker build -t hots .
+hots /path/to/data/folder
 ```
 
-# run the hots image in a container with export of display
+Make sure to activate the virtual environment before running HOTS with :
+
 ```bash
-docker run -ti --rm -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix hots
+source venv/bin/activate
 ```
 
-This last command will run the hots image and drop you in a bash shell of the hots container
-You will be at /home/developer which is empty
-
-# check the content of /rac where the repo has been copied
+You can see the help running :
 ```bash
-ls /rac
+hots --help
 ```
 
-
-At the shell run the hots testing with the command:
-
-# run hots testing on test data
+Note that a test data is given with the package, so you can easily test the installation with :
 ```bash
-hots /rac/tests/data/generated_7
+hots /tests/data/generated_7
 ```
-<!-- # run hots testing on test data with all nodes
-```bash
-hots --data /rac/tests/alibaba_short_time_interval_test_data --params /rac/tests/alibaba_short_time_interval_test_data/params.json 
-``` -->
-
-
-#outputs
-terminal output and matplotlib graphs 
 
 ## Credits
 
@@ -100,5 +62,4 @@ The team:
 
 ## License
 
-This software is provided under the terms of the MIT license you can read in the `LICENSE.txt` file
-of the repository or the package.
+This software is provided under the terms of the MIT license you can read in the `LICENSE.txt` file of the repository or the package.

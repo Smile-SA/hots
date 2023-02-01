@@ -7,14 +7,10 @@ Installation
 Requirements
 ============
 
-:term:`hots` works on any platform with Python 3.8 and up, a graphic display on any OS (\*nix or
-Windows)?
-.. Moreover, `hots` module needs `IBM CPLEX` solver to be installed on the machine to
-.. solve the optimization problem. To see details, visit their website_.
-.. Once you have `CPLEX` installed on the machine, you have to add in your
-.. ``#PYTHONPATH`` the ``/path/to/cplex/python/[python-version]/[your-distribution]``.
-
-.. .. _website: https://www.ibm.com/uk-en/products/ilog-cplex-optimization-studio
+:term:`hots` works on any platform with Python 3.8 and up, a graphic display on any \*nix-like OS.
+Due to some needed packages installation, the `dev` Python version is required. Make sure to install
+the `dev` version of Python you will use. For example, if you want to use Python 3.10, you can
+install the package `python3.10-dev`.  
 
 Production
 ==========
@@ -40,6 +36,11 @@ Development
 .. note::
 
    This operating mode is intended for application maintainers.
+
+.. note::
+
+   You can find a `Makefile` that creates a virtual environment and install all the needed packages
+   and hots. If you do that, do not forget to activate the virtual environment before running `hots`.
 
 You should create and activate a dedicated Python virtual environment with whatever tool you prefer
 (virtualenv, venv, pew, pyenv, ...). The instruction that follow assume this virtual environment is

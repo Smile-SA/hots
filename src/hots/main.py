@@ -309,7 +309,7 @@ def run_period(
     my_instance: Instance, df_host_evo: pd.DataFrame,
     df_indiv_clust: pd.DataFrame, labels_: List,
     config: Dict, output_path: str, method: str, cluster_method: str
-) -> Tuple[pd.Dict, int]:
+) -> Tuple[pd.DataFrame, int]:
     """Perform all needed process during evaluation period."""
     nb_overloads = 0
     # Loops for evaluation

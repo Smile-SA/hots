@@ -1,0 +1,123 @@
+[build-system]
+requires = [
+    "setuptools>=61.2",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hots"
+description = "Resource Allocation via Clustering"
+keywords = [
+    "Resource",
+    "Optimisation",
+    "Clustering",
+    "Planning",
+]
+classifiers = [
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: System :: Filesystems",
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: X11 Applications",
+    "Environment :: MacOS X",
+    "Operating System :: POSIX",
+    "Framework :: Matplotlib",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+]
+authors = [
+    { name = "Smile R&D team", email = "rnd@smile.fr" },
+]
+requires-python = ">=3.10"
+dependencies = [
+    "click",
+    "clusopt_core",
+    "matplotlib",
+    "networkx",
+    "numpy",
+    "pandas",
+    "plotly",
+    "pyomo",
+    "scipy",
+    "scikit-learn",
+    "tqdm",
+]
+dynamic = [
+    "version",
+]
+
+[project.readme]
+file = "README.md"
+content-type = "text/markdown"
+
+[project.license]
+text = "MIT"
+
+[project.urls]
+Homepage = "https://git.rnd.smile.fr/overboard/soft_clustering/rac"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "flake8",
+    "flake8-comprehensions",
+    "flake8-docstrings",
+    "flake8-quotes",
+    "flake8-import-order",
+    "pep8-naming",
+]
+doc = [
+    "Sphinx",
+]
+testing = [
+    "pytest",
+]
+
+[project.scripts]
+hots = "hots.main:main"
+
+[tool.setuptools]
+zip-safe = false
+include-package-data = true
+platforms = [
+    "any",
+]
+license-files = [
+    "LICENSE.txt",
+]
+
+[tool.setuptools.package-dir]
+"" = "src"
+
+[tool.setuptools.packages.find]
+where = [
+    "src",
+]
+namespaces = false
+
+[tool.setuptools.data-files]
+"." = [
+    "VERSION.txt",
+]
+
+[tool.setuptools.dynamic.version]
+file = [
+    "VERSION.txt",
+]
+
+[tool.distutils.bdist_wheel]
+universal = true
+
+[tool.flake8]
+max-complexity = "10"
+max-line-length = "100"
+ignore = "\nD205\nD400\nW503"
+exclude = "\n.git,\n__pycache__,\n.tox,\n.eggs,\n*.egg,\nbuild,\nvenv"
+
+[tool.pytest.ini_options]
+testpaths = [
+    "tests",
+]
+addopts = "--verbosity=2"

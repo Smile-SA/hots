@@ -8,9 +8,19 @@ Requirements
 ============
 
 :term:`hots` works on any platform with Python 3.8 and up, a graphic display on any \*nix-like OS.
+
 Due to some needed packages installation, the `dev` Python version is required. Make sure to install
 the `dev` version of Python you will use. For example, if you want to use Python 3.10, you can
-install the package `python3.10-dev`.  
+install the package `python3.10-dev`.
+
+:term:`hots` uses a solver in order to solve some optimization problems, through the use of `Pyomo`
+(see :ref:`pyomo` for more information about its use). The user can use any solver working with
+`Pyomo`, but this solver needs to be installed and indicated to `Pyomo`. By default, :term:`hots`
+uses `GLPK`, an open-source solver which is installed with :term:`hots`. But to use `GLPK`, the 
+user needs to install the following packages (through `apt` for example) :
+
+* libglpk-dev
+* glpk-utils
 
 Production
 ==========

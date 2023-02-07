@@ -812,7 +812,7 @@ def eval_sols(
     )
 
 
-#TODO update return type
+# TODO update return type
 def eval_clustering(my_instance: Instance,
                     w: np.array, u: np.array, clust_model,
                     clustering_dual_values: Dict, constraints_dual: Dict,

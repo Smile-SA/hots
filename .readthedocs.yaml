@@ -10,10 +10,9 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.10"
-    # You can also specify other tool versions:
-    # nodejs: "19"
-    # rust: "1.64"
-    # golang: "1.19"
+  apt-packages:
+    - libglpk-dev
+    - glpk-utils
 
 # Build documentation in the docs/ directory with Sphinx
 sphinx:
@@ -25,7 +24,7 @@ sphinx:
 
 # Declare the Python requirements required to build your docs
 python:
-   # Install our python package before building the docs
-   install:
+  # Install our python package before building the docs
+  install:
    - method: pip
      path: .

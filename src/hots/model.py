@@ -453,8 +453,9 @@ def fill_dual_values(my_mdl: Model) -> Dict:
     return dual_values
 
 
-def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float
-    ) -> nx.Graph:
+def get_conflict_graph(
+    my_mdl: Model, constraints_dual_values: Dict, tol: float
+) -> nx.Graph:
     """Build conflict graph from comapring dual variables."""
     conflict_graph = nx.Graph()
     if my_mdl.pb_number == 1:

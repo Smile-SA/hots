@@ -1,6 +1,8 @@
 # **HOTS**
 
-> Application for testing a hybrid resource allocation method using machine learning and optimization.
+> Hybrid Optimization for Time Series 
+> HOTS solves problems presented as time series thanks to machine learning and optimization methods.
+> The library supports multiple resource related problems (placement, allocation), presented as one or more metrics.
 
 ## Requirements for running HOTS
 
@@ -16,7 +18,7 @@ user needs to install the following packages before using HOTS :
 
 ## Installing HOTS
 
-A Makefile is given, which creates a virtual environment and install HOTS. You can do :
+A Makefile is provided, which creates a virtual environment and install HOTS. You can do :
 
 ```bash
 make

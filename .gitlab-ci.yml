@@ -35,6 +35,7 @@ run-tests-py38:
   script:
     - apt update
     - apt install -y python-dev build-essential
+    - python --version
     - pip install wheel tox
     - tox -e py38,flake8,safety
 

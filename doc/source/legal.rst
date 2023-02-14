@@ -7,17 +7,21 @@ Legal information
 Credits
 =======
 
-:term:`hots` is an application sponsored by |smile|.
+:term:`hots` is an application sponsored by |smile| R&D team.
 
 .. image:: _static/smile_logo.png
    :align: center
 
-The usual suspects:
+Authors:
 
-- Jonathan Rivalan - Project manager
 - Etienne Leclercq - Software design, lead developer
+- Jonathan Rivalan - Product owner, Lead designer 
 - Marco Mariani
 - Gilles Lenfant
+- Soobash Daiboo
+- Kang Du
+- Amaury Sauret
+- SMILE R&D
 
 License
 =======

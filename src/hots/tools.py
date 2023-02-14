@@ -29,10 +29,12 @@ def sizeof_fmt(num, suffix='B') -> str:
     return '%.1f %s%s' % (num, 'Yi', suffix)
 
 
-def change_max_dataset(df_indiv: pd.DataFrame,
-                       container: str, col_indiv: str,
-                       new_max: float, col_val: str,
-                       col_time: str, min_time: int) -> pd.DataFrame:
+def change_max_dataset(
+    df_indiv: pd.DataFrame,
+    container: str, col_indiv: str,
+    new_max: float, col_val: str,
+    col_time: str, min_time: int
+) -> pd.DataFrame:
     """Change dataset after max bound change."""
     working_df = df_indiv.loc[
         (df_indiv[col_time] >= min_time) & (

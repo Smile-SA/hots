@@ -445,8 +445,9 @@ def change_clustering_maxkcut(
     # return (df_clust_new, labels_new, nb_changes)
 
 
-def eval_clustering(df_clust: pd.DataFrame, w: np.array, dict_id_c: Dict
-    ) -> Tuple[float, float]:
+def eval_clustering(
+    df_clust: pd.DataFrame, w: np.array, dict_id_c: Dict
+) -> Tuple[float, float]:
     """Evaluate the clustering with ICS and ICD."""
     ics = 0.0
     icd = 0.0

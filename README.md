@@ -48,14 +48,16 @@ hots /tests/data/generated_7
 
 ## Credits
 
-This software is sponsored by [Smile](https://www.smile.fr/).
+Authors:
 
-The team:
-
-- Jonathan Rivalan - Project manager
 - Etienne Leclercq - Software design, lead developer
+- Jonathan Rivalan - Product owner, Lead designer 
 - Marco Mariani
 - Gilles Lenfant
+- Soobash Daiboo
+- Kang Du
+- Amaury Sauret
+- SMILE R&D
 
 ## Links
 

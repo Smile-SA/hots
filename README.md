@@ -1,7 +1,7 @@
 # **HOTS**
 
-> Hybrid Optimization for Time Series 
-> HOTS solves problems presented as time series thanks to machine learning and optimization methods.
+> Hybrid Optimization for Time Series  
+> HOTS solves problems presented as time series thanks to machine learning and optimization methods.  
 > The library supports multiple resource related problems (placement, allocation), presented as one or more metrics.
 
 ## Requirements for running HOTS
@@ -26,6 +26,8 @@ make
 
 ## Running HOTS
 
+The application can be used simply by running :
+
 ```bash
 hots /path/to/data/folder
 ```
@@ -36,12 +38,19 @@ Make sure to activate the virtual environment before running HOTS with :
 source venv/bin/activate
 ```
 
-You can see the help running :
+Some parameters can be defined with the `hots` command, such as :
+ * `k` : the number of clusters used in clustering ;
+ * `tau` : the window size during the loop process ;
+ * `param` : a specific parameter file to use.
+
+All the CLI options are found running the `help` option :
 ```bash
 hots --help
 ```
 
-Note that a test data is given with the package, so you can easily test the installation with :
+More parameters can be defined through a `.JSON` file, for which an example is provided in the `tests` folder. See the documentation, section `User manual`, for more details about all the parameters.  
+
+Note that a test data is provided within the package, so you can easily test the installation with :
 ```bash
 hots /tests/data/generated_7
 ```

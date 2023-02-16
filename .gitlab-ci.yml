@@ -16,7 +16,7 @@ run-tests-py310:
   image: python:3.10-buster
   script:
     - apt update
-    - apt install -y python3.10-dev build-essential libopenblas-dev gfortran
+    - apt install -y python-dev build-essential libopenblas-dev gfortran
     - pip install wheel tox
     - tox -e py310,flake8,safety
 

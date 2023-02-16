@@ -39,8 +39,8 @@ Each file have the following formats :
       "...", "...", "...", "..."
       "tmax", "m_5", 17.5, 52
 
-Note that the file `node_usage.csv` is not mandatory : if it does not exist in
-the directory, it will be built using `container_usage.csv` data.
+Note that the file :file:`node_usage.csv` is not mandatory : if it does not exist in
+the directory, it will be built using :file:`container_usage.csv` data.
 
 Preparing the parameters
 ========================
@@ -80,9 +80,22 @@ issue the command:
 
    hots ~/path/to/data/
 
-.. todo:: Using the application in a Docker container.
+The :code:`hots` can be used with the following options :
 
-.. todo:: Give all CLI options
+- :code:`-k` : number of clusters used in clustering
+- :code:`-t, --tau` : window size for the loop process
+- :code:`-m, --method` : global method used for placement problem
+- :code:`-c, --cluster_method` : method used to update the clustering
+- :code:`-p, --param` : specific parameters file
+- :code:`-o, --output` : specific directory for --output
+- :code:`-ec, --tolclust` : value for epsilonC (building the conflict graph for clustering)
+- :code:`-ea, --tolplace` : value for epsilonA (building the conflict graph for placement)
+- :code:`--help` : display these options and exit
+
+Note that some parameters can be redundant with the parameter file (e.g. :code:`k` and :code:`tau`)
+: in this case the value from CLI is used. 
+
+.. todo:: Using the application in a Docker container.
 
 Reading the results
 ===================

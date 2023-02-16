@@ -20,24 +20,6 @@ run-tests-py310:
     - pip install wheel tox
     - tox -e py310,flake8,safety
 
-# run-tests-py37:
-#   stage: test
-#   image: python:3.7-slim-buster
-#   script:
-#     - apt update
-#     - apt install -y python-dev build-essential
-#     - pip install wheel==0.34.2 tox==3.15.0
-#     - tox -e py37,flake8,safety
-
-# run-tests-py38:
-#   stage: test
-#   image: python:3.8-slim-buster
-#   script:
-#     - apt update
-#     - apt install -y python-dev build-essential libopenblas-dev gfortran
-#     - pip install wheel tox
-#     - tox -e py38,flake8,safety
-
 build-master:
   stage: build
   script:

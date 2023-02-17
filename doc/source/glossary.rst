@@ -23,4 +23,4 @@ their usual one. This section explains those terms in details.
 
   hots
 
-    *hots* is the name given (for the moment) to this application. *hots* comes from *Resource Allocation via Clustering*. It then denotes a methodology that solves a resource allocation problem, using clustering (in addition to a heuristic).
+    *hots* is the name given to this application. *hots* comes from *Resource Allocation via Clustering*. It then denotes a methodology that solves a resource allocation problem, using clustering (in addition to a heuristic).

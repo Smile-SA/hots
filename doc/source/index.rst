@@ -14,6 +14,7 @@ Contents
    usermanual
    installation
    developer
+   business
    pyomo
    api/index
    legal

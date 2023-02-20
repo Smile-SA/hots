@@ -57,6 +57,7 @@ text = "MIT"
 
 [project.urls]
 Homepage = "https://github.com/Smile-SA/hots"
+Documentation = "https://hots.readthedocs.io/en/latest/"
 
 [project.optional-dependencies]
 dev = [

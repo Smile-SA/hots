@@ -70,8 +70,10 @@ Authors:
 
 ## Links
 
-- [Project home](https://git.rnd.smile.fr/overboard/soft_clustering/rac)
-- [File issues (bugs, ...)](https://git.rnd.smile.fr/overboard/soft_clustering/rac/-/issues)
+- [Project home](https://github.com/Smile-SA/hots)
+- [File issues (bugs, ...)](https://github.com/Smile-SA/hots/issues)
+- [PyPi package](https://pypi.org/project/hots/)
+- [Documentation](https://hots.readthedocs.io/en/latest/)
 
 ## License
 

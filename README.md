@@ -26,6 +26,8 @@ make
 
 ## Running HOTS
 
+### Via Python
+
 The application can be used simply by running :
 
 ```bash
@@ -54,6 +56,18 @@ Note that a test data is provided within the package, so you can easily test the
 ```bash
 hots /tests/data/generated_7
 ```
+
+### Via Docker
+
+A Docker container can be easily built for running `hots`, using the `Dockerfile` provided in the package.
+If you are not used to Docker, you can follow the installation guideline here : https://docs.docker.com/engine/install/, and the post-install process here (Linux) : https://docs.docker.com/engine/install/linux-postinstall/.
+
+As soon as Docker is setup, you can run the following commands (being at the root of the directory, with the Dockerfile) :
+
+```bash
+docker build -t hots .
+```
+
 
 ## Credits
 

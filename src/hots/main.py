@@ -1,4 +1,3 @@
-# coding=utf-8
 """
 =========
 hots main
@@ -14,7 +13,6 @@ Entry point of hots module through ``hots --path [OPTIONS]``.
 The entire methodology is called from here (initialization, clustering,
 allocation, evaluation, access to optimization model...).
 """
-# print(__doc__)
 
 import logging
 import math

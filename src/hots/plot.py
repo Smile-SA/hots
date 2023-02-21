@@ -115,7 +115,7 @@ def plot_clustering_containers_by_node(
         filter_big: bool = False, metric: str = None) -> plt.Figure:
     """
     Plot containers consumption grouped by node, one container added above
-    another, with their cluster color
+    another, with their cluster color.
     """
     metric = metric or it.metrics[0]
     if filter_big:
@@ -212,8 +212,8 @@ def plot_containers_groupby_nodes(df_indiv: pd.DataFrame,
                              index=df_indiv[it.tick_field],
                              aggfunc='sum', values=metrics[0])
     pvt_cpu.plot(ax=ax, legend=False)
-    ax.axvline(x=72, color='red', linestyle='--')
-    ax.axhline(y=20, color='red')
+    ax.axvline(x=sep_time, color='red', linestyle='--')
+    ax.axhline(y=max_cap, color='red')
 
     plt.draw()
     return fig
@@ -432,7 +432,7 @@ def init_plot_clustering_axes(df_clust: pd.DataFrame, dict_id_c: Dict,
     # TODO add title, same scale, smooth curves..
     fig = plt.figure()
     fig.suptitle('Clustering evolution')
-    gs = gridspec.GridSpec(df_clust.cluster.max()+1, 1)
+    gs = gridspec.GridSpec(df_clust.cluster.max() + 1, 1)
     ax_ = []
     for k, data in df_clust.groupby(['cluster']):
         ax_.append(fig.add_subplot(gs[k, 0]))

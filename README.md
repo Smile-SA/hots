@@ -1,7 +1,7 @@
 # **HOTS**
 
 > Hybrid Optimization for Time Series  
-> HOTS solves problems presented as time series thanks to machine learning and optimization methods.  
+> HOTS solves problems presented as time series using machine learning and optimization methods.  
 > The library supports multiple resource related problems (placement, allocation), presented as one or more metrics.
 
 ## Requirements for running HOTS

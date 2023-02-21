@@ -92,7 +92,7 @@ class Model:
         self.mdl.C = pe.Set(dimen=1)
         # current clustering solution
         sol_u_d = {
-            ((j, i), u[i][j]) for i, j in prod(range(len(u)), range(len(u[0])))
+            (j, i): u[i][j] for i, j in prod(range(len(u)), range(len(u[0])))
         }
         self.mdl.sol_u = pe.Param(self.mdl.C, self.mdl.C,
                                   initialize=sol_u_d, mutable=True)
@@ -105,7 +105,7 @@ class Model:
             self.mdl.K = pe.Set(dimen=1)
             # distances
             w_d = {
-                ((j, i), w[i][j]) for i, j in prod(range(len(w)), range(len(w[0])))
+                (j, i): w[i][j] for i, j in prod(range(len(w)), range(len(w[0])))
             }
             self.mdl.w = pe.Param(self.mdl.C, self.mdl.C,
                                   initialize=w_d, mutable=True)
@@ -127,13 +127,13 @@ class Model:
             self.mdl.cons = pe.Param(self.mdl.Ccons, self.mdl.T)
             # dv matrix for distance placement
             dv_d = {
-                ((j, i), dv[i][j]) for i, j in prod(range(len(dv)), range(len(dv[0])))
+                (j, i): dv[i][j] for i, j in prod(range(len(dv)), range(len(dv[0])))
             }
             self.mdl.dv = pe.Param(
                 self.mdl.C, self.mdl.C, initialize=dv_d, mutable=True)
             # current placement solution
             sol_v_d = {
-                ((j, i), v[i][j]) for i, j in prod(range(len(v)), range(len(v[0])))
+                (j, i): v[i][j] for i, j in prod(range(len(v)), range(len(v[0])))
             }
             self.mdl.sol_v = pe.Param(self.mdl.C, self.mdl.C,
                                       initialize=sol_v_d, mutable=True)

@@ -10,6 +10,8 @@ RUN apt-get -qq update \
         libopenblas-dev \
         gfortran \
         libboost-thread-dev \
+        glpk-utils \
+        libglpk-dev \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean -y \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
@@ -18,9 +20,7 @@ RUN apt-get -qq update \
 
 COPY . /app
 WORKDIR /app
-# RUN pip install -r /requirements.txt
 
-RUN pip install --no-deps -e .
-
+RUN pip install -e .
 
 #ENTRYPOINT ["hots"]

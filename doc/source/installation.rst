@@ -38,8 +38,6 @@ Production
    If this raises a security error, please prefix the command with ``sudo ...`` or login as "root"
    or system administrator.
 
-.. todo:: Docker image installation
-
 Development
 ===========
 
@@ -74,3 +72,22 @@ immediately active (you don't need to reinstall after each change).
    .. code:: console
 
       pip installe -e .[dev,doc]
+
+Docker
+======
+
+You can also use Docker to install and run :term:`hots`.  
+If you are not used to Docker, you can follow the installation guideline here : https://docs.docker.com/engine/install/, and the post-install process here (Linux) : https://docs.docker.com/engine/install/linux-postinstall/.
+
+As soon as Docker is setup, you can run the following commands (being at the root of the directory, with the Dockerfile) :
+
+.. code:: console
+
+   docker build -t hots .
+
+Once the container is created, you can run it, by running the following :
+
+.. code:: console
+docker run -it hots /bin/bash
+
+You will be prompted to a new shell, in which you can run :term:`hots` (see section :ref:`usermanual`).

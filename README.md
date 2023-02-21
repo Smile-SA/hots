@@ -68,6 +68,13 @@ As soon as Docker is setup, you can run the following commands (being at the roo
 docker build -t hots .
 ```
 
+Once the container is created, you can run it, by running the following :
+
+```bash
+docker run -it hots /bin/bash
+```
+
+You will be prompted to a new shell, in which you can follow the same steps as for Python.
 
 ## Credits
 

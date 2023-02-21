@@ -10,8 +10,8 @@ parameters. Provide Instance-related methods.
 import math
 from typing import Dict
 
-from . import init as it
-from . import node as nd
+import init as it
+import node as nd
 
 
 class Instance:
@@ -38,15 +38,18 @@ class Instance:
             path: Filesystem path to the input files
             config: Configuration dict from config file
         """
-        (self.df_indiv,
-         self.df_host,
-         self.df_host_meta) = it.init_dfs(path)
+        
+        (self.df_indiv, # container usage 
+         self.df_host, # node usage 
+         self.df_host_meta) = it.init_dfs(path) # node meta deta 
+        #new data
+        self.df_container = self.df_indiv[self.df_indiv["timestamp"] < 2]
+        self.df_container.reset_index()
 
-        self.time: int = self.df_indiv[it.tick_field].nunique()
-
-        self.nb_nodes = self.df_host_meta[it.host_field].nunique()
-        self.nb_containers = self.df_indiv[it.indiv_field].nunique()
-        self.nb_clusters = config['clustering']['nb_clusters']
+        self.time: int = self.df_indiv[it.tick_field].nunique() # count of unique time values from timestamp column = 6
+        self.nb_nodes = self.df_host_meta[it.host_field].nunique() # count of unique machine_id values from machine_id column
+        self.nb_containers = self.df_indiv[it.indiv_field].nunique()  # count of unique container_ids from column container_id
+        self.nb_clusters = config['clustering']['nb_clusters'] # gets default cluster numbers set to 3
 
         self.df_indiv = self.df_indiv.astype({
             it.indiv_field: str,
@@ -68,6 +71,7 @@ class Instance:
 
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.dict_id_c = {}
+        self.kafkaConf = config['kafkaConf']
 
         self.print()
 
@@ -96,10 +100,10 @@ class Instance:
         """Transform percentage config time to timestamp."""
         # TODO consider 'tick' param as absolute, not percent ?
         self.window_duration = math.floor(
-            self.time * int(config['analysis']['window_duration']) / 100
+            self.time * int(config['analysis']['window_duration']) / 100 # window time 34
         )
         sep_nb_data = math.floor(
-            self.time * int(config['analysis']['sep_time']) / 100
+            self.time * int(config['analysis']['sep_time']) / 100  # seperation time 33
         )
         self.sep_time = self.df_indiv[it.tick_field].min() + sep_nb_data - 1
         if config['loop']['tick'] == 'default':

@@ -26,8 +26,8 @@ from plotly.subplots import make_subplots
 
 import scipy.cluster.hierarchy as hac
 
-from . import init as it
-from .instance import Instance
+import init as it
+import instance as Instance
 
 # Global variables
 # TODO manage big number of colors

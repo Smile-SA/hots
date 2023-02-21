@@ -30,8 +30,8 @@ from sklearn.metrics.pairwise import pairwise_distances
 
 from tqdm import tqdm
 
-from . import init as it
-from .instance import Instance
+import init as it
+import instance as inst
 
 
 # Functions definitions #
@@ -263,7 +263,7 @@ def get_sum_cluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
     return sum_profiles_matrix
 
 
-def get_distance_cluster(instance: Instance, cluster_centers_: np.array
+def get_distance_cluster(instance: inst, cluster_centers_: np.array
                          ) -> np.array:
     """Compute the distance between each cluster."""
     print('Compute distance between each cluster ...')

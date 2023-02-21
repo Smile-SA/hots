@@ -20,8 +20,8 @@ import pandas as pd
 
 from pyomo import environ as pe
 
-from . import init as it
-from .clustering import get_far_container
+import init as it
+import clustering
 
 
 class Model:
@@ -535,7 +535,7 @@ def get_moving_containers_clust(my_mdl: Model, constraints_dual_values: Dict,
             other_indiv = list(conflict_graph.edges(indiv))[0][1]
             if other_indiv == indiv:
                 other_indiv = list(conflict_graph.edges(indiv))[0][0]
-            mvg_indiv = get_far_container(
+            mvg_indiv = clustering.get_far_container(
                 dict_id_c[int(indiv)],
                 dict_id_c[int(other_indiv)],
                 df_clust, profiles

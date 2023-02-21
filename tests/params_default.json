@@ -24,7 +24,7 @@
     },
     "loop": {
       "mode": "default",
-      "tick": "default",
+      "tick": "default", 
       "constraints_dual": ["mustLink", "nb_clusters"],
       "tol_dual_clust": 0.5,
       "tol_move_clust": 1,
@@ -49,6 +49,12 @@
     },
     "placement":{
       "enable": true
+    },
+    "kafkaConf":{
+      "node_topic": "DockNPlacer",
+      "cont_topic": "DockCPlacer",
+      "mock_node": "MockNodePlacement"
     }
+    
   }
   

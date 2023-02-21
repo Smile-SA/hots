@@ -19,9 +19,9 @@ import pandas as pd
 
 import plotly.express as px
 
-from . import init as it
-from . import plot
-from .instance import Instance
+import init as it
+import plot
+import instance
 
 # Definition of Container-related functions #
 
@@ -143,7 +143,7 @@ def build_vars_matrix_indivs(
 
 def show_specific_containers(working_df_indiv: pd.DataFrame,
                              df_indiv_clust: pd.DataFrame,
-                             my_instance: Instance, labels_: List):
+                             my_instance: instance.Instance, labels_: List):
     """Show specific (user input) containers."""
     print('Enter list of containers to show separated by a comma :')
     containers_input = input()

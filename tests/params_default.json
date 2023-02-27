@@ -51,9 +51,18 @@
       "enable": true
     },
     "kafkaConf":{
-      "node_topic": "DockNPlacer",
-      "cont_topic": "DockCPlacer",
-      "mock_node": "MockNodePlacement"
+      "topics":{
+        "docker_topic": "DockerPlacer",
+        "mock_topic": "MockPlacement"
+      },
+      "Producer":{
+        "brokers":["localhost:9092"]
+      },
+      "Consumer":{
+        "group": "DockerPlacerConsumer",
+        "brokers":["localhost:9092"]
+
+      }
     }
     
   }

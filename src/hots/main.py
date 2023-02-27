@@ -31,7 +31,6 @@ import pandas as pd
 
 import json
 import sys
-import time
 import socket
 
 # Personnal imports
@@ -43,8 +42,10 @@ import model as mdl
 import node
 import placement as place
 import plot
-from confluent_kafka import Consumer, KafkaError, KafkaException
-from confluent_kafka import Producer
+from confluent_kafka import KafkaError, KafkaException
+
+import signal
+import kafka
 
 # from . import clustering as clt
 # from . import container as ctnr
@@ -55,7 +56,6 @@ from confluent_kafka import Producer
 # from . import plot
 
 import instance as inst
-
 
 @click.command()
 @click.argument('path', required=True, type=click.Path(exists=True))
@@ -71,11 +71,12 @@ import instance as inst
               help='Use specific value for epsilonC')
 @click.option('-ea', '--tolplace', required=False, type=str,
               help='Use specific value for epsilonA')
+
 def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace):
     """Use method to propose a placement solution for micro-services adjusted in time."""
     # Initialization part
     main_time = time.time()
-
+    signal.signal(signal.SIGINT,SignalHandler_SIGINT)
     if not path[-1] == '/':
         path += '/'
 
@@ -353,6 +354,7 @@ def run_period(
             cluster_method,
             config['optimization']['solver'],
             df_host_evo)
+        # df_host_evo.to_csv('df_host_evo.csv', index=False)
         fig_node.savefig(output_path + '/node_evo_plot.svg')
         fig_clust.savefig(output_path + '/clust_evo_plot.svg')
         fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
@@ -377,55 +379,9 @@ def run_period(
 
     return (df_host_evo, nb_overloads)
 
-def msg_process(msg):
-    # Print the current time and the message.
-    time_start = time.strftime("%Y-%m-%d %H:%M:%S")
-    val = msg.value()
-    dval = json.loads(val)
-    return(time_start, dval)
-
-def acked(err, msg):
-    if err is not None:
-        print("Failed to deliver message: %s: %s" % (str(msg.value()), str(err)))
-    else:
-        print("Message produced: %s" % (str(msg.value())))
-
-def produce_data(my_instance: inst.Instance, timestamp):
-    df_first = my_instance.df_host[my_instance.df_host.timestamp == timestamp]
-    node_details = df_first.values.tolist()
-
-    prod_conf = {'bootstrap.servers': "localhost:9092",
-            'client.id': socket.gethostname()}
-    producer = Producer(prod_conf)
-    topic = my_instance.kafkaConf['mock_node']
-    z = {}
-    # # print('node_details',node_details)
-    first = True
-    for n in node_details:
-        curr_time = n[0]
-        machine_id = n[1]
-        cpu = n[2]
-        if first:
-            z[curr_time] = {
-                                    "nodes": [{
-                                    "machine_id": machine_id,
-                                    "cpu": cpu
-                                }]
-                                
-                            }
-            first = False
-        else:
-            y  = {
-                            "machine_id": machine_id,
-                            "cpu": cpu
-                         }
-            z[curr_time]['nodes'].append(y)
-        
-    jresult = json.dumps(z)
-    producer.produce(topic, key="mock_node", value=jresult, callback=acked)
-    producer.flush()
-
-
+def SignalHandler_SIGINT(SignalNumber,Frame):
+    print("Exit application")
+    it.Sentry = False
 
 def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                    labels_: List, mode: str, tick: int,
@@ -463,8 +419,9 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
     (working_df_indiv, df_clust, w, u, v) = build_matrices(
         my_instance, tmin, tmax, labels_
     )
-    time_to_send = 1
-    produce_data(my_instance, time_to_send)
+    working_df_indiv2 = pd.DataFrame(columns=my_instance.df_indiv.columns)
+    time_to_send = 2
+    kafka.produce_data(my_instance, time_to_send)
     
     # print('working_df_indiv',working_df_indiv) # container info 0, 1 timestamp
     # print('df_clust',df_clust) # containers belonging to their clusters
@@ -482,24 +439,22 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
         tmax = my_instance.df_indiv[it.tick_field].max()
     else:
         tmax += tick
-    topic = my_instance.kafkaConf['node_topic']
-    conf = {'bootstrap.servers': 'localhost:9092',
-            'default.topic.config': {'auto.offset.reset': 'smallest'},
-            'group.id': socket.gethostname()}
-
-    consumer = Consumer(conf)
+    topic = it.Kafka_topics['docker_topic']
+    
     df_host_evo2 = pd.DataFrame(columns=my_instance.df_host.columns)
+    df_host_muffu = pd.DataFrame(columns=my_instance.df_indiv.columns)
     # print("df_host_evo 1: ", df_host_evo)
     # TODO improve model builds
-    running = True
     analysis_duration = 1
+    
+    it.Sentry = True
     try:
-        while running:
+        while it.Sentry:
             print('Ready for new data...')
             loop_time = time.time()
-            consumer.subscribe([topic])
-            msg = consumer.poll()
-
+            it.Kafka_Consumer.subscribe([topic])
+            msg = it.Kafka_Consumer.poll(timeout=5.0)
+            
             if msg is None:
                     continue
 
@@ -515,17 +470,22 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                         raise KafkaException(msg.error())
 
             else:
-        
-                (_, dval) = msg_process(msg)
-                print('dval',dval)
+                (_, dval) = kafka.msg_process(msg)
+                # print('dval',dval)
                 key = list(dval.keys())[0]
                 value = list(dval.values())[0]
                 n_info = []
+                c_info = []
                 for v in value['nodes']:
                         js = {'timestamp': key , 'machine_id': v['machine_id'], 'cpu' : v['cpu']}
                         n_info.append(js)
+                for c in value['containers']:
+                        js = {'timestamp': key , 'container_id': c['container_id'], 'machine_id': c['machine_id'], 'cpu' : c['cpu'], 'mem' : c['mem']}
+                        c_info.append(js)
                 new_df_node = pd.DataFrame(n_info)
+                new_df_container = pd.DataFrame(c_info)
                 # print(new_df_node)
+                print(new_df_container)
                 logging.info('\n # Enter loop number %d #\n' % loop_nb)
                 it.results_file.write('\n # Loop number %d #\n' % loop_nb)
                 it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
@@ -535,7 +495,16 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                 df_host_evo2 = pd.concat([
                     df_host_evo2, new_df_node
                 ])
-                print('\n # Step 1: Check Node overload %d #\n' % loop_nb)
+                df_host_muffu = pd.concat([
+                    df_host_muffu, new_df_container
+                ])
+                working_df_indiv2 = pd.concat([
+                    working_df_indiv2, new_df_container
+                ])
+
+                # historical data of containers using working df indiv
+
+                print('\n # Step 1: Check Progress time no loop%d #\n' % loop_nb)
                 (temp_df_host, nb_overload, loop_nb,
                 nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
                     my_instance, 'local', tmin, tmax, labels_, loop_nb,
@@ -569,13 +538,15 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                     print('\n # Step 2: evaluate the solution at loop: %d #\n' % loop_nb)
                     analysis_duration = 1
                     df_host_evo2.drop(df_host_evo2.index, inplace=True)
+                    working_df_indiv = working_df_indiv2
+                    working_df_indiv2.drop(working_df_indiv2.index, inplace=True)
                     start = time.time()
                     # print('working_df_indiv',working_df_indiv)
                     # get information of clusters
                     (working_df_indiv, df_clust, w, u, v) = build_matrices(
                         my_instance, tmin, tmax, labels_
                     )
-                    print("working_df_indiv",working_df_indiv)
+                    print("working df indiv: ", working_df_indiv)
                     # print('working_df_indiv',working_df_indiv) # contains information of the clusters 1 hist 1 new
                     add_time(loop_nb, 'build_matrices', (time.time() - start))
                     nb_clust_changes_loop = 0
@@ -606,8 +577,10 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                     analysis_duration = analysis_duration + 1
 
                 # end if ?? 
-                
-                
+                print("working_df_indiv2: ",working_df_indiv2)
+                # print('working_df_indiv',working_df_indiv) # contains information of the clusters 1 hist 1 new
+                # print("new_df_container", new_df_container)
+                # print("df_host_evo", df_host_evo)
                 it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
                 it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
                 nb_clust_changes += nb_clust_changes_loop
@@ -679,7 +652,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                 # input('\nPress any key to progress in time ...\n')
                 time_to_send += 1
                 print("time_to_send",time_to_send)
-                produce_data(my_instance, time_to_send)
+                kafka.produce_data(my_instance, time_to_send)
                 tmin += tick
                 tmax += tick
                 if tol_clust < 1.0:
@@ -689,18 +662,15 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
 
                 if tmax >= my_instance.time + 1:
                     
-                    running = False  # change to False to end loop according to mock data
+                    it.Sentry = True  # change to False to end loop according to mock data
                 else:
                     loop_nb += 1
                 # loop_nb += 1
 
-    except KeyboardInterrupt:
-        pass
-
     finally:
         # Close down consumer to commit final offsets.
-        consumer.close()        
-    print('HOW AM I HERE')
+        print("close kafka consumer")
+        it.Kafka_Consumer.close()       
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
          df_indiv[it.tick_field] >= tmin)]
@@ -717,7 +687,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
 
     df_host_evo = end_loop(working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
                            total_nb_overload, total_loop_time, loop_nb, df_host_evo)
-
+    df_host_muffu.to_csv("df_host_muffu.csv", index=False)
     return (fig_node, fig_clust, fig_mean_clust,
             df_host_evo, total_nb_overload)
     # return (fig_node, fig_clust, fig_mean_clust,
@@ -751,14 +721,14 @@ def progress_time_noloop(
     tick = df_host_tick.timestamp[0]
     # print("time", tmin)
     # print('TICK INFO',tick, df_host_tick)  # machine_id, cpu of node usage for each tick
-    print('NEW TICK INFO',new_df_node)  # machine_id, cpu of node usage for each tick
+    # print('NEW TICK INFO',new_df_node)  # machine_id, cpu of node usage for each tick
     host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
     df_host_tick[it.tick_field] = tick
     # df_host_evo = pd.concat([
     #     df_host_evo, df_host_tick
     # ])
     # print('TICK INFO',df_host_tick[it.tick_field])  
-    print('TICK INFO',df_host_evo)  # timestamp machine_id cpu of node usage for window duration
+    # print('TICK INFO',df_host_evo)  # timestamp machine_id cpu of node usage for window duration
     # print('TICK INFO',df_host_tick)  # timestamp machine_id cpu of node usage for each tick
     if len(host_overload) > 0:
         print('Overload : We must move containers')

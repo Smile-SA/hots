@@ -71,7 +71,6 @@ class Instance:
 
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.dict_id_c = {}
-        self.kafkaConf = config['kafkaConf']
 
         self.print()
 

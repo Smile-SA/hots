@@ -13,6 +13,8 @@ from typing import Dict, Tuple
 
 import pandas as pd
 
+import kafka
+
 # Functions definitions #
 
 
@@ -139,6 +141,11 @@ def define_globals(p_path: Path, config: Dict):
 
     global streamkm_model
 
+    global Sentry 
+    global Kafka_Producer
+    global Kafka_Consumer
+    global Kafka_topics
+
     indiv_field = config['data']['individual_field']
     host_field = config['data']['host_field']
     tick_field = config['data']['tick_field']
@@ -157,6 +164,10 @@ def define_globals(p_path: Path, config: Dict):
     optim_file = open(p_path / 'optim_logs.log', 'w')
     clustering_file = open(p_path / 'clustering_logs.log', 'w')
 
+
+    Kafka_topics = config['kafkaConf']['topics']
+    Kafka_Producer = kafka.GetProducer(config)
+    Kafka_Consumer = kafka.GetConsumer(config)
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'

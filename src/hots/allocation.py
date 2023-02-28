@@ -1,10 +1,4 @@
-"""
-=========
-hots allocation
-=========
-
-Provide resource allocation related functions to handle this problem.
-"""
+"""Provide resource allocation related functions to handle this problem."""
 
 import math
 from typing import Dict

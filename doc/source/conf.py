@@ -46,8 +46,7 @@ extensions = [
     'sphinx.ext.autosectionlabel',
     'sphinx.ext.todo',
     'sphinx.ext.ifconfig',
-    'sphinx.ext.viewcode',
-    'sphinx.ext.napoleon'
+    'sphinx.ext.viewcode'
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -192,19 +191,19 @@ todo_include_todos = True
 
 # -- Customization --------------------------
 
-project = "hots"
+project = 'hots'
 
 # The short X.Y version.
 version = pkg_resources.get_distribution(project).version
 release = version
 
-html_title = "{0} v{1}".format(project, release)
+html_title = '{0} v{1}'.format(project, release)
 creation_year = 2020
 this_year = time.localtime().tm_year
 if this_year > creation_year:
-    copyright = f"{creation_year}-{this_year}, Smile"
+    copyright = f'{creation_year}-{this_year}, Smile'
 else:
-    copyright = f"{creation_year}, Smile"
+    copyright = f'{creation_year}, Smile'
 
 rst_epilog = """
 .. |pep_8| replace:: `"PEP 8 - Style Guide for Python code"`_
@@ -218,10 +217,10 @@ rst_epilog = """
 """
 
 # Theming
-html_theme = "bizstyle"
-html_logo = "_static/smile_logo.png"
-html_favicon = "_static/smile_logo.png"
-html_css_files = ["custom.css"]
+html_theme = 'bizstyle'
+html_logo = '_static/smile_logo.png'
+html_favicon = '_static/smile_logo.png'
+html_css_files = ['custom.css']
 
 # sphinx.ext.napoleon settings for Google style docstrings
 # See https://www.sphinx-doc.org/en/master/usage/extensions/napoleon.html#configuration

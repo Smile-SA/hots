@@ -1,8 +1,4 @@
 """
-=========
-hots clustering
-=========
-
 Provide clustering algorithms and all clustering-related methods.
 Here are the available clustering algorithms : k-means, hierarchical,
 spectral, custom spectral.
@@ -328,12 +324,8 @@ def get_far_container(c1: str, c2: str,
         - profiles[int(df_clust.loc[c1]['cluster'])]) >= norm(
             df_clust.loc[c2].drop('cluster').values
             - profiles[int(df_clust.loc[c2]['cluster'])]):
-        # print('c1 changed')
-        # print('\n')
         return c1
     else:
-        # print('c2 changed')
-        # print('\n')
         return c2
 
 

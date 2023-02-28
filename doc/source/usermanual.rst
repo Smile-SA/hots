@@ -157,8 +157,6 @@ The :code:`hots` can be used with the following options :
 Note that some parameters can be redundant with the parameter file (e.g. :code:`k` and :code:`tau`)
 : in this case the value from CLI is used. 
 
-.. todo:: Using the application in a Docker container.
-
 Reading the results
 ===================
 

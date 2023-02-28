@@ -1,10 +1,4 @@
-"""
-=========
-hots tools
-=========
-
-Provide external tools usefull for the code.
-"""
+"""Provide external tools usefull for the code."""
 
 import sys
 from typing import List

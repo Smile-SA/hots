@@ -1,7 +1,4 @@
 """
-=========
-hots main
-=========
 Entry point of hots module through ``hots --path [OPTIONS]``.
 
     - path is the folder where we find the files
@@ -399,11 +396,12 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     )
     add_time(0, 'total_loop', (time.time() - start))
 
-    tmin = my_instance.sep_time
     if mode == 'event':
+        tmin = my_instance.sep_time
         tmax = my_instance.df_indiv[it.tick_field].max()
     else:
         tmax += tick
+        tmin = tmax - (my_instance.window_duration - 1)
 
     # TODO improve model builds
     while not end:
@@ -535,8 +533,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         )
 
         # input('\nPress any key to progress in time ...\n')
-        tmin += tick
         tmax += tick
+        tmin = tmax - (my_instance.window_duration - 1)
         if tol_clust < 1.0:
             tol_clust += tol_step
         if tol_place < 1.0:

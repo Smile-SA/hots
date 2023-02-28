@@ -1,15 +1,6 @@
 """
-=========
-hots placement
-=========
-
-Provide placement heuristics and all placement-related methods
-(check capacity, change assignment ...).
-Actually, there are 3 differents placement techniques :
-    - ``allocation_distant_pairwise`` : try to co-localize containers
-    belonging to ``distant`` clusters ;
-    - ``allocation_ffd`` : based on FFD bin-packing technique
-    - spread : classical spread over nodes technique
+Provide placement heuristics and all placement-related methods (check capacity, change assignment
+...).
 """
 
 import math

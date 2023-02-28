@@ -14,6 +14,7 @@ Contents
    usermanual
    installation
    developer
+   process
    business
    pyomo
    api/index

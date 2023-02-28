@@ -12,6 +12,14 @@ Python API
 .. toctree::
    :maxdepth: 1
 
+   allocation
+   clustering
+   container
+   init
    instance
-
-.. todo:: Provide other public API documentation.
+   main
+   model
+   node
+   placement
+   plot
+   tools

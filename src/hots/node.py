@@ -1,8 +1,4 @@
 """
-=========
-hots node
-=========
-
 Provide actions specific to nodes (plot nodes data, build dictionnary
 for node IDs, compute different statistic measures ...)
 """

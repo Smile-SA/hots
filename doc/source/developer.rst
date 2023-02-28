@@ -12,49 +12,50 @@ This chapter is opened to be restructured in the future.
 Git workflow and life cycle
 ===========================
 
-The "master" git branch
+The "main" git branch
 -----------------------
 
-The "master" branch contains the source trees from which the public releases of the :term:`hots`
+The "main" branch contains the source trees from which the public releases of the :term:`hots`
 software products are built and distributed to the registries (PyPI, Docker hub, doc site).
 
 Each release is identified by a Git tag named with the software distribution version.
 
-The changes in the "master" branch are processed by merging the "testing" branch when all issues
+The changes in the "main" branch are processed by merging the "dev" branch when all issues
 from a milestone are considered as fixed, tested and relevant documentation changes are written.
 
 .. warning::
 
    The only change allowed directly in this branch is the :file:`VERSION.txt` file.
 
-The "testing" branch
+The "dev" branch
 --------------------
 
-The "testing" branch contains the "bleeding edge" version of the :term:`hots` software, tests and
+The "dev" branch contains the "bleeding edge" version of the :term:`hots` software, tests and
 documentation.
 
-The changes in the "testing" branch are processed by merging a personal branch when the issues from the personal branch are considered closed, and **the unit tests don't report any failure**.
+The changes in the "dev" branch are processed by merging a personal branch when the issues from
+the personal branch are considered closed, and **the unit tests don't report any failure**.
 
 .. warning::
 
-   Only "quick fix" changes are allowed directly in the "testing" branch.
+   Only "quick fix" changes are allowed directly in the "dev" branch.
 
 Personal branches
 -----------------
 
-Personal branches are created by forking the **testing** branch, by individual developers in order
+Personal branches are created by forking the **dev** branch, by individual developers in order
 to fix one or more issues.
 
 The release cycle
 -----------------
 
-.. rubric:: Step 1: fork the "testing" branch in a personal branch
+.. rubric:: Step 1: fork the "dev" branch in a personal branch
 
-Refresh your clone of the testing branch:
+Refresh your clone of the dev branch:
 
 .. code:: console
 
-   git checkout testing
+   git checkout dev
    git pull
 
 .. rubric:: Step 2: create your personal branch:
@@ -70,22 +71,22 @@ Refresh your clone of the testing branch:
 
    Example: `eleclercq-cmdline-24`
 
-.. rubric:: Step 3: Share your changes to the "testing" branch
+.. rubric:: Step 3: Share your changes to the "dev" branch
 
 Your changes are done and tested. Time to share your work. You should first squash your commits in
 order to keep only the relevant ones. This `blog article
 <https://www.ekino.com/articles/comment-squasher-efficacement-ses-commits-avec-git>`__ explains why
 and how to do it.
 
-The "testing" branch may have changed since you forked it at step 2. In that case, you must replay
+The "dev" branch may have changed since you forked it at step 2. In that case, you must replay
 these changes into your personal branch.
 
 .. code:: console
 
-   git co testing
+   git co dev
    git pull
    git co <your-personal-branch>
-   git rebase testing
+   git rebase dev
 
 .. important::
 
@@ -104,14 +105,27 @@ executed, you should issue a new **merge request** to share your work with your 
 
    The benefits of a **merge request** over a direct Git merge operation are:
 
-   - All merges to "testing" are recorded in a shared place.
+   - All merges to "dev" are recorded in a shared place.
    - You may ask for a code review from your teammates **before** the merge is executed.
    - A "dry run" merge is executed such it identifies potential conflicts.
    - You and your teammates may browse the changes in details using the links in the merge request
      page.
 
 Once the merge request is executed, you must inspect the CI / CD pipeline, and fix potential issues
-directly in the "testing" branch.
+directly in the "dev" branch.
+
+Tags and releases
+-----------------
+
+When the **dev** branch is ready to be merged into the **main** branch, in most cases we would
+update the version (for a new feature, a bug fixed ...). A new tag can then be created, and mostly
+a new release based on this tag. This tag should therefore match the version in "VERSION.txt" file
+which should have been updated.
+
+.. note::
+
+   When a new push (mostly a merge request) happens in **main** branch with a new version number in
+   "VERSION.txt" file, a new version of the package is published automatically to PyPi from GitHub.
 
 Coding style
 ============
@@ -215,7 +229,7 @@ Running the tests
 =================
 
 The unit tests are executed through the :command:`pytest` command. The default options sit in the
-:file:`setup.cfg` file. The tests codes and resources are hosted in the :file:`tests/...` directory.
+:file:`pyproject.toml` file. The tests codes and resources are hosted in the :file:`tests/...` directory.
 
 As above stated, the unit tests are powered by the third party `pytest
 <https://docs.pytest.org/en/latest/>`_ tool.

@@ -1,8 +1,4 @@
 """
-=========
-hots init
-=========
-
 Provide stuff for initialization step (load DataFrames,
 global variables)
 """

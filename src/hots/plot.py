@@ -1,8 +1,4 @@
 """
-=========
-hots plot
-=========
-
 Provide all plotting methods : different clustering results views,
 containers data, nodes data, continous plot in evaluation step.
 """

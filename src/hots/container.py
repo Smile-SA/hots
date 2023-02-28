@@ -1,8 +1,4 @@
 """
-=========
-hots container
-=========
-
 Provide actions specific to containers (plot containers data,
 build dictionnary for container IDs ...)
 """

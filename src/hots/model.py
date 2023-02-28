@@ -1,8 +1,4 @@
 """
-=========
-hots model
-=========
-
 Define the optimization models we have, with its objective, constraints,
 variables, and build it from the ``Instance``. Provide all optimization models
 related methods.
@@ -82,6 +78,7 @@ class Model:
 
         # Create the instance by feeding the model with the data
         self.instance_model = self.mdl.create_instance(self.data)
+        # self.write_infile()
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
 
     def build_parameters(self, w, dv, u, v):
@@ -282,12 +279,20 @@ class Model:
     def write_infile(self):
         """Write the problem in LP file."""
         if self.pb_number == 1:
-            self.instance_model.write('./py_clustering.lp')
+            self.instance_model.write(
+                './py_clustering.lp', io_options={'symbolic_solver_labels': True}
+            )
         elif self.pb_number == 2:
-            self.instance_model.write('./py_placement.lp')
+            self.instance_model.write(
+                './py_placement.lp', io_options={'symbolic_solver_labels': True}
+            )
 
     def solve(self, solver='glpk', verbose=False):
-        """Solve the model using a specific solver."""
+        """Solve the model using a specific solver.
+
+        :param str solver: The solver to use to solve the problem.
+        :param boolean verbose: Enable / disable logs during solve process.
+        """
         opt = pe.SolverFactory(solver)
         opt.solve(self.instance_model, tee=verbose)
         # self.instance_model.display()

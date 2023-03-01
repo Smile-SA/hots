@@ -22,6 +22,7 @@
 import time
 
 import pkg_resources
+
 project = 'hots'
 copyright = '2022, Smile R&D team'
 author = 'Smile R&D team'
@@ -217,7 +218,7 @@ rst_epilog = """
 """
 
 # Theming
-html_theme = 'bizstyle'
+html_theme = 'sphinx_rtd_theme'
 html_logo = '_static/smile_logo.png'
 html_favicon = '_static/smile_logo.png'
 html_css_files = ['custom.css']

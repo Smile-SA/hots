@@ -5,15 +5,20 @@ global variables)
 
 import json
 from pathlib import Path
-from typing import Dict, Tuple
 
 import pandas as pd
 
 # Functions definitions #
 
 
-def build_df_from_containers(df_indiv: pd.DataFrame) -> pd.DataFrame:
-    """Build the `df_host` from containers df."""
+def build_df_from_containers(df_indiv):
+    """Build the `df_host` from containers df.
+
+    :param df_indiv: _description_
+    :type df_indiv: pd.DataFrame
+    :return: _description_
+    :rtype: pd.DataFrame
+    """
     dict_agg = {}
     for metric in metrics:
         dict_agg[metric] = 'sum'
@@ -24,15 +29,27 @@ def build_df_from_containers(df_indiv: pd.DataFrame) -> pd.DataFrame:
     return df_host
 
 
-def df_from_csv(file: Path) -> pd.DataFrame:
-    """Load DataFrame from CSV file."""
+def df_from_csv(file):
+    """Load DataFrame from CSV file.
+
+    :param file: _description_
+    :type file: Path
+    :return: _description_
+    :rtype: pd.DataFrame
+    """
     return pd.read_csv(
         file, index_col=False)
 
 
 # TODO check if files exist ?
-def init_dfs(data: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Perform CSV files reading in data folder."""
+def init_dfs(data):
+    """Perform CSV files reading in data folder.
+
+    :param data: _description_
+    :type data: str
+    :return: _description_
+    :rtype: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
+    """
     p_data = Path(data)
 
     if Path(p_data / 'node_usage.csv').is_file():
@@ -49,10 +66,30 @@ def init_dfs(data: str) -> Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
                 df_from_csv(p_data / 'node_meta.csv'))
 
 
-def read_params(path: str, k: int, tau: int,
-                method: str, cluster_method: str,
-                param: str, output_path: str) -> Dict:
-    """Get parameters from file and build the Dict config object."""
+def read_params(
+    path, k, tau, method, cluster_method, param, output_path
+):
+    """Get parameters from file and build the Dict config object.
+
+    :param path: _description_
+    :type path: str
+    :param k: _description_
+    :type k: int
+    :param tau: _description_
+    :type tau: int
+    :param method: _description_
+    :type method: str
+    :param cluster_method: _description_
+    :type cluster_method: str
+    :param param: _description_
+    :type param: str
+    :param output_path: _description_
+    :type output_path: str
+    :raises ValueError: _description_
+    :raises ValueError: _description_
+    :return: _description_
+    :rtype: Dict
+    """
     p_path = Path(path)
     if param is not None:
         config_path = Path(param)
@@ -88,8 +125,12 @@ def read_params(path: str, k: int, tau: int,
     return (config, str(output_path))
 
 
-def set_loop_results() -> pd.DataFrame:
-    """Create the dataframe for loop results."""
+def set_loop_results():
+    """Create the dataframe for loop results.
+
+    :return: _description_
+    :rtype: pd.DataFrame
+    """
     return pd.DataFrame(columns=[
         'num_loop', 'init_silhouette', 'init_delta',
         'clust_conf_nodes', 'clust_conf_edges',
@@ -102,15 +143,25 @@ def set_loop_results() -> pd.DataFrame:
     ])
 
 
-def set_times_df() -> pd.DataFrame:
-    """Create the dataframe for times info."""
+def set_times_df():
+    """Create the dataframe for times info.
+
+    :return: _description_
+    :rtype: pd.DataFrame
+    """
     return pd.DataFrame(columns=[
         'num_loop', 'action', 'time'
     ])
 
 
-def define_globals(p_path: Path, config: Dict):
-    """Define the fields, as global variables, from config."""
+def define_globals(p_path, config):
+    """Define the fields, as global variables, from config.
+
+    :param p_path: _description_
+    :type p_path: Path
+    :param config: _description_
+    :type config: Dict
+    """
     global indiv_field
     global host_field
     global tick_field

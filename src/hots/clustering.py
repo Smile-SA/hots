@@ -6,7 +6,6 @@ spectral, custom spectral.
 
 import multiprocessing as mp
 from itertools import combinations
-from typing import Callable, Dict, List, Tuple
 
 import networkx as nx
 
@@ -27,13 +26,18 @@ from sklearn.metrics.pairwise import pairwise_distances
 from tqdm import tqdm
 
 from . import init as it
-from .instance import Instance
 
 
 # Functions definitions #
 # TODO add mem cols
-def matrix_line(args: Tuple[str, pd.DataFrame]) -> Tuple[int, Dict]:
-    """Build one line for clustering matrix."""
+def matrix_line(args):
+    """Build one line for clustering matrix.
+
+    :param args: _description_
+    :type args: Tuple[str, pd.DataFrame]
+    :return: _description_
+    :rtype: Tuple[int, Dict]
+    """
     key, data = args
     line = {}
     for row in data.iterrows():
@@ -42,8 +46,14 @@ def matrix_line(args: Tuple[str, pd.DataFrame]) -> Tuple[int, Dict]:
     return (key, line)
 
 
-def build_matrix_indiv_attr(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict]:
-    """Build entire clustering matrix."""
+def build_matrix_indiv_attr(df):
+    """Build entire clustering matrix.
+
+    :param df: _description_
+    :type df: pd.DataFrame
+    :return: _description_
+    :rtype: Tuple[pd.DataFrame, Dict]
+    """
     print('Setup for clustering ...')
     list_args = list(df.groupby(df[it.indiv_field]))
     lines = []
@@ -67,8 +77,14 @@ def build_matrix_indiv_attr(df: pd.DataFrame) -> Tuple[pd.DataFrame, Dict]:
     return (df_return, dict_id_c)
 
 
-def build_similarity_matrix(df: pd.DataFrame) -> np.array:
-    """Build a similarity matrix for the clustering."""
+def build_similarity_matrix(df):
+    """Build a similarity matrix for the clustering.
+
+    :param df: _description_
+    :type df: pd.DataFrame
+    :return: _description_
+    :rtype: np.array
+    """
     dists = pdist(df, 'euclidean')
     # dists = pdist(df.T)
     df_euclid = pd.DataFrame(squareform(
@@ -81,9 +97,18 @@ def build_similarity_matrix(df: pd.DataFrame) -> np.array:
 
 
 # TODO add perso spectral + check error algo
-def perform_clustering(data: pd.DataFrame, algo: str, k: int
-                       ) -> Callable[[pd.DataFrame, int], List]:
-    """Call the specified method to perform clustering."""
+def perform_clustering(data, algo, k):
+    """Call the specified method to perform clustering.
+
+    :param data: _description_
+    :type data: pd.DataFrame
+    :param algo: _description_
+    :type algo: str
+    :param k: _description_
+    :type k: int
+    :return: _description_
+    :rtype: Callable[[pd.DataFrame, int], List]
+    """
     switcher = {'hierarchical': hierarchical_clustering,
                 'kmeans': k_means,
                 'spectral': spectral_clustering,
@@ -92,23 +117,55 @@ def perform_clustering(data: pd.DataFrame, algo: str, k: int
     return func(data, k)
 
 
-def k_means(data: pd.DataFrame, k: int) -> List:
-    """Perform the K-means clustering."""
+def k_means(data, k):
+    """Perform the K-means clustering.
+
+    :param data: _description_
+    :type data: pd.DataFrame
+    :param k: _description_
+    :type k: int
+    :return: _description_
+    :rtype: List
+    """
     return KMeans(n_clusters=k, n_init='auto').fit(data).labels_
 
 
-def p_dist(data: pd.DataFrame, metric: str = 'euclidean') -> np.array:
-    """Compute distances between each data point pair."""
+def p_dist(data, metric='euclidean'):
+    """Compute distances between each data point pair.
+
+    :param data: _description_
+    :type data: pd.DataFrame
+    :param metric: _description_, defaults to 'euclidean'
+    :type metric: str, optional
+    :return: _description_
+    :rtype: np.array
+    """
     return pairwise_distances(data, metric=metric)
 
 
-def spectral_clustering(data: pd.DataFrame, k: int) -> List:
-    """Perform the spectral clustering."""
+def spectral_clustering(data, k):
+    """Perform the spectral clustering.
+
+    :param data: _description_
+    :type data: pd.DataFrame
+    :param k: _description_
+    :type k: int
+    :return: _description_
+    :rtype: List
+    """
     return SpectralClustering(n_clusters=k).fit(data).labels_
 
 
-def hierarchical_clustering(data: pd.DataFrame, k: int) -> List:
-    """Perform the hierarchical ascendant clustering."""
+def hierarchical_clustering(data, k):
+    """Perform the hierarchical ascendant clustering.
+
+    :param data: _description_
+    :type data: pd.DataFrame
+    :param k: _description_
+    :type k: int
+    :return: _description_
+    :rtype: List
+    """
     z_all = hac.linkage(data, method='ward', metric='euclidean')
     clusters_all = hac.fcluster(z_all, k, criterion='distance')
     clusters_all -= 1
@@ -116,8 +173,16 @@ def hierarchical_clustering(data: pd.DataFrame, k: int) -> List:
 
 
 # TODO seems not working correctly => to fix
-def perso_spectral_clustering(data: pd.DataFrame, k: int) -> np.array:
-    """Perform a customized version of spectral clustering."""
+def perso_spectral_clustering(data, k):
+    """Perform a customized version of spectral clustering.
+
+    :param data: _description_
+    :type data: pd.DataFrame
+    :param k: _description_
+    :type k: int
+    :return: _description_
+    :rtype: np.array
+    """
     w = build_similarity_matrix(data)
     d = np.diag(np.sum(w, axis=0))
     d_min1_2 = fractional_matrix_power(d, -1 / 2)
@@ -154,9 +219,22 @@ def perso_spectral_clustering(data: pd.DataFrame, k: int) -> np.array:
     return (np.asarray(weighted_kmeans(w, d, u, k)))
 
 
-def compute_mu_r(w: np.array, d: np.array, labels_: List, r: int, u: np.array
-                 ) -> float:
-    """Compute center of cluster r."""
+def compute_mu_r(w, d, labels_, r, u):
+    """Compute center of cluster r.
+
+    :param w: _description_
+    :type w: np.array
+    :param d: _description_
+    :type d: np.array
+    :param labels_: _description_
+    :type labels_: List
+    :param r: _description_
+    :type r: int
+    :param u: _description_
+    :type u: np.array
+    :return: _description_
+    :rtype: float
+    """
     p = 0
     mu_r = 0
     d_p = 0
@@ -168,17 +246,41 @@ def compute_mu_r(w: np.array, d: np.array, labels_: List, r: int, u: np.array
     return (mu_r * (1 / d_p))
 
 
-def compute_distance_cluster_r(p: int, r: int, mu_r: float,
-                               u: np.array, dp: float) -> float:
-    """Compute distance between individual p and cluster r."""
+def compute_distance_cluster_r(p, r, mu_r, u, dp):
+    """Compute distance between individual p and cluster r.
+
+    :param p: _description_
+    :type p: int
+    :param r: _description_
+    :type r: int
+    :param mu_r: _description_
+    :type mu_r: float
+    :param u: _description_
+    :type u: np.array
+    :param dp: _description_
+    :type dp: float
+    :return: _description_
+    :rtype: float
+    """
     # return math.sqrt(pow(
     # (u[:, p] * pow(dp, -1/2)) - mu_r, 2))
     return norm((u[:, p] * pow(dp, -1 / 2)) - mu_r)
 
 
-def weighted_kmeans(w: np.array, d: np.array,
-                    u: np.array, k: int) -> List:
-    """Perform K-means algo for custom spectral clustering."""
+def weighted_kmeans(w, d, u, k):
+    """Perform K-means algo for custom spectral clustering.
+
+    :param w: _description_
+    :type w: np.array
+    :param d: _description_
+    :type d: np.array
+    :param u: _description_
+    :type u: np.array
+    :param k: _description_
+    :type k: int
+    :return: _description_
+    :rtype: List
+    """
     labels_ = [0] * len(w)
     n = 0
     i = 0
@@ -213,8 +315,14 @@ def weighted_kmeans(w: np.array, d: np.array,
     return labels_
 
 
-def get_cluster_variance(profiles_: np.array) -> np.array:
-    """Compute the variance of each cluster."""
+def get_cluster_variance(profiles_):
+    """Compute the variance of each cluster.
+
+    :param profiles_: _description_
+    :type profiles_: np.array
+    :return: _description_
+    :rtype: np.array
+    """
     k = len(profiles_)
     vars_ = np.zeros((k), dtype=float)
     for i in range(k):
@@ -222,8 +330,14 @@ def get_cluster_variance(profiles_: np.array) -> np.array:
     return vars_
 
 
-def get_cluster_mean_profile(df_clust: pd.DataFrame) -> np.array:
-    """Compute the mean profile of each cluster."""
+def get_cluster_mean_profile(df_clust):
+    """Compute the mean profile of each cluster.
+
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :return: _description_
+    :rtype: np.array
+    """
     profiles_ = np.zeros((
         df_clust['cluster'].nunique(),
         len(df_clust.columns) - 1), dtype=float)
@@ -235,8 +349,16 @@ def get_cluster_mean_profile(df_clust: pd.DataFrame) -> np.array:
     return profiles_
 
 
-def get_sum_cluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
-    """Compute a matrix of sum of variances of each pair of cluster."""
+def get_sum_cluster_variance(profiles_, vars_):
+    """Compute a matrix of sum of variances of each pair of cluster.
+
+    :param profiles_: _description_
+    :type profiles_: np.array
+    :param vars_: _description_
+    :type vars_: np.array
+    :return: _description_
+    :rtype: np.array
+    """
     k = len(profiles_)
     sum_profiles_matrix = np.full((k, k), -1, dtype=float)
     # for i in range(k):
@@ -259,9 +381,16 @@ def get_sum_cluster_variance(profiles_: np.array, vars_: np.array) -> np.array:
     return sum_profiles_matrix
 
 
-def get_distance_cluster(instance: Instance, cluster_centers_: np.array
-                         ) -> np.array:
-    """Compute the distance between each cluster."""
+def get_distance_cluster(instance, cluster_centers_):
+    """Compute the distance between each cluster.
+
+    :param instance: _description_
+    :type instance: Instance
+    :param cluster_centers_: _description_
+    :type cluster_centers_: np.array
+    :return: _description_
+    :rtype: np.array
+    """
     print('Compute distance between each cluster ...')
     cluster_distance = np.zeros(
         (instance.nb_clusters, instance.nb_clusters), dtype=float)
@@ -275,22 +404,35 @@ def get_distance_cluster(instance: Instance, cluster_centers_: np.array
     return cluster_distance
 
 
-def get_distance_container_cluster(conso_cont: np.array, profile: np.array
-                                   ) -> float:
+def get_distance_container_cluster(conso_cont, profile):
     """
     Compute the distance between the container profile and his cluster's
     mean profile.
+
+    :param conso_cont: _description_
+    :type conso_cont: np.array
+    :param profile: _description_
+    :type profile: np.array
+    :return: _description_
+    :rtype: float
     """
     return np.absolute(profile - conso_cont).mean() / profile.mean()
 
 
 def check_container_deviation(
-        working_df: pd.DataFrame, labels_: List, profiles_: np.array,
-        dict_id_c: Dict) -> None:
-    """Check the deviation of container from its cluster."""
-    # print(profiles_)
-    # print(labels_)
+    working_df, labels_, profiles_, dict_id_c
+):
+    """Check the deviation of container from its cluster.
 
+    :param working_df: _description_
+    :type working_df: pd.DataFrame
+    :param labels_: _description_
+    :type labels_: List
+    :param profiles_: _description_
+    :type profiles_: np.array
+    :param dict_id_c: _description_
+    :type dict_id_c: Dict
+    """
     for c in range(len(labels_)):
         dist = get_distance_container_cluster(
             working_df.loc[
@@ -300,8 +442,14 @@ def check_container_deviation(
             print('Deviation of container ', c, dist)
 
 
-def build_adjacency_matrix(labels_) -> np.array:
-    """Build the adjacency matrix of clustering."""
+def build_adjacency_matrix(labels_):
+    """Build the adjacency matrix of clustering.
+
+    :param labels_: _description_
+    :type labels_: _type_
+    :return: _description_
+    :rtype: np.array
+    """
     u = np.zeros((len(labels_), len(labels_)))
     for (i, j) in combinations(range(len(labels_)), 2):
         if labels_[i] == labels_[j]:
@@ -310,15 +458,30 @@ def build_adjacency_matrix(labels_) -> np.array:
     return u
 
 
-def get_cluster_balance(df_clust: pd.DataFrame):
-    """Display size of each cluster."""
+def get_cluster_balance(df_clust):
+    """Display size of each cluster.
+
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    """
     print('Clustering balance : ',
           df_clust.groupby('cluster').count())
 
 
-def get_far_container(c1: str, c2: str,
-                      df_clust: pd.DataFrame, profiles: np.array) -> str:
-    """Get the farthest container between c1 and c2 compared to profile."""
+def get_far_container(c1, c2, df_clust, profiles):
+    """Get the farthest container between c1 and c2 compared to profile.
+
+    :param c1: _description_
+    :type c1: str
+    :param c2: _description_
+    :type c2: str
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param profiles: _description_
+    :type profiles: np.array
+    :return: _description_
+    :rtype: str
+    """
     if norm(
         df_clust.loc[c1].drop('cluster').values
         - profiles[int(df_clust.loc[c1]['cluster'])]) >= norm(
@@ -329,9 +492,22 @@ def get_far_container(c1: str, c2: str,
         return c2
 
 
-def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: List,
-                      dict_id_c: Dict, tol_open_clust: float) -> Tuple[pd.DataFrame, List, int]:
-    """Adjust the clustering with individuals to move to the closest cluster."""
+def change_clustering(mvg_containers, df_clust, labels_, dict_id_c, tol_open_clust):
+    """Adjust the clustering with individuals to move to the closest cluster.
+
+    :param mvg_containers: _description_
+    :type mvg_containers: List
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param labels_: _description_
+    :type labels_: List
+    :param dict_id_c: _description_
+    :type dict_id_c: Dict
+    :param tol_open_clust: _description_
+    :type tol_open_clust: float
+    :return: _description_
+    :rtype: Tuple[pd.DataFrame, List, int]
+    """
     nb_changes = 0
     df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
     profiles = get_cluster_mean_profile(df_clust_new)
@@ -368,12 +544,20 @@ def change_clustering(mvg_containers: List, df_clust: pd.DataFrame, labels_: Lis
     return (df_clust, labels_, nb_changes)
 
 
-def change_clustering_maxkcut(
-    conflict_graph: nx.Graph,
-    df_clust: pd.DataFrame, labels_: List,
-    dict_id_c: Dict
-) -> Tuple[pd.DataFrame, List, int]:
-    """Change current clustering with max-k-cut on moving containers."""
+def change_clustering_maxkcut(conflict_graph, df_clust, labels_, dict_id_c):
+    """Change current clustering with max-k-cut on moving containers.
+
+    :param conflict_graph: _description_
+    :type conflict_graph: nx.Graph
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param labels_: _description_
+    :type labels_: List
+    :param dict_id_c: _description_
+    :type dict_id_c: Dict
+    :return: _description_
+    :rtype: Tuple[pd.DataFrame, List, int]
+    """
     nb_changes = 0
     df_clust_new = df_clust
     labels_new = labels_
@@ -437,10 +621,18 @@ def change_clustering_maxkcut(
     # return (df_clust_new, labels_new, nb_changes)
 
 
-def eval_clustering(
-    df_clust: pd.DataFrame, w: np.array, dict_id_c: Dict
-) -> Tuple[float, float]:
-    """Evaluate the clustering with ICS and ICD."""
+def eval_clustering(df_clust, w, dict_id_c):
+    """Evaluate the clustering with ICS and ICD.
+
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param w: _description_
+    :type w: np.array
+    :param dict_id_c: _description_
+    :type dict_id_c: Dict
+    :return: _description_
+    :rtype: Tuple[float, float]
+    """
     ics = 0.0
     icd = 0.0
     for (c1_s, c2_s) in combinations(list(df_clust.index.values), 2):
@@ -453,8 +645,16 @@ def eval_clustering(
     return (ics, icd)
 
 
-def get_silhouette(df_clust: pd.DataFrame, labels_: List) -> float:
-    """Get the Silhouette score from clustering."""
+def get_silhouette(df_clust, labels_):
+    """Get the Silhouette score from clustering.
+
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param labels_: _description_
+    :type labels_: List
+    :return: _description_
+    :rtype: float
+    """
     return metrics.silhouette_score(
         df_clust.drop('cluster', axis=1), labels_, metric='euclidean'
     )

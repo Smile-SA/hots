@@ -1,21 +1,28 @@
 """Provide resource allocation related functions to handle this problem."""
 
 import math
-from typing import Dict
 
 import numpy as np
 
-import pandas as pd
-
 from . import init as it
-from .instance import Instance
 from .placement import spread_containers
 from .tools import change_max_dataset
 
 
-def check_constraints(my_instance: Instance,
-                      working_df_indiv: pd.DataFrame, config: Dict) -> bool:
-    """Check if allocation constraints are satisfied or not."""
+def check_constraints(
+    my_instance, working_df_indiv, config
+):
+    """Check if allocation constraints are satisfied or not.
+
+    :param my_instance: The Instance object of the current run
+    :type my_instance: Instance
+    :param working_df_indiv: Dataframe with current window individual data
+    :type working_df_indiv: pd.DataFrame
+    :param config: Current HOTS run parameters
+    :type config: Dict
+    :return: True if all constraints are satisfied, False otherwise
+    :rtype: bool
+    """
     satisfied = False
     print(config)
     print(my_instance.df_host)
@@ -55,8 +62,16 @@ def check_constraints(my_instance: Instance,
 
 # TODO define max by container
 # TODO change alloc only for containers in node > max
-def change_max_bound(my_instance: Instance, config: Dict, min_time: int):
-    """Change max possible resource usage by containers."""
+def change_max_bound(my_instance, config, min_time):
+    """Change max possible resource usage by containers.
+
+    :param my_instance: The Instance object of the current run
+    :type my_instance: Instance
+    :param config: Current HOTS run parameters
+    :type config: Dict
+    :param min_time: T0 of current time window
+    :type min_time: int
+    """
     # max_ok = False
     max_goal = get_abs_goal_load(my_instance, config)
     current_max_by_node = get_max_by_node(my_instance.df_indiv)
@@ -113,8 +128,16 @@ def change_max_bound(my_instance: Instance, config: Dict, min_time: int):
     print('max goal satisfied ? ', is_max_goal_ok(current_max_by_node, max_goal))
 
 
-def change_df_max(my_instance: Instance, c_id: str, max_c: float):
-    """Change the DataFrame (resources values) after changing max."""
+def change_df_max(my_instance, c_id, max_c):
+    """Change the DataFrame (resources values) after changing max.
+
+    :param my_instance: The Instance object of the current run
+    :type my_instance: Instance
+    :param c_id: ID of container to change values
+    :type c_id: str
+    :param max_c: New bound value for c_id data
+    :type max_c: float
+    """
     for time in my_instance.df_indiv[it.tick_field].unique():
         if my_instance.df_indiv.loc[
             (my_instance.df_indiv[it.tick_field] == time) & (
@@ -126,8 +149,14 @@ def change_df_max(my_instance: Instance, c_id: str, max_c: float):
             ] = max_c
 
 
-def get_max_by_node(df_indiv: pd.DataFrame) -> Dict:
-    """Get the max possible usage of every container, by node."""
+def get_max_by_node(df_indiv):
+    """Get the max possible usage of every container, by node.
+
+    :param df_indiv: Dataframe storing individual data
+    :type df_indiv: pd.DataFrame
+    :return: Max container value for each node
+    :rtype: Dict
+    """
     max_by_node = {}
     for node, node_data in df_indiv.groupby(it.host_field):
         node_max = {}
@@ -137,16 +166,30 @@ def get_max_by_node(df_indiv: pd.DataFrame) -> Dict:
     return max_by_node
 
 
-def get_total_max(max_by_node: Dict) -> float:
-    """Get the total amount of max resources."""
+def get_total_max(max_by_node):
+    """Get the total amount of max resources.
+
+    :param max_by_node: Dict object of max container value in each node
+    :type max_by_node: Dict
+    :return: Sum of every container max value from each node
+    :rtype: float
+    """
     total_max = 0.0
     for node in max_by_node.keys():
         total_max += sum(max_by_node[node].values())
     return total_max
 
 
-def is_max_goal_ok(current_max_by_node: Dict, max_goal: float) -> bool:
-    """Check is the max usage objective is satisfied."""
+def is_max_goal_ok(current_max_by_node, max_goal):
+    """Check is the max usage objective is satisfied.
+
+    :param current_max_by_node: Max container value for each node
+    :type current_max_by_node: Dict
+    :param max_goal: Max value objective (not to exceed)
+    :type max_goal: float
+    :return: True if objective is satisfied, False otherwise
+    :rtype: bool
+    """
     for node in current_max_by_node.keys():
         if sum(current_max_by_node[node].values()) > max_goal:
             print('Not ok')
@@ -155,21 +198,47 @@ def is_max_goal_ok(current_max_by_node: Dict, max_goal: float) -> bool:
 
 
 # TODO what if different goal on different nodes ? Dict of nodes goal ?
-def get_abs_goal_load(my_instance: Instance, config: Dict) -> float:
-    """Get the load goal in absolute value."""
+def get_abs_goal_load(my_instance, config):
+    """Get the load goal in absolute value.
+
+    :param my_instance: The Instance object of the current run
+    :type my_instance: Instance
+    :param config: Current HOTS run parameters
+    :type config: Dict
+    :return: Load value to achieve from parameters
+    :rtype: float
+    """
     return config['objective']['target_load_CPU'] * (
         my_instance.df_host_meta[it.metrics[0]].to_numpy()[0]
     )
 
 
 # TODO what if several nodes in goal ?
-def resources_to_remove(max_goal: float, max_by_node: Dict) -> float:
-    """Compute the amount of resources to remove to reach the load goal."""
+def resources_to_remove(max_goal, max_by_node):
+    """Compute the amount of resources to remove to reach the load goal.
+
+    :param max_goal: Load value to achieve from parameters
+    :type max_goal: float
+    :param max_by_node: Max container value for each node
+    :type max_by_node: Dict
+    :return: Value to retrieve for reaching load goal
+    :rtype: float
+    """
     return (get_total_max(max_by_node) - max_goal)
 
 
-def round_decimals_up(number: float, decimals: int = 2):
-    """Return a value rounded up to a specific number of decimal places."""
+def round_decimals_up(number, decimals=2):
+    """Return a value rounded up to a specific number of decimal places.
+
+    :param number: Value to round up
+    :type number: float
+    :param decimals: Wanted numbers after comma, defaults to 2
+    :type decimals: int, optional
+    :raises TypeError: Wrong type for decimals
+    :raises ValueError: Non-positive value for decimals
+    :return: Rounded up value
+    :rtype: float
+    """
     if not isinstance(decimals, int):
         raise TypeError('decimal places must be an integer')
     elif decimals < 0:
@@ -181,8 +250,14 @@ def round_decimals_up(number: float, decimals: int = 2):
     return math.ceil(number * factor) / factor
 
 
-def move_containers(my_instance: Instance, config: Dict):
-    """Move containers in order to satisfy number open nodes target."""
+def move_containers(my_instance, config):
+    """Move containers in order to satisfy number open nodes target.
+
+    :param my_instance: The Instance object of the current run
+    :type my_instance: Instance
+    :param config: Current HOTS run parameters
+    :type config: Dict
+    """
     conso_nodes = np.zeros((
         config['objective']['open_nodes'], my_instance.window_duration))
     spread_containers(

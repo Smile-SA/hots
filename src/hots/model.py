@@ -6,13 +6,8 @@ The optimization model description is based on Pyomo.
 """
 
 from itertools import product as prod
-from typing import Dict, List, Tuple
 
 import networkx as nx
-
-import numpy as np
-
-import pandas as pd
 
 from pyomo import environ as pe
 
@@ -22,7 +17,7 @@ from .clustering import get_far_container
 
 class Model:
     """
-    Class with a very small minimalist use of pyomo (for translation).
+    Class holding the optimization models creation.
 
     Attributes :
     - pb_number : problem type (clustering or placement)
@@ -36,13 +31,33 @@ class Model:
     - sol_v : adjacency matric from current placement solution
     """
 
-    def __init__(self, pb_number: int,
-                 df_indiv: pd.DataFrame, dict_id_c: Dict,
-                 dict_id_n: Dict = None, df_host_meta: pd.DataFrame = None,
-                 nb_clusters: int = None, w: np.array = None, dv: np.array = None,
-                 sol_u: np.array = None, sol_v: np.array = None
-                 ):
-        """Initialize Pyomo model with data in Instance."""
+    def __init__(
+        self, pb_number, df_indiv, dict_id_c, dict_id_n=None, df_host_meta=None, nb_clusters=None,
+        w=None, dv=None, sol_u=None, sol_v=None
+    ):
+        """Initialize Pyomo model with data in Instance.
+
+        :param pb_number: _description_
+        :type pb_number: int
+        :param df_indiv: _description_
+        :type df_indiv: pd.DataFrame
+        :param dict_id_c: _description_
+        :type dict_id_c: Dict
+        :param dict_id_n: _description_, defaults to None
+        :type dict_id_n: Dict, optional
+        :param df_host_meta: _description_, defaults to None
+        :type df_host_meta: pd.DataFrame, optional
+        :param nb_clusters: _description_, defaults to None
+        :type nb_clusters: int, optional
+        :param w: _description_, defaults to None
+        :type w: np.array, optional
+        :param dv: _description_, defaults to None
+        :type dv: np.array, optional
+        :param sol_u: _description_, defaults to None
+        :type sol_u: np.array, optional
+        :param sol_v: _description_, defaults to None
+        :type sol_v: np.array, optional
+        """
         print('Building of pyomo model ...')
 
         # Which problem we build :
@@ -82,7 +97,17 @@ class Model:
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
 
     def build_parameters(self, w, dv, u, v):
-        """Build all Params and Sets."""
+        """Build all Params and Sets.
+
+        :param w: _description_
+        :type w: np.array
+        :param dv: _description_
+        :type dv: np.array
+        :param u: _description_
+        :type u: np.array
+        :param v: _description_
+        :type v: np.array
+        """
         # number of containers
         self.mdl.c = pe.Param(within=pe.NonNegativeIntegers)
         # set of containers
@@ -230,12 +255,18 @@ class Model:
             self.mdl.obj = pe.Objective(
                 rule=min_coloc_cluster_, sense=pe.minimize)
 
-    def create_data(self,
-                    df_indiv, dict_id_c,
-                    df_host_meta,
-                    nb_clusters
-                    ):
-        """Create data from dataframe."""
+    def create_data(self, df_indiv, dict_id_c, df_host_meta, nb_clusters):
+        """Create data from dataframe.
+
+        :param df_indiv: _description_
+        :type df_indiv: _type_
+        :param dict_id_c: _description_
+        :type dict_id_c: _type_
+        :param df_host_meta: _description_
+        :type df_host_meta: _type_
+        :param nb_clusters: _description_
+        :type nb_clusters: _type_
+        """
         if self.pb_number == 1:
             self.data = {None: {
                 'c': {None: df_indiv[it.indiv_field].nunique()},
@@ -265,13 +296,31 @@ class Model:
             }}
 
     def conso_n_t(self, mdl, node, t):
-        """Express the total consumption of node at time t."""
+        """Express the total consumption of node at time t.
+
+        :param mdl: _description_
+        :type mdl: _type_
+        :param node: _description_
+        :type node: _type_
+        :param t: _description_
+        :type t: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         return sum(
             mdl.x[cont, node] * self.cons[cont_c][t]
             for cont, cont_c in zip(mdl.C, mdl.Ccons))
 
     def mean(self, mdl, node):
-        """Express the mean consumption of node."""
+        """Express the mean consumption of node.
+
+        :param mdl: _description_
+        :type mdl: _type_
+        :param node: _description_
+        :type node: _type_
+        :return: _description_
+        :rtype: _type_
+        """
         return (sum(
             self.conso_n_t(node, t) for t in mdl.T
         ) / mdl.t)
@@ -290,8 +339,10 @@ class Model:
     def solve(self, solver='glpk', verbose=False):
         """Solve the model using a specific solver.
 
-        :param str solver: The solver to use to solve the problem.
-        :param boolean verbose: Enable / disable logs during solve process.
+        :param solver: The solver to use to solve the problem.
+        :type solver: str
+        :param verbose: Enable / disable logs during solve process.
+        :type verbose: bool
         """
         opt = pe.SolverFactory(solver)
         opt.solve(self.instance_model, tee=verbose)
@@ -301,32 +352,52 @@ class Model:
 
     # TODO generalize with others constraints than mustlink
     def update_adjacency_clust_constraints(self, u):
-        """Update constraints fixing u variables from new adjacency matrix (clustering)."""
+        """Update constraints fixing u variables from new adjacency matrix (clustering).
+
+        :param u: _description_
+        :type u: _type_
+        """
         self.instance_model.del_component(self.instance_model.must_link_c)
         self.instance_model.del_component(self.instance_model.must_link_c_index)
         self.update_sol_u(u)
         self.add_mustlink_instance()
 
     def update_sol_u(self, u):
-        """Update directly the sol_u param in instance from new u matrix."""
+        """Update directly the sol_u param in instance from new u matrix.
+
+        :param u: _description_
+        :type u: _type_
+        """
         for i, j in prod(range(len(u)), range(len(u[0]))):
             self.instance_model.sol_u[(i, j)] = u[i][j]
 
     # TODO generalize with others constraints than mustlink
     def update_adjacency_place_constraints(self, v):
-        """Update constraints fixing u variables from new adjacency matrix (placement)."""
+        """Update constraints fixing u variables from new adjacency matrix (placement).
+
+        :param v: _description_
+        :type v: _type_
+        """
         self.instance_model.del_component(self.instance_model.must_link_n)
         self.instance_model.del_component(self.instance_model.must_link_n_index)
         self.update_sol_v(v)
         self.add_mustlink_instance()
 
     def update_sol_v(self, v):
-        """Update directly the sol_v param in instance from new v matrix."""
+        """Update directly the sol_v param in instance from new v matrix.
+
+        :param v: _description_
+        :type v: _type_
+        """
         for i, j in prod(range(len(v)), range(len(v[0]))):
             self.instance_model.sol_v[(i, j)] = v[i][j]
 
     def update_obj_clustering(self, w):
-        """Update the objective for clustering with new w matrix."""
+        """Update the objective for clustering with new w matrix.
+
+        :param w: _description_
+        :type w: _type_
+        """
         self.update_w(w)
         self.instance_model.obj = sum([
             self.instance_model.u[(i, j)] * self.instance_model.w[(i, j)] for i, j in prod(
@@ -335,12 +406,20 @@ class Model:
         ])
 
     def update_w(self, w):
-        """Update directly the w param in instance from new w matrix."""
+        """Update directly the w param in instance from new w matrix.
+
+        :param w: _description_
+        :type w: _type_
+        """
         for i, j in prod(range(len(w)), range(len(w[0]))):
             self.instance_model.w[(i, j)] = w[i][j]
 
     def update_obj_place(self, dv):
-        """Update the objective for placement with new dv matrix."""
+        """Update the objective for placement with new dv matrix.
+
+        :param dv: _description_
+        :type dv: _type_
+        """
         self.update_dv(dv)
         self.instance_model.obj = sum([
             self.instance_model.sol_u[(i, j)] * self.instance_model.v[(i, j)] for i, j in prod(
@@ -353,13 +432,21 @@ class Model:
         ])
 
     def update_dv(self, dv):
-        """Update directly the dv param in instance from new dv matrix."""
+        """Update directly the dv param in instance from new dv matrix.
+
+        :param dv: _description_
+        :type dv: _type_
+        """
         for i, j in prod(range(len(dv)), range(len(dv[0]))):
             self.instance_model.dv[(i, j)] = dv[i][j]
 
     # TODO to finish
     def update_instance(self, df_indiv):
-        """Update the model instance from new data."""
+        """Update the model instance from new data.
+
+        :param df_indiv: _description_
+        :type df_indiv: _type_
+        """
         # Clear data and constraints
         for c in self.instance_model.component_objects(pe.Constraint):
             self.instance_model.del_component(c)
@@ -369,44 +456,112 @@ class Model:
 
 
 def clust_assign_(mdl, container):
-    """Express the assignment constraint."""
+    """Express the assignment constraint.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :param container: _description_
+    :type container: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     return sum(mdl.y[container, cluster] for cluster in mdl.K) == 1
 
 
 def capacity_(mdl, node, time):
-    """Express the capacity constraints."""
+    """Express the capacity constraints.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :param node: _description_
+    :type node: _type_
+    :param time: _description_
+    :type time: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     return (sum(
         mdl.x[i, node] * mdl.cons[j, time] for i, j in zip(mdl.C, mdl.Ccons)
     ) <= mdl.cap[node])
 
 
 def open_node_(mdl, container, node):
-    """Express the opening node constraint."""
+    """Express the opening node constraint.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :param container: _description_
+    :type container: _type_
+    :param node: _description_
+    :type node: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     return mdl.x[container, node] <= mdl.a[node]
 
 
 def assignment_(mdl, container):
-    """Express the assignment constraint."""
+    """Express the assignment constraint.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :param container: _description_
+    :type container: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     return sum(mdl.x[container, node] for node in mdl.N) == 1
 
 
 def open_nodes_(mdl):
-    """Express the numbers of open nodes."""
+    """Express the numbers of open nodes.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     return sum(mdl.a[m] for m in mdl.N)
 
 
 def open_cluster_(mdl, container, cluster):
-    """Express the opening cluster constraint."""
+    """Express the opening cluster constraint.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :param container: _description_
+    :type container: _type_
+    :param cluster: _description_
+    :type cluster: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     return mdl.y[container, cluster] <= mdl.b[cluster]
 
 
 def open_clusters_(mdl):
-    """Express the numbers of open clusters."""
+    """Express the numbers of open clusters.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     return sum(mdl.b[k] for k in mdl.K) <= mdl.k
 
 
 def must_link_c_(mdl, i, j):
-    """Express the clustering mustlink constraint."""
+    """Express the clustering mustlink constraint.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :param i: _description_
+    :type i: _type_
+    :param j: _description_
+    :type j: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     uu = mdl.sol_u[(i, j)].value
     if uu == 1:
         return mdl.u[(i, j)] == 1
@@ -415,7 +570,17 @@ def must_link_c_(mdl, i, j):
 
 
 def must_link_n_(mdl, i, j):
-    """Express the placement mustlink constraint."""
+    """Express the placement mustlink constraint.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :param i: _description_
+    :type i: _type_
+    :param j: _description_
+    :type j: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     vv = mdl.sol_v[(i, j)].value
     if vv == 1:
         return mdl.v[(i, j)] == 1
@@ -424,14 +589,26 @@ def must_link_n_(mdl, i, j):
 
 
 def min_dissim_(mdl):
-    """Express the within clusters dissimilarities."""
+    """Express the within clusters dissimilarities.
+
+    :param mdl: _description_
+    :type mdl: _type_
+    :return: _description_
+    :rtype: _type_
+    """
     return sum([
         mdl.u[(i, j)] * mdl.w[(i, j)] for i, j in prod(mdl.C, mdl.C) if i < j
     ])
 
 
-def min_coloc_cluster_(mdl: pe.AbstractModel):
-    """Express the placement minimization objective from clustering."""
+def min_coloc_cluster_(mdl):
+    """Express the placement minimization objective from clustering.
+
+    :param mdl: _description_
+    :type mdl: pe.AbstractModel
+    :return: _description_
+    :rtype: _type_
+    """
     return sum([
         mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in prod(mdl.C, mdl.C) if i < j
     ]) + sum([(
@@ -439,8 +616,14 @@ def min_coloc_cluster_(mdl: pe.AbstractModel):
     ) for i, j in prod(mdl.C, mdl.C) if i < j])
 
 
-def fill_dual_values(my_mdl: Model) -> Dict:
-    """Fill dual values from specific constraints."""
+def fill_dual_values(my_mdl):
+    """Fill dual values from specific constraints.
+
+    :param my_mdl: _description_
+    :type my_mdl: Model
+    :return: _description_
+    :rtype: Dict
+    """
     dual_values = {}
     # TODO generalize with constraints in variables ?
     # Clustering case
@@ -458,10 +641,18 @@ def fill_dual_values(my_mdl: Model) -> Dict:
     return dual_values
 
 
-def get_conflict_graph(
-    my_mdl: Model, constraints_dual_values: Dict, tol: float
-) -> nx.Graph:
-    """Build conflict graph from comapring dual variables."""
+def get_conflict_graph(my_mdl, constraints_dual_values, tol):
+    """Build conflict graph from comapring dual variables.
+
+    :param my_mdl: _description_
+    :type my_mdl: Model
+    :param constraints_dual_values: _description_
+    :type constraints_dual_values: Dict
+    :param tol: _description_
+    :type tol: float
+    :return: _description_
+    :rtype: nx.Graph
+    """
     conflict_graph = nx.Graph()
     if my_mdl.pb_number == 1:
         for index_c in my_mdl.instance_model.must_link_c:
@@ -500,11 +691,30 @@ def get_conflict_graph(
     return conflict_graph
 
 
-def get_moving_containers_clust(my_mdl: Model, constraints_dual_values: Dict,
-                                tol: float, tol_move: float, nb_containers: int,
-                                dict_id_c: Dict, df_clust: pd.DataFrame, profiles: np.array
-                                ) -> Tuple[List, int, int, int, int]:
-    """Get the list of moving containers from constraints dual values."""
+def get_moving_containers_clust(
+    my_mdl, constraints_dual_values, tol, tol_move, nb_containers, dict_id_c, df_clust, profiles
+):
+    """Get the list of moving containers from constraints dual values.
+
+    :param my_mdl: _description_
+    :type my_mdl: Model
+    :param constraints_dual_values: _description_
+    :type constraints_dual_values: Dict
+    :param tol: _description_
+    :type tol: float
+    :param tol_move: _description_
+    :type tol_move: float
+    :param nb_containers: _description_
+    :type nb_containers: int
+    :param dict_id_c: _description_
+    :type dict_id_c: Dict
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param profiles: _description_
+    :type profiles: np.array
+    :return: _description_
+    :rtype: Tuple[List, int, int, int, int]
+    """
     mvg_containers = []
     conflict_graph = get_conflict_graph(my_mdl, constraints_dual_values, tol)
 
@@ -560,11 +770,28 @@ def get_moving_containers_clust(my_mdl: Model, constraints_dual_values: Dict,
 
 # TODO to improve : very low dual values can change easily
 # TODO choose container by most changing profile ?
-def get_moving_containers_place(my_mdl: Model, constraints_dual_values: Dict,
-                                tol: float, tol_move: float, nb_containers: int,
-                                working_df: pd.DataFrame, dict_id_c: Dict
-                                ) -> Tuple[List, int, int, int, int]:
-    """Get the list of moving containers from constraints dual values."""
+def get_moving_containers_place(
+    my_mdl, constraints_dual_values, tol, tol_move, nb_containers, working_df, dict_id_c
+):
+    """Get the list of moving containers from constraints dual values.
+
+    :param my_mdl: _description_
+    :type my_mdl: Model
+    :param constraints_dual_values: _description_
+    :type constraints_dual_values: Dict
+    :param tol: _description_
+    :type tol: float
+    :param tol_move: _description_
+    :type tol_move: float
+    :param nb_containers: _description_
+    :type nb_containers: int
+    :param working_df: _description_
+    :type working_df: pd.DataFrame
+    :param dict_id_c: _description_
+    :type dict_id_c: Dict
+    :return: _description_
+    :rtype: Tuple[List, int, int, int, int]
+    """
     mvg_containers = []
     conflict_graph = get_conflict_graph(my_mdl, constraints_dual_values, tol)
 
@@ -619,8 +846,18 @@ def get_moving_containers_place(my_mdl: Model, constraints_dual_values: Dict,
             max_deg, mean_deg)
 
 
-def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
-    """Get the container we want to move between c1 and c2."""
+def get_container_tomove(c1, c2, working_df):
+    """Get the container we want to move between c1 and c2.
+
+    :param c1: _description_
+    :type c1: int
+    :param c2: _description_
+    :type c2: int
+    :param working_df: _description_
+    :type working_df: pd.DataFrame
+    :return: _description_
+    :rtype: int
+    """
     node = working_df.loc[
         working_df[it.indiv_field] == c1][it.host_field].to_numpy()[0]
     node_data = working_df.loc[
@@ -639,10 +876,18 @@ def get_container_tomove(c1: int, c2: int, working_df: pd.DataFrame) -> int:
         return c2
 
 
-def get_obj_value_host(df_host: pd.DataFrame,
-                       t_min: int = None,
-                       t_max: int = None) -> Tuple[int, float]:
-    """Get objectives value of current solution."""
+def get_obj_value_host(df_host, t_min=None, t_max=None):
+    """Get objectives value of current solution.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param t_min: _description_, defaults to None
+    :type t_min: int, optional
+    :param t_max: _description_, defaults to None
+    :type t_max: int, optional
+    :return: _description_
+    :rtype: Tuple[int, float]
+    """
     t_min = t_min or df_host[it.tick_field].min()
     t_max = t_max or df_host[it.tick_field].max()
     df_host = df_host[
@@ -661,12 +906,18 @@ def get_obj_value_host(df_host: pd.DataFrame,
     return (nb_nodes, c2)
 
 
-def get_obj_value_indivs(
-    df_indiv: pd.DataFrame,
-    t_min: int = None,
-    t_max: int = None
-) -> Tuple[int, float]:
-    """Get objective value of current solution (max delta)."""
+def get_obj_value_indivs(df_indiv, t_min=None, t_max=None):
+    """Get objective value of current solution (max delta).
+
+    :param df_indiv: _description_
+    :type df_indiv: pd.DataFrame
+    :param t_min: _description_, defaults to None
+    :type t_min: int, optional
+    :param t_max: _description_, defaults to None
+    :type t_max: int, optional
+    :return: _description_
+    :rtype: Tuple[int, float]
+    """
     t_min = t_min or df_indiv[it.tick_field].min()
     t_max = t_max or df_indiv[it.tick_field].max()
     df_indiv = df_indiv[

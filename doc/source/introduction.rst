@@ -48,4 +48,4 @@ based on the time :
 - the first part is used to have the first timeseries, on which we perform the clustering
 - the second part is used to *simulate* the *streaming* process, in which we retrieve data, incrementing timestamp, and perform the evaluation described above.
 
-.. todo:: More detailed example
+A precise run description is given in section :ref:`process`.

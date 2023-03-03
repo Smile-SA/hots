@@ -29,7 +29,7 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
-To do...
-========
+.. To do...
+.. ========
 
-.. todolist::
+.. .. todolist::

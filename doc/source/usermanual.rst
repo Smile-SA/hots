@@ -173,5 +173,3 @@ results and new nodes resource usage (based on new allocation) are displayed.
 
 Finally, clustering results, containers and nodes consumptions are plotted and
 updated in time, for the second phase.
-
-.. todo:: Explain what happens and how to read the various figures that raise in new windows.

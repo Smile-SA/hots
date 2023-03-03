@@ -1,5 +1,5 @@
 """
-Entry point of hots module through ``hots --path [OPTIONS]``.
+Entry point of hots module through ``hots path [OPTIONS]``.
 
     - path is the folder where we find the files
         x container_usage.csv : describes container resource consumption
@@ -14,7 +14,6 @@ allocation, evaluation, access to optimization model...).
 import logging
 import math
 import time
-from typing import Dict, List, Tuple
 
 import click
 
@@ -53,7 +52,27 @@ from .instance import Instance
 @click.option('-ea', '--tolplace', required=False, type=str,
               help='Use specific value for epsilonA')
 def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace):
-    """Use method to propose a placement solution for micro-services adjusted in time."""
+    """Use method to propose a placement solution for micro-services adjusted in time.
+
+    :param path: _description_
+    :type path: _type_
+    :param k: _description_
+    :type k: _type_
+    :param tau: _description_
+    :type tau: _type_
+    :param method: _description_
+    :type method: _type_
+    :param cluster_method: _description_
+    :type cluster_method: _type_
+    :param param: _description_
+    :type param: _type_
+    :param output: _description_
+    :type output: _type_
+    :param tolclust: _description_
+    :type tolclust: _type_
+    :param tolplace: _description_
+    :type tolplace: _type_
+    """
     # Initialization part
     main_time = time.time()
 
@@ -171,10 +190,31 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
 
 def preprocess(
-        path: str, k: int, tau: int, method: str, cluster_method: str,
-        param: str, output: str, tolclust: float, tolplace: float
-) -> Tuple[Dict, str, Instance]:
-    """Load configuration, data and initialize needed objects."""
+    path, k, tau, method, cluster_method, param, output, tolclust, tolplace
+):
+    """Load configuration, data and initialize needed objects.
+
+    :param path: _description_
+    :type path: str
+    :param k: _description_
+    :type k: int
+    :param tau: _description_
+    :type tau: int
+    :param method: _description_
+    :type method: str
+    :param cluster_method: _description_
+    :type cluster_method: str
+    :param param: _description_
+    :type param: str
+    :param output: _description_
+    :type output: str
+    :param tolclust: _description_
+    :type tolclust: float
+    :param tolplace: _description_
+    :type tolplace: float
+    :return: _description_
+    :rtype: Tuple[Dict, str, Instance]
+    """
     # TODO what if we want tick < tau ?
     print('Preprocessing ...')
     (config, output_path) = it.read_params(path, k, tau, method, cluster_method, param, output)
@@ -193,8 +233,16 @@ def preprocess(
 
 
 # TODO use Dict instead of List for genericity ?
-def spec_params(config: Dict, list_params: List) -> Dict:
-    """Define specific parameters."""
+def spec_params(config, list_params):
+    """Define specific parameters.
+
+    :param config: _description_
+    :type config: Dict
+    :param list_params: _description_
+    :type list_params: List
+    :return: _description_
+    :rtype: Dict
+    """
     if list_params[0] is not None:
         config['loop']['tol_dual_clust'] = float(list_params[0])
     if list_params[1] is not None:
@@ -202,10 +250,18 @@ def spec_params(config: Dict, list_params: List) -> Dict:
     return config
 
 
-def analysis_period(
-    my_instance: Instance, config: Dict, method: str,
-) -> Tuple[Instance, pd.DataFrame, pd.DataFrame, List]:
-    """Perform all needed process during analysis period (T_init)."""
+def analysis_period(my_instance, config, method):
+    """Perform all needed process during analysis period (T_init).
+
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param config: _description_
+    :type config: Dict
+    :param method: _description_
+    :type method: str
+    :return: _description_
+    :rtype: Tuple[Instance, pd.DataFrame, pd.DataFrame, List]
+    """
     df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
     df_indiv_clust = pd.DataFrame()
     labels_ = []
@@ -301,11 +357,29 @@ def analysis_period(
 
 
 def run_period(
-    my_instance: Instance, df_host_evo: pd.DataFrame,
-    df_indiv_clust: pd.DataFrame, labels_: List,
-    config: Dict, output_path: str, method: str, cluster_method: str
-) -> Tuple[pd.DataFrame, int]:
-    """Perform all needed process during evaluation period."""
+    my_instance, df_host_evo, df_indiv_clust, labels_, config, output_path, method, cluster_method
+):
+    """Perform all needed process during evaluation period.
+
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param df_host_evo: _description_
+    :type df_host_evo: pd.DataFrame
+    :param df_indiv_clust: _description_
+    :type df_indiv_clust: pd.DataFrame
+    :param labels_: _description_
+    :type labels_: List
+    :param config: _description_
+    :type config: Dict
+    :param output_path: _description_
+    :type output_path: str
+    :param method: _description_
+    :type method: str
+    :param cluster_method: _description_
+    :type cluster_method: str
+    :return: _description_
+    :rtype: Tuple[pd.DataFrame, int]
+    """
     nb_overloads = 0
     # Loops for evaluation
     if method in ['loop']:
@@ -351,14 +425,46 @@ def run_period(
     return (df_host_evo, nb_overloads)
 
 
-def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
-                   labels_: List, mode: str, tick: int,
-                   constraints_dual: List,
-                   tol_clust: float, tol_move_clust: float, tol_open_clust: float,
-                   tol_place: float, tol_move_place: float, tol_step: float,
-                   cluster_method: str, solver: str, df_host_evo: pd.DataFrame
-                   ) -> Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]:
-    """Define the streaming process for evaluation."""
+def streaming_eval(
+    my_instance, df_indiv_clust, labels_, mode, tick, constraints_dual,
+    tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place, tol_step,
+    cluster_method, solver, df_host_evo
+):
+    """Define the streaming process for evaluation.
+
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param df_indiv_clust: _description_
+    :type df_indiv_clust: pd.DataFrame
+    :param labels_: _description_
+    :type labels_: List
+    :param mode: _description_
+    :type mode: str
+    :param tick: _description_
+    :type tick: int
+    :param constraints_dual: _description_
+    :type constraints_dual: List
+    :param tol_clust: _description_
+    :type tol_clust: float
+    :param tol_move_clust: _description_
+    :type tol_move_clust: float
+    :param tol_open_clust: _description_
+    :type tol_open_clust: float
+    :param tol_place: _description_
+    :type tol_place: float
+    :param tol_move_place: _description_
+    :type tol_move_place: float
+    :param tol_step: _description_
+    :type tol_step: float
+    :param cluster_method: _description_
+    :type cluster_method: str
+    :param solver: _description_
+    :type solver: str
+    :param df_host_evo: _description_
+    :type df_host_evo: pd.DataFrame
+    :return: _description_
+    :rtype: Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]
+    """
     fig_node, ax_node = plot.init_nodes_plot(
         my_instance.df_indiv, my_instance.dict_id_n, my_instance.sep_time,
         my_instance.df_host_meta[it.metrics[0]].max()
@@ -570,10 +676,41 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
 
 
 def progress_time_noloop(
-        instance: Instance, fixing: str, tmin: int, tmax: int, labels_, loop_nb,
-        constraints_dual, clustering_dual_values, placement_dual_values,
-        tol_clust, tol_move_clust, tol_place, tol_move_place) -> Tuple[pd.DataFrame, int]:
-    """We progress in time without performing the loop, checking node capacities."""
+    instance, fixing, tmin, tmax, labels_, loop_nb,
+    constraints_dual, clustering_dual_values, placement_dual_values,
+    tol_clust, tol_move_clust, tol_place, tol_move_place
+):
+    """We progress in time without performing the loop, checking node capacities.
+
+    :param instance: _description_
+    :type instance: Instance
+    :param fixing: _description_
+    :type fixing: str
+    :param tmin: _description_
+    :type tmin: int
+    :param tmax: _description_
+    :type tmax: int
+    :param labels_: _description_
+    :type labels_: _type_
+    :param loop_nb: _description_
+    :type loop_nb: _type_
+    :param constraints_dual: _description_
+    :type constraints_dual: _type_
+    :param clustering_dual_values: _description_
+    :type clustering_dual_values: _type_
+    :param placement_dual_values: _description_
+    :type placement_dual_values: _type_
+    :param tol_clust: _description_
+    :type tol_clust: _type_
+    :param tol_move_clust: _description_
+    :type tol_move_clust: _type_
+    :param tol_place: _description_
+    :type tol_place: _type_
+    :param tol_move_place: _description_
+    :type tol_move_place: _type_
+    :return: _description_
+    :rtype: Tuple[pd.DataFrame, int]
+    """
     df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
     nb_overload = 0
     nb_clust_changes = 0
@@ -633,11 +770,31 @@ def progress_time_noloop(
 
 
 def pre_loop(
-    my_instance: Instance, working_df_indiv: pd.DataFrame,
-    df_clust: pd.DataFrame, w: np.array, u: np.array,
-    constraints_dual: List, v: np.array, cluster_method: str, solver: str
-) -> Tuple[mdl.Model, mdl.Model, Dict, Dict]:
-    """Build optimization problems and solve them with T_init solutions."""
+    my_instance, working_df_indiv, df_clust, w, u, constraints_dual, v, cluster_method, solver
+):
+    """Build optimization problems and solve them with T_init solutions.
+
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param working_df_indiv: _description_
+    :type working_df_indiv: pd.DataFrame
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param w: _description_
+    :type w: np.array
+    :param u: _description_
+    :type u: np.array
+    :param constraints_dual: _description_
+    :type constraints_dual: List
+    :param v: _description_
+    :type v: np.array
+    :param cluster_method: _description_
+    :type cluster_method: str
+    :param solver: _description_
+    :type solver: str
+    :return: _description_
+    :rtype: Tuple[mdl.Model, mdl.Model, Dict, Dict]
+    """
     logging.info('Evaluation of problems with initial solutions')
     print('Building clustering model ...')
     start = time.time()
@@ -705,10 +862,20 @@ def pre_loop(
             clustering_dual_values, placement_dual_values)
 
 
-def build_matrices(
-    my_instance: Instance, tmin: int, tmax: int, labels_: List
-) -> Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array]:
-    """Build period dataframe and matrices to be used."""
+def build_matrices(my_instance, tmin, tmax, labels_):
+    """Build period dataframe and matrices to be used.
+
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param tmin: _description_
+    :type tmin: int
+    :param tmax: _description_
+    :type tmax: int
+    :param labels_: _description_
+    :type labels_: List
+    :return: _description_
+    :rtype: Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array]
+    """
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
          df_indiv[it.tick_field] >= tmin) & (
@@ -725,16 +892,12 @@ def build_matrices(
 
 
 def eval_sols(
-        my_instance: Instance, working_df_indiv: pd.DataFrame,
-        cluster_method: str, w: np.array, u, v, clust_model, place_model,
+        my_instance, working_df_indiv,
+        cluster_method, w, u, v, clust_model, place_model,
         constraints_dual, clustering_dual_values, placement_dual_values,
         tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
         df_clust, cluster_profiles, labels_, loop_nb, solver
-) -> Tuple[
-    int, int, float, float, int, int, float, float,
-    int, int, float, float, mdl.Model, mdl.Model,
-    Dict, Dict, pd.DataFrame, np.array, List
-]:
+):
     """Evaluate clustering and placement solutions."""
     # evaluate clustering
     start = time.time()
@@ -809,13 +972,44 @@ def eval_sols(
 
 
 # TODO update return type
-def eval_clustering(my_instance: Instance,
-                    w: np.array, u: np.array, clust_model,
-                    clustering_dual_values: Dict, constraints_dual: Dict,
-                    tol_clust: float, tol_move_clust: float, tol_open_clust: float,
-                    df_clust: pd.DataFrame, cluster_profiles: np.array, labels_: List,
-                    loop_nb, solver) -> Tuple:
-    """Evaluate current clustering solution and update it if needed."""
+def eval_clustering(
+    my_instance, w, u, clust_model, clustering_dual_values, constraints_dual,
+    tol_clust, tol_move_clust, tol_open_clust,
+    df_clust, cluster_profiles, labels_, loop_nb, solver
+):
+    """Evaluate current clustering solution and update it if needed.
+
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param w: _description_
+    :type w: np.array
+    :param u: _description_
+    :type u: np.array
+    :param clust_model: _description_
+    :type clust_model: _type_
+    :param clustering_dual_values: _description_
+    :type clustering_dual_values: Dict
+    :param constraints_dual: _description_
+    :type constraints_dual: Dict
+    :param tol_clust: _description_
+    :type tol_clust: float
+    :param tol_move_clust: _description_
+    :type tol_move_clust: float
+    :param tol_open_clust: _description_
+    :type tol_open_clust: float
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param cluster_profiles: _description_
+    :type cluster_profiles: np.array
+    :param labels_: _description_
+    :type labels_: List
+    :param loop_nb: _description_
+    :type loop_nb: _type_
+    :param solver: _description_
+    :type solver: _type_
+    :return: _description_
+    :rtype: Tuple
+    """
     nb_clust_changes_loop = 0
     logging.info('# Clustering evaluation #')
 
@@ -882,12 +1076,44 @@ def eval_clustering(my_instance: Instance,
             clust_max_deg, clust_mean_deg)
 
 
-def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
-                   w: np.array, u: np.array, v: np.array, dv: np.array,
-                   placement_dual_values: Dict, constraints_dual: Dict, place_model,
-                   tol_place: float, tol_move_place: float,
-                   nb_clust_changes_loop: int, loop_nb, solver: str) -> Tuple:
-    """Evaluate current clustering solution and update it if needed."""
+def eval_placement(
+    my_instance, working_df_indiv, w, u, v, dv,
+    placement_dual_values, constraints_dual, place_model, tol_place, tol_move_place,
+    nb_clust_changes_loop, loop_nb, solver
+):
+    """Evaluate current clustering solution and update it if needed.
+
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param working_df_indiv: _description_
+    :type working_df_indiv: pd.DataFrame
+    :param w: _description_
+    :type w: np.array
+    :param u: _description_
+    :type u: np.array
+    :param v: _description_
+    :type v: np.array
+    :param dv: _description_
+    :type dv: np.array
+    :param placement_dual_values: _description_
+    :type placement_dual_values: Dict
+    :param constraints_dual: _description_
+    :type constraints_dual: Dict
+    :param place_model: _description_
+    :type place_model: _type_
+    :param tol_place: _description_
+    :type tol_place: float
+    :param tol_move_place: _description_
+    :type tol_move_place: float
+    :param nb_clust_changes_loop: _description_
+    :type nb_clust_changes_loop: int
+    :param loop_nb: _description_
+    :type loop_nb: _type_
+    :param solver: _description_
+    :type solver: str
+    :return: _description_
+    :rtype: Tuple
+    """
     logging.info('# Placement evaluation #')
 
     start = time.time()
@@ -948,9 +1174,18 @@ def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
             place_max_deg, place_mean_deg)
 
 
-def loop_kmeans(my_instance: Instance,
-                df_clust: pd.DataFrame, labels_: List) -> Tuple:
-    """Update clustering via kmeans from scratch."""
+def loop_kmeans(my_instance, df_clust, labels_):
+    """Update clustering via kmeans from scratch.
+
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param labels_: _description_
+    :type labels_: List
+    :return: _description_
+    :rtype: Tuple
+    """
     logging.info('# Clustering via k-means from scratch #')
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 
@@ -978,9 +1213,18 @@ def loop_kmeans(my_instance: Instance,
             {}, None, 0, 0, 0, 0)
 
 
-def stream_km(my_instance: Instance,
-              df_clust: pd.DataFrame, labels_: List) -> Tuple:
-    """Update clustering via kmeans from scratch."""
+def stream_km(my_instance, df_clust, labels_):
+    """Update clustering via kmeans from scratch.
+
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param labels_: _description_
+    :type labels_: List
+    :return: _description_
+    :rtype: Tuple
+    """
     logging.info('# Clustering via streamkm #')
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 
@@ -1010,11 +1254,31 @@ def stream_km(my_instance: Instance,
             {}, None, 0, 0, 0, 0)
 
 
-def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
-             nb_clust_changes: int, nb_place_changes: int, nb_overload: int,
-             total_loop_time: float, loop_nb: int, df_host_evo: pd.DataFrame
-             ) -> pd.DataFrame:
-    """Perform all stuffs after last loop."""
+def end_loop(
+    working_df_indiv, tmin, nb_clust_changes, nb_place_changes, nb_overload,
+    total_loop_time, loop_nb, df_host_evo
+):
+    """Perform all stuffs after last loop.
+
+    :param working_df_indiv: _description_
+    :type working_df_indiv: pd.DataFrame
+    :param tmin: _description_
+    :type tmin: int
+    :param nb_clust_changes: _description_
+    :type nb_clust_changes: int
+    :param nb_place_changes: _description_
+    :type nb_place_changes: int
+    :param nb_overload: _description_
+    :type nb_overload: int
+    :param total_loop_time: _description_
+    :type total_loop_time: float
+    :param loop_nb: _description_
+    :type loop_nb: int
+    :param df_host_evo: _description_
+    :type df_host_evo: pd.DataFrame
+    :return: _description_
+    :rtype: pd.DataFrame
+    """
     working_df_host = working_df_indiv.groupby(
         [working_df_indiv[it.tick_field], it.host_field],
         as_index=False).agg(it.dict_agg_metrics)
@@ -1044,8 +1308,16 @@ def end_loop(working_df_indiv: pd.DataFrame, tmin: int,
     return df_host_evo
 
 
-def add_time(loop_nb: int, action: str, time: float):
-    """Add an action time in times dataframe."""
+def add_time(loop_nb, action, time):
+    """Add an action time in times dataframe.
+
+    :param loop_nb: _description_
+    :type loop_nb: int
+    :param action: _description_
+    :type action: str
+    :param time: _description_
+    :type time: float
+    """
     it.times_df = pd.concat(
         [
             it.times_df,

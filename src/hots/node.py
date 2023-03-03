@@ -4,7 +4,6 @@ for node IDs, compute different statistic measures ...)
 """
 
 import math
-from typing import Dict, List, Tuple
 
 from matplotlib import gridspec as gridspec
 from matplotlib import pyplot as plt
@@ -20,10 +19,20 @@ from . import init as it
 # Definition of Node-related functions #
 
 
-def plot_data_all_nodes(
-    df_host: pd.DataFrame, metric: str, max_cap, sep_time
-) -> plt.Figure:
-    """Plot specific metric consumption for all nodes."""
+def plot_data_all_nodes(df_host, metric, max_cap, sep_time):
+    """Plot specific metric consumption for all nodes.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param metric: _description_
+    :type metric: str
+    :param max_cap: _description_
+    :type max_cap: float
+    :param sep_time: _description_
+    :type sep_time: int
+    :return: _description_
+    :rtype: plt.Figure
+    """
     # TODO create temp df is bad...
     fig, ax = plt.subplots()
     # temp_df = df_host.reset_index(drop=True)
@@ -38,8 +47,14 @@ def plot_data_all_nodes(
     return fig
 
 
-def plot_all_data_all_nodes_end(df_host: pd.DataFrame, total_time: int):
-    """Plot all metrics consumption for all nodes."""
+def plot_all_data_all_nodes_end(df_host, total_time):
+    """Plot all metrics consumption for all nodes.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param total_time: _description_
+    :type total_time: int
+    """
     fig = plt.figure()
     gs = gridspec.GridSpec(len(it.metrics), 1)
     filtered_df = df_host.loc[
@@ -62,12 +77,16 @@ def plot_all_data_all_nodes_end(df_host: pd.DataFrame, total_time: int):
     plt.draw()
 
 
-def plot_total_usage(df_host: pd.DataFrame,
-                     title: str = 'Total conso on all nodes'
-                     ) -> Tuple[float, float]:
-    """
-    Plot the global resources consumption and return the global
+def plot_total_usage(df_host, title='Total conso on all nodes'):
+    """Plot the global resources consumption and return the global
     maximum usage for each metric.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param title: _description_, defaults to 'Total conso on all nodes'
+    :type title: str, optional
+    :return: _description_
+    :rtype: Tuple[float, float]
     """
     temp_df = df_host.reset_index(level=it.host_field, drop=True)
     usage_all_nodes = pd.DataFrame(
@@ -96,8 +115,12 @@ def plot_total_usage(df_host: pd.DataFrame,
             usage_all_nodes.loc['mem', :].max())
 
 
-def get_mean_consumption(df_host: pd.DataFrame):
-    """Compute mean consumption for each metric in each node and globally."""
+def get_mean_consumption(df_host):
+    """Compute mean consumption for each metric in each node and globally.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    """
     for metric in it.metrics:
         global_mean = 0.0
         print('Mean ', metric)
@@ -107,8 +130,16 @@ def get_mean_consumption(df_host: pd.DataFrame):
             global_mean / df_host[it.tick_field].nunique()))
 
 
-def get_list_mean(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
-    """Return list of mean for each metric in each node."""
+def get_list_mean(df_host, total_time):
+    """Return list of mean for each metric in each node.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param total_time: _description_
+    :type total_time: int
+    :return: _description_
+    :rtype: Tuple[Dict, Dict]
+    """
     dict_mean_cpu = {}
     dict_mean_mem = {}
 
@@ -119,8 +150,16 @@ def get_list_mean(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
     return (dict_mean_cpu, dict_mean_mem)
 
 
-def get_list_var(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
-    """Return list of variance for each metric in each node."""
+def get_list_var(df_host, total_time):
+    """Return list of variance for each metric in each node.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param total_time: _description_
+    :type total_time: int
+    :return: _description_
+    :rtype: Tuple[Dict, Dict]
+    """
     dict_var_cpu = {}
     dict_var_mem = {}
 
@@ -131,10 +170,12 @@ def get_list_var(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
     return (dict_var_cpu, dict_var_mem)
 
 
-def get_variance_consumption(df_host: pd.DataFrame):
-    """
-    Compute the variance and standard deviation consumption for each metric
+def get_variance_consumption(df_host):
+    """Compute the variance and standard deviation consumption for each metric
     in each node and globally.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
     """
     for metric in it.metrics:
         global_variance = 0.0
@@ -150,8 +191,16 @@ def get_variance_consumption(df_host: pd.DataFrame):
               float(global_stand_deviation / df_host.machine_id.nunique()))
 
 
-def print_vmr(df_host: pd.DataFrame, total_time: int, part: int):
-    """Compute VMR (Variance-to-mean ratio) for each metric in each node."""
+def print_vmr(df_host, total_time, part):
+    """Compute VMR (Variance-to-mean ratio) for each metric in each node.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param total_time: _description_
+    :type total_time: int
+    :param part: _description_
+    :type part: int
+    """
     for metric in it.metrics:
         global_mean = 0.0
         global_var = 0.0
@@ -181,8 +230,16 @@ def print_vmr(df_host: pd.DataFrame, total_time: int, part: int):
             global_vmr / df_host.machine_id.nunique()))
 
 
-def get_list_vmr(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
-    """Return list of VMR (Variance-to-Mean Ratio) each metric each node."""
+def get_list_vmr(df_host, total_time):
+    """Compute VMR (Variance-to-mean ratio) for each metric in each node.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param total_time: _description_
+    :type total_time: int
+    :return: _description_
+    :rtype: Tuple[Dict, Dict]
+    """
     dict_vmr_cpu = {}
     dict_vmr_mem = {}
 
@@ -197,12 +254,18 @@ def get_list_vmr(df_host: pd.DataFrame, total_time: int) -> Tuple[Dict, Dict]:
     return (dict_vmr_cpu, dict_vmr_mem)
 
 
-def get_nodes_variance(
-    df_host: pd.DataFrame, total_time: int, part: int
-) -> Tuple[np.array, np.array]:
-    """
-    Compute the Variance for each metric in each node and return the results
+def get_nodes_variance(df_host, total_time, part):
+    """Compute the Variance for each metric in each node and return the results
     in two numpy arrays.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param total_time: _description_
+    :type total_time: int
+    :param part: _description_
+    :type part: int
+    :return: _description_
+    :rtype: Tuple[np.array, np.array]
     """
     var = np.zeros(
         (len(it.metrics), df_host[it.host_field].nunique()), dtype=float)
@@ -224,8 +287,14 @@ def get_nodes_variance(
     return (var, global_var)
 
 
-def build_dict_id_nodes(df_host: pd.DataFrame) -> Dict:
-    """Build dictionnary for corresponding IDs and indexes."""
+def build_dict_id_nodes(df_host):
+    """Build dictionnary for corresponding IDs and indexes.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :return: _description_
+    :rtype: Dict
+    """
     dict_id_n = {}
     i = 0
     for key in df_host[it.host_field].unique():
@@ -235,8 +304,12 @@ def build_dict_id_nodes(df_host: pd.DataFrame) -> Dict:
     return dict_id_n
 
 
-def plot_all_data_all_nodes(df_host: pd.DataFrame):
-    """Plot all metrics node consumption."""
+def plot_all_data_all_nodes(df_host):
+    """Plot all metrics node consumption.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    """
     print('Build nodes usage plot ...')
     fig = plt.figure()
     fig.suptitle('Resource usage on all nodes')
@@ -258,16 +331,32 @@ def plot_all_data_all_nodes(df_host: pd.DataFrame):
     plt.draw()
 
 
-def get_mean_consumption_node(df_host: pd.DataFrame, node_id: str) -> float:
-    """Get mean consumption of node_id."""
+def get_mean_consumption_node(df_host, node_id):
+    """Get mean consumption of node_id.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param node_id: _description_
+    :type node_id: str
+    :return: _description_
+    :rtype: float
+    """
     return np.mean(
         df_host.loc[
             df_host[it.host_field] == node_id, ['cpu']].to_numpy()
     )
 
 
-def get_nodes_load_info(df_host: pd.DataFrame, df_host_meta: pd.DataFrame) -> pd.DataFrame:
-    """Get all wanted node information in a dataframe."""
+def get_nodes_load_info(df_host, df_host_meta):
+    """Get all wanted node information in a dataframe.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param df_host_meta: _description_
+    :type df_host_meta: pd.DataFrame
+    :return: _description_
+    :rtype: pd.DataFrame
+    """
     results_df = pd.DataFrame(
         columns=[it.host_field, 'load_var', 'avg_load', 'min_load', 'max_load'])
     metric = it.metrics[0]
@@ -294,8 +383,16 @@ def get_nodes_load_info(df_host: pd.DataFrame, df_host_meta: pd.DataFrame) -> pd
     return results_df
 
 
-def check_capacities(df_host: pd.DataFrame, df_host_meta: pd.DataFrame) -> List:
-    """Check if node capacities are satisfied at a given time."""
+def check_capacities(df_host, df_host_meta):
+    """Check if node capacities are satisfied at a given time.
+
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param df_host_meta: _description_
+    :type df_host_meta: pd.DataFrame
+    :return: _description_
+    :rtype: List
+    """
     host_overload = []
 
     for host, host_data in df_host.groupby(it.host_field):

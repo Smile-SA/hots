@@ -4,7 +4,6 @@ parameters. Provide Instance-related methods.
 """
 
 import math
-from typing import Dict
 
 from . import init as it
 from . import node as nd
@@ -13,26 +12,33 @@ from . import node as nd
 class Instance:
     """Description of a problem instance.
 
-    Attributes:
-        time: total time of dataset
-        sep_time: time separating analysis and evaluation period
-        window_duration: duration of time window for clustering
-        nb_nodes: TODO: explain this data
-        nb_containers: TODO: explain this data
-        nb_clusters: TODO: explain this data
-        df_indiv: TODO: explain this data
-        df_host: TODO: explain this data
-        df_host_meta: TODO: explain this data
-        dict_id_n: TODO: explain this data
-        dict_id_c: TODO: explain this data
+    :param df_indiv: _description_
+    :type df_indiv: pd.DataFrame
+    :param df_host: _description_
+    :type df_host: pd.DataFrame
+    :param df_host_meta: _description_
+    :type df_host_meta: pd.DataFrame
+    :param time: _description_
+    :type time: int
+    :param nb_nodes: _description_
+    :type nb_nodes: int
+    :param nb_containers: _description_
+    :type nb_containers: int
+    :param nb_clusters: _description_
+    :type nb_clusters: int
+    :param dict_id_n: _description_
+    :type dict_id_n: Dict
+    :param dict_id_c: _description_
+    :type dict_id_c: Dict
     """
 
-    def __init__(self, path: str, config: Dict):
-        """Instance initialization
+    def __init__(self, path, config):
+        """Instance constructor
 
-        Args:
-            path: Filesystem path to the input files
-            config: Configuration dict from config file
+        :param path: Filesystem path to the input files
+        :type path: str
+        :param config: Configuration dict from config file
+        :type config: Dict
         """
         (self.df_indiv,
          self.df_host,
@@ -81,15 +87,23 @@ class Instance:
                                         (self.window_duration / self.time)),
                                     '\n'])
 
-    def print_times(self, tick: int):
-        """Print time informations."""
+    def print_times(self, tick):
+        """Print time informations.
+
+        :param tick: _description_
+        :type tick: int
+        """
         print('Total time : ', self.time)
         print('Window duration : ', self.window_duration)
         print('Separation time : ', self.sep_time)
         print('Ticks : ', tick)
 
-    def percentage_to_timestamp(self, config: Dict):
-        """Transform percentage config time to timestamp."""
+    def percentage_to_timestamp(self, config):
+        """Transform percentage config time to timestamp.
+
+        :param config: _description_
+        :type config: Dict
+        """
         # TODO consider 'tick' param as absolute, not percent ?
         self.window_duration = math.floor(
             self.time * int(config['analysis']['window_duration']) / 100
@@ -114,8 +128,14 @@ class Instance:
         # if self.window_duration == config['loop']['tick']:
         #     self.window_duration += 1
 
-    def get_node_from_container(self, container_id: str) -> str:
-        """Get node ID from container ID."""
+    def get_node_from_container(self, container_id):
+        """Get node ID from container ID.
+
+        :param container_id: _description_
+        :type container_id: str
+        :return: _description_
+        :rtype: str
+        """
         return (self.df_indiv.loc[
             self.df_indiv[it.indiv_field] == container_id
         ][it.host_field].to_numpy()[0])

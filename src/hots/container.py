@@ -4,7 +4,6 @@ build dictionnary for container IDs ...)
 """
 
 from itertools import combinations
-from typing import Dict, List
 
 from matplotlib import gridspec as gridspec
 from matplotlib import pyplot as plt
@@ -17,13 +16,18 @@ import plotly.express as px
 
 from . import init as it
 from . import plot
-from .instance import Instance
 
 # Definition of Container-related functions #
 
 
-def plot_data_all_containers(df_indiv: pd.DataFrame, metric: str):
-    """Plot a specific metric containers consumption."""
+def plot_data_all_containers(df_indiv, metric):
+    """Plot a specific metric containers consumption.
+
+    :param df_indiv: _description_
+    :type df_indiv: pd.DataFrame
+    :param metric: _description_
+    :type metric: str
+    """
     fig, ax = plt.subplots()
     temp_df = df_indiv.reset_index(drop=True)
     pvt = pd.pivot_table(temp_df, columns=it.indiv_field,
@@ -33,10 +37,16 @@ def plot_data_all_containers(df_indiv: pd.DataFrame, metric: str):
     plt.draw()
 
 
-def plot_all_data_all_containers_px(
-        df_indiv: pd.DataFrame,
-        sep_time: int, metrics: List[str] = None):
-    """Plot all metrics containers consumption."""
+def plot_all_data_all_containers_px(df_indiv, sep_time, metrics=None):
+    """Plot all metrics containers consumption.
+
+    :param df_indiv: _description_
+    :type df_indiv: pd.DataFrame
+    :param sep_time: _description_
+    :type sep_time: int
+    :param metrics: _description_, defaults to None
+    :type metrics: List[str], optional
+    """
     # TODO several metrics ?
     # TODO line_shape in params
     metrics = metrics or it.metrics
@@ -49,10 +59,18 @@ def plot_all_data_all_containers_px(
     fig.show(it.renderer)
 
 
-def plot_all_data_all_containers(
-        df_indiv: pd.DataFrame,
-        sep_time: int, metrics: List[str] = None) -> plt.Figure:
-    """Plot all metrics containers consumption."""
+def plot_all_data_all_containers(df_indiv, sep_time, metrics=None):
+    """Plot all metrics containers consumption.
+
+    :param df_indiv: _description_
+    :type df_indiv: pd.DataFrame
+    :param sep_time: _description_
+    :type sep_time: int
+    :param metrics: _description_, defaults to None
+    :type metrics: List[str], optional
+    :return: _description_
+    :rtype: plt.Figure
+    """
     # TODO several metrics ?
     plt.style.use('bmh')
     metrics = metrics or it.metrics
@@ -79,8 +97,14 @@ def plot_all_data_all_containers(
     return fig
 
 
-def build_dict_id_containers(df_indiv: pd.DataFrame) -> Dict:
-    """Build dictionnary for corresponding IDs and indexes."""
+def build_dict_id_containers(df_indiv):
+    """Build dictionnary for corresponding IDs and indexes.
+
+    :param df_indiv: _description_
+    :type df_indiv: pd.DataFrame
+    :return: _description_
+    :rtype: Dict
+    """
     dict_id_c = {}
     i = 0
     for key in df_indiv.container_id.unique():
@@ -90,8 +114,16 @@ def build_dict_id_containers(df_indiv: pd.DataFrame) -> Dict:
     return dict_id_c
 
 
-def build_var_delta_matrix(df_indiv: pd.DataFrame, dict_id_c) -> np.array:
-    """Build variance of deltas matrix."""
+def build_var_delta_matrix(df_indiv, dict_id_c):
+    """Build variance of deltas matrix.
+
+    :param df_indiv: _description_
+    :type df_indiv: pd.DataFrame
+    :param dict_id_c: _description_
+    :type dict_id_c: _type_
+    :return: _description_
+    :rtype: np.array
+    """
     c = df_indiv[it.indiv_field].nunique()
     vars_matrix = np.zeros((c, c), dtype=float)
 
@@ -107,9 +139,18 @@ def build_var_delta_matrix(df_indiv: pd.DataFrame, dict_id_c) -> np.array:
     return vars_matrix
 
 
-def build_var_delta_matrix_cluster(
-        df_clust: pd.DataFrame, cluster_var_matrix: np.array, dict_id_c: Dict) -> np.array:
-    """Build variance of deltas matrix from cluster."""
+def build_var_delta_matrix_cluster(df_clust, cluster_var_matrix, dict_id_c):
+    """Build variance of deltas matrix from cluster.
+
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param cluster_var_matrix: _description_
+    :type cluster_var_matrix: np.array
+    :param dict_id_c: _description_
+    :type dict_id_c: Dict
+    :return: _description_
+    :rtype: np.array
+    """
     c = len(df_clust)
     vars_matrix = np.zeros((c, c), dtype=float)
 
@@ -122,9 +163,18 @@ def build_var_delta_matrix_cluster(
     return vars_matrix
 
 
-def build_vars_matrix_indivs(
-        df_clust: pd.DataFrame, vars_: np.array, dict_id_c: Dict) -> np.array:
-    """Build containers matrix with clusters variance."""
+def build_vars_matrix_indivs(df_clust, vars_, dict_id_c):
+    """Build containers matrix with clusters variance.
+
+    :param df_clust: _description_
+    :type df_clust: pd.DataFrame
+    :param vars_: _description_
+    :type vars_: np.array
+    :param dict_id_c: _description_
+    :type dict_id_c: Dict
+    :return: _description_
+    :rtype: np.array
+    """
     c = len(df_clust)
     vars_matrix = np.zeros((c, c), dtype=float)
     for (c1_s, c2_s) in combinations(list(df_clust.index.values), 2):
@@ -137,10 +187,20 @@ def build_vars_matrix_indivs(
     return vars_matrix
 
 
-def show_specific_containers(working_df_indiv: pd.DataFrame,
-                             df_indiv_clust: pd.DataFrame,
-                             my_instance: Instance, labels_: List):
-    """Show specific (user input) containers."""
+def show_specific_containers(
+    working_df_indiv, df_indiv_clust, my_instance, labels_
+):
+    """Show specific (user input) containers.
+
+    :param working_df_indiv: _description_
+    :type working_df_indiv: pd.DataFrame
+    :param df_indiv_clust: _description_
+    :type df_indiv_clust: pd.DataFrame
+    :param my_instance: _description_
+    :type my_instance: Instance
+    :param labels_: _description_
+    :type labels_: List
+    """
     print('Enter list of containers to show separated by a comma :')
     containers_input = input()
     containers_toshow = [int(s) for s in containers_input.split(',')]

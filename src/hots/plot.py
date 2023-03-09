@@ -332,7 +332,7 @@ def init_nodes_plot(df_indiv: pd.DataFrame, dict_id_n: Dict, sep_time: int,
     metric = metric or it.metrics[0]
     fig, ax = plt.subplots()
     fig.suptitle('Nodes consumption evolution')
-    ax.set_xlim([0, df_indiv[it.tick_field].max()])
+    # ax.set_xlim([0, df_indiv[it.tick_field].max()])
     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
     df = df_indiv.loc[
         df_indiv[it.tick_field] <= sep_time]

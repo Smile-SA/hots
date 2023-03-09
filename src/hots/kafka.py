@@ -18,15 +18,32 @@ def msg_process(msg):
     time_start = time.strftime("%Y-%m-%d %H:%M:%S")
     val = msg.value()
     dval = json.loads(val)
+    # print(time_start, dval)
     return(time_start, dval)
 
 
-def produce_data(my_instance: inst.Instance, timestamp):
-    df_node = my_instance.df_host[my_instance.df_host.timestamp == timestamp]
-    node_details = df_node.values.tolist()
+def produce_data(my_instance: inst.Instance, timestamp, history):
 
-    df_container = my_instance.df_indiv[my_instance.df_indiv.timestamp == timestamp]
+    if history:
+        df_container = my_instance.df_indiv[my_instance.df_indiv.timestamp == timestamp].copy()
+    else:
+        df_container = my_instance.df_mock_indiv[my_instance.df_mock_indiv.timestamp == timestamp].copy()
+        df_old = my_instance.df_indiv[my_instance.df_indiv.timestamp == (timestamp - 1)].copy()
+        df_old.reset_index(drop=True, inplace=True)
+        df_old.loc[:, 'timestamp'] = timestamp
+        df_old.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
+        df_container.sort_index(inplace=True)
+        df_old.sort_index(inplace=True)
+        # print('df_container: ',df_container)
+        # print('df_old: ',df_old)
+        if not df_container.empty:
+            df_container['machine_id'] = df_old['machine_id'].where(df_container['container_id'] == df_old['container_id'])
+            # print('df_container2: ',df_container)
+    df_node = df_container.groupby([df_container[it.tick_field], it.host_field],as_index=False).agg(it.dict_agg_metrics)
+    node_details = df_node.values.tolist()
     container_details = df_container.values.tolist()
+    # print("container_details",container_details)
+    # print("node_details",node_details)
     
     z = {}
     # # print('node_details',node_details)
@@ -58,13 +75,12 @@ def produce_data(my_instance: inst.Instance, timestamp):
         container_id = r[1]
         machine_id = r[2]
         cpu = r[3]
-        mem = r[4]
+        # mem = r[4]
         
         y  = {
                         "container_id": container_id,
                         "machine_id": machine_id,
-                        "cpu": cpu,
-                        "mem": mem
+                        "cpu": cpu
                         }
         z[curr_time]['containers'].append(y)
     topic = it.Kafka_topics['mock_topic']

@@ -10,8 +10,11 @@ parameters. Provide Instance-related methods.
 import math
 from typing import Dict
 
+import pandas as pd
+
 import init as it
 import node as nd
+from pathlib import Path
 
 
 class Instance:
@@ -43,8 +46,10 @@ class Instance:
          self.df_host, # node usage 
          self.df_host_meta) = it.init_dfs(path) # node meta deta 
         #new data
-        self.df_container = self.df_indiv[self.df_indiv["timestamp"] < 2]
-        self.df_container.reset_index()
+        # self.df_container = self.df_indiv[self.df_indiv["timestamp"] < 2]
+        # self.df_container.reset_index()
+
+        self.df_mock_indiv = pd.read_csv(Path(path) / 'mock_container_usage.csv', index_col=False)
 
         self.time: int = self.df_indiv[it.tick_field].nunique() # count of unique time values from timestamp column = 6
         self.nb_nodes = self.df_host_meta[it.host_field].nunique() # count of unique machine_id values from machine_id column
@@ -58,13 +63,20 @@ class Instance:
         self.df_host = self.df_host.astype({
             it.host_field: str,
             it.tick_field: int})
+        self.df_mock_indiv = self.df_mock_indiv.astype({
+            it.indiv_field: str,
+            it.host_field: str,
+            it.tick_field: int})
         self.df_host_meta = self.df_host_meta.astype({it.host_field: str})
 
         self.df_host.sort_values(it.tick_field, inplace=True)
         self.df_indiv.sort_values(it.tick_field, inplace=True)
+        self.df_mock_indiv.sort_values(it.tick_field, inplace=True)
         self.df_host.set_index(
             [it.tick_field, it.host_field], inplace=True, drop=False)
         self.df_indiv.set_index(
+            [it.tick_field, it.indiv_field], inplace=True, drop=False)
+        self.df_mock_indiv.set_index(
             [it.tick_field, it.indiv_field], inplace=True, drop=False)
 
         self.percentage_to_timestamp(config)

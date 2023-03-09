@@ -49,3 +49,7 @@ based on the time :
 - the second part is used to *simulate* the *streaming* process, in which we retrieve data, incrementing timestamp, and perform the evaluation described above.
 
 A precise run description is given in section :ref:`process`.
+
+Moreover, as this project started with a PhD, you can find a lot of details in the thesis
+manuscript `here <https://theses.hal.science/tel-03997934>`_ (state of the art, algorithms,
+optimization models, benchmark ...).

@@ -95,6 +95,7 @@ Authors:
 - [File issues (bugs, ...)](https://github.com/Smile-SA/hots/issues)
 - [PyPi package](https://pypi.org/project/hots/)
 - [Documentation](https://hots.readthedocs.io/en/latest/)
+- [PhD document](https://theses.hal.science/tel-03997934)
 
 ## License
 

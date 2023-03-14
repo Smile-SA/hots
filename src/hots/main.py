@@ -32,6 +32,8 @@ import pandas as pd
 import json
 import sys
 import socket
+import os
+import psutil
 
 # Personnal imports
 # from . import allocation as alloc
@@ -120,7 +122,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     )
     add_time(-1, 'total_t_run', (time.time() - start))
     total_method_time = time.time() - total_method_time
-    print("final df_host_evo: ",df_host_evo)
+    # print("final df_host_evo: ",df_host_evo)
     # Print objectives of evaluation part
     (obj_nodes, obj_delta) = mdl.get_obj_value_host(df_host_evo)
     it.results_file.write('Number of nodes : %d, Ampli max : %f\n' % (
@@ -443,7 +445,14 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
     # print("df_host_evo 1: ", df_host_evo)
     # TODO improve model builds
     analysis_duration = 1
-    
+    time_at = []
+    memory_usage = []
+    mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
+    hist_time = list(set(my_instance.df_indiv['timestamp']))
+    for x in hist_time:
+        time_at.append(x)
+        memory_usage.append(mem_before)
+
     it.Sentry = True
     try:
         while it.Sentry:
@@ -472,7 +481,6 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                 if dval:
                     key = list(dval.keys())[0]
                     value = list(dval.values())[0]
-                    n_info = []
                     c_info = []
                     for c in value['containers']:
                             js = {'timestamp': key , 'container_id': c['container_id'], 'machine_id': c['machine_id'], 'cpu' : c['cpu']}
@@ -512,10 +520,6 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                     my_instance.df_host = pd.concat([
                         my_instance.df_host, new_df_host
                     ])
-
-                    # print("Check update: ", my_instance.df_indiv)
-                    # print("Check update: ", my_instance.df_host)
-                    
 
                     print('\n # Step 1: Check Progress time no loop%d #\n' % loop_nb)
                     (temp_df_host, nb_overload, loop_nb,
@@ -674,20 +678,24 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                     #     loop_nb += 1
                     my_instance.time += 1
                     loop_nb += 1
+                    # mem_after = process_memory()
+                    # memory_usage.append(mem_after - mem_before)
+                    mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
+                    memory_usage.append(mem_after)
+                    time_at.append(key)
 
     finally:
         # Close down consumer to commit final offsets.
         print("close kafka consumer")
         it.Kafka_Consumer.close()  
 
+    plot.plot_memory_usage(time_at, memory_usage, my_instance.df_mock_indiv.memory_usage(index=True).sum())
     my_instance.df_indiv.to_csv("complete.csv", index=False)     
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
          df_indiv[it.tick_field] >= tmin)]
-    print("tmin: ",tmin)
-    print("max: ",working_df_indiv[it.tick_field].max())
+
     if tmin < working_df_indiv[it.tick_field].max():
-        print("IN IF")
         # update clustering & node consumption plot
         # TODO not same size issue with clustering
         # print(cluster_profiles)
@@ -1207,6 +1215,11 @@ def add_time(loop_nb: int, action: str, time: float):
 def close_files():
     """Write the final files and close all open files."""
     it.results_file.close()
+
+def process_memory():
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    return mem_info.vms
 
 
 if __name__ == '__main__':

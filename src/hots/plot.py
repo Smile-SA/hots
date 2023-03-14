@@ -537,3 +537,15 @@ def plot_conflict_graph(graph: nx.Graph):
 
     fig.savefig('graph.svg')
     # plt.draw()
+
+def plot_memory_usage(x, y, mock):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(x, y, 'b-', label="df_indiv")
+    ax.axhline(mock, color="red", alpha=0.5, label="df_mock_indiv")
+    ax.set(xlabel='time (s)', ylabel='memory of datarame (bytes)')
+    ax.legend()
+
+    fig.savefig('mem_fig.svg')
+
+

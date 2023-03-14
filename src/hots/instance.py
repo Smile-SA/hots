@@ -78,7 +78,7 @@ class Instance:
             [it.tick_field, it.indiv_field], inplace=True, drop=False)
         self.df_mock_indiv.set_index(
             [it.tick_field, it.indiv_field], inplace=True, drop=False)
-
+        
         self.percentage_to_timestamp(config)
 
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)

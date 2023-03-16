@@ -12,8 +12,6 @@ import numpy as np
 
 import pandas as pd
 
-import plotly.express as px
-
 from . import init as it
 from . import plot
 
@@ -37,26 +35,27 @@ def plot_data_all_containers(df_indiv, metric):
     plt.draw()
 
 
-def plot_all_data_all_containers_px(df_indiv, sep_time, metrics=None):
-    """Plot all metrics containers consumption.
+# The following uses plotly : comment for the moment
+# def plot_all_data_all_containers_px(df_indiv, sep_time, metrics=None):
+#     """Plot all metrics containers consumption.
 
-    :param df_indiv: _description_
-    :type df_indiv: pd.DataFrame
-    :param sep_time: _description_
-    :type sep_time: int
-    :param metrics: _description_, defaults to None
-    :type metrics: List[str], optional
-    """
-    # TODO several metrics ?
-    # TODO line_shape in params
-    metrics = metrics or it.metrics
-    fig = px.line(df_indiv, x=it.tick_field, y=metrics[0],
-                  color=it.host_field,
-                  line_group=it.indiv_field, hover_name=it.indiv_field,
-                  line_shape='spline', render_mode='svg',
-                  title='Resource usage on all individuals')
-    fig.add_vline(sep_time, line={'color': 'red', 'dash': 'dashdot'})
-    fig.show(it.renderer)
+#     :param df_indiv: _description_
+#     :type df_indiv: pd.DataFrame
+#     :param sep_time: _description_
+#     :type sep_time: int
+#     :param metrics: _description_, defaults to None
+#     :type metrics: List[str], optional
+#     """
+#     # TODO several metrics ?
+#     # TODO line_shape in params
+#     metrics = metrics or it.metrics
+#     fig = px.line(df_indiv, x=it.tick_field, y=metrics[0],
+#                   color=it.host_field,
+#                   line_group=it.indiv_field, hover_name=it.indiv_field,
+#                   line_shape='spline', render_mode='svg',
+#                   title='Resource usage on all individuals')
+#     fig.add_vline(sep_time, line={'color': 'red', 'dash': 'dashdot'})
+#     fig.show(it.renderer)
 
 
 def plot_all_data_all_containers(df_indiv, sep_time, metrics=None):

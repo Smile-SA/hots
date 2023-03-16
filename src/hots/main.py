@@ -441,18 +441,22 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
     else:
         tmax += tick
         tmin = tmax - (my_instance.window_duration - 1)
-
+    
     # print("df_host_evo 1: ", df_host_evo)
     # TODO improve model builds
-    analysis_duration = 1
-    time_at = []
-    memory_usage = []
+    analysis_duration = 1 # variable used to perform optimization and placement when it equates the tick value
+    it.time_at = []
+    it.memory_usage = []
+    it.tick_time = []
+    it.total_mem_use = []
+    tot_mem_after = process_memory()
     mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
     hist_time = list(set(my_instance.df_indiv['timestamp']))
-    for x in hist_time:
-        time_at.append(x)
-        memory_usage.append(mem_before)
 
+    for x in hist_time:
+        it.time_at.append(x)
+        it.memory_usage.append(mem_before)
+        it.total_mem_use.append(tot_mem_after)
     it.Sentry = True
     try:
         while it.Sentry:
@@ -656,7 +660,12 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                         )
                         tmax += tick
                         tmin = tmax - (my_instance.window_duration - 1)
+                        tot_mem_after = process_memory()
+                        it.total_mem_use.append(tot_mem_after)
+                        it.tick_time.append(key)
                     else:
+                        
+                        it.total_mem_use.append(tot_mem_after)
                         analysis_duration = analysis_duration + 1
                     # change indentation -> on further fixes muffu
                     # input('\nPress any key to progress in time ...\n')
@@ -681,16 +690,15 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                     # mem_after = process_memory()
                     # memory_usage.append(mem_after - mem_before)
                     mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
-                    memory_usage.append(mem_after)
-                    time_at.append(key)
+                    it.memory_usage.append(mem_after)
+                    it.time_at.append(key)
 
     finally:
         # Close down consumer to commit final offsets.
         print("close kafka consumer")
         it.Kafka_Consumer.close()  
-
-    plot.plot_memory_usage(time_at, memory_usage, my_instance.df_mock_indiv.memory_usage(index=True).sum())
-    my_instance.df_indiv.to_csv("complete.csv", index=False)     
+    # print(it.tick_time)
+    plot.plot_memory_usage(it.time_at, it.total_mem_use, my_instance.df_mock_indiv.memory_usage(index=True).sum(), it.tick_time) 
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
          df_indiv[it.tick_field] >= tmin)]
@@ -1219,7 +1227,7 @@ def close_files():
 def process_memory():
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
-    return mem_info.vms
+    return mem_info.rss
 
 
 if __name__ == '__main__':

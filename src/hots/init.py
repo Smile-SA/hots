@@ -145,6 +145,10 @@ def define_globals(p_path: Path, config: Dict):
     global Kafka_Producer
     global Kafka_Consumer
     global Kafka_topics
+    global tick_time
+    global time_at
+    global memory_usage
+    global total_mem_use
 
     indiv_field = config['data']['individual_field']
     host_field = config['data']['host_field']

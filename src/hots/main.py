@@ -421,6 +421,9 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
     (working_df_indiv, df_clust, w, u, v) = build_matrices(
         my_instance, tmin, tmax, labels_
     )
+
+    # send node meta stats for mock 
+    
     
     time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
     history = True # consider historical data
@@ -698,7 +701,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
         print("close kafka consumer")
         it.Kafka_Consumer.close()  
     # print(it.tick_time)
-    plot.plot_memory_usage(it.time_at, it.total_mem_use, my_instance.df_mock_indiv.memory_usage(index=True).sum(), it.tick_time) 
+    plot.plot_memory_usage(it.time_at, it.total_mem_use, it.tick_time) 
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
          df_indiv[it.tick_field] >= tmin)]

@@ -48,30 +48,30 @@ from .instance import Instance
 @click.option('-o', '--output', required=False, type=str,
               help='Use a specific directory for output')
 @click.option('-ec', '--tolclust', required=False, type=str,
-              help='Use specific value for epsilonC')
+              help='Use specific value for epsilonC (clustering conflict threshold)')
 @click.option('-ea', '--tolplace', required=False, type=str,
-              help='Use specific value for epsilonA')
+              help='Use specific value for epsilonA (placement conflict threshold)')
 def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace):
     """Use method to propose a placement solution for micro-services adjusted in time.
 
-    :param path: _description_
-    :type path: _type_
-    :param k: _description_
-    :type k: _type_
-    :param tau: _description_
-    :type tau: _type_
-    :param method: _description_
-    :type method: _type_
-    :param cluster_method: _description_
-    :type cluster_method: _type_
-    :param param: _description_
-    :type param: _type_
-    :param output: _description_
-    :type output: _type_
-    :param tolclust: _description_
-    :type tolclust: _type_
-    :param tolplace: _description_
-    :type tolplace: _type_
+    :param path: path to folder with data and parameters file
+    :type path: click.Path
+    :param k: number of clusters to use for clustering
+    :type k: int
+    :param tau: time window size for the loop
+    :type tau: int
+    :param method: method to use to solve initial problem
+    :type method: str
+    :param cluster_method: method to use to update clustering
+    :type cluster_method: str
+    :param param: parameter file to use
+    :type param: str
+    :param output: output folder to use
+    :type output: str
+    :param tolclust: threshold to use for clustering conflict
+    :type tolclust: str
+    :param tolplace: threshold to use for placement conflict
+    :type tolplace: str
     """
     # Initialization part
     main_time = time.time()
@@ -194,25 +194,25 @@ def preprocess(
 ):
     """Load configuration, data and initialize needed objects.
 
-    :param path: _description_
+    :param path: initial folder path
     :type path: str
-    :param k: _description_
+    :param k: number of clusters to use for clustering
     :type k: int
-    :param tau: _description_
+    :param tau: time window size for loop
     :type tau: int
-    :param method: _description_
+    :param method: method to use to solve initial problem
     :type method: str
-    :param cluster_method: _description_
+    :param cluster_method: method to use to update clustering
     :type cluster_method: str
-    :param param: _description_
+    :param param: parameter file to use
     :type param: str
-    :param output: _description_
+    :param output: output folder to use
     :type output: str
-    :param tolclust: _description_
+    :param tolclust: threshold to use for clustering conflict
     :type tolclust: float
-    :param tolplace: _description_
+    :param tolplace: threshold to use for placement conflict
     :type tolplace: float
-    :return: _description_
+    :return: tuple with needed parameters, path to output and Instance object
     :rtype: Tuple[Dict, str, Instance]
     """
     # TODO what if we want tick < tau ?
@@ -236,11 +236,11 @@ def preprocess(
 def spec_params(config, list_params):
     """Define specific parameters.
 
-    :param config: _description_
+    :param config: initial parameters set
     :type config: Dict
-    :param list_params: _description_
+    :param list_params: parameters list for threshold
     :type list_params: List
-    :return: _description_
+    :return: final parameters set
     :rtype: Dict
     """
     if list_params[0] is not None:
@@ -253,13 +253,14 @@ def spec_params(config, list_params):
 def analysis_period(my_instance, config, method):
     """Perform all needed process during analysis period (T_init).
 
-    :param my_instance: _description_
+    :param my_instance: Instance object
     :type my_instance: Instance
-    :param config: _description_
+    :param config: parameters set
     :type config: Dict
-    :param method: _description_
+    :param method: method used to solve initial problem
     :type method: str
-    :return: _description_
+    :return: tuple with Instance object, nodes data with new placement, clustering data and
+    clustering labels
     :rtype: Tuple[Instance, pd.DataFrame, pd.DataFrame, List]
     """
     df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
@@ -361,23 +362,23 @@ def run_period(
 ):
     """Perform all needed process during evaluation period.
 
-    :param my_instance: _description_
+    :param my_instance: Instance object
     :type my_instance: Instance
-    :param df_host_evo: _description_
+    :param df_host_evo: evolving node data
     :type df_host_evo: pd.DataFrame
-    :param df_indiv_clust: _description_
+    :param df_indiv_clust: clustering individuals data
     :type df_indiv_clust: pd.DataFrame
-    :param labels_: _description_
+    :param labels_: clustering labels
     :type labels_: List
-    :param config: _description_
+    :param config: set parameters
     :type config: Dict
-    :param output_path: _description_
+    :param output_path: output folder path
     :type output_path: str
-    :param method: _description_
+    :param method: method to use to solve problem
     :type method: str
-    :param cluster_method: _description_
+    :param cluster_method: method to use for clustering
     :type cluster_method: str
-    :return: _description_
+    :return: evolving node data and number of nodes overloads
     :rtype: Tuple[pd.DataFrame, int]
     """
     nb_overloads = 0
@@ -432,37 +433,38 @@ def streaming_eval(
 ):
     """Define the streaming process for evaluation.
 
-    :param my_instance: _description_
+    :param my_instance: Instance object
     :type my_instance: Instance
-    :param df_indiv_clust: _description_
+    :param df_indiv_clust: clustering individual data
     :type df_indiv_clust: pd.DataFrame
-    :param labels_: _description_
+    :param labels_: clustering labels
     :type labels_: List
-    :param mode: _description_
+    :param mode: mode used to trigger the loop
     :type mode: str
-    :param tick: _description_
+    :param tick: number of new datapoints before new loop
     :type tick: int
-    :param constraints_dual: _description_
+    :param constraints_dual: constraints type compared to trigger conflicts
     :type constraints_dual: List
-    :param tol_clust: _description_
+    :param tol_clust: threshold used for clustering conflicts
     :type tol_clust: float
-    :param tol_move_clust: _description_
+    :param tol_move_clust: threshold used for number of clustering moves
     :type tol_move_clust: float
-    :param tol_open_clust: _description_
+    :param tol_open_clust: threshold used for opening new cluster
     :type tol_open_clust: float
-    :param tol_place: _description_
+    :param tol_place: threshold used for placement conflicts
     :type tol_place: float
-    :param tol_move_place: _description_
+    :param tol_move_place: threshold used for number of placement moves
     :type tol_move_place: float
-    :param tol_step: _description_
+    :param tol_step: step to increment previous threshold
     :type tol_step: float
-    :param cluster_method: _description_
+    :param cluster_method: method used to update clustering
     :type cluster_method: str
-    :param solver: _description_
+    :param solver: solver used for pyomo
     :type solver: str
-    :param df_host_evo: _description_
+    :param df_host_evo: evolving node data
     :type df_host_evo: pd.DataFrame
-    :return: _description_
+    :return: figures to plot to see clustering and nodes evolution + evolving node data + number
+    of node overloads
     :rtype: Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]
     """
     fig_node, ax_node = plot.init_nodes_plot(
@@ -682,34 +684,35 @@ def progress_time_noloop(
 ):
     """We progress in time without performing the loop, checking node capacities.
 
-    :param instance: _description_
+    :param instance: Instance object
     :type instance: Instance
-    :param fixing: _description_
+    :param fixing: method used to fix node assignment if overload
     :type fixing: str
-    :param tmin: _description_
+    :param tmin: starting time of current window
     :type tmin: int
-    :param tmax: _description_
+    :param tmax: final time of current window
     :type tmax: int
-    :param labels_: _description_
-    :type labels_: _type_
-    :param loop_nb: _description_
-    :type loop_nb: _type_
-    :param constraints_dual: _description_
-    :type constraints_dual: _type_
-    :param clustering_dual_values: _description_
-    :type clustering_dual_values: _type_
-    :param placement_dual_values: _description_
-    :type placement_dual_values: _type_
-    :param tol_clust: _description_
-    :type tol_clust: _type_
-    :param tol_move_clust: _description_
-    :type tol_move_clust: _type_
-    :param tol_place: _description_
-    :type tol_place: _type_
-    :param tol_move_place: _description_
-    :type tol_move_place: _type_
-    :return: _description_
-    :rtype: Tuple[pd.DataFrame, int]
+    :param labels_: clustering labels
+    :type labels_: List
+    :param loop_nb: current loop number
+    :type loop_nb: int
+    :param constraints_dual: constraints type compared to trigger conflicts
+    :type constraints_dual: List
+    :param clustering_dual_values: previous loop dual values for clustering
+    :type clustering_dual_values: Dict
+    :param placement_dual_values: previous loop dual values for placement
+    :type placement_dual_values: Dict
+    :param tol_clust: threshold used for clustering conflicts
+    :type tol_clust: float
+    :param tol_move_clust: threshold used for number of clustering moves
+    :type tol_move_clust: float
+    :param tol_place: threshold used for placement conflicts
+    :type tol_place: float
+    :param tol_move_place: threshold used for number of placement moves
+    :type tol_move_place: float
+    :return: evolving node data + number of overloads + loop number + clustering and placement
+    changes
+    :rtype: Tuple[pd.DataFrame, int, int, int, int]
     """
     df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
     nb_overload = 0
@@ -774,25 +777,25 @@ def pre_loop(
 ):
     """Build optimization problems and solve them with T_init solutions.
 
-    :param my_instance: _description_
+    :param my_instance: Instance object
     :type my_instance: Instance
-    :param working_df_indiv: _description_
+    :param working_df_indiv: current loop data
     :type working_df_indiv: pd.DataFrame
-    :param df_clust: _description_
+    :param df_clust: clustering related data
     :type df_clust: pd.DataFrame
-    :param w: _description_
+    :param w: dissimilarity matrix
     :type w: np.array
-    :param u: _description_
+    :param u: clustering adjacency matrix
     :type u: np.array
-    :param constraints_dual: _description_
+    :param constraints_dual: constraints type compared to trigger conflicts
     :type constraints_dual: List
-    :param v: _description_
+    :param v: placement adjacency matrix
     :type v: np.array
-    :param cluster_method: _description_
+    :param cluster_method: method used to update clustering
     :type cluster_method: str
-    :param solver: _description_
+    :param solver: solver used for pyomo
     :type solver: str
-    :return: _description_
+    :return: optimization models and associated dual values
     :rtype: Tuple[mdl.Model, mdl.Model, Dict, Dict]
     """
     logging.info('Evaluation of problems with initial solutions')
@@ -865,15 +868,15 @@ def pre_loop(
 def build_matrices(my_instance, tmin, tmax, labels_):
     """Build period dataframe and matrices to be used.
 
-    :param my_instance: _description_
+    :param my_instance: Instance object
     :type my_instance: Instance
-    :param tmin: _description_
+    :param tmin: starting time of current window
     :type tmin: int
-    :param tmax: _description_
+    :param tmax: final time of current window
     :type tmax: int
-    :param labels_: _description_
+    :param labels_: clustering labels
     :type labels_: List
-    :return: _description_
+    :return: current loop data, clustering data, dissimilarity matrix and adjacency matrices
     :rtype: Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array]
     """
     working_df_indiv = my_instance.df_indiv[
@@ -898,7 +901,59 @@ def eval_sols(
         tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
         df_clust, cluster_profiles, labels_, loop_nb, solver
 ):
-    """Evaluate clustering and placement solutions."""
+    """Evaluate clustering and placement solutions.
+
+    :param my_instance: Instance object
+    :type my_instance: Instance
+    :param working_df_indiv: current loop data
+    :type working_df_indiv: pd.DataFrame
+    :param cluster_method: method used to update clustering
+    :type cluster_method: str
+    :param w: dissimilarity matrix
+    :type w: np.array
+    :param u: clustering adjacency matrix
+    :type u: np.array
+    :param v: placement adjacency matrix
+    :type v: np.array
+    :param clust_model: clustering optimization model
+    :type clust_model: mdl.Model
+    :param place_model: placement optimization model
+    :type place_model: mdl.Model
+    :param constraints_dual: constraints type compared to trigger conflicts
+    :type constraints_dual: List
+    :param clustering_dual_values: previous loop dual values for clustering
+    :type clustering_dual_values: Dict
+    :param placement_dual_values: previous loop dual values for placement
+    :type placement_dual_values: Dict
+    :param tol_clust: threshold used for clustering conflicts
+    :type tol_clust: float
+    :param tol_move_clust: threshold used for number of clustering moves
+    :type tol_move_clust: float
+    :param tol_open_clust: threshold used for opening new cluster
+    :type tol_open_clust: float
+    :param tol_place: threshold used for placement conflicts
+    :type tol_place: float
+    :param tol_move_place: threshold used for number of placement moves
+    :type tol_move_place: float
+    :param df_clust: clustering related data
+    :type df_clust: pd.DataFrame
+    :param cluster_profiles: computed clusters mean profiles
+    :type cluster_profiles: np.array
+    :param labels_: cluster labels
+    :type labels_: List
+    :param loop_nb: current loop number
+    :type loop_nb: int
+    :param solver: solver used for pyomo
+    :type solver: str
+    :return: number of changes in clustering and placement, silhouette score before and after loop,
+    number of nodes and edges in conflict graph + max and mean degree (clustering and placement),
+    optimization models and associated dual values, clustering related data, clusters mean profiles
+    and cluster labels
+    :rtype: Tuple[
+        int, int, float, float, int, int, float, float, int, int, float, float,
+        mdl.Model, mdl.Model, Dict, Dict, pd.DataFrame, np.array, List
+    ]
+    """
     # evaluate clustering
     start = time.time()
     it.clustering_file.write(
@@ -979,36 +1034,40 @@ def eval_clustering(
 ):
     """Evaluate current clustering solution and update it if needed.
 
-    :param my_instance: _description_
+    :param my_instance: Instance object
     :type my_instance: Instance
-    :param w: _description_
+    :param w: dissimilarity matrix
     :type w: np.array
-    :param u: _description_
+    :param u: clustering adjacency matrix
     :type u: np.array
-    :param clust_model: _description_
-    :type clust_model: _type_
-    :param clustering_dual_values: _description_
+    :param clust_model: clustering optimization model
+    :type clust_model: mdl.Model
+    :param clustering_dual_values: previous loop dual values for clustering
     :type clustering_dual_values: Dict
-    :param constraints_dual: _description_
-    :type constraints_dual: Dict
-    :param tol_clust: _description_
+    :param constraints_dual: constraints type compared to trigger conflicts
+    :type constraints_dual: List
+    :param tol_clust: threshold used for clustering conflicts
     :type tol_clust: float
-    :param tol_move_clust: _description_
+    :param tol_move_clust: threshold used for number of clustering moves
     :type tol_move_clust: float
-    :param tol_open_clust: _description_
+    :param tol_open_clust: threshold used for opening new cluster
     :type tol_open_clust: float
-    :param df_clust: _description_
+    :param df_clust: clustering related data
     :type df_clust: pd.DataFrame
-    :param cluster_profiles: _description_
+    :param cluster_profiles: computed clusters mean profiles
     :type cluster_profiles: np.array
-    :param labels_: _description_
+    :param labels_: cluster labels
     :type labels_: List
-    :param loop_nb: _description_
-    :type loop_nb: _type_
-    :param solver: _description_
-    :type solver: _type_
-    :return: _description_
-    :rtype: Tuple
+    :param loop_nb: current loop number
+    :type loop_nb: int
+    :param solver: solver used for pyomo
+    :type solver: str
+    :return: clustering variance matrix, number of changes in clustering, silhouette score before
+    and after the loop, clustering dual values, clustering optimization model, number of nodes and
+    edges in conflict graph + max and mean degree (clustering)
+    :rtype: Tuple[
+        np.array, int, float, float, Dict, mdl.Model, int, int, float, float
+    ]
     """
     nb_clust_changes_loop = 0
     logging.info('# Clustering evaluation #')
@@ -1083,36 +1142,37 @@ def eval_placement(
 ):
     """Evaluate current clustering solution and update it if needed.
 
-    :param my_instance: _description_
+    :param my_instance: Instance object
     :type my_instance: Instance
-    :param working_df_indiv: _description_
+    :param working_df_indiv: current loop data
     :type working_df_indiv: pd.DataFrame
-    :param w: _description_
+    :param w: dissimilarity matrix
     :type w: np.array
-    :param u: _description_
+    :param u: clustering adjacency matrix
     :type u: np.array
-    :param v: _description_
+    :param v: placement adjacency matrix
     :type v: np.array
-    :param dv: _description_
+    :param dv: clustering variance matrix
     :type dv: np.array
-    :param placement_dual_values: _description_
+    :param placement_dual_values: previous loop dual values for placement
     :type placement_dual_values: Dict
-    :param constraints_dual: _description_
-    :type constraints_dual: Dict
-    :param place_model: _description_
-    :type place_model: _type_
-    :param tol_place: _description_
+    :param constraints_dual: constraints type compared to trigger conflicts
+    :type constraints_dual: List
+    :param place_model: placement optimization model
+    :type place_model: mdl.Model
+    :param tol_place: threshold used for placement conflicts
     :type tol_place: float
-    :param tol_move_place: _description_
+    :param tol_move_place: threshold used for number of placement moves
     :type tol_move_place: float
-    :param nb_clust_changes_loop: _description_
+    :param nb_clust_changes_loop: number of changes in clustering in current loop
     :type nb_clust_changes_loop: int
-    :param loop_nb: _description_
-    :type loop_nb: _type_
-    :param solver: _description_
+    :param loop_nb: current loop number
+    :type loop_nb: int
+    :param solver: solver used for pyomo
     :type solver: str
-    :return: _description_
-    :rtype: Tuple
+    :return: number of placement changes, dual values related to current placement, placement
+    optimization model, number of nodes and edges in conflict graph + max and mean degree
+    :rtype: Tuple[int, Dict, mdl.Model, int, int, float, float]
     """
     logging.info('# Placement evaluation #')
 
@@ -1177,14 +1237,17 @@ def eval_placement(
 def loop_kmeans(my_instance, df_clust, labels_):
     """Update clustering via kmeans from scratch.
 
-    :param my_instance: _description_
+    :param my_instance: Instance object
     :type my_instance: Instance
-    :param df_clust: _description_
+    :param df_clust: clustering related data
     :type df_clust: pd.DataFrame
-    :param labels_: _description_
+    :param labels_: clustering labels
     :type labels_: List
-    :return: _description_
-    :rtype: Tuple
+    :return: clustering variance matrix, number of changes in clustering, silhouette score before
+    and after loop, null objects to match other return objects
+    :rtype: Tuple[
+        np.array, int, float, float, Dict, mdl.Model, int, int, float, float
+    ]
     """
     logging.info('# Clustering via k-means from scratch #')
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
@@ -1216,14 +1279,17 @@ def loop_kmeans(my_instance, df_clust, labels_):
 def stream_km(my_instance, df_clust, labels_):
     """Update clustering via kmeans from scratch.
 
-    :param my_instance: _description_
+    :param my_instance: Instance object
     :type my_instance: Instance
-    :param df_clust: _description_
+    :param df_clust: clustering related data
     :type df_clust: pd.DataFrame
-    :param labels_: _description_
+    :param labels_: clustering labels
     :type labels_: List
-    :return: _description_
-    :rtype: Tuple
+    :return: clustering variance matrix, number of changes in clustering, silhouette score before
+    and after loop, null objects to match other return objects
+    :rtype: Tuple[
+        np.array, int, float, float, Dict, mdl.Model, int, int, float, float
+    ]
     """
     logging.info('# Clustering via streamkm #')
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
@@ -1260,23 +1326,23 @@ def end_loop(
 ):
     """Perform all stuffs after last loop.
 
-    :param working_df_indiv: _description_
+    :param working_df_indiv: current loop data
     :type working_df_indiv: pd.DataFrame
-    :param tmin: _description_
+    :param tmin: starting time of current window
     :type tmin: int
-    :param nb_clust_changes: _description_
+    :param nb_clust_changes: number of changes in clustering
     :type nb_clust_changes: int
-    :param nb_place_changes: _description_
+    :param nb_place_changes: number of changes in placement
     :type nb_place_changes: int
-    :param nb_overload: _description_
+    :param nb_overload: number of node overload
     :type nb_overload: int
-    :param total_loop_time: _description_
+    :param total_loop_time: total running time for all loops
     :type total_loop_time: float
-    :param loop_nb: _description_
+    :param loop_nb: final loop number
     :type loop_nb: int
-    :param df_host_evo: _description_
+    :param df_host_evo: evolving node data
     :type df_host_evo: pd.DataFrame
-    :return: _description_
+    :return: evolving node data
     :rtype: pd.DataFrame
     """
     working_df_host = working_df_indiv.groupby(
@@ -1311,11 +1377,11 @@ def end_loop(
 def add_time(loop_nb, action, time):
     """Add an action time in times dataframe.
 
-    :param loop_nb: _description_
+    :param loop_nb: current loop number
     :type loop_nb: int
-    :param action: _description_
+    :param action: action / method we add time for
     :type action: str
-    :param time: _description_
+    :param time: running time of the action
     :type time: float
     """
     it.times_df = pd.concat(

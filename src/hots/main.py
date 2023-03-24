@@ -425,9 +425,9 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
     # send node meta stats for mock 
     
     
-    time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
-    history = True # consider historical data
-    kafka.produce_data(my_instance, time_to_send, history) # send last historical data to kafka
+    # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
+    # history = True # consider historical data
+    # kafka.produce_data(my_instance, time_to_send, history) # send last historical data to kafka
     
     # build initial optimisation model in pre loop using all or potion of historical data.
     start = time.time()
@@ -461,6 +461,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
         it.memory_usage.append(mem_before)
         it.total_mem_use.append(tot_mem_after)
     it.Sentry = True
+    print("df_indiv: ",my_instance.df_indiv)
     try:
         while it.Sentry:
             print('Ready for new data...')
@@ -488,24 +489,32 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                 if dval:
                     key = list(dval.keys())[0]
                     value = list(dval.values())[0]
-                    c_info = []
-                    for c in value['containers']:
-                            js = {'timestamp': key , 'container_id': c['container_id'], 'machine_id': c['machine_id'], 'cpu' : c['cpu']}
-                            c_info.append(js)
-                    new_df_container = pd.DataFrame(c_info)
-                    new_df_container = new_df_container.astype({
-                                it.indiv_field: str,
-                                it.host_field: str,
-                                it.tick_field: int})
-                    new_df_container.sort_values(it.tick_field, inplace=True)
-                    new_df_container.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
-                    if history:
-                        history = False
-                        time_to_send += 1
-                        print("time_to_send",time_to_send)
-                        kafka.produce_data(my_instance, time_to_send, history)
-                        continue
-                    
+                    last_index = my_instance.df_indiv.index.levels[0][-1]
+                    print("last_index: ",last_index)
+                    subset = my_instance.df_indiv[my_instance.df_indiv.timestamp == last_index].copy()
+                    subset.reset_index(drop=True, inplace=True)
+                    subset.loc[:, 'timestamp'] = int(key)
+                    subset.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
+                    subset.sort_index(inplace=True)
+
+                    # subset = my_instance.df_indiv.loc[(last_index,slice(None)), :].copy()
+                    # subset = my_instance.df_indiv[my_instance.df_indiv.timestamp == (int(key) - 1)].copy()
+                    # print("subset: ",subset)
+                    # subset = subset.rename(index={last_index:int(key)}, level='timestamp')
+                    # subset.sort_index(inplace=True)
+                    # subset.reset_index(drop=True, inplace=True)
+                    # subset.loc[:, 'timestamp'] = int(key)
+                    # subset.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
+                    # del subset['machine_id']
+                    print("subset: ",subset)
+                    new_df_container = reassign_node(value)
+                    # subset = pd.merge(new_df_container, subset, on='container_id', how='left')
+                    print("merged_subset: ",subset)
+                    print("new_df_container: ",new_df_container)
+                    # new_df_container[['machine_id']] = subset[['machine_id']]
+                    new_df_container['machine_id'] = subset['machine_id'].where(new_df_container['container_id'] == subset['container_id'])
+                    subset = subset.truncate(before=-1, after=-1)
+                    print("new_df_container: ",new_df_container)
                     logging.info('\n # Enter loop number %d #\n' % loop_nb)
                     it.results_file.write('\n # Loop number %d #\n' % loop_nb)
                     it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
@@ -672,9 +681,9 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                         analysis_duration = analysis_duration + 1
                     # change indentation -> on further fixes muffu
                     # input('\nPress any key to progress in time ...\n')
-                    time_to_send += 1
-                    print("time_to_send",time_to_send)
-                    kafka.produce_data(my_instance, time_to_send, history)
+                    # time_to_send += 1
+                    # print("time_to_send",time_to_send)
+                    # kafka.produce_data(my_instance, time_to_send, history)
                     
                     # tmax += tick
                     # tmin = tmax - (my_instance.window_duration - 1)
@@ -717,7 +726,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
         plot.update_nodes_plot(fig_node, ax_node,
                                working_df_indiv, my_instance.dict_id_n)
 
-    
+    # my_instance.df_indiv.to_csv('df_indiv.csv', index=False)
     df_host_evo = end_loop(working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
                            total_nb_overload, total_loop_time, loop_nb, df_host_evo)
     
@@ -747,7 +756,7 @@ def progress_time_noloop(
     
     
     host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
-    print('TICK INFO',df_host_tick)
+
     df_host_evo = pd.concat([
         df_host_evo, df_host_tick
     ])
@@ -1231,6 +1240,19 @@ def process_memory():
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
     return mem_info.rss
+
+
+def reassign_node(value):
+    c_info = value['containers']
+    new_df_container = pd.DataFrame(c_info)
+    new_df_container = new_df_container.astype({
+                it.indiv_field: str,
+                it.host_field: str,
+                it.tick_field: int})
+    new_df_container.sort_values(it.tick_field, inplace=True)
+    new_df_container.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
+    new_df_container.sort_index(inplace=True)
+    return new_df_container
 
 
 if __name__ == '__main__':

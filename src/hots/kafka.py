@@ -2,8 +2,8 @@ import json
 import socket
 from confluent_kafka import Producer, Consumer
 import time
-import init as it
-import instance as inst
+from . import init as it
+from .instance import Instance
 
 def acked(err, msg):
     if err is not None:
@@ -21,7 +21,7 @@ def msg_process(msg):
     return(time_start, dval)
 
 
-def produce_data(my_instance: inst.Instance, timestamp, history):
+def produce_data(my_instance: Instance, timestamp, history):
     z = {}
     if history:
         df_container = my_instance.df_indiv[my_instance.df_indiv.timestamp == timestamp].copy()

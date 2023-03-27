@@ -30,8 +30,8 @@ from sklearn.metrics.pairwise import pairwise_distances
 
 from tqdm import tqdm
 
-import init as it
-import instance as inst
+from . import init as it
+from .instance import Instance as inst
 
 
 # Functions definitions #

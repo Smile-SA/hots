@@ -21,8 +21,8 @@ import numpy as np
 
 import pandas as pd
 
-import init as it
-import instance as Instance
+from . import init as it
+from .instance import Instance
 
 #####################################################################
 # Functions definitions

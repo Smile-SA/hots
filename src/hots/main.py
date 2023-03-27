@@ -29,35 +29,34 @@ import numpy as np
 
 import pandas as pd
 
-import json
 import sys
-import socket
 import os
 import psutil
 
 # Personnal imports
 # from . import allocation as alloc
-import clustering as clt
-import container as ctnr
-import init as it
-import model as mdl
-import node
-import placement as place
-import plot
+# import clustering as clt
+# import container as ctnr
+# import init as it
+# import model as mdl
+# import node
+# import placement as place
+# import plot
 from confluent_kafka import KafkaError, KafkaException
 
 import signal
-import kafka
+# import kafka
 
-# from . import clustering as clt
-# from . import container as ctnr
-# from . import init as it
-# from . import model as mdl
-# from . import node
-# from . import placement as place
-# from . import plot
+from . import clustering as clt
+from . import container as ctnr
+from . import init as it
+from . import model as mdl
+from . import node
+from . import placement as place
+from . import plot
+from . import kafka
 
-import instance as inst
+from .instance import Instance
 
 @click.command()
 @click.argument('path', required=True, type=click.Path(exists=True))
@@ -199,7 +198,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 def preprocess(
         path: str, k: int, tau: int, method: str, cluster_method: str,
         param: str, output: str, tolclust: float, tolplace: float
-) -> Tuple[Dict, str, inst.Instance]:
+) -> Tuple[Dict, str, Instance]:
     """Load configuration, data and initialize needed objects."""
     # TODO what if we want tick < tau ?
     print('Preprocessing ...')
@@ -209,9 +208,9 @@ def preprocess(
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')
 
-    # Init containers & nodes data, then inst.Instance
-    logging.info('Loading data and creating inst.Instance (inst.Instance information are in results file)\n')
-    instance = inst.Instance(path, config)
+    # Init containers & nodes data, then Instance
+    logging.info('Loading data and creating Instance (Instance information are in results file)\n')
+    instance = Instance(path, config)
     it.results_file.write('Method used : %s\n' % method)
     instance.print_times(config['loop']['tick'])
 
@@ -229,8 +228,8 @@ def spec_params(config: Dict, list_params: List) -> Dict:
 
 
 def analysis_period(
-    my_instance: inst.Instance, config: Dict, method: str,
-) -> Tuple[inst.Instance, pd.DataFrame, pd.DataFrame, List]:
+    my_instance: Instance, config: Dict, method: str,
+) -> Tuple[Instance, pd.DataFrame, pd.DataFrame, List]:
     """Perform all needed process during analysis period (T_init)."""
     df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
     df_indiv_clust = pd.DataFrame()
@@ -331,7 +330,7 @@ def analysis_period(
 
 
 def run_period(
-    my_instance: inst.Instance, df_host_evo: pd.DataFrame,
+    my_instance: Instance, df_host_evo: pd.DataFrame,
     df_indiv_clust: pd.DataFrame, labels_: List,
     config: Dict, output_path: str, method: str, cluster_method: str
 ) -> Tuple[pd.DataFrame, int]:
@@ -385,7 +384,7 @@ def SignalHandler_SIGINT(SignalNumber,Frame):
     print("Exit application")
     it.Sentry = False
 
-def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
+def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                    labels_: List, mode: str, tick: int,
                    constraints_dual: List,
                    tol_clust: float, tol_move_clust: float, tol_open_clust: float,
@@ -461,7 +460,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
         it.memory_usage.append(mem_before)
         it.total_mem_use.append(tot_mem_after)
     it.Sentry = True
-    print("df_indiv: ",my_instance.df_indiv)
+    # print("df_indiv1: ",my_instance.df_indiv)
     try:
         while it.Sentry:
             print('Ready for new data...')
@@ -506,15 +505,14 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                     # subset.loc[:, 'timestamp'] = int(key)
                     # subset.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
                     # del subset['machine_id']
-                    print("subset: ",subset)
+                    # print("subset: ",subset)
                     new_df_container = reassign_node(value)
                     # subset = pd.merge(new_df_container, subset, on='container_id', how='left')
-                    print("merged_subset: ",subset)
-                    print("new_df_container: ",new_df_container)
+                    # print("new_df_container: ",new_df_container)
                     # new_df_container[['machine_id']] = subset[['machine_id']]
                     new_df_container['machine_id'] = subset['machine_id'].where(new_df_container['container_id'] == subset['container_id'])
                     subset = subset.truncate(before=-1, after=-1)
-                    print("new_df_container: ",new_df_container)
+                    # print("new_df_container: ",new_df_container)
                     logging.info('\n # Enter loop number %d #\n' % loop_nb)
                     it.results_file.write('\n # Loop number %d #\n' % loop_nb)
                     it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
@@ -542,7 +540,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                     nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
                         my_instance, 'local', tmin, tmax, labels_, loop_nb,
                         constraints_dual, clustering_dual_values, placement_dual_values,
-                        tol_clust, tol_move_clust, tol_place, tol_move_place, key)
+                        tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
                     df_host_evo = pd.concat([
                         df_host_evo,
                         temp_df_host[~temp_df_host[it.tick_field].isin(
@@ -559,7 +557,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                         nb_clust_changes, nb_place_changes) = progress_time_noloop(
                             my_instance, 'loop', tmin, tmax, labels_, loop_nb,
                             constraints_dual, clustering_dual_values, placement_dual_values,
-                            tol_clust, tol_move_clust, tol_place, tol_move_place, key)
+                            tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
                         df_host_evo = pd.concat([
                             df_host_evo,
                             temp_df_host[~temp_df_host[it.tick_field].isin(
@@ -573,6 +571,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                         analysis_duration = 1
                         
                         start = time.time()
+                        print("tmin, tmax: ",tmin, tmax)
                         (working_df_indiv, df_clust, w, u, v) = build_matrices(
                             my_instance, tmin, tmax, labels_
                         )
@@ -676,7 +675,8 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
                         it.total_mem_use.append(tot_mem_after)
                         it.tick_time.append(key)
                     else:
-                        
+                        # tmax += tick
+                        # tmin = tmax - (my_instance.window_duration - 1)
                         it.total_mem_use.append(tot_mem_after)
                         analysis_duration = analysis_duration + 1
                     # change indentation -> on further fixes muffu
@@ -726,7 +726,6 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
         plot.update_nodes_plot(fig_node, ax_node,
                                working_df_indiv, my_instance.dict_id_n)
 
-    # my_instance.df_indiv.to_csv('df_indiv.csv', index=False)
     df_host_evo = end_loop(working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
                            total_nb_overload, total_loop_time, loop_nb, df_host_evo)
     
@@ -738,7 +737,7 @@ def streaming_eval(my_instance: inst.Instance, df_indiv_clust: pd.DataFrame,
 
 
 def progress_time_noloop(
-        instance: inst.Instance, fixing: str, tmin: int, tmax: int, labels_, loop_nb,
+        instance: Instance, fixing: str, tmin: int, tmax: int, labels_, loop_nb,
         constraints_dual, clustering_dual_values, placement_dual_values,
         tol_clust, tol_move_clust, tol_place, tol_move_place, tick_no) -> Tuple[pd.DataFrame, int]:
     """We progress in time without performing the loop, checking node capacities."""
@@ -773,7 +772,7 @@ def progress_time_noloop(
                 (instance.
                     df_indiv[it.tick_field] >= tick - instance.window_duration) & (
                     instance.df_indiv[it.tick_field] <= tick)]
-            # print('working_df_indiv ',working_df_indiv)
+            
             (df_clust, instance.dict_id_c) = clt.build_matrix_indiv_attr(
                 working_df_indiv)
             w = clt.build_similarity_matrix(df_clust)
@@ -807,7 +806,7 @@ def progress_time_noloop(
 
 
 def pre_loop(
-    my_instance: inst.Instance, working_df_indiv: pd.DataFrame,
+    my_instance: Instance, working_df_indiv: pd.DataFrame,
     df_clust: pd.DataFrame, w: np.array, u: np.array,
     constraints_dual: List, v: np.array, cluster_method: str, solver: str
 ) -> Tuple[mdl.Model, mdl.Model, Dict, Dict]:
@@ -880,7 +879,7 @@ def pre_loop(
 
 
 def build_matrices(
-    my_instance: inst.Instance, tmin: int, tmax: int, labels_: List
+    my_instance: Instance, tmin: int, tmax: int, labels_: List
 ) -> Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array]:
     """Build period dataframe and matrices to be used."""
     working_df_indiv = my_instance.df_indiv[
@@ -899,7 +898,7 @@ def build_matrices(
 
 
 def eval_sols(
-        my_instance: inst.Instance, working_df_indiv: pd.DataFrame,
+        my_instance: Instance, working_df_indiv: pd.DataFrame,
         cluster_method: str, w: np.array, u, v, clust_model, place_model,
         constraints_dual, clustering_dual_values, placement_dual_values,
         tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
@@ -983,7 +982,7 @@ def eval_sols(
 
 
 # TODO update return type
-def eval_clustering(my_instance: inst.Instance,
+def eval_clustering(my_instance: Instance,
                     w: np.array, u: np.array, clust_model,
                     clustering_dual_values: Dict, constraints_dual: Dict,
                     tol_clust: float, tol_move_clust: float, tol_open_clust: float,
@@ -1056,7 +1055,7 @@ def eval_clustering(my_instance: inst.Instance,
             clust_max_deg, clust_mean_deg)
 
 
-def eval_placement(my_instance: inst.Instance, working_df_indiv: pd.DataFrame,
+def eval_placement(my_instance: Instance, working_df_indiv: pd.DataFrame,
                    w: np.array, u: np.array, v: np.array, dv: np.array,
                    placement_dual_values: Dict, constraints_dual: Dict, place_model,
                    tol_place: float, tol_move_place: float,
@@ -1122,7 +1121,7 @@ def eval_placement(my_instance: inst.Instance, working_df_indiv: pd.DataFrame,
             place_max_deg, place_mean_deg)
 
 
-def loop_kmeans(my_instance: inst.Instance,
+def loop_kmeans(my_instance: Instance,
                 df_clust: pd.DataFrame, labels_: List) -> Tuple:
     """Update clustering via kmeans from scratch."""
     logging.info('# Clustering via k-means from scratch #')
@@ -1152,7 +1151,7 @@ def loop_kmeans(my_instance: inst.Instance,
             {}, None, 0, 0, 0, 0)
 
 
-def stream_km(my_instance: inst.Instance,
+def stream_km(my_instance: Instance,
               df_clust: pd.DataFrame, labels_: List) -> Tuple:
     """Update clustering via kmeans from scratch."""
     logging.info('# Clustering via streamkm #')

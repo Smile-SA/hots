@@ -19,7 +19,7 @@ import pandas as pd
 
 from tqdm import tqdm
 
-import init as it
+from . import init as it
 
 # Definition of Node-related functions #
 

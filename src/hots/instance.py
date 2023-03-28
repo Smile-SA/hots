@@ -10,10 +10,8 @@ parameters. Provide Instance-related methods.
 import math
 from typing import Dict
 
-import pandas as pd
-
-import init as it
-import node as nd
+from . import init as it
+from . import node as nd
 from pathlib import Path
 
 
@@ -49,8 +47,6 @@ class Instance:
         # self.df_container = self.df_indiv[self.df_indiv["timestamp"] < 2]
         # self.df_container.reset_index()
 
-        self.df_mock_indiv = pd.read_csv(Path(path) / 'mock_container_usage.csv', index_col=False)
-
         self.time: int = self.df_indiv[it.tick_field].nunique() # count of unique time values from timestamp column = 6
         self.nb_nodes = self.df_host_meta[it.host_field].nunique() # count of unique machine_id values from machine_id column
         self.nb_containers = self.df_indiv[it.indiv_field].nunique()  # count of unique container_ids from column container_id
@@ -63,20 +59,13 @@ class Instance:
         self.df_host = self.df_host.astype({
             it.host_field: str,
             it.tick_field: int})
-        self.df_mock_indiv = self.df_mock_indiv.astype({
-            it.indiv_field: str,
-            it.host_field: str,
-            it.tick_field: int})
         self.df_host_meta = self.df_host_meta.astype({it.host_field: str})
 
         self.df_host.sort_values(it.tick_field, inplace=True)
         self.df_indiv.sort_values(it.tick_field, inplace=True)
-        self.df_mock_indiv.sort_values(it.tick_field, inplace=True)
         self.df_host.set_index(
             [it.tick_field, it.host_field], inplace=True, drop=False)
         self.df_indiv.set_index(
-            [it.tick_field, it.indiv_field], inplace=True, drop=False)
-        self.df_mock_indiv.set_index(
             [it.tick_field, it.indiv_field], inplace=True, drop=False)
         
         self.percentage_to_timestamp(config)
@@ -119,12 +108,12 @@ class Instance:
         self.sep_time = self.df_indiv[it.tick_field].min() + sep_nb_data - 1
         if config['loop']['tick'] == 'default':
             config['loop']['tick'] = self.window_duration - 1
-            config['loop']['tick'] = 2
+            # config['loop']['tick'] = 2
         else:
             config['loop']['tick'] = math.floor(
                 self.time * int(config['loop']['tick']) / 100
             ) - 1
-
+        # self.window_duration = 3
         if self.window_duration <= 1:
             self.window_duration += 1
         if self.sep_time <= 0:

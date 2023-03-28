@@ -13,7 +13,7 @@ from typing import Dict, Tuple
 
 import pandas as pd
 
-import kafka
+from . import kafka
 
 # Functions definitions #
 

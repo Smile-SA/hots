@@ -26,8 +26,8 @@ from plotly.subplots import make_subplots
 
 import scipy.cluster.hierarchy as hac
 
-import init as it
-import instance as Instance
+from . import init as it
+from .instance import Instance
 import plotly.express as px
 
 # Global variables
@@ -539,7 +539,7 @@ def plot_conflict_graph(graph: nx.Graph):
     fig.savefig('graph.svg')
     # plt.draw()
 
-def plot_memory_usage(x, y, mock, tick):
+def plot_memory_usage(x, y, tick):
     fig = plt.figure()
     ax = fig.add_subplot(111)
     ax.plot(x, y, 'b-', label="total memory rss")
@@ -548,7 +548,6 @@ def plot_memory_usage(x, y, mock, tick):
             ax.axvline(t, color="orange", alpha=0.5, label="run placement", linestyle='dashed')
         else:
             ax.axvline(t, color="orange", alpha=0.5, linestyle='dashed')
-    # ax.axhline(mock, color="red", alpha=0.5, label="df_mock_indiv")
     ax.set(xlabel='time (s)', ylabel='memory of datarame (bytes)')
     ax.legend()
     fig.savefig('mem_fig.png')

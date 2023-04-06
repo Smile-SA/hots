@@ -1,3 +1,7 @@
+<h1 align="center">
+<img src="doc/source/_static/hots_logo.png" width="200">
+</h1><br>
+
 # **HOTS**
 
 > Hybrid Optimization for Time Series  

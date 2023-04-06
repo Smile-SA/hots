@@ -1,7 +1,5 @@
-# -*- coding: utf-8 -*-
-#
-# Configuration file for the Sphinx documentation builder.
-#
+"""Configuration file for the Sphinx documentation builder."""
+
 # This file does only contain a selection of the most common options. For a
 # full list see the documentation:
 # http://www.sphinx-doc.org/en/master/config
@@ -219,7 +217,7 @@ rst_epilog = """
 
 # Theming
 html_theme = 'sphinx_rtd_theme'
-html_logo = '_static/smile_logo.png'
+html_logo = '_static/hots_logo.png'
 html_favicon = '_static/smile_logo.png'
 html_css_files = ['custom.css']
 

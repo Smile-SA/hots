@@ -1,10 +1,8 @@
 <h1 align="center">
-<img src="doc/source/_static/hots_logo.png" width="200">
+<img src="doc/source/_static/hots_logo.png" width="250">
 </h1><br>
 
-# **HOTS**
-
-> Hybrid Optimization for Time Series  
+> Hybrid Optimization for Time Series (HOTS)  
 > HOTS solves problems presented as time series using machine learning and optimization methods.  
 > The library supports multiple resource related problems (placement, allocation), presented as one or more metrics.
 

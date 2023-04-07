@@ -23,6 +23,9 @@ Authors:
 - Amaury Sauret
 - SMILE R&D
 
+As HOTS was created during a PhD, credits have to be given to academic supervisors, Céline
+Rouveirol and Frédéric Roupin, involved in the algorithm thinking.
+
 License
 =======
 

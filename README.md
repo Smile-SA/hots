@@ -1,6 +1,8 @@
-# **HOTS**
+<h1 align="center">
+<img src="doc/source/_static/hots_logo.png" width="250">
+</h1><br>
 
-> Hybrid Optimization for Time Series  
+> Hybrid Optimization for Time Series (HOTS)  
 > HOTS solves problems presented as time series using machine learning and optimization methods.  
 > The library supports multiple resource related problems (placement, allocation), presented as one or more metrics.
 
@@ -88,6 +90,8 @@ Authors:
 - Kang Du
 - Amaury Sauret
 - SMILE R&D
+
+As HOTS was created during a PhD, credits have to be given to academic supervisors, Céline Rouveirol and Frédéric Roupin, involved in the algorithm thinking.
 
 ## Links
 

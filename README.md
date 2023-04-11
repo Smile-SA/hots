@@ -1,5 +1,5 @@
 <h1 align="center">
-<img src="doc/source/_static/hots_logo.png" width="250">
+<img src="https://github.com/Smile-SA/hots/raw/main/doc/source/_static/hots_logo.png" width="250">
 </h1><br>
 
 > Hybrid Optimization for Time Series (HOTS)  

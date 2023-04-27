@@ -32,8 +32,8 @@ class Model:
     """
 
     def __init__(
-        self, pb_number, df_indiv, dict_id_c, dict_id_n=None, df_host_meta=None, nb_clusters=None,
-        w=None, dv=None, sol_u=None, sol_v=None
+        self, pb_number, df_indiv, metric, dict_id_c, dict_id_n=None, df_host_meta=None,
+        nb_clusters=None, w=None, dv=None, sol_u=None, sol_v=None
     ):
         """Initialize Pyomo model with data in Instance.
 
@@ -41,6 +41,8 @@ class Model:
         :type pb_number: int
         :param df_indiv: _description_
         :type df_indiv: pd.DataFrame
+        :param metric: _description_
+        :type metric: str
         :param dict_id_c: _description_
         :type dict_id_c: Dict
         :param dict_id_n: _description_, defaults to None
@@ -86,7 +88,7 @@ class Model:
         #                  dict_id_n, df_host_meta,
         #                  nb_clusters
         #                  )
-        self.create_data(df_indiv, dict_id_c,
+        self.create_data(df_indiv, metric, dict_id_c,
                          df_host_meta,
                          nb_clusters
                          )
@@ -255,11 +257,13 @@ class Model:
             self.mdl.obj = pe.Objective(
                 rule=min_coloc_cluster_, sense=pe.minimize)
 
-    def create_data(self, df_indiv, dict_id_c, df_host_meta, nb_clusters):
+    def create_data(self, df_indiv, metric, dict_id_c, df_host_meta, nb_clusters):
         """Create data from dataframe.
 
         :param df_indiv: _description_
         :type df_indiv: _type_
+        :param metric: _description_
+        :type metric: str
         :param dict_id_c: _description_
         :type dict_id_c: _type_
         :param df_host_meta: _description_
@@ -277,11 +281,11 @@ class Model:
         elif self.pb_number == 2:
             self.cap = {}
             for n, n_data in df_host_meta.groupby(it.host_field):
-                self.cap.update({n: n_data['cpu'].values[0]})
+                self.cap.update({n: n_data[metric].values[0]})
             self.cons = {}
             df_indiv.reset_index(drop=True, inplace=True)
             for key, c_data in df_indiv.groupby([it.indiv_field, it.tick_field]):
-                self.cons.update({key: c_data['cpu'].values[0]})
+                self.cons.update({key: c_data[metric].values[0]})
 
             self.data = {None: {
                 'n': {None: df_host_meta[it.host_field].nunique()},

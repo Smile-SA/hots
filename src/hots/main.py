@@ -2,10 +2,12 @@
 Entry point of hots module through ``hots path [OPTIONS]``.
 
     - path is the folder where we find the files
-        x container_usage.csv : describes container resource consumption
-        x node_meta.csv : describes nodes capacities
-        (x node_usage.csv : describes nodes resource consumption)
-    - type 'hots --help' for options description
+
+        * container_usage.csv : describes container resource consumption
+        * node_meta.csv : describes nodes capacities
+        * (node_usage.csv : describes nodes resource consumption)
+
+    - type ``hots --help`` for options description
 
 The entire methodology is called from here (initialization, clustering,
 allocation, evaluation, access to optimization model...).
@@ -260,8 +262,8 @@ def analysis_period(my_instance, config, method):
     :param method: method used to solve initial problem
     :type method: str
     :return: tuple with Instance object, nodes data with new placement, clustering data and
-    clustering labels
-    :rtype: Tuple[Instance, pd.DataFrame, pd.DataFrame, List]
+        clustering labels
+    :rtype: Tuple
     """
     df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
     df_indiv_clust = pd.DataFrame()
@@ -464,7 +466,7 @@ def streaming_eval(
     :param df_host_evo: evolving node data
     :type df_host_evo: pd.DataFrame
     :return: figures to plot to see clustering and nodes evolution + evolving node data + number
-    of node overloads
+        of node overloads
     :rtype: Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]
     """
     fig_node, ax_node = plot.init_nodes_plot(
@@ -711,7 +713,7 @@ def progress_time_noloop(
     :param tol_move_place: threshold used for number of placement moves
     :type tol_move_place: float
     :return: evolving node data + number of overloads + loop number + clustering and placement
-    changes
+        changes
     :rtype: Tuple[pd.DataFrame, int, int, int, int]
     """
     df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
@@ -946,13 +948,13 @@ def eval_sols(
     :param solver: solver used for pyomo
     :type solver: str
     :return: number of changes in clustering and placement, silhouette score before and after loop,
-    number of nodes and edges in conflict graph + max and mean degree (clustering and placement),
-    optimization models and associated dual values, clustering related data, clusters mean profiles
-    and cluster labels
+        number of nodes and edges in conflict graph + max and mean degree (clustering and
+        placement), optimization models and associated dual values, clustering related data,
+        clusters mean profiles and cluster labels
     :rtype: Tuple[
         int, int, float, float, int, int, float, float, int, int, float, float,
         mdl.Model, mdl.Model, Dict, Dict, pd.DataFrame, np.array, List
-    ]
+        ]
     """
     # evaluate clustering
     start = time.time()
@@ -1063,11 +1065,11 @@ def eval_clustering(
     :param solver: solver used for pyomo
     :type solver: str
     :return: clustering variance matrix, number of changes in clustering, silhouette score before
-    and after the loop, clustering dual values, clustering optimization model, number of nodes and
-    edges in conflict graph + max and mean degree (clustering)
+        and after the loop, clustering dual values, clustering optimization model, number of nodes
+        and edges in conflict graph + max and mean degree (clustering)
     :rtype: Tuple[
         np.array, int, float, float, Dict, mdl.Model, int, int, float, float
-    ]
+        ]
     """
     nb_clust_changes_loop = 0
     logging.info('# Clustering evaluation #')
@@ -1171,7 +1173,7 @@ def eval_placement(
     :param solver: solver used for pyomo
     :type solver: str
     :return: number of placement changes, dual values related to current placement, placement
-    optimization model, number of nodes and edges in conflict graph + max and mean degree
+        optimization model, number of nodes and edges in conflict graph + max and mean degree
     :rtype: Tuple[int, Dict, mdl.Model, int, int, float, float]
     """
     logging.info('# Placement evaluation #')
@@ -1244,10 +1246,10 @@ def loop_kmeans(my_instance, df_clust, labels_):
     :param labels_: clustering labels
     :type labels_: List
     :return: clustering variance matrix, number of changes in clustering, silhouette score before
-    and after loop, null objects to match other return objects
+        and after loop, null objects to match other return objects
     :rtype: Tuple[
         np.array, int, float, float, Dict, mdl.Model, int, int, float, float
-    ]
+        ]
     """
     logging.info('# Clustering via k-means from scratch #')
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
@@ -1286,10 +1288,10 @@ def stream_km(my_instance, df_clust, labels_):
     :param labels_: clustering labels
     :type labels_: List
     :return: clustering variance matrix, number of changes in clustering, silhouette score before
-    and after loop, null objects to match other return objects
+        and after loop, null objects to match other return objects
     :rtype: Tuple[
         np.array, int, float, float, Dict, mdl.Model, int, int, float, float
-    ]
+        ]
     """
     logging.info('# Clustering via streamkm #')
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
@@ -1379,7 +1381,7 @@ def add_time(loop_nb, action, time):
 
     :param loop_nb: current loop number
     :type loop_nb: int
-    :param action: action / method we add time for
+    :param action: action or method we add time for
     :type action: str
     :param time: running time of the action
     :type time: float

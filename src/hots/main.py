@@ -805,7 +805,7 @@ def pre_loop(
     start = time.time()
     clust_model = mdl.Model(
         1,
-        working_df_indiv,
+        working_df_indiv, it.metrics[0],
         my_instance.dict_id_c,
         nb_clusters=my_instance.nb_clusters,
         w=w, sol_u=u
@@ -848,7 +848,7 @@ def pre_loop(
     start = time.time()
     place_model = mdl.Model(
         2,
-        working_df_indiv,
+        working_df_indiv, it.metrics[0],
         my_instance.dict_id_c,
         my_instance.dict_id_n,
         my_instance.df_host_meta,
@@ -1182,7 +1182,7 @@ def eval_placement(
     # TODO update without re-creating from scratch ? Study
     place_model = mdl.Model(
         2,
-        working_df_indiv,
+        working_df_indiv, it.metrics[0],
         my_instance.dict_id_c,
         my_instance.dict_id_n,
         my_instance.df_host_meta,

@@ -1,9 +1,12 @@
 import json
 import socket
-from confluent_kafka import Producer, Consumer
+from confluent_kafka import Producer, Consumer, KafkaException
 import time
 from . import init as it
 from .instance import Instance
+from confluent_kafka.admin import AdminClient
+import sys
+from confluent_kafka.serialization import SerializationContext, MessageField
 
 def acked(err, msg):
     if err is not None:
@@ -12,13 +15,16 @@ def acked(err, msg):
         print("Message produced: %s" % (str(msg.value())))
 
 
-def msg_process(msg):
+def msg_process(msg, avro_deserializer):
     # Print the current time and the message.
     time_start = time.strftime("%Y-%m-%d %H:%M:%S")
-    val = msg.value()
-    dval = json.loads(val)
-    # print(time_start, dval)
-    return(time_start, dval)
+    if avro_deserializer == None:
+        dval = msg.value()
+        val = json.loads(dval)
+    else:
+        val = avro_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
+    # print(time_start, val)
+    return(time_start, val)
 
 
 def produce_data(my_instance: Instance, timestamp, history):
@@ -55,3 +61,16 @@ def Publish(producer, msg, topic):
     jresult = json.dumps(msg)
     producer.produce(topic, key="mock_node", value=jresult, callback=acked)
     producer.flush()
+
+def Kafka_availability(config):
+    server1 = config['kafkaConf']['Consumer']['brokers'][0]
+    admin_client = AdminClient({'bootstrap.servers': server1})
+    try:
+        topic_metadata = admin_client.list_topics(timeout=10)
+        if 'DockerPlacer' in topic_metadata.topics:
+            print('Kafka cluster is available')
+        else:
+            print('Kafka cluster is not available')
+    except KafkaException as e:
+        print(f"Error connecting to Kafka cluster: {e}")
+        sys.exit()

@@ -56,12 +56,35 @@
         "mock_topic": "MockPlacement"
       },
       "Producer":{
-        "brokers":["localhost:9092"]
+        "brokers":["10.3.73.151:9092"]
       },
       "Consumer":{
         "group": "DockerPlacerConsumer",
-        "brokers":["localhost:9092"]
+        "brokers":["10.3.73.151:9092"]
 
+      },
+      "schema":{
+        "type": "record",
+        "name": "ContainerData",
+        "namespace": "com.smile.hots",
+        "fields": [
+          {
+            "name": "containers",
+            "type": {
+              "type": "array",
+              "items": {
+                "type": "record",
+                "name": "Container",
+                "fields": [
+                  {"name": "timestamp", "type": "int"},
+                  {"name": "container_id", "type": "string"},
+                  {"name": "machine_id", "type": "string"},
+                  {"name": "cpu", "type": "float"}
+                ]
+              }
+            }
+          }
+        ]
       }
     }
     

@@ -42,7 +42,10 @@ import psutil
 # import node
 # import placement as place
 # import plot
+from confluent_kafka.schema_registry.avro import AvroDeserializer
 from confluent_kafka import KafkaError, KafkaException
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.error import SchemaRegistryError
 
 import signal
 # import kafka
@@ -421,9 +424,66 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         my_instance, tmin, tmax, labels_
     )
 
+    schema_str = '''
+        {
+            "namespace": "com.example",
+            "type": "record",
+            "name": "Person",
+            "fields": [
+                {
+                    "type": "string",
+                    "name": "timestamp"
+                },
+                {
+                "type": {
+                    "type": "array",
+                    "items": {
+                    "type": "record",
+                    "name": "Container",
+                    "namespace": "com.smile.containers",
+                    "fields": [
+                        {
+                        "type": "string",
+                        "name": "timestamp"
+                        },
+                        {
+                        "type": "string",
+                        "name": "container_id"
+                        },
+                        {
+                        "type": "string",
+                        "name": "machine_id"
+                        },
+                        {
+                        "type": "float",
+                        "name": "cpu"
+                        }
+                    ]
+                    }
+                },
+                "name": "containers"
+                }
+            ]
+        }
+        '''
+    UseSchema = False
+    if UseSchema:
+        # schema_registry_client_conf = {
+        #     "url":"http://localhost:8081"}
+        schema_registry_client_conf = {'url': "http://localhost:8081"}
+        schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
+        
+        try:
+            schema_str = schema_registry_client.get_latest_version(it.Kafka_topics['docker_topic']+'-value').schema.schema_str
+        except SchemaRegistryError as e:
+            # Handle schema registry error
+            print(f"Error registering schema: {e}")
     # send node meta stats for mock 
     
-    
+        avro_deserializer = AvroDeserializer(schema_registry_client,
+                                            schema_str)
+    else:
+        avro_deserializer = None
     # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
     # history = True # consider historical data
     # kafka.produce_data(my_instance, time_to_send, history) # send last historical data to kafka
@@ -484,10 +544,10 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                         break
 
             else:
-                (_, dval) = kafka.msg_process(msg)
+                (_, dval) = kafka.msg_process(msg, avro_deserializer)
                 if dval:
-                    key = list(dval.keys())[0]
-                    value = list(dval.values())[0]
+                    key = list(dval.values())[0]
+                    value = list(dval.values())[1]
                     last_index = my_instance.df_indiv.index.levels[0][-1]
                     print("last_index: ",last_index)
                     subset = my_instance.df_indiv[my_instance.df_indiv.timestamp == last_index].copy()
@@ -496,20 +556,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                     subset.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
                     subset.sort_index(inplace=True)
 
-                    # subset = my_instance.df_indiv.loc[(last_index,slice(None)), :].copy()
-                    # subset = my_instance.df_indiv[my_instance.df_indiv.timestamp == (int(key) - 1)].copy()
-                    # print("subset: ",subset)
-                    # subset = subset.rename(index={last_index:int(key)}, level='timestamp')
-                    # subset.sort_index(inplace=True)
-                    # subset.reset_index(drop=True, inplace=True)
-                    # subset.loc[:, 'timestamp'] = int(key)
-                    # subset.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
-                    # del subset['machine_id']
-                    # print("subset: ",subset)
                     new_df_container = reassign_node(value)
-                    # subset = pd.merge(new_df_container, subset, on='container_id', how='left')
-                    # print("new_df_container: ",new_df_container)
-                    # new_df_container[['machine_id']] = subset[['machine_id']]
+                    
                     new_df_container['machine_id'] = subset['machine_id'].where(new_df_container['container_id'] == subset['container_id'])
                     subset = subset.truncate(before=-1, after=-1)
                     # print("new_df_container: ",new_df_container)
@@ -1241,8 +1289,8 @@ def process_memory():
     return mem_info.rss
 
 
-def reassign_node(value):
-    c_info = value['containers']
+def reassign_node(c_info):
+    # c_info = value['containers']
     new_df_container = pd.DataFrame(c_info)
     new_df_container = new_df_container.astype({
                 it.indiv_field: str,

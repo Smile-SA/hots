@@ -170,6 +170,7 @@ def define_globals(p_path: Path, config: Dict):
 
 
     Kafka_topics = config['kafkaConf']['topics']
+    kafka.Kafka_availability(config)
     Kafka_Producer = kafka.GetProducer(config)
     Kafka_Consumer = kafka.GetConsumer(config)
     dict_agg_metrics = {}

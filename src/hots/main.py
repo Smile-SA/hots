@@ -186,7 +186,8 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     tot_mem_after = process_memory()
     mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
     print("memory use: ",tot_mem_after - tot_mem_before)
-    print("dataframe memory use: ",mem_after - mem_before)
+    print("dataframe memory use: ",mem_before)
+    print("dataframe memory use: ",mem_after)
     main_time = time.time() - main_time
     add_time(-1, 'total_time', main_time)
     node.plot_data_all_nodes(
@@ -1290,7 +1291,8 @@ def close_files():
 def process_memory():
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
-    return mem_info.rss
+    mem_usage_mb = mem_info.rss / 1024 / 1024
+    return mem_usage_mb
 
 
 def reassign_node(c_info):

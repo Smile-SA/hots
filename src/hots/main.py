@@ -80,6 +80,8 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     """Use method to propose a placement solution for micro-services adjusted in time."""
     # Initialization part
     main_time = time.time()
+    tot_mem_before = process_memory()
+    
     signal.signal(signal.SIGINT,SignalHandler_SIGINT)
     if not path[-1] == '/':
         path += '/'
@@ -89,7 +91,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
         path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     )
     add_time(-1, 'preprocess', (time.time() - start))
-
+    mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
     # Plot initial data
     if False:
         indivs_cons = ctnr.plot_all_data_all_containers(
@@ -181,7 +183,10 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     #         my_instance, working_df_indiv, config['allocation']))
     # else:
     #     logging.info('We do not perform allocation \n')
-
+    tot_mem_after = process_memory()
+    mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
+    print("memory use: ",tot_mem_after - tot_mem_before)
+    print("dataframe memory use: ",mem_after - mem_before)
     main_time = time.time() - main_time
     add_time(-1, 'total_time', main_time)
     node.plot_data_all_nodes(
@@ -511,14 +516,13 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     it.memory_usage = []
     it.tick_time = []
     it.total_mem_use = []
-    tot_mem_after = process_memory()
     mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
-    hist_time = list(set(my_instance.df_indiv['timestamp']))
+    # hist_time = list(set(my_instance.df_indiv['timestamp']))
 
-    for x in hist_time:
-        it.time_at.append(x)
-        it.memory_usage.append(mem_before)
-        it.total_mem_use.append(tot_mem_after)
+    # for x in hist_time:
+    #     it.time_at.append(x)
+    #     it.memory_usage.append(mem_before)
+    #     it.total_mem_use.append(tot_mem_after)
     it.Sentry = True
     # print("df_indiv1: ",my_instance.df_indiv)
     try:
@@ -719,13 +723,13 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                         )
                         tmax += tick
                         tmin = tmax - (my_instance.window_duration - 1)
-                        tot_mem_after = process_memory()
-                        it.total_mem_use.append(tot_mem_after)
+                        
+                        # it.total_mem_use.append(tot_mem_after)
                         it.tick_time.append(key)
                     else:
                         # tmax += tick
                         # tmin = tmax - (my_instance.window_duration - 1)
-                        it.total_mem_use.append(tot_mem_after)
+                        # it.total_mem_use.append(tot_mem_after)
                         analysis_duration = analysis_duration + 1
                     # change indentation -> on further fixes muffu
                     # input('\nPress any key to progress in time ...\n')
@@ -758,7 +762,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
         print("close kafka consumer")
         it.Kafka_Consumer.close()  
     # print(it.tick_time)
-    plot.plot_memory_usage(it.time_at, it.total_mem_use, it.tick_time) 
+    # plot.plot_memory_usage(it.time_at, it.total_mem_use, it.tick_time) 
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
          df_indiv[it.tick_field] >= tmin)]

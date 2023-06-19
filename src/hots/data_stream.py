@@ -174,7 +174,7 @@ def main():
     if UseSchema :  # If you want to use avro schema (More CPU!!)
 
         # schema_registry_conf = {'url': "http://localhost:8081"}
-        schema_registry_conf = {'url': "http://localhost:8081"}
+        schema_registry_conf = {'url': "http://10.3.73.151:8081"}
         
         schema_registry_url = schema_registry_conf["url"] 
         try:
@@ -211,7 +211,7 @@ def main():
         # Handle schema registry error
         print(f"Error connecting to consumer: ")
 
-    
+    # input()
     while end:
         row = next(rdr, None)
         if first_line:

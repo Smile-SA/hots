@@ -55,14 +55,15 @@ def GetConsumer():
     consumer = Consumer(conf)
     return consumer
 
-def Publish(producer, msg, topic, avro_serializer):
+def Publish(producer, msg, topic, avro_serializer, file_complete):
     try:
         
         key = "thesis_ex_10"
         timestamp, value = list(msg.items())[0]
         message = {
             "timestamp":timestamp,
-            "containers":value['containers']
+            "containers":value['containers'],
+            "file": True if file_complete else False 
         }
         if avro_serializer == None:
             jresult = json.dumps(message)
@@ -150,6 +151,10 @@ def main():
                 }
             },
             "name": "containers"
+            },
+            {
+                "type": "boolean",
+                "name": "file"
             }
         ]
         }
@@ -211,7 +216,7 @@ def main():
         # Handle schema registry error
         print(f"Error connecting to consumer: ")
 
-    # input()
+    input()
     while end:
         row = next(rdr, None)
         if first_line:
@@ -246,7 +251,7 @@ def main():
                         }
                     z[curr_time]['containers'].append(y)
                 else:
-                    Publish(producer=producer, msg=z, topic=producer_topic, avro_serializer=avro_serializer)
+                    Publish(producer=producer, msg=z, topic=producer_topic, avro_serializer=avro_serializer, file_complete=False)
                     print()
                     # check wether data consumed.
                     z = {}
@@ -262,8 +267,10 @@ def main():
                         }
         else:
             if z :
-                Publish(producer=producer, msg=z, topic=producer_topic, avro_serializer=avro_serializer)
+                Publish(producer=producer, msg=z, topic=producer_topic, avro_serializer=avro_serializer, file_complete=True)
                 # print("Another one")
+            # File is over
+
             # check if the producer offset balanced with consumer offset
             # balance_offset(consumer, tp)
             end = False

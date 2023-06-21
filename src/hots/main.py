@@ -81,6 +81,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     # Initialization part
     main_time = time.time()
     tot_mem_before = process_memory()
+    start_time = time.time()
     
     signal.signal(signal.SIGINT,SignalHandler_SIGINT)
     if not path[-1] == '/':
@@ -185,6 +186,11 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     #     logging.info('We do not perform allocation \n')
     tot_mem_after = process_memory()
     mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
+    end_time = time.time()
+
+    # Calculate the elapsed time
+    elapsed_time = end_time - start_time
+    print("Elapsed time:", elapsed_time, "seconds")
     print("memory use: ",tot_mem_after - tot_mem_before)
     print("dataframe memory use: ",mem_before)
     print("dataframe memory use: ",mem_after)
@@ -553,6 +559,9 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                 if dval:
                     key = list(dval.values())[0]
                     value = list(dval.values())[1]
+                    file = list(dval.values())[2]
+                    if file:
+                        break
                     last_index = my_instance.df_indiv.index.levels[0][-1]
                     print("last_index: ",last_index)
                     subset = my_instance.df_indiv[my_instance.df_indiv.timestamp == last_index].copy()

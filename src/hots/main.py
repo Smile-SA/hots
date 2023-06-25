@@ -537,7 +537,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
             print('Ready for new data...')
             loop_time = time.time()
             it.Kafka_Consumer.subscribe([it.Kafka_topics['docker_topic']])
-            msg = it.Kafka_Consumer.poll(timeout=5.0)
+            msg = it.Kafka_Consumer.poll(timeout=2.0)
             
             if msg is None:
                     continue
@@ -563,7 +563,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                     if file:
                         break
                     last_index = my_instance.df_indiv.index.levels[0][-1]
-                    print("last_index: ",last_index)
+                    # print("last_index: ",last_index)
                     subset = my_instance.df_indiv[my_instance.df_indiv.timestamp == last_index].copy()
                     subset.reset_index(drop=True, inplace=True)
                     subset.loc[:, 'timestamp'] = int(key)
@@ -578,7 +578,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                     logging.info('\n # Enter loop number %d #\n' % loop_nb)
                     it.results_file.write('\n # Loop number %d #\n' % loop_nb)
                     it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
-                    print('\n # Enter loop number %d #\n' % loop_nb)
+                    
                     
                     # TODO not fully tested (replace containers)
 
@@ -597,7 +597,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                         my_instance.df_host, new_df_host
                     ])
 
-                    print('\n # Step 1: Check Progress time no loop%d #\n' % loop_nb)
+                    # print('\n # Step 1: Check Progress time no loop%d #\n' % loop_nb)
                     (temp_df_host, nb_overload, loop_nb,
                     nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
                         my_instance, 'local', tmin, tmax, labels_, loop_nb,
@@ -628,8 +628,9 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                         total_nb_overload += nb_overload
                 
                     if analysis_duration == tick: # equate to tick size 
+                        print('\n # Enter loop number %d #\n' % loop_nb)
                         
-                        print('\n # Step 2: evaluate the solution at loop: %d #\n' % loop_nb)
+                        # print('\n # Step 2: evaluate the solution at loop: %d #\n' % loop_nb)
                         analysis_duration = 1
                         
                         start = time.time()

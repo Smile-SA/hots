@@ -52,7 +52,8 @@ def GetConsumer(config):
     server1 = config['kafkaConf']['Consumer']['brokers'][0]
     group = config['kafkaConf']['Consumer']['group']
     conf = {'bootstrap.servers': server1,
-            'default.topic.config': {'auto.offset.reset': 'smallest'},
+            'max.poll.interval.ms': 1200000,
+            'default.topic.config': {'auto.offset.reset': 'earliest'},
             'group.id': group}
     consumer = Consumer(conf)
     return consumer

@@ -22,6 +22,8 @@ from pyomo import environ as pe
 
 from . import init as it
 from .clustering import get_far_container
+
+import time
 # import clustering
 
 
@@ -454,7 +456,7 @@ def fill_dual_values(my_mdl: Model) -> Dict:
     return dual_values
 
 
-def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float
+def get_conflict_graph_2(my_mdl: Model, constraints_dual_values: Dict, tol: float
     ) -> nx.Graph:
     """Build conflict graph from comapring dual variables."""
     conflict_graph = nx.Graph()
@@ -492,6 +494,72 @@ def get_conflict_graph(my_mdl: Model, constraints_dual_values: Dict, tol: float
                         index_c[0], index_c[1],
                         weight=my_mdl.instance_model.dual[
                             my_mdl.instance_model.must_link_n[index_c]])
+    return conflict_graph
+
+def get_conflict_graph(my_mdl, constraints_dual_values, tol):
+    """Build conflict graph from comapring dual variables.
+
+    :param my_mdl: _description_
+    :type my_mdl: Model
+    :param constraints_dual_values: _description_
+    :type constraints_dual_values: Dict
+    :param tol: _description_
+    :type tol: float
+    :return: _description_
+    :rtype: nx.Graph
+    """
+    start = time.time()
+    print('start conflict graph: ',my_mdl.pb_number)
+    # max_edges = len(my_mdl.instance_model.must_link_c)
+    # conflict_graph = nx.Graph()
+
+    # Store frequently used values
+    # must_link_c = my_mdl.instance_model.must_link_c
+    # instance_model_dual = my_mdl.instance_model.dual
+    tol_value = tol * pe.value(my_mdl.instance_model.obj)
+
+    if my_mdl.pb_number == 1:
+        max_edges = len(my_mdl.instance_model.must_link_c)
+        conflict_graph = nx.Graph(capacity=max_edges)
+
+        # Store frequently used values
+        must_link_c = my_mdl.instance_model.must_link_c
+        instance_model_dual = my_mdl.instance_model.dual
+        edges = [
+            (index_c[0], index_c[1])
+            for index_c in must_link_c
+            if index_c in constraints_dual_values and constraints_dual_values[index_c] > 0.0
+            and (
+                instance_model_dual[my_mdl.instance_model.must_link_c[index_c]] >
+                (constraints_dual_values[index_c] + tol * constraints_dual_values[index_c])
+                or instance_model_dual[my_mdl.instance_model.must_link_c[index_c]] > tol_value
+            )
+        ]
+
+        # Add edges in batch
+        conflict_graph.add_edges_from(edges)
+        print('start conflict graph first if: ', time.time()-start)
+    elif my_mdl.pb_number == 2:
+        max_edges = len(my_mdl.instance_model.must_link_n)
+        conflict_graph = nx.Graph(capacity=max_edges)
+
+        # Store frequently used values
+        must_link_n = my_mdl.instance_model.must_link_n
+        instance_model_dual = my_mdl.instance_model.dual
+        edges = [
+            (index_c[0], index_c[1])
+            for index_c in must_link_n
+            if index_c in constraints_dual_values and constraints_dual_values[index_c] > 0.0
+            and (
+                instance_model_dual[my_mdl.instance_model.must_link_n[index_c]] >
+                (constraints_dual_values[index_c] + tol * constraints_dual_values[index_c])
+                or instance_model_dual[my_mdl.instance_model.must_link_n[index_c]] > tol_value
+            )
+        ]
+
+        # Add edges in batch
+        conflict_graph.add_edges_from(edges)
+        print('start conflict graph second if: ', time.time()-start)
     return conflict_graph
 
 

@@ -532,12 +532,13 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
     #     it.total_mem_use.append(tot_mem_after)
     it.Sentry = True
     # print("df_indiv1: ",my_instance.df_indiv)
+    print('Ready for new data...')
     try:
         while it.Sentry:
-            print('Ready for new data...')
+            
             loop_time = time.time()
             it.Kafka_Consumer.subscribe([it.Kafka_topics['docker_topic']])
-            msg = it.Kafka_Consumer.poll(timeout=2.0)
+            msg = it.Kafka_Consumer.poll(timeout=1.0)
             
             if msg is None:
                     continue
@@ -586,7 +587,19 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                     new_df_host = new_df_host.astype({
                         it.host_field: str,
                         it.tick_field: int})
-                    new_df_host.sort_values(it.tick_field, inplace=True)
+                    # new_df_host.sort_values(it.tick_field, inplace=True)
+                    # Set remaining machine_ids from df_host to 0.0
+                    previous_timestamp = int(key) - 1
+                    existing_machine_ids = my_instance.df_host[my_instance.df_host[it.tick_field] == previous_timestamp][it.host_field].unique()
+                    missing_machine_ids = set(existing_machine_ids) - set(new_df_host[it.host_field])
+
+                    missing_rows = pd.DataFrame({
+                        'timestamp': int(key),
+                        'machine_id': list(missing_machine_ids),
+                        'cpu': 0.0
+                    })
+                    # new_df_host.sort_values(it.tick_field, inplace=True)
+                    new_df_host = pd.concat([new_df_host, missing_rows])
                     new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
 
                     # update df_indiv on every loop!
@@ -737,6 +750,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                         
                         # it.total_mem_use.append(tot_mem_after)
                         it.tick_time.append(key)
+                        print('ready for new data')
                     else:
                         # tmax += tick
                         # tmin = tmax - (my_instance.window_duration - 1)
@@ -767,6 +781,8 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                     mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
                     it.memory_usage.append(mem_after)
                     it.time_at.append(key)
+                    if file:
+                        break
 
     finally:
         # Close down consumer to commit final offsets.

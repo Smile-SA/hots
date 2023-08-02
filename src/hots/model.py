@@ -235,6 +235,59 @@ class Model:
         elif self.pb_number == 2:
             self.mdl.obj = pe.Objective(
                 rule=min_coloc_cluster_, sense=pe.minimize)
+            
+    def create_data_new(self, df_indiv, dict_id_c, df_host_meta, nb_clusters):
+        """Create data from dataframe.
+
+        :param df_indiv: _description_
+        :type df_indiv: _type_
+        :param dict_id_c: _description_
+        :type dict_id_c: _type_
+        :param df_host_meta: _description_
+        :type df_host_meta: _type_
+        :param nb_clusters: _description_
+        :type nb_clusters: _type_
+        """
+        self.data = {}
+        df_indiv_reset = df_indiv.reset_index(drop=True)
+        array_indiv = df_indiv_reset.to_numpy()
+
+        indiv_field_idx = np.where(df_indiv_reset.columns == 'container_id')[0][0]
+        tick_field_idx = np.where(df_indiv_reset.columns == 'timestamp')[0][0]
+        cpu_field_idx = np.where(df_indiv_reset.columns == 'cpu')[0][0]
+
+        if self.pb_number == 1:
+            self.data[None] = {
+                'c': {None: len(np.unique(array_indiv[:, indiv_field_idx]))},
+                'C': {None: list(dict_id_c.keys())},
+                'k': {None: nb_clusters},
+                'K': {None: range(nb_clusters)},
+            }
+        elif self.pb_number == 2:
+            self.cap = {}
+            self.cons = {}
+            df_host_meta_unique = df_host_meta.drop_duplicates(subset=[it.host_field])
+            df_indiv_reset = df_indiv.reset_index(drop=True)
+            array_indiv = df_indiv_reset.to_numpy()
+
+            self.data[None] = {
+                'n': {None: df_host_meta_unique[it.host_field].nunique()},
+                'c': {None: len(np.unique(array_indiv[:, indiv_field_idx]))},
+                't': {None: len(np.unique(array_indiv[:, tick_field_idx]))},
+                'N': {None: df_host_meta_unique[it.host_field].unique().tolist()},
+                'C': {None: list(dict_id_c.keys())},
+                'Ccons': {None: np.unique(array_indiv[:, indiv_field_idx]).tolist()},
+                'cap': self.cap,
+                'T': {None: np.unique(array_indiv[:, tick_field_idx]).tolist()},
+                'cons': self.cons,
+            }
+
+            for _, n_data in df_host_meta_unique.iterrows():
+                self.cap[n_data[it.host_field]] = n_data['cpu']
+
+            for row in array_indiv:
+                key = (row[indiv_field_idx], row[tick_field_idx])
+                self.cons[key] = row[cpu_field_idx]
 
     def create_data(self,
                     df_indiv, dict_id_c,
@@ -514,8 +567,6 @@ def get_conflict_graph(my_mdl, constraints_dual_values, tol):
     # conflict_graph = nx.Graph()
 
     # Store frequently used values
-    # must_link_c = my_mdl.instance_model.must_link_c
-    # instance_model_dual = my_mdl.instance_model.dual
     tol_value = tol * pe.value(my_mdl.instance_model.obj)
 
     if my_mdl.pb_number == 1:

@@ -561,8 +561,6 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                     key = list(dval.values())[0]
                     value = list(dval.values())[1]
                     file = list(dval.values())[2]
-                    if file:
-                        break
                     last_index = my_instance.df_indiv.index.levels[0][-1]
                     # print("last_index: ",last_index)
                     subset = my_instance.df_indiv[my_instance.df_indiv.timestamp == last_index].copy()
@@ -589,7 +587,7 @@ def streaming_eval(my_instance: Instance, df_indiv_clust: pd.DataFrame,
                         it.tick_field: int})
                     # new_df_host.sort_values(it.tick_field, inplace=True)
                     # Set remaining machine_ids from df_host to 0.0
-                    previous_timestamp = int(key) - 1
+                    previous_timestamp = last_index
                     existing_machine_ids = my_instance.df_host[my_instance.df_host[it.tick_field] == previous_timestamp][it.host_field].unique()
                     missing_machine_ids = set(existing_machine_ids) - set(new_df_host[it.host_field])
 

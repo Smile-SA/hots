@@ -226,6 +226,40 @@ def find_substitution(instance: Instance, indiv_id: str,
             if checked_nodes > instance.nb_nodes:
                 raise RuntimeError('No node to welcome %s' % indiv_id)
 
+def spread_containers_new(list_containers, instance, conso_nodes, total_time, min_nodes):
+    df_indiv = instance.df_indiv
+    df_host_meta = instance.df_host_meta
+    dict_id_n = instance.dict_id_n
+    host_field = it.host_field
+    indiv_field = it.indiv_field
+    metrics_0 = it.metrics[0]
+    # tick_field_min = instance.df_indiv[it.tick_field].min()
+
+    n = 0
+    checked_nodes = 1
+
+    for c in list_containers:
+        indiv_c = c
+        cons_c = df_indiv[df_indiv[indiv_field] == indiv_c][metrics_0].to_numpy()[:total_time]
+        cap_node = df_host_meta[df_host_meta[host_field] == dict_id_n[n]][metrics_0].to_numpy()[0]
+        done = False
+
+        while not done:
+            if np.less(conso_nodes[n] + cons_c, cap_node).all():
+                conso_nodes[n] += cons_c
+                assign_container_node(dict_id_n[n], indiv_c, instance)
+                done = True
+            else:
+                checked_nodes += 1
+                if checked_nodes > min_nodes:
+                    min_nodes += 1
+                    checked_nodes = 1
+                n = (n + 1) % min_nodes
+                cap_node = df_host_meta[df_host_meta[host_field] == dict_id_n[n]][metrics_0].to_numpy()[0]
+
+        n = (n + 1) % min_nodes
+
+    return n
 
 def spread_containers(list_containers: List, instance: Instance,
                       conso_nodes: np.array, total_time: int,
@@ -331,6 +365,74 @@ def colocalize_clusters(list_containers_i: List, list_containers_j: List,
             n = (n + 1) % min_nodes
     return c
 
+def colocalize_clusters_new(
+    list_containers_i, list_containers_j, containers_grouped, instance, total_time, min_nodes,
+    conso_nodes, n=0
+):
+    """Allocate containers of 2 clusters grouping by pairs.
+
+    :param list_containers_i: _description_
+    :type list_containers_i: List
+    :param list_containers_j: _description_
+    :type list_containers_j: List
+    :param containers_grouped: _description_
+    :type containers_grouped: List
+    :param instance: _description_
+    :type instance: Instance
+    :param total_time: _description_
+    :type total_time: int
+    :param min_nodes: _description_
+    :type min_nodes: int
+    :param conso_nodes: _description_
+    :type conso_nodes: List
+    :param n: _description_, defaults to 0
+    :type n: int, optional
+    :raises RuntimeError: _description_
+    :raises RuntimeError: _description_
+    :return: _description_
+    :rtype: int
+    """
+    df_indiv = instance.df_indiv
+    df_host_meta = instance.df_host_meta
+    dict_id_n = instance.dict_id_n
+
+    for c in range(min(len(list_containers_i), len(list_containers_j))):
+        indiv_i = list_containers_i[c]
+        indiv_j = list_containers_j[c]
+        
+        cons_i = df_indiv.loc[df_indiv[it.indiv_field] == indiv_i][it.metrics[0]].to_numpy()[:total_time]
+        cons_j = df_indiv.loc[df_indiv[it.indiv_field] == indiv_j][it.metrics[0]].to_numpy()[:total_time]
+        
+        host_field_n = dict_id_n[n]
+        cap_node = df_host_meta.loc[df_host_meta[it.host_field] == host_field_n][it.metrics[0]].to_numpy()[0]
+
+        if not np.all(np.less(cons_i + cons_j, cap_node)):
+            # If indivs i & j can't fit together: split them
+            # start = time.time()
+            if not assign_indiv_initial_placement(instance, indiv_i, df_indiv[it.tick_field].min(), total_time - 1,
+                                                  conso_nodes, min_nodes, n):
+                raise RuntimeError('No node to welcome %s' % indiv_i)
+            n = (n + 1) % min_nodes
+            if not assign_indiv_initial_placement(instance, indiv_j, df_indiv[it.tick_field].min(), total_time - 1,
+                                                  conso_nodes, min_nodes, n):
+                raise RuntimeError('No node to welcome %s' % indiv_j)
+        else:
+            # Indivs i & j could fit together
+            done = False
+            while not done:
+                if np.all(np.less(conso_nodes[n] + cons_i + cons_j, cap_node)):
+                    conso_nodes[n] += cons_i + cons_j
+                    assign_container_node(dict_id_n[n], indiv_i, instance)
+                    assign_container_node(dict_id_n[n], indiv_j, instance)
+                    containers_grouped.append([indiv_i, indiv_j])
+                    done = True
+                else:
+                    n = (n + 1) % min_nodes
+                    if n >= min_nodes:
+                        min_nodes += 1
+                    cap_node = df_host_meta.loc[df_host_meta[it.host_field] == dict_id_n[n]][it.metrics[0]].to_numpy()[0]
+            n = (n + 1) % min_nodes
+    return c
 
 def allocation_distant_pairwise(
         instance: Instance, cluster_var_matrix: np.array,

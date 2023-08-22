@@ -27,8 +27,27 @@ import numpy as np
 
 import pandas as pd
 
+import sys
+import os
+import psutil
+
 # Personnal imports
 # from . import allocation as alloc
+# import clustering as clt
+# import container as ctnr
+# import init as it
+# import model as mdl
+# import node
+# import placement as place
+# import plot
+from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka import KafkaError, KafkaException
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.error import SchemaRegistryError
+
+import signal
+# import kafka
+
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
@@ -36,8 +55,9 @@ from . import model as mdl
 from . import node
 from . import placement as place
 from . import plot
-from .instance import Instance
+from . import kafka
 
+from .instance import Instance
 
 @click.command()
 @click.argument('path', required=True, type=click.Path(exists=True))
@@ -77,7 +97,10 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     """
     # Initialization part
     main_time = time.time()
-
+    tot_mem_before = process_memory()
+    start_time = time.time()
+    
+    signal.signal(signal.SIGINT,SignalHandler_SIGINT)
     if not path[-1] == '/':
         path += '/'
 
@@ -86,7 +109,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
         path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     )
     add_time(-1, 'preprocess', (time.time() - start))
-
+    mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
     # Plot initial data
     if False:
         indivs_cons = ctnr.plot_all_data_all_containers(
@@ -106,6 +129,10 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
      df_indiv_clust, labels_) = analysis_period(
         my_instance, config, method
     )
+    # print(df_host_evo) # timestamp machine_id cpu
+    # print('df_host_evo',df_host_evo)
+    # print('df_indiv_clust',df_indiv_clust)
+    # print('labels_',labels_)
     add_time(-1, 'total_t_obs', (time.time() - start))
 
     # Run period
@@ -117,7 +144,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     )
     add_time(-1, 'total_t_run', (time.time() - start))
     total_method_time = time.time() - total_method_time
-
+    # print("final df_host_evo: ",df_host_evo)
     # Print objectives of evaluation part
     (obj_nodes, obj_delta) = mdl.get_obj_value_host(df_host_evo)
     it.results_file.write('Number of nodes : %d, Ampli max : %f\n' % (
@@ -127,7 +154,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
     it.clustering_file.write('\nFinal k : %d' % my_instance.nb_clusters)
 
-    # Save evaluation results in files
+    # # Save evaluation results in files
     node_results = node.get_nodes_load_info(
         df_host_evo, my_instance.df_host_meta)
     it.global_results = pd.DataFrame([{
@@ -174,7 +201,16 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     #         my_instance, working_df_indiv, config['allocation']))
     # else:
     #     logging.info('We do not perform allocation \n')
+    tot_mem_after = process_memory()
+    mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
+    end_time = time.time()
 
+    # Calculate the elapsed time
+    elapsed_time = end_time - start_time
+    print("Elapsed time:", elapsed_time, "seconds")
+    print("memory use: ",tot_mem_after - tot_mem_before)
+    print("dataframe memory use: ",mem_before)
+    print("dataframe memory use: ",mem_after)
     main_time = time.time() - main_time
     add_time(-1, 'total_time', main_time)
     node.plot_data_all_nodes(
@@ -289,13 +325,17 @@ def analysis_period(my_instance, config, method):
                 df_indiv[it.tick_field] >= start_point) & (
                 my_instance.df_indiv[it.tick_field] <= end_point)
         ]
-
+        print("Check Stats",start_point, end_point, working_df_indiv, my_instance.df_host)
+        # working_df_indiv contains info of historical data 1/3 of the data
         # First clustering part
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')
         start = time.time()
         (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
             working_df_indiv)
+
+        #print('df_indiv_clust',df_indiv_clust) # container cpu informaton during the historical time 
+        #print('my_instance.dict_id_c',my_instance.dict_id_c) # {0: 'c_0', 1: 'c_1', 2: 'c_2', 3: 'c_3', 4: 'c_4', 5: 'c_5', 6: 'c_6'}
 
         labels_ = clt.perform_clustering(
             df_indiv_clust, config['clustering']['algo'], my_instance.nb_clusters)
@@ -386,8 +426,9 @@ def run_period(
     nb_overloads = 0
     # Loops for evaluation
     if method in ['loop']:
+        # print('df_host_evo',df_host_evo)
         # loop 'streaming' progress
-        it.results_file.write('\n### Loop process ###\n')
+        it.results_file.write('\n### Loop process ###\n')  # number of 'ticks' to process streaming eval
         (fig_node, fig_clust, fig_mean_clust,
          df_host_evo, nb_overloads) = streaming_eval(
             my_instance, df_indiv_clust, labels_,
@@ -427,6 +468,9 @@ def run_period(
 
     return (df_host_evo, nb_overloads)
 
+def SignalHandler_SIGINT(SignalNumber,Frame):
+    print("Exit application")
+    it.Sentry = False
 
 def streaming_eval(
     my_instance, df_indiv_clust, labels_, mode, tick, constraints_dual,
@@ -481,8 +525,8 @@ def streaming_eval(
         cluster_profiles
     )
 
-    tmin = my_instance.sep_time - (my_instance.window_duration - 1)
-    tmax = my_instance.sep_time
+    tmin = my_instance.sep_time - (my_instance.window_duration - 1) # check this muffu
+    tmax = my_instance.sep_time # check this muffu
 
     total_loop_time = 0.0
     loop_nb = 1
@@ -498,6 +542,71 @@ def streaming_eval(
         my_instance, tmin, tmax, labels_
     )
 
+    schema_str = '''
+        {
+            "namespace": "com.example",
+            "type": "record",
+            "name": "Person",
+            "fields": [
+                {
+                    "type": "string",
+                    "name": "timestamp"
+                },
+                {
+                "type": {
+                    "type": "array",
+                    "items": {
+                    "type": "record",
+                    "name": "Container",
+                    "namespace": "com.smile.containers",
+                    "fields": [
+                        {
+                        "type": "string",
+                        "name": "timestamp"
+                        },
+                        {
+                        "type": "string",
+                        "name": "container_id"
+                        },
+                        {
+                        "type": "string",
+                        "name": "machine_id"
+                        },
+                        {
+                        "type": "float",
+                        "name": "cpu"
+                        }
+                    ]
+                    }
+                },
+                "name": "containers"
+                }
+            ]
+        }
+        '''
+    UseSchema = False
+    if UseSchema:
+        # schema_registry_client_conf = {
+        #     "url":"http://localhost:8081"}
+        schema_registry_client_conf = {'url': "http://localhost:8081"}
+        schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
+        
+        try:
+            schema_str = schema_registry_client.get_latest_version(it.Kafka_topics['docker_topic']+'-value').schema.schema_str
+        except SchemaRegistryError as e:
+            # Handle schema registry error
+            print(f"Error registering schema: {e}")
+    # send node meta stats for mock 
+    
+        avro_deserializer = AvroDeserializer(schema_registry_client,
+                                            schema_str)
+    else:
+        avro_deserializer = None
+    # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
+    # history = True # consider historical data
+    # kafka.produce_data(my_instance, time_to_send, history) # send last historical data to kafka
+    
+    # build initial optimisation model in pre loop using all or potion of historical data.
     start = time.time()
     (clust_model, place_model,
      clustering_dual_values, placement_dual_values) = pre_loop(
@@ -508,114 +617,213 @@ def streaming_eval(
 
     if mode == 'event':
         tmin = my_instance.sep_time
+        tmin = my_instance.sep_time
         tmax = my_instance.df_indiv[it.tick_field].max()
     else:
         tmax += tick
         tmin = tmax - (my_instance.window_duration - 1)
 
     # TODO improve model builds
-    while not end:
-        loop_time = time.time()
-        logging.info('\n # Enter loop number %d #\n' % loop_nb)
-        it.results_file.write('\n # Loop number %d #\n' % loop_nb)
-        it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
-        print('\n # Enter loop number %d #\n' % loop_nb)
+    analysis_duration = 1 # variable used to perform optimization and placement when it equates the tick value
+    it.time_at = []
+    it.memory_usage = []
+    it.tick_time = []
+    it.total_mem_use = []
+    mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
+    # hist_time = list(set(my_instance.df_indiv['timestamp']))
 
-        # TODO not fully tested (replace containers)
-        (temp_df_host, nb_overload, loop_nb,
-         nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
-            my_instance, 'local', tmin, tmax, labels_, loop_nb,
-            constraints_dual, clustering_dual_values, placement_dual_values,
-            tol_clust, tol_move_clust, tol_place, tol_move_place)
-        df_host_evo = pd.concat([
-            df_host_evo,
-            temp_df_host[~temp_df_host[it.tick_field].isin(
-                df_host_evo[it.tick_field].unique())]
-        ])
-        total_nb_overload += nb_overload
-        nb_clust_changes += nb_clust_changes_loop
-        nb_place_changes += nb_place_changes_loop
+    # for x in hist_time:
+    #     it.time_at.append(x)
+    #     it.memory_usage.append(mem_before)
+    #     it.total_mem_use.append(tot_mem_after)
+    it.Sentry = True
+    # print("df_indiv1: ",my_instance.df_indiv)
+    print('Ready for new data...')
+    try:
+        while it.Sentry:
+            
+            loop_time = time.time()
+            it.Kafka_Consumer.subscribe([it.Kafka_topics['docker_topic']])
+            msg = it.Kafka_Consumer.poll(timeout=1.0)
+            
+            if msg is None:
+                    continue
 
-        if mode == 'event':
-            (temp_df_host, nb_overload, loop_nb,
-             nb_clust_changes, nb_place_changes) = progress_time_noloop(
-                my_instance, 'loop', tmin, tmax, labels_, loop_nb,
-                constraints_dual, clustering_dual_values, placement_dual_values,
-                tol_clust, tol_move_clust, tol_place, tol_move_place)
-            df_host_evo = pd.concat([
-                df_host_evo,
-                temp_df_host[~temp_df_host[it.tick_field].isin(
-                    df_host_evo[it.tick_field].unique())]
-            ])
-            total_nb_overload += nb_overload
+            if msg.error():
+                    if msg.error().code() == KafkaError._PARTITION_EOF:
+                        # End of partition event
+                        sys.stderr.write('%% %s [%d] reached end at offset %d\n' %
+                                        (msg.topic(), msg.partition(), msg.offset()))
+                    elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
+                        sys.stderr.write('Topic unknown, creating %s topic\n' %
+                                        (it.Kafka_topics['docker_topic']))
+                    elif msg.error():
+                        raise KafkaException(msg.error())
+                        break
 
-        start = time.time()
-        (working_df_indiv, df_clust, w, u, v) = build_matrices(
-            my_instance, tmin, tmax, labels_
-        )
-        add_time(loop_nb, 'build_matrices', (time.time() - start))
-        nb_clust_changes_loop = 0
-        nb_place_changes_loop = 0
+            else:
+                (_, dval) = kafka.msg_process(msg, avro_deserializer)
+                if dval:
+                    key = list(dval.values())[0]
+                    value = list(dval.values())[1]
+                    file = list(dval.values())[2]
+                    last_index = my_instance.df_indiv.index.levels[0][-1]
+                    # print("last_index: ",last_index)
+                    subset = my_instance.df_indiv[my_instance.df_indiv.timestamp == last_index].copy()
+                    subset.reset_index(drop=True, inplace=True)
+                    subset.loc[:, 'timestamp'] = int(key)
+                    subset.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
+                    subset.sort_index(inplace=True)
 
-        (init_loop_obj_nodes, init_loop_obj_delta) = mdl.get_obj_value_indivs(
-            working_df_indiv)
+                    new_df_container = reassign_node(value)
+                    
+                    new_df_container['machine_id'] = subset['machine_id'].where(new_df_container['container_id'] == subset['container_id'])
+                    subset = subset.truncate(before=-1, after=-1)
+                    # print("new_df_container: ",new_df_container)
+                    logging.info('\n # Enter loop number %d #\n' % loop_nb)
+                    it.results_file.write('\n # Loop number %d #\n' % loop_nb)
+                    it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
+                    
+                    
+                    # TODO not fully tested (replace containers)
 
-        # TODO not very practical
-        # plot.plot_clustering_containers_by_node(
-        #     working_df_indiv, my_instance.dict_id_c, labels_)
+                    new_df_host = new_df_container.groupby([new_df_container[it.tick_field], it.host_field],as_index=False).agg(it.dict_agg_metrics)
+                    new_df_host = new_df_host.astype({
+                        it.host_field: str,
+                        it.tick_field: int})
+                    # new_df_host.sort_values(it.tick_field, inplace=True)
+                    # Set remaining machine_ids from df_host to 0.0
+                    previous_timestamp = last_index
+                    existing_machine_ids = my_instance.df_host[my_instance.df_host[it.tick_field] == previous_timestamp][it.host_field].unique()
+                    missing_machine_ids = set(existing_machine_ids) - set(new_df_host[it.host_field])
 
-        (nb_clust_changes_loop, nb_place_changes_loop,
-            init_loop_silhouette, end_loop_silhouette,
-            clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
-            place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
-            clust_model, place_model,
-            clustering_dual_values, placement_dual_values,
-            df_clust, cluster_profiles, labels_) = eval_sols(
-            my_instance, working_df_indiv, cluster_method,
-            w, u, v, clust_model, place_model,
-            constraints_dual, clustering_dual_values, placement_dual_values,
-            tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
-            df_clust, cluster_profiles, labels_, loop_nb, solver
-        )
+                    missing_rows = pd.DataFrame({
+                        'timestamp': int(key),
+                        'machine_id': list(missing_machine_ids),
+                        'cpu': 0.0
+                    })
+                    # new_df_host.sort_values(it.tick_field, inplace=True)
+                    new_df_host = pd.concat([new_df_host, missing_rows])
+                    new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
 
-        it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
-        it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
-        nb_clust_changes += nb_clust_changes_loop
-        nb_place_changes += nb_place_changes_loop
+                    # update df_indiv on every loop!
+                    my_instance.df_indiv = pd.concat([
+                        my_instance.df_indiv, new_df_container
+                    ])
+                    my_instance.df_host = pd.concat([
+                        my_instance.df_host, new_df_host
+                    ])
 
-        # update clustering & node consumption plot
-        plot.update_clustering_plot(
-            fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
-        plot.update_cluster_profiles(fig_mean_clust, ax_mean_clust, cluster_profiles,
-                                     sorted(working_df_indiv[it.tick_field].unique()))
-        plot.update_nodes_plot(fig_node, ax_node,
-                               working_df_indiv, my_instance.dict_id_n)
+                    # print('\n # Step 1: Check Progress time no loop%d #\n' % loop_nb)
+                    (temp_df_host, nb_overload, loop_nb,
+                    nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
+                        my_instance, 'local', tmin, tmax, labels_, loop_nb,
+                        constraints_dual, clustering_dual_values, placement_dual_values,
+                        tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
+                    df_host_evo = pd.concat([
+                        df_host_evo,
+                        temp_df_host[~temp_df_host[it.tick_field].isin(
+                            df_host_evo[it.tick_field].unique())]
+                    ])
 
-        working_df_indiv = my_instance.df_indiv[
-            (my_instance.
-                df_indiv[it.tick_field] >= tmin) & (
-                my_instance.df_indiv[it.tick_field] <= tmax)]
-        working_df_host = working_df_indiv.groupby(
-            [working_df_indiv[it.tick_field], it.host_field],
-            as_index=False).agg(it.dict_agg_metrics)
+                    
+                    total_nb_overload += nb_overload
+                    nb_clust_changes += nb_clust_changes_loop
+                    nb_place_changes += nb_place_changes_loop
 
-        if loop_nb > 1:
-            df_host_evo = pd.concat(
-                [
-                    df_host_evo,
-                    working_df_host[~working_df_host[it.tick_field].isin(
-                        df_host_evo[it.tick_field].unique())]
-                ]
-            )
+                    if mode == 'event':
+                        (temp_df_host, nb_overload, loop_nb,
+                        nb_clust_changes, nb_place_changes) = progress_time_noloop(
+                            my_instance, 'loop', tmin, tmax, labels_, loop_nb,
+                            constraints_dual, clustering_dual_values, placement_dual_values,
+                            tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
+                        df_host_evo = pd.concat([
+                            df_host_evo,
+                            temp_df_host[~temp_df_host[it.tick_field].isin(
+                                df_host_evo[it.tick_field].unique())]
+                        ])
+                        total_nb_overload += nb_overload
+                
+                    if analysis_duration == tick: # equate to tick size 
+                        print('\n # Enter loop number %d #\n' % loop_nb)
+                        
+                        # print('\n # Step 2: evaluate the solution at loop: %d #\n' % loop_nb)
+                        analysis_duration = 1
+                        
+                        start = time.time()
+                        print("tmin, tmax: ",tmin, tmax)
+                        (working_df_indiv, df_clust, w, u, v) = build_matrices(
+                            my_instance, tmin, tmax, labels_
+                        )
 
-        loop_time = (time.time() - loop_time)
-        (end_loop_obj_nodes, end_loop_obj_delta) = mdl.get_obj_value_host(
-            working_df_host)
-        it.results_file.write('Loop delta before changes : %f\n' % init_loop_obj_delta)
-        it.results_file.write('Loop delta after changes : %f\n' % end_loop_obj_delta)
-        it.results_file.write('Loop time : %f s\n' % loop_time)
-        add_time(loop_nb, 'total_loop', loop_time)
-        total_loop_time += loop_time
+                        add_time(loop_nb, 'build_matrices', (time.time() - start))
+                        nb_clust_changes_loop = 0
+                        nb_place_changes_loop = 0
+
+                        (init_loop_obj_nodes, init_loop_obj_delta) = mdl.get_obj_value_indivs(
+                            working_df_indiv)
+
+                        # TODO not very practical
+                        # plot.plot_clustering_containers_by_node(
+                        #     working_df_indiv, my_instance.dict_id_c, labels_)
+
+                        (nb_clust_changes_loop, nb_place_changes_loop,
+                            init_loop_silhouette, end_loop_silhouette,
+                            clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
+                            place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
+                            clust_model, place_model,
+                            clustering_dual_values, placement_dual_values,
+                            df_clust, cluster_profiles, labels_) = eval_sols(
+                            my_instance, working_df_indiv, cluster_method,
+                            w, u, v, clust_model, place_model,
+                            constraints_dual, clustering_dual_values, placement_dual_values,
+                            tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
+                            df_clust, cluster_profiles, labels_, loop_nb, solver
+                        )
+
+                        it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
+                        it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
+                        nb_clust_changes += nb_clust_changes_loop
+                        nb_place_changes += nb_place_changes_loop
+
+                        # update clustering & node consumption plot
+                        plot.update_clustering_plot(
+                            fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
+
+                        # df_host_tick = my_instance.df_indiv.loc[my_instance.df_indiv[it.tick_field] == tick].groupby([my_instance.df_indiv[it.tick_field], it.host_field],as_index=False).agg(it.dict_agg_metrics)
+                        # print('df_host_tick',df_host_tick)    
+                    
+                        plot.update_cluster_profiles(fig_mean_clust, ax_mean_clust, cluster_profiles,
+                                                    sorted(working_df_indiv[it.tick_field].unique()))
+                        
+                        plot.update_nodes_plot(fig_node, ax_node,
+                                            working_df_indiv, my_instance.dict_id_n)
+
+                        working_df_indiv = my_instance.df_indiv[
+                            (my_instance.
+                                df_indiv[it.tick_field] >= tmin) & (
+                                my_instance.df_indiv[it.tick_field] <= tmax)]
+                        working_df_host = working_df_indiv.groupby(
+                            [working_df_indiv[it.tick_field], it.host_field],
+                            as_index=False).agg(it.dict_agg_metrics)
+
+                        if loop_nb > 1:
+                            df_host_evo = pd.concat(
+                                [
+                                    df_host_evo,
+                                    working_df_host[~working_df_host[it.tick_field].isin(
+                                        df_host_evo[it.tick_field].unique())]
+                                ]
+                            )
+
+                        loop_time = (time.time() - loop_time)
+                        (end_loop_obj_nodes, end_loop_obj_delta) = mdl.get_obj_value_host(
+                            working_df_host)
+                        it.results_file.write('Loop delta before changes : %f\n' % init_loop_obj_delta)
+                        it.results_file.write('Loop delta after changes : %f\n' % end_loop_obj_delta)
+                        it.results_file.write('Loop time : %f s\n' % loop_time)
+                        add_time(loop_nb, 'total_loop', loop_time)
+                        total_loop_time += loop_time
 
         # Save loop indicators in df
         it.loop_results = pd.concat(
@@ -650,14 +858,31 @@ def streaming_eval(
         if tol_place < 1.0:
             tol_place += tol_step
 
-        if tmax >= my_instance.time:
-            end = True
-        else:
-            loop_nb += 1
+                    # if tmax >= my_instance.time:
+                        
+                    #     it.Sentry = True  # change to False to end loop according to mock data
+                    # else:
+                    #     loop_nb += 1
+                    my_instance.time += 1
+                    loop_nb += 1
+                    # mem_after = process_memory()
+                    # memory_usage.append(mem_after - mem_before)
+                    mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
+                    it.memory_usage.append(mem_after)
+                    it.time_at.append(key)
+                    if file:
+                        break
 
+    finally:
+        # Close down consumer to commit final offsets.
+        print("close kafka consumer")
+        it.Kafka_Consumer.close()  
+    # print(it.tick_time)
+    # plot.plot_memory_usage(it.time_at, it.total_mem_use, it.tick_time) 
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
          df_indiv[it.tick_field] >= tmin)]
+
     if tmin < working_df_indiv[it.tick_field].max():
         # update clustering & node consumption plot
         # TODO not same size issue with clustering
@@ -671,7 +896,7 @@ def streaming_eval(
 
     df_host_evo = end_loop(working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
                            total_nb_overload, total_loop_time, loop_nb, df_host_evo)
-
+    
     return (fig_node, fig_clust, fig_mean_clust,
             df_host_evo, total_nb_overload)
     # return (fig_node, fig_clust, fig_mean_clust,
@@ -720,57 +945,63 @@ def progress_time_noloop(
     nb_overload = 0
     nb_clust_changes = 0
     nb_place_changes = 0
-    for tick in range(tmin, tmax + 1):
-        df_host_tick = instance.df_indiv.loc[
-            instance.df_indiv[it.tick_field] == tick
-        ].groupby(
-            [instance.df_indiv[it.tick_field], it.host_field],
-            as_index=False).agg(it.dict_agg_metrics)
 
-        host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
-        df_host_tick[it.tick_field] = tick
-        df_host_evo = pd.concat([
-            df_host_evo, df_host_tick
-        ])
-        if len(host_overload) > 0:
-            print('Overload : We must move containers')
-            nb_overload += len(host_overload)
-            if fixing == 'local':
+    tick = tick_no
+    df_indiv = instance.df_indiv[instance.df_indiv[it.tick_field] == int(tick)].copy()
+    # df_indiv = instance.df_indiv[instance.df_indiv[it.tick_field] >= tmin].copy()
+    df_host_tick = df_indiv.groupby(
+        [df_indiv[it.tick_field], it.host_field],
+        as_index=False).agg(it.dict_agg_metrics)
+    
+    
+    host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
+
+    df_host_evo = pd.concat([
+        df_host_evo, df_host_tick
+    ])
+    
+    # print('TICK INFO',df_host_tick)  # timestamp machine_id cpu of node usage for window duration
+    
+    if len(host_overload) > 0:
+        print('Overload : We must move containers')
+        nb_overload += len(host_overload)
+        if fixing == 'local':
+            place.free_full_nodes(instance, host_overload, tick)
+        elif fixing == 'loop':
+            working_df_indiv = instance.df_indiv[
+                (instance.
+                    df_indiv[it.tick_field] >= tick - instance.window_duration) & (
+                    instance.df_indiv[it.tick_field] <= tick)]
+            
+            (df_clust, instance.dict_id_c) = clt.build_matrix_indiv_attr(
+                working_df_indiv)
+            w = clt.build_similarity_matrix(df_clust)
+            df_clust['cluster'] = labels_
+            u = clt.build_adjacency_matrix(labels_)
+            v = place.build_placement_adj_matrix(
+                working_df_indiv, instance.dict_id_c)
+            cluster_profiles = clt.get_cluster_mean_profile(
+                df_clust)
+            cluster_vars = clt.get_cluster_variance(cluster_profiles)
+
+            cluster_var_matrix = clt.get_sum_cluster_variance(
+                cluster_profiles, cluster_vars)
+            dv = ctnr.build_var_delta_matrix_cluster(
+                df_clust, cluster_var_matrix, instance.dict_id_c)
+            (nb_clust_changes_loop, nb_place_changes_loop,
+                clustering_dual_values, placement_dual_values,
+                df_clust, cluster_profiles, labels_) = eval_sols(
+                instance, working_df_indiv,
+                w, u, v, dv,
+                constraints_dual, clustering_dual_values, placement_dual_values,
+                tol_clust, tol_move_clust, tol_place, tol_move_place,
+                df_clust, cluster_profiles, labels_
+            )
+            if nb_place_changes_loop < 1:
                 place.free_full_nodes(instance, host_overload, tick)
-            elif fixing == 'loop':
-                working_df_indiv = instance.df_indiv[
-                    (instance.
-                     df_indiv[it.tick_field] >= tick - instance.window_duration) & (
-                        instance.df_indiv[it.tick_field] <= tick)]
-                (df_clust, instance.dict_id_c) = clt.build_matrix_indiv_attr(
-                    working_df_indiv)
-                w = clt.build_similarity_matrix(df_clust)
-                df_clust['cluster'] = labels_
-                u = clt.build_adjacency_matrix(labels_)
-                v = place.build_placement_adj_matrix(
-                    working_df_indiv, instance.dict_id_c)
-                cluster_profiles = clt.get_cluster_mean_profile(
-                    df_clust)
-                cluster_vars = clt.get_cluster_variance(cluster_profiles)
-
-                cluster_var_matrix = clt.get_sum_cluster_variance(
-                    cluster_profiles, cluster_vars)
-                dv = ctnr.build_var_delta_matrix_cluster(
-                    df_clust, cluster_var_matrix, instance.dict_id_c)
-                (nb_clust_changes_loop, nb_place_changes_loop,
-                 clustering_dual_values, placement_dual_values,
-                 df_clust, cluster_profiles, labels_) = eval_sols(
-                    instance, working_df_indiv,
-                    w, u, v, dv,
-                    constraints_dual, clustering_dual_values, placement_dual_values,
-                    tol_clust, tol_move_clust, tol_place, tol_move_place,
-                    df_clust, cluster_profiles, labels_
-                )
-                if nb_place_changes_loop < 1:
-                    place.free_full_nodes(instance, host_overload, tick)
-                loop_nb += 1
-                nb_clust_changes += nb_clust_changes_loop
-                nb_place_changes += nb_place_changes_loop
+            loop_nb += 1
+            nb_clust_changes += nb_clust_changes_loop
+            nb_place_changes += nb_place_changes_loop
     return (df_host_evo, nb_overload, loop_nb, nb_clust_changes, nb_place_changes)
 
 
@@ -1401,6 +1632,25 @@ def add_time(loop_nb, action, time):
 def close_files():
     """Write the final files and close all open files."""
     it.results_file.close()
+
+def process_memory():
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    mem_usage_mb = mem_info.rss / 1024 / 1024
+    return mem_usage_mb
+
+
+def reassign_node(c_info):
+    # c_info = value['containers']
+    new_df_container = pd.DataFrame(c_info)
+    new_df_container = new_df_container.astype({
+                it.indiv_field: str,
+                it.host_field: str,
+                it.tick_field: int})
+    new_df_container.sort_values(it.tick_field, inplace=True)
+    new_df_container.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
+    new_df_container.sort_index(inplace=True)
+    return new_df_container
 
 
 if __name__ == '__main__':

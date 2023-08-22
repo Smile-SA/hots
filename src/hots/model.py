@@ -14,6 +14,9 @@ from pyomo import environ as pe
 from . import init as it
 from .clustering import get_far_container
 
+import time
+# import clustering
+
 
 class Model:
     """
@@ -256,6 +259,59 @@ class Model:
         elif self.pb_number == 2:
             self.mdl.obj = pe.Objective(
                 rule=min_coloc_cluster_, sense=pe.minimize)
+            
+    def create_data_new(self, df_indiv, dict_id_c, df_host_meta, nb_clusters):
+        """Create data from dataframe.
+
+        :param df_indiv: _description_
+        :type df_indiv: _type_
+        :param dict_id_c: _description_
+        :type dict_id_c: _type_
+        :param df_host_meta: _description_
+        :type df_host_meta: _type_
+        :param nb_clusters: _description_
+        :type nb_clusters: _type_
+        """
+        self.data = {}
+        df_indiv_reset = df_indiv.reset_index(drop=True)
+        array_indiv = df_indiv_reset.to_numpy()
+
+        indiv_field_idx = np.where(df_indiv_reset.columns == 'container_id')[0][0]
+        tick_field_idx = np.where(df_indiv_reset.columns == 'timestamp')[0][0]
+        cpu_field_idx = np.where(df_indiv_reset.columns == 'cpu')[0][0]
+
+        if self.pb_number == 1:
+            self.data[None] = {
+                'c': {None: len(np.unique(array_indiv[:, indiv_field_idx]))},
+                'C': {None: list(dict_id_c.keys())},
+                'k': {None: nb_clusters},
+                'K': {None: range(nb_clusters)},
+            }
+        elif self.pb_number == 2:
+            self.cap = {}
+            self.cons = {}
+            df_host_meta_unique = df_host_meta.drop_duplicates(subset=[it.host_field])
+            df_indiv_reset = df_indiv.reset_index(drop=True)
+            array_indiv = df_indiv_reset.to_numpy()
+
+            self.data[None] = {
+                'n': {None: df_host_meta_unique[it.host_field].nunique()},
+                'c': {None: len(np.unique(array_indiv[:, indiv_field_idx]))},
+                't': {None: len(np.unique(array_indiv[:, tick_field_idx]))},
+                'N': {None: df_host_meta_unique[it.host_field].unique().tolist()},
+                'C': {None: list(dict_id_c.keys())},
+                'Ccons': {None: np.unique(array_indiv[:, indiv_field_idx]).tolist()},
+                'cap': self.cap,
+                'T': {None: np.unique(array_indiv[:, tick_field_idx]).tolist()},
+                'cons': self.cons,
+            }
+
+            for _, n_data in df_host_meta_unique.iterrows():
+                self.cap[n_data[it.host_field]] = n_data['cpu']
+
+            for row in array_indiv:
+                key = (row[indiv_field_idx], row[tick_field_idx])
+                self.cons[key] = row[cpu_field_idx]
 
     def create_data(self, df_indiv, metric, dict_id_c, df_host_meta, nb_clusters):
         """Create data from dataframe.
@@ -645,8 +701,8 @@ def fill_dual_values(my_mdl):
     return dual_values
 
 
-def get_conflict_graph(my_mdl, constraints_dual_values, tol):
-    """Build conflict graph from comapring dual variables.
+def get_conflict_graph_2(my_mdl, constraints_dual_values, tol):
+    """Build conflict graph from comparing dual variables.
 
     :param my_mdl: _description_
     :type my_mdl: Model
@@ -692,6 +748,70 @@ def get_conflict_graph(my_mdl, constraints_dual_values, tol):
                         index_c[0], index_c[1],
                         weight=my_mdl.instance_model.dual[
                             my_mdl.instance_model.must_link_n[index_c]])
+    return conflict_graph
+
+def get_conflict_graph(my_mdl, constraints_dual_values, tol):
+    """Build conflict graph from comparing dual variables.
+
+    :param my_mdl: _description_
+    :type my_mdl: Model
+    :param constraints_dual_values: _description_
+    :type constraints_dual_values: Dict
+    :param tol: _description_
+    :type tol: float
+    :return: _description_
+    :rtype: nx.Graph
+    """
+    start = time.time()
+    print('start conflict graph: ',my_mdl.pb_number)
+    # max_edges = len(my_mdl.instance_model.must_link_c)
+    # conflict_graph = nx.Graph()
+
+    # Store frequently used values
+    tol_value = tol * pe.value(my_mdl.instance_model.obj)
+
+    if my_mdl.pb_number == 1:
+        max_edges = len(my_mdl.instance_model.must_link_c)
+        conflict_graph = nx.Graph(capacity=max_edges)
+
+        # Store frequently used values
+        must_link_c = my_mdl.instance_model.must_link_c
+        instance_model_dual = my_mdl.instance_model.dual
+        edges = [
+            (index_c[0], index_c[1])
+            for index_c in must_link_c
+            if index_c in constraints_dual_values and constraints_dual_values[index_c] > 0.0
+            and (
+                instance_model_dual[my_mdl.instance_model.must_link_c[index_c]] >
+                (constraints_dual_values[index_c] + tol * constraints_dual_values[index_c])
+                or instance_model_dual[my_mdl.instance_model.must_link_c[index_c]] > tol_value
+            )
+        ]
+
+        # Add edges in batch
+        conflict_graph.add_edges_from(edges)
+        print('start conflict graph first if: ', time.time()-start)
+    elif my_mdl.pb_number == 2:
+        max_edges = len(my_mdl.instance_model.must_link_n)
+        conflict_graph = nx.Graph(capacity=max_edges)
+
+        # Store frequently used values
+        must_link_n = my_mdl.instance_model.must_link_n
+        instance_model_dual = my_mdl.instance_model.dual
+        edges = [
+            (index_c[0], index_c[1])
+            for index_c in must_link_n
+            if index_c in constraints_dual_values and constraints_dual_values[index_c] > 0.0
+            and (
+                instance_model_dual[my_mdl.instance_model.must_link_n[index_c]] >
+                (constraints_dual_values[index_c] + tol * constraints_dual_values[index_c])
+                or instance_model_dual[my_mdl.instance_model.must_link_n[index_c]] > tol_value
+            )
+        ]
+
+        # Add edges in batch
+        conflict_graph.add_edges_from(edges)
+        print('start conflict graph second if: ', time.time()-start)
     return conflict_graph
 
 

@@ -444,7 +444,7 @@ def init_nodes_plot(
     metric = metric or it.metrics[0]
     fig, ax = plt.subplots()
     fig.suptitle('Nodes consumption evolution')
-    ax.set_xlim([0, df_indiv[it.tick_field].max()])
+    # ax.set_xlim([0, df_indiv[it.tick_field].max()])
     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
     df = df_indiv.loc[
         df_indiv[it.tick_field] <= sep_time]
@@ -718,3 +718,29 @@ def plot_conflict_graph(graph):
 
     fig.savefig('graph.svg')
     # plt.draw()
+
+def plot_memory_usage(x, y, tick):
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(x, y, 'b-', label="total memory rss")
+    for idx, t in enumerate(tick):
+        if idx == 0:
+            ax.axvline(t, color="orange", alpha=0.5, label="run placement", linestyle='dashed')
+        else:
+            ax.axvline(t, color="orange", alpha=0.5, linestyle='dashed')
+    ax.set(xlabel='time (s)', ylabel='memory of datarame (bytes)')
+    ax.legend()
+    fig.savefig('mem_fig.png')
+
+# def plot_memory_usage_plotly(x, y, mock, tick):
+    
+#     fig = px.line(x=x, y=y, title='total memory rss')
+#     for idx, t in enumerate(tick):
+#         if idx == 0:
+#             fig.add_vline(t)
+#         else:
+#             fig.add_vline(t)
+    
+#     fig.write_html('mem_fig.html')
+
+

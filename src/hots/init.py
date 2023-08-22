@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from . import kafka
+
 # Functions definitions #
 
 
@@ -186,6 +188,15 @@ def define_globals(p_path, config):
 
     global streamkm_model
 
+    global Sentry 
+    global Kafka_Producer
+    global Kafka_Consumer
+    global Kafka_topics
+    global tick_time
+    global time_at
+    global memory_usage
+    global total_mem_use
+
     indiv_field = config['data']['individual_field']
     host_field = config['data']['host_field']
     tick_field = config['data']['tick_field']
@@ -204,6 +215,11 @@ def define_globals(p_path, config):
     optim_file = open(p_path / 'optim_logs.log', 'w')
     clustering_file = open(p_path / 'clustering_logs.log', 'w')
 
+
+    Kafka_topics = config['kafkaConf']['topics']
+    kafka.Kafka_availability(config)
+    Kafka_Producer = kafka.GetProducer(config)
+    Kafka_Consumer = kafka.GetConsumer(config)
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'

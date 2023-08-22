@@ -26,6 +26,7 @@ from sklearn.metrics.pairwise import pairwise_distances
 from tqdm import tqdm
 
 from . import init as it
+from .instance import Instance
 
 
 # Functions definitions #

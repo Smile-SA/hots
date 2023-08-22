@@ -159,7 +159,7 @@ def main():
         ]
         }
         """
-    file_path = '/home/muena/Projects/tests/tests/data/thesis_ex_10/container_usage.csv'
+    file_path = '/home/etilec/Documents/code/temp_hots/mock_container_usage.csv'
     rdr = csv.reader(open(file_path))
 
     end = True
@@ -216,7 +216,6 @@ def main():
         # Handle schema registry error
         print(f"Error connecting to consumer: ")
 
-    input()
     while end:
         row = next(rdr, None)
         if first_line:

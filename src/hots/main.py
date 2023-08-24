@@ -825,53 +825,53 @@ def streaming_eval(
                         add_time(loop_nb, 'total_loop', loop_time)
                         total_loop_time += loop_time
 
-        # Save loop indicators in df
-        it.loop_results = pd.concat(
-            [
-                it.loop_results,
-                pd.DataFrame.from_records([{
-                    'num_loop': int(loop_nb),
-                    'init_silhouette': init_loop_silhouette,
-                    'init_delta': init_loop_obj_delta,
-                    'clust_conf_nodes': clust_conf_nodes,
-                    'clust_conf_edges': clust_conf_edges,
-                    'clust_max_deg': clust_max_deg,
-                    'clust_mean_deg': clust_mean_deg,
-                    'clust_changes': int(nb_clust_changes_loop),
-                    'place_conf_nodes': place_conf_nodes,
-                    'place_conf_edges': place_conf_edges,
-                    'place_max_deg': place_max_deg,
-                    'place_mean_deg': place_mean_deg,
-                    'place_changes': int(nb_place_changes_loop),
-                    'end_silhouette': end_loop_silhouette,
-                    'end_delta': end_loop_obj_delta,
-                    'loop_time': loop_time
-                }])
-            ]
-        )
+            # Save loop indicators in df
+            it.loop_results = pd.concat(
+                [
+                    it.loop_results,
+                    pd.DataFrame.from_records([{
+                        'num_loop': int(loop_nb),
+                        'init_silhouette': init_loop_silhouette,
+                        'init_delta': init_loop_obj_delta,
+                        'clust_conf_nodes': clust_conf_nodes,
+                        'clust_conf_edges': clust_conf_edges,
+                        'clust_max_deg': clust_max_deg,
+                        'clust_mean_deg': clust_mean_deg,
+                        'clust_changes': int(nb_clust_changes_loop),
+                        'place_conf_nodes': place_conf_nodes,
+                        'place_conf_edges': place_conf_edges,
+                        'place_max_deg': place_max_deg,
+                        'place_mean_deg': place_mean_deg,
+                        'place_changes': int(nb_place_changes_loop),
+                        'end_silhouette': end_loop_silhouette,
+                        'end_delta': end_loop_obj_delta,
+                        'loop_time': loop_time
+                    }])
+                ]
+            )
 
-        # input('\nPress any key to progress in time ...\n')
-        tmax += tick
-        tmin = tmax - (my_instance.window_duration - 1)
-        if tol_clust < 1.0:
-            tol_clust += tol_step
-        if tol_place < 1.0:
-            tol_place += tol_step
+            # input('\nPress any key to progress in time ...\n')
+            tmax += tick
+            tmin = tmax - (my_instance.window_duration - 1)
+            if tol_clust < 1.0:
+                tol_clust += tol_step
+            if tol_place < 1.0:
+                tol_place += tol_step
 
-                    # if tmax >= my_instance.time:
-                        
-                    #     it.Sentry = True  # change to False to end loop according to mock data
-                    # else:
-                    #     loop_nb += 1
-                    my_instance.time += 1
-                    loop_nb += 1
-                    # mem_after = process_memory()
-                    # memory_usage.append(mem_after - mem_before)
-                    mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
-                    it.memory_usage.append(mem_after)
-                    it.time_at.append(key)
-                    if file:
-                        break
+                # if tmax >= my_instance.time:
+                    
+                #     it.Sentry = True  # change to False to end loop according to mock data
+                # else:
+                #     loop_nb += 1
+                my_instance.time += 1
+                loop_nb += 1
+                # mem_after = process_memory()
+                # memory_usage.append(mem_after - mem_before)
+                mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
+                it.memory_usage.append(mem_after)
+                it.time_at.append(key)
+                if file:
+                    break
 
     finally:
         # Close down consumer to commit final offsets.
@@ -907,7 +907,7 @@ def streaming_eval(
 def progress_time_noloop(
     instance, fixing, tmin, tmax, labels_, loop_nb,
     constraints_dual, clustering_dual_values, placement_dual_values,
-    tol_clust, tol_move_clust, tol_place, tol_move_place
+    tol_clust, tol_move_clust, tol_place, tol_move_place, tick
 ):
     """We progress in time without performing the loop, checking node capacities.
 
@@ -937,6 +937,8 @@ def progress_time_noloop(
     :type tol_place: float
     :param tol_move_place: threshold used for number of placement moves
     :type tol_move_place: float
+    :param tick: current timestamp number
+    :type tick: int
     :return: evolving node data + number of overloads + loop number + clustering and placement
         changes
     :rtype: Tuple[pd.DataFrame, int, int, int, int]
@@ -946,22 +948,20 @@ def progress_time_noloop(
     nb_clust_changes = 0
     nb_place_changes = 0
 
-    tick = tick_no
     df_indiv = instance.df_indiv[instance.df_indiv[it.tick_field] == int(tick)].copy()
     # df_indiv = instance.df_indiv[instance.df_indiv[it.tick_field] >= tmin].copy()
     df_host_tick = df_indiv.groupby(
         [df_indiv[it.tick_field], it.host_field],
         as_index=False).agg(it.dict_agg_metrics)
-    
-    
+
     host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
 
     df_host_evo = pd.concat([
         df_host_evo, df_host_tick
     ])
-    
+
     # print('TICK INFO',df_host_tick)  # timestamp machine_id cpu of node usage for window duration
-    
+
     if len(host_overload) > 0:
         print('Overload : We must move containers')
         nb_overload += len(host_overload)

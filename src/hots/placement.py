@@ -278,7 +278,9 @@ def find_substitution(instance, indiv_id, tmin, tmax):
             if checked_nodes > instance.nb_nodes:
                 raise RuntimeError('No node to welcome %s' % indiv_id)
 
+
 def spread_containers_new(list_containers, instance, conso_nodes, total_time, min_nodes):
+    """Propose an alternative to spread technique."""
     df_indiv = instance.df_indiv
     df_host_meta = instance.df_host_meta
     dict_id_n = instance.dict_id_n
@@ -307,11 +309,13 @@ def spread_containers_new(list_containers, instance, conso_nodes, total_time, mi
                     min_nodes += 1
                     checked_nodes = 1
                 n = (n + 1) % min_nodes
-                cap_node = df_host_meta[df_host_meta[host_field] == dict_id_n[n]][metrics_0].to_numpy()[0]
+                cap_node = df_host_meta[
+                    df_host_meta[host_field] == dict_id_n[n]][metrics_0].to_numpy()[0]
 
         n = (n + 1) % min_nodes
 
     return n
+
 
 def spread_containers(
     list_containers, instance, conso_nodes, total_time, min_nodes
@@ -451,6 +455,7 @@ def colocalize_clusters(
             n = (n + 1) % min_nodes
     return c
 
+
 def colocalize_clusters_new(
     list_containers_i, list_containers_j, containers_grouped, instance, total_time, min_nodes,
     conso_nodes, n=0
@@ -485,22 +490,32 @@ def colocalize_clusters_new(
     for c in range(min(len(list_containers_i), len(list_containers_j))):
         indiv_i = list_containers_i[c]
         indiv_j = list_containers_j[c]
-        
-        cons_i = df_indiv.loc[df_indiv[it.indiv_field] == indiv_i][it.metrics[0]].to_numpy()[:total_time]
-        cons_j = df_indiv.loc[df_indiv[it.indiv_field] == indiv_j][it.metrics[0]].to_numpy()[:total_time]
-        
+
+        cons_i = df_indiv.loc[
+            df_indiv[it.indiv_field] == indiv_i
+        ][it.metrics[0]].to_numpy()[:total_time]
+        cons_j = df_indiv.loc[
+            df_indiv[it.indiv_field] == indiv_j
+        ][it.metrics[0]].to_numpy()[:total_time]
+
         host_field_n = dict_id_n[n]
-        cap_node = df_host_meta.loc[df_host_meta[it.host_field] == host_field_n][it.metrics[0]].to_numpy()[0]
+        cap_node = df_host_meta.loc[
+            df_host_meta[it.host_field] == host_field_n
+        ][it.metrics[0]].to_numpy()[0]
 
         if not np.all(np.less(cons_i + cons_j, cap_node)):
             # If indivs i & j can't fit together: split them
             # start = time.time()
-            if not assign_indiv_initial_placement(instance, indiv_i, df_indiv[it.tick_field].min(), total_time - 1,
-                                                  conso_nodes, min_nodes, n):
+            if not assign_indiv_initial_placement(
+                instance, indiv_i, df_indiv[it.tick_field].min(),
+                total_time - 1, conso_nodes, min_nodes, n
+            ):
                 raise RuntimeError('No node to welcome %s' % indiv_i)
             n = (n + 1) % min_nodes
-            if not assign_indiv_initial_placement(instance, indiv_j, df_indiv[it.tick_field].min(), total_time - 1,
-                                                  conso_nodes, min_nodes, n):
+            if not assign_indiv_initial_placement(
+                instance, indiv_j, df_indiv[it.tick_field].min(),
+                total_time - 1, conso_nodes, min_nodes, n
+            ):
                 raise RuntimeError('No node to welcome %s' % indiv_j)
         else:
             # Indivs i & j could fit together
@@ -516,9 +531,12 @@ def colocalize_clusters_new(
                     n = (n + 1) % min_nodes
                     if n >= min_nodes:
                         min_nodes += 1
-                    cap_node = df_host_meta.loc[df_host_meta[it.host_field] == dict_id_n[n]][it.metrics[0]].to_numpy()[0]
+                    cap_node = df_host_meta.loc[
+                        df_host_meta[it.host_field] == dict_id_n[n]
+                    ][it.metrics[0]].to_numpy()[0]
             n = (n + 1) % min_nodes
     return c
+
 
 def allocation_distant_pairwise(
     instance, cluster_var_matrix, labels_, nb_nodes=None, lb=0.0

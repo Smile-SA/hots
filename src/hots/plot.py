@@ -719,28 +719,28 @@ def plot_conflict_graph(graph):
     fig.savefig('graph.svg')
     # plt.draw()
 
+
 def plot_memory_usage(x, y, tick):
+    """Plot memory usage from application."""
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.plot(x, y, 'b-', label="total memory rss")
+    ax.plot(x, y, 'b-', label='total memory rss')
     for idx, t in enumerate(tick):
         if idx == 0:
-            ax.axvline(t, color="orange", alpha=0.5, label="run placement", linestyle='dashed')
+            ax.axvline(t, color='orange', alpha=0.5, label='run placement', linestyle='dashed')
         else:
-            ax.axvline(t, color="orange", alpha=0.5, linestyle='dashed')
+            ax.axvline(t, color='orange', alpha=0.5, linestyle='dashed')
     ax.set(xlabel='time (s)', ylabel='memory of datarame (bytes)')
     ax.legend()
     fig.savefig('mem_fig.png')
 
 # def plot_memory_usage_plotly(x, y, mock, tick):
-    
+
 #     fig = px.line(x=x, y=y, title='total memory rss')
 #     for idx, t in enumerate(tick):
 #         if idx == 0:
 #             fig.add_vline(t)
 #         else:
 #             fig.add_vline(t)
-    
+
 #     fig.write_html('mem_fig.html')
-
-

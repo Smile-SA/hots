@@ -15,11 +15,19 @@ allocation, evaluation, access to optimization model...).
 
 import logging
 import math
+import os
+import signal
+import sys
 import time
 
 import click
 
 from clusopt_core.cluster import Streamkm
+
+from confluent_kafka import KafkaError, KafkaException
+from confluent_kafka.schema_registry import SchemaRegistryClient
+from confluent_kafka.schema_registry.avro import AvroDeserializer
+from confluent_kafka.schema_registry.error import SchemaRegistryError
 
 from matplotlib import pyplot as plt
 
@@ -27,37 +35,18 @@ import numpy as np
 
 import pandas as pd
 
-import sys
-import os
 import psutil
-
-# Personnal imports
-# from . import allocation as alloc
-# import clustering as clt
-# import container as ctnr
-# import init as it
-# import model as mdl
-# import node
-# import placement as place
-# import plot
-from confluent_kafka.schema_registry.avro import AvroDeserializer
-from confluent_kafka import KafkaError, KafkaException
-from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.error import SchemaRegistryError
-
-import signal
-# import kafka
 
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
+from . import kafka
 from . import model as mdl
 from . import node
 from . import placement as place
 from . import plot
-from . import kafka
-
 from .instance import Instance
+
 
 @click.command()
 @click.argument('path', required=True, type=click.Path(exists=True))
@@ -99,8 +88,8 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     main_time = time.time()
     tot_mem_before = process_memory()
     start_time = time.time()
-    
-    signal.signal(signal.SIGINT,SignalHandler_SIGINT)
+
+    signal.signal(signal.SIGINT, signal_handler_sigint)
     if not path[-1] == '/':
         path += '/'
 
@@ -207,10 +196,10 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
     # Calculate the elapsed time
     elapsed_time = end_time - start_time
-    print("Elapsed time:", elapsed_time, "seconds")
-    print("memory use: ",tot_mem_after - tot_mem_before)
-    print("dataframe memory use: ",mem_before)
-    print("dataframe memory use: ",mem_after)
+    print('Elapsed time:', elapsed_time, 'seconds')
+    print('memory use: ', tot_mem_after - tot_mem_before)
+    print('dataframe memory use: ', mem_before)
+    print('dataframe memory use: ', mem_after)
     main_time = time.time() - main_time
     add_time(-1, 'total_time', main_time)
     node.plot_data_all_nodes(
@@ -325,7 +314,7 @@ def analysis_period(my_instance, config, method):
                 df_indiv[it.tick_field] >= start_point) & (
                 my_instance.df_indiv[it.tick_field] <= end_point)
         ]
-        print("Check Stats",start_point, end_point, working_df_indiv, my_instance.df_host)
+        print('Check Stats', start_point, end_point, working_df_indiv, my_instance.df_host)
         # working_df_indiv contains info of historical data 1/3 of the data
         # First clustering part
         logging.info('Starting first clustering ...')
@@ -333,9 +322,6 @@ def analysis_period(my_instance, config, method):
         start = time.time()
         (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
             working_df_indiv)
-
-        #print('df_indiv_clust',df_indiv_clust) # container cpu informaton during the historical time 
-        #print('my_instance.dict_id_c',my_instance.dict_id_c) # {0: 'c_0', 1: 'c_1', 2: 'c_2', 3: 'c_3', 4: 'c_4', 5: 'c_5', 6: 'c_6'}
 
         labels_ = clt.perform_clustering(
             df_indiv_clust, config['clustering']['algo'], my_instance.nb_clusters)
@@ -426,9 +412,8 @@ def run_period(
     nb_overloads = 0
     # Loops for evaluation
     if method in ['loop']:
-        # print('df_host_evo',df_host_evo)
         # loop 'streaming' progress
-        it.results_file.write('\n### Loop process ###\n')  # number of 'ticks' to process streaming eval
+        it.results_file.write('\n### Loop process ###\n')
         (fig_node, fig_clust, fig_mean_clust,
          df_host_evo, nb_overloads) = streaming_eval(
             my_instance, df_indiv_clust, labels_,
@@ -468,9 +453,12 @@ def run_period(
 
     return (df_host_evo, nb_overloads)
 
-def SignalHandler_SIGINT(SignalNumber,Frame):
-    print("Exit application")
+
+def signal_handler_sigint(signal_number, frame):
+    """Handle for exiting application via signal."""
+    print('Exit application')
     it.Sentry = False
+
 
 def streaming_eval(
     my_instance, df_indiv_clust, labels_, mode, tick, constraints_dual,
@@ -525,15 +513,14 @@ def streaming_eval(
         cluster_profiles
     )
 
-    tmin = my_instance.sep_time - (my_instance.window_duration - 1) # check this muffu
-    tmax = my_instance.sep_time # check this muffu
+    tmin = my_instance.sep_time - (my_instance.window_duration - 1)
+    tmax = my_instance.sep_time
 
     total_loop_time = 0.0
     loop_nb = 1
     nb_clust_changes = 0
     nb_place_changes = 0
     total_nb_overload = 0
-    end = False
 
     it.results_file.write('Loop mode : %s\n' % mode)
     logging.info('Beginning the loop process ...\n')
@@ -542,7 +529,7 @@ def streaming_eval(
         my_instance, tmin, tmax, labels_
     )
 
-    schema_str = '''
+    schema_str = """
         {
             "namespace": "com.example",
             "type": "record",
@@ -583,29 +570,29 @@ def streaming_eval(
                 }
             ]
         }
-        '''
-    UseSchema = False
-    if UseSchema:
+        """
+    use_schema = False
+    if use_schema:
         # schema_registry_client_conf = {
-        #     "url":"http://localhost:8081"}
-        schema_registry_client_conf = {'url': "http://localhost:8081"}
+        #     'url':'http://localhost:8081'}
+        schema_registry_client_conf = {'url': 'http://localhost:8081'}
         schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
-        
+
         try:
-            schema_str = schema_registry_client.get_latest_version(it.Kafka_topics['docker_topic']+'-value').schema.schema_str
+            schema_str = schema_registry_client.get_latest_version(
+                it.Kafka_topics['docker_topic'] + '-value').schema.schema_str
         except SchemaRegistryError as e:
             # Handle schema registry error
-            print(f"Error registering schema: {e}")
-    # send node meta stats for mock 
-    
-        avro_deserializer = AvroDeserializer(schema_registry_client,
-                                            schema_str)
+            print(f'Error registering schema: {e}')
+    # send node meta stats for mock
+
+        avro_deserializer = AvroDeserializer(schema_registry_client, schema_str)
     else:
         avro_deserializer = None
     # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
     # history = True # consider historical data
     # kafka.produce_data(my_instance, time_to_send, history) # send last historical data to kafka
-    
+
     # build initial optimisation model in pre loop using all or potion of historical data.
     start = time.time()
     (clust_model, place_model,
@@ -624,12 +611,12 @@ def streaming_eval(
         tmin = tmax - (my_instance.window_duration - 1)
 
     # TODO improve model builds
-    analysis_duration = 1 # variable used to perform optimization and placement when it equates the tick value
+    analysis_duration = 1  # perform optimization and placement when it equates the tick value
     it.time_at = []
     it.memory_usage = []
     it.tick_time = []
     it.total_mem_use = []
-    mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
+    # mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
     # hist_time = list(set(my_instance.df_indiv['timestamp']))
 
     # for x in hist_time:
@@ -637,29 +624,30 @@ def streaming_eval(
     #     it.memory_usage.append(mem_before)
     #     it.total_mem_use.append(tot_mem_after)
     it.Sentry = True
-    # print("df_indiv1: ",my_instance.df_indiv)
+    # print('df_indiv1: ',my_instance.df_indiv)
     print('Ready for new data...')
     try:
         while it.Sentry:
-            
+
             loop_time = time.time()
             it.Kafka_Consumer.subscribe([it.Kafka_topics['docker_topic']])
             msg = it.Kafka_Consumer.poll(timeout=1.0)
-            
+
             if msg is None:
-                    continue
+                continue
 
             if msg.error():
-                    if msg.error().code() == KafkaError._PARTITION_EOF:
-                        # End of partition event
-                        sys.stderr.write('%% %s [%d] reached end at offset %d\n' %
-                                        (msg.topic(), msg.partition(), msg.offset()))
-                    elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
-                        sys.stderr.write('Topic unknown, creating %s topic\n' %
-                                        (it.Kafka_topics['docker_topic']))
-                    elif msg.error():
-                        raise KafkaException(msg.error())
-                        break
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    # End of partition event
+                    sys.stderr.write('%% %s [%d] reached end at offset %d\n' % (
+                        msg.topic(), msg.partition(), msg.offset()))
+                elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
+                    sys.stderr.write(
+                        'Topic unknown, creating %s topic\n' % (
+                            it.Kafka_topics['docker_topic']))
+                elif msg.error():
+                    raise KafkaException(msg.error())
+                    break
 
             else:
                 (_, dval) = kafka.msg_process(msg, avro_deserializer)
@@ -668,34 +656,42 @@ def streaming_eval(
                     value = list(dval.values())[1]
                     file = list(dval.values())[2]
                     last_index = my_instance.df_indiv.index.levels[0][-1]
-                    # print("last_index: ",last_index)
-                    subset = my_instance.df_indiv[my_instance.df_indiv.timestamp == last_index].copy()
+                    # print('last_index: ',last_index)
+                    subset = my_instance.df_indiv[
+                        my_instance.df_indiv.timestamp == last_index
+                    ].copy()
                     subset.reset_index(drop=True, inplace=True)
                     subset.loc[:, 'timestamp'] = int(key)
                     subset.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
                     subset.sort_index(inplace=True)
 
                     new_df_container = reassign_node(value)
-                    
-                    new_df_container['machine_id'] = subset['machine_id'].where(new_df_container['container_id'] == subset['container_id'])
+
+                    new_df_container['machine_id'] = subset['machine_id'].where(
+                        new_df_container['container_id'] == subset['container_id']
+                    )
                     subset = subset.truncate(before=-1, after=-1)
-                    # print("new_df_container: ",new_df_container)
+                    # print('new_df_container: ',new_df_container)
                     logging.info('\n # Enter loop number %d #\n' % loop_nb)
                     it.results_file.write('\n # Loop number %d #\n' % loop_nb)
                     it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
-                    
-                    
+
                     # TODO not fully tested (replace containers)
 
-                    new_df_host = new_df_container.groupby([new_df_container[it.tick_field], it.host_field],as_index=False).agg(it.dict_agg_metrics)
+                    new_df_host = new_df_container.groupby(
+                        [new_df_container[it.tick_field], it.host_field], as_index=False
+                    ).agg(it.dict_agg_metrics)
                     new_df_host = new_df_host.astype({
                         it.host_field: str,
                         it.tick_field: int})
                     # new_df_host.sort_values(it.tick_field, inplace=True)
                     # Set remaining machine_ids from df_host to 0.0
                     previous_timestamp = last_index
-                    existing_machine_ids = my_instance.df_host[my_instance.df_host[it.tick_field] == previous_timestamp][it.host_field].unique()
-                    missing_machine_ids = set(existing_machine_ids) - set(new_df_host[it.host_field])
+                    existing_machine_ids = my_instance.df_host[
+                        my_instance.df_host[it.tick_field] == previous_timestamp
+                    ][it.host_field].unique()
+                    missing_machine_ids = set(existing_machine_ids) - set(
+                        new_df_host[it.host_field])
 
                     missing_rows = pd.DataFrame({
                         'timestamp': int(key),
@@ -716,7 +712,7 @@ def streaming_eval(
 
                     # print('\n # Step 1: Check Progress time no loop%d #\n' % loop_nb)
                     (temp_df_host, nb_overload, loop_nb,
-                    nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
+                        nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
                         my_instance, 'local', tmin, tmax, labels_, loop_nb,
                         constraints_dual, clustering_dual_values, placement_dual_values,
                         tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
@@ -726,14 +722,13 @@ def streaming_eval(
                             df_host_evo[it.tick_field].unique())]
                     ])
 
-                    
                     total_nb_overload += nb_overload
                     nb_clust_changes += nb_clust_changes_loop
                     nb_place_changes += nb_place_changes_loop
 
                     if mode == 'event':
                         (temp_df_host, nb_overload, loop_nb,
-                        nb_clust_changes, nb_place_changes) = progress_time_noloop(
+                            nb_clust_changes, nb_place_changes) = progress_time_noloop(
                             my_instance, 'loop', tmin, tmax, labels_, loop_nb,
                             constraints_dual, clustering_dual_values, placement_dual_values,
                             tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
@@ -743,15 +738,15 @@ def streaming_eval(
                                 df_host_evo[it.tick_field].unique())]
                         ])
                         total_nb_overload += nb_overload
-                
-                    if analysis_duration == tick: # equate to tick size 
+
+                    if analysis_duration == tick:  # equate to tick size
                         print('\n # Enter loop number %d #\n' % loop_nb)
-                        
+
                         # print('\n # Step 2: evaluate the solution at loop: %d #\n' % loop_nb)
                         analysis_duration = 1
-                        
+
                         start = time.time()
-                        print("tmin, tmax: ",tmin, tmax)
+                        print('tmin, tmax: ', tmin, tmax)
                         (working_df_indiv, df_clust, w, u, v) = build_matrices(
                             my_instance, tmin, tmax, labels_
                         )
@@ -781,8 +776,12 @@ def streaming_eval(
                             df_clust, cluster_profiles, labels_, loop_nb, solver
                         )
 
-                        it.results_file.write('Number of changes in clustering : %d\n' % nb_clust_changes_loop)
-                        it.results_file.write('Number of changes in placement : %d\n' % nb_place_changes_loop)
+                        it.results_file.write(
+                            'Number of changes in clustering : %d\n' % nb_clust_changes_loop
+                        )
+                        it.results_file.write(
+                            'Number of changes in placement : %d\n' % nb_place_changes_loop
+                        )
                         nb_clust_changes += nb_clust_changes_loop
                         nb_place_changes += nb_place_changes_loop
 
@@ -790,14 +789,13 @@ def streaming_eval(
                         plot.update_clustering_plot(
                             fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
 
-                        # df_host_tick = my_instance.df_indiv.loc[my_instance.df_indiv[it.tick_field] == tick].groupby([my_instance.df_indiv[it.tick_field], it.host_field],as_index=False).agg(it.dict_agg_metrics)
-                        # print('df_host_tick',df_host_tick)    
-                    
-                        plot.update_cluster_profiles(fig_mean_clust, ax_mean_clust, cluster_profiles,
-                                                    sorted(working_df_indiv[it.tick_field].unique()))
-                        
-                        plot.update_nodes_plot(fig_node, ax_node,
-                                            working_df_indiv, my_instance.dict_id_n)
+                        plot.update_cluster_profiles(
+                            fig_mean_clust, ax_mean_clust, cluster_profiles,
+                            sorted(working_df_indiv[it.tick_field].unique())
+                        )
+
+                        plot.update_nodes_plot(
+                            fig_node, ax_node, working_df_indiv, my_instance.dict_id_n)
 
                         working_df_indiv = my_instance.df_indiv[
                             (my_instance.
@@ -819,8 +817,10 @@ def streaming_eval(
                         loop_time = (time.time() - loop_time)
                         (end_loop_obj_nodes, end_loop_obj_delta) = mdl.get_obj_value_host(
                             working_df_host)
-                        it.results_file.write('Loop delta before changes : %f\n' % init_loop_obj_delta)
-                        it.results_file.write('Loop delta after changes : %f\n' % end_loop_obj_delta)
+                        it.results_file.write(
+                            'Loop delta before changes : %f\n' % init_loop_obj_delta)
+                        it.results_file.write(
+                            'Loop delta after changes : %f\n' % end_loop_obj_delta)
                         it.results_file.write('Loop time : %f s\n' % loop_time)
                         add_time(loop_nb, 'total_loop', loop_time)
                         total_loop_time += loop_time
@@ -859,7 +859,7 @@ def streaming_eval(
                 tol_place += tol_step
 
                 # if tmax >= my_instance.time:
-                    
+
                 #     it.Sentry = True  # change to False to end loop according to mock data
                 # else:
                 #     loop_nb += 1
@@ -875,10 +875,10 @@ def streaming_eval(
 
     finally:
         # Close down consumer to commit final offsets.
-        print("close kafka consumer")
-        it.Kafka_Consumer.close()  
+        print('close kafka consumer')
+        it.Kafka_Consumer.close()
     # print(it.tick_time)
-    # plot.plot_memory_usage(it.time_at, it.total_mem_use, it.tick_time) 
+    # plot.plot_memory_usage(it.time_at, it.total_mem_use, it.tick_time)
     working_df_indiv = my_instance.df_indiv[
         (my_instance.
          df_indiv[it.tick_field] >= tmin)]
@@ -896,7 +896,7 @@ def streaming_eval(
 
     df_host_evo = end_loop(working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
                            total_nb_overload, total_loop_time, loop_nb, df_host_evo)
-    
+
     return (fig_node, fig_clust, fig_mean_clust,
             df_host_evo, total_nb_overload)
     # return (fig_node, fig_clust, fig_mean_clust,
@@ -972,7 +972,7 @@ def progress_time_noloop(
                 (instance.
                     df_indiv[it.tick_field] >= tick - instance.window_duration) & (
                     instance.df_indiv[it.tick_field] <= tick)]
-            
+
             (df_clust, instance.dict_id_c) = clt.build_matrix_indiv_attr(
                 working_df_indiv)
             w = clt.build_similarity_matrix(df_clust)
@@ -1633,7 +1633,9 @@ def close_files():
     """Write the final files and close all open files."""
     it.results_file.close()
 
+
 def process_memory():
+    """Get memory information."""
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
     mem_usage_mb = mem_info.rss / 1024 / 1024
@@ -1641,12 +1643,13 @@ def process_memory():
 
 
 def reassign_node(c_info):
+    """Reassign node in containers df."""
     # c_info = value['containers']
     new_df_container = pd.DataFrame(c_info)
     new_df_container = new_df_container.astype({
-                it.indiv_field: str,
-                it.host_field: str,
-                it.tick_field: int})
+        it.indiv_field: str,
+        it.host_field: str,
+        it.tick_field: int})
     new_df_container.sort_values(it.tick_field, inplace=True)
     new_df_container.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
     new_df_container.sort_index(inplace=True)

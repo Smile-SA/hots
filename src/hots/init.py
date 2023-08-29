@@ -188,7 +188,7 @@ def define_globals(p_path, config):
 
     global streamkm_model
 
-    global Sentry 
+    global Sentry
     global Kafka_Producer
     global Kafka_Consumer
     global Kafka_topics
@@ -214,7 +214,6 @@ def define_globals(p_path, config):
     # additional_results_file = open(p_path / 'results.log', 'w')
     optim_file = open(p_path / 'optim_logs.log', 'w')
     clustering_file = open(p_path / 'clustering_logs.log', 'w')
-
 
     Kafka_topics = config['kafkaConf']['topics']
     kafka.Kafka_availability(config)

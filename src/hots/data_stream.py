@@ -164,6 +164,43 @@ def kafka_availability():
         sys.exit()
 
 
+def connect_schema_registry(schema_str, producer_topic):
+    """_summary_
+
+    :param schema_str: _description_
+    :type schema_str: _type_
+    :param producer_topic: _description_
+    :type producer_topic: _type_
+    :return: _description_
+    :rtype: _type_
+    """
+    # schema_registry_conf = {'url': 'http://localhost:8081'}
+    schema_registry_conf = {'url': 'http://10.3.73.151:8081'}
+
+    schema_registry_url = schema_registry_conf['url']
+    try:
+        response = requests.get(schema_registry_url)
+
+        if response.status_code == 200:
+            print('Schema registry is connected.')
+        else:
+            print('Schema registry is not connected.')
+    except Exception:
+        print('Check if Schema Registry is running or disable by setting UseSchema to False ')
+        sys.exit()
+
+    schema_registry_client = SchemaRegistryClient(schema_registry_conf)
+
+    try:
+        schema_str = schema_registry_client.get_latest_version(
+            producer_topic + '-value').schema.schema_str
+    except SchemaRegistryError as e:
+        # Handle schema registry error
+        print(f'Error registering schema: {e}')
+
+    return AvroSerializer(schema_registry_client, schema_str)
+
+
 def main():
     """_summary_"""
     schema_str = """
@@ -229,33 +266,9 @@ def main():
     kafka_availability()  # Wait for 10 seconds to see if kafka broker is up!
 
     avro_serializer = None
-    if UseSchema:  # If you want to use avro schema (More CPU!!)
+    if UseSchema:  # If you want to use avro schema (More CPU)
+        avro_serializer = connect_schema_registry(schema_str, producer_topic)
 
-        # schema_registry_conf = {'url': 'http://localhost:8081'}
-        schema_registry_conf = {'url': 'http://10.3.73.151:8081'}
-
-        schema_registry_url = schema_registry_conf['url']
-        try:
-            response = requests.get(schema_registry_url)
-
-            if response.status_code == 200:
-                print('Schema registry is connected.')
-            else:
-                print('Schema registry is not connected.')
-        except Exception:
-            print('Check if Schema Registry is running or disable by setting UseSchema to False ')
-            sys.exit()
-
-        schema_registry_client = SchemaRegistryClient(schema_registry_conf)
-
-        try:
-            schema_str = schema_registry_client.get_latest_version(
-                producer_topic + '-value').schema.schema_str
-        except SchemaRegistryError as e:
-            # Handle schema registry error
-            print(f'Error registering schema: {e}')
-
-        avro_serializer = AvroSerializer(schema_registry_client, schema_str)
     producer = get_producer()
 
     consumer = get_consumer()

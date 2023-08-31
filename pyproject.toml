@@ -38,6 +38,7 @@ dependencies = [
     "numpy",
     "requests",
     "pandas",
+    "psutil",
     "pyomo",
     "scikit-learn",
     "scipy",

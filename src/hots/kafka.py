@@ -69,8 +69,8 @@ def produce_data(my_instance: Instance, timestamp, history):
 
     df_con_dict = df_container.to_dict('records')
     z = df_con_dict
-    topic = it.Kafka_topics['mock_topic']
-    publish(it.Kafka_Producer, z, topic)  # Push to Kafka
+    topic = it.kafka_topics['mock_topic']
+    publish(it.kafka_producer, z, topic)  # Push to Kafka
 
 
 def get_producer(config):

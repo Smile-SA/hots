@@ -19,27 +19,39 @@ import requests
 last_offset = 0
 UseSchema = False
 
-def GetProducer():
 
+def get_producer():
+    """_summary_
+
+    :return: _description_
+    :rtype: _type_
+    """
     server1 = '10.3.73.151:9092'
 
-    producer_conf = {'bootstrap.servers': server1,
-                    #  'security.protocol':'SSL',
-                    #  'ssl.cipher.suites':'ECDHE-RSA-AES256-GCM-SHA384',
-                    # 'ssl.ca.location':'/home/muena/ssl/truststore.pem',
-                    # 'ssl.key.password': 'clientpass',
-                    # 'ssl.truststore.password': 'clientpass',
-                    # 'ssl.endpoint.identification.algorithm': 'None',
-                    # 'enable.ssl.certificate.verification': 'false',
-                    # 'ssl.keystore.location':'/home/muena/ssl/kafka.server.keystore.jks',
-                    # 'ssl.keystore.password':'serversecret',
-                     'client.id': socket.gethostname(),
-                     'compression.type': 'gzip', # compression to reduce the memory but more CPU!!
-                     }
+    producer_conf = {
+        'bootstrap.servers': server1,
+        # 'security.protocol': 'SSL',
+        # 'ssl.cipher.suites': 'ECDHE-RSA-AES256-GCM-SHA384',
+        # 'ssl.ca.location': '/home/muena/ssl/truststore.pem',
+        # 'ssl.key.password': 'clientpass',
+        # 'ssl.truststore.password': 'clientpass',
+        # 'ssl.endpoint.identification.algorithm': 'None',
+        # 'enable.ssl.certificate.verification': 'false',
+        # 'ssl.keystore.location': '/home/muena/ssl/kafka.server.keystore.jks',
+        # 'ssl.keystore.password': 'serversecret',
+        'client.id': socket.gethostname(),
+        'compression.type': 'gzip',  # compression to reduce the memory but more CPU
+    }
     producer = Producer(producer_conf)
     return producer
 
-def GetConsumer():
+
+def get_consumer():
+    """_summary_
+
+    :return: _description_
+    :rtype: _type_
+    """
     server1 = '10.3.73.151:9092'
     group = 'DockerPlacerConsumer'
 
@@ -58,27 +70,52 @@ def GetConsumer():
     consumer = Consumer(conf)
     return consumer
 
+
 def publish(producer, msg, topic, avro_serializer, file_complete):
+    """_summary_
+
+    :param producer: _description_
+    :type producer: _type_
+    :param msg: _description_
+    :type msg: _type_
+    :param topic: _description_
+    :type topic: _type_
+    :param avro_serializer: _description_
+    :type avro_serializer: _type_
+    :param file_complete: _description_
+    :type file_complete: _type_
+    """
     try:
 
         key = 'thesis_ex_10'
         timestamp, value = list(msg.items())[0]
         message = {
-            'timestamp':timestamp,
-            'containers':value['containers'],
-            'file': True if file_complete else False 
+            'timestamp': timestamp,
+            'containers': value['containers'],
+            'file': True if file_complete else False
         }
-        if avro_serializer == None:
+        if avro_serializer is None:
             jresult = json.dumps(message)
-            producer.produce(topic=topic, key=key,value=jresult, on_delivery=delivery_report)
+            producer.produce(topic=topic, key=key, value=jresult, on_delivery=delivery_report)
         else:
             string_serializer = StringSerializer('utf_8')
-            producer.produce(topic=topic, key=string_serializer(key),value=avro_serializer(message, SerializationContext(topic, MessageField.VALUE)), on_delivery=delivery_report)
+            producer.produce(
+                topic=topic, key=string_serializer(key),
+                value=avro_serializer(message, SerializationContext(topic, MessageField.VALUE)),
+                on_delivery=delivery_report)
         producer.flush()
     except KafkaException as e:
         print('Could no publish message: {}'.format(e))
 
+
 def delivery_report(err, msg):
+    """_summary_
+
+    :param err: _description_
+    :type err: _type_
+    :param msg: _description_
+    :type msg: _type_
+    """
     if err is not None:
         print('Delivery failed for User record {}: {}'.format(msg.key(), err))
         return
@@ -87,10 +124,19 @@ def delivery_report(err, msg):
     global last_offset
     last_offset = msg.offset()
 
+
 def balance_offset(consumer, tp):
+    """_summary_
+
+    :param consumer: _description_
+    :type consumer: _type_
+    :param tp: _description_
+    :type tp: _type_
+    """
     while True:
         # Retrieve the latest committed offset for the topic partition being consumed
-        committed = consumer.committed([tp])  # the offset represents the position of the next message that the consumer will read therefore we substract by 1
+        committed = consumer.committed([tp])
+        # offset is position of the next message that the consumer will read, we substract by 1
         print('Last offset: {}, committed offset: {}.'.format(last_offset, committed[0].offset))
         if (last_offset - (committed[0].offset - 1)) < 10:
             # The consumer has processed all messages up to this offset
@@ -99,11 +145,14 @@ def balance_offset(consumer, tp):
         # Sleep for a short period before checking again
         time.sleep(5.0)
 
+
 def kafka_availability():
-    admin_client = AdminClient({'bootstrap.servers': '10.3.73.151:9092',
-                    #  'security.protocol':'SSL',
-                    #  'ssl.ca.location':'/home/muena/ssl',
-                     })
+    """_summary_"""
+    admin_client = AdminClient({
+        'bootstrap.servers': '10.3.73.151:9092',
+        #  'security.protocol':'SSL',
+        #  'ssl.ca.location':'/home/muena/ssl',
+    })
     try:
         topic_metadata = admin_client.list_topics(timeout=10)
         if 'DockerPlacer' in topic_metadata.topics:
@@ -116,6 +165,7 @@ def kafka_availability():
 
 
 def main():
+    """_summary_"""
     schema_str = """
         {
         "namespace": "com.example",
@@ -171,12 +221,12 @@ def main():
     first_line = True
     z = {}
 
-    kafkaConf = {
+    kafka_conf = {
         'docker_topic': 'DockerPlacer',
     }
-    producer_topic = kafkaConf['docker_topic']
+    producer_topic = kafka_conf['docker_topic']
 
-    kafka_availability() # Wait for 10 seconds to see if kafka broker is up!
+    kafka_availability()  # Wait for 10 seconds to see if kafka broker is up!
 
     avro_serializer = None
     if UseSchema:  # If you want to use avro schema (More CPU!!)
@@ -184,7 +234,7 @@ def main():
         # schema_registry_conf = {'url': 'http://localhost:8081'}
         schema_registry_conf = {'url': 'http://10.3.73.151:8081'}
 
-        schema_registry_url = schema_registry_conf['url'] 
+        schema_registry_url = schema_registry_conf['url']
         try:
             response = requests.get(schema_registry_url)
 
@@ -206,9 +256,9 @@ def main():
             print(f'Error registering schema: {e}')
 
         avro_serializer = AvroSerializer(schema_registry_client, schema_str)
-    producer = GetProducer()
+    producer = get_producer()
 
-    consumer = GetConsumer()
+    consumer = get_consumer()
     print('producer and consumer configured')
 
     tp = TopicPartition('DockerPlacer', 0)

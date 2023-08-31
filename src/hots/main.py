@@ -580,7 +580,7 @@ def streaming_eval(
 
         try:
             schema_str = schema_registry_client.get_latest_version(
-                it.Kafka_topics['docker_topic'] + '-value').schema.schema_str
+                it.kafka_topics['docker_topic'] + '-value').schema.schema_str
         except SchemaRegistryError as e:
             # Handle schema registry error
             print(f'Error registering schema: {e}')
@@ -630,8 +630,8 @@ def streaming_eval(
         while it.Sentry:
 
             loop_time = time.time()
-            it.Kafka_Consumer.subscribe([it.Kafka_topics['docker_topic']])
-            msg = it.Kafka_Consumer.poll(timeout=1.0)
+            it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
+            msg = it.kafka_consumer.poll(timeout=1.0)
 
             if msg is None:
                 continue
@@ -644,7 +644,7 @@ def streaming_eval(
                 elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
                     sys.stderr.write(
                         'Topic unknown, creating %s topic\n' % (
-                            it.Kafka_topics['docker_topic']))
+                            it.kafka_topics['docker_topic']))
                 elif msg.error():
                     raise KafkaException(msg.error())
                     break
@@ -876,7 +876,7 @@ def streaming_eval(
     finally:
         # Close down consumer to commit final offsets.
         print('close kafka consumer')
-        it.Kafka_Consumer.close()
+        it.kafka_consumer.close()
     # print(it.tick_time)
     # plot.plot_memory_usage(it.time_at, it.total_mem_use, it.tick_time)
     working_df_indiv = my_instance.df_indiv[

@@ -460,6 +460,106 @@ def signal_handler_sigint(signal_number, frame):
     it.Sentry = False
 
 
+def connect_schema(use_schema):
+    """_summary_
+
+    :param use_schema: _description_
+    :type use_schema: _type_
+    :return: _description_
+    :rtype: _type_
+    """
+    if use_schema:
+        schema_str = """
+        {
+            "namespace": "com.example",
+            "type": "record",
+            "name": "Person",
+            "fields": [
+                {
+                    "type": "string",
+                    "name": "timestamp"
+                },
+                {
+                "type": {
+                    "type": "array",
+                    "items": {
+                    "type": "record",
+                    "name": "Container",
+                    "namespace": "com.smile.containers",
+                    "fields": [
+                        {
+                        "type": "string",
+                        "name": "timestamp"
+                        },
+                        {
+                        "type": "string",
+                        "name": "container_id"
+                        },
+                        {
+                        "type": "string",
+                        "name": "machine_id"
+                        },
+                        {
+                        "type": "float",
+                        "name": "cpu"
+                        }
+                    ]
+                    }
+                },
+                "name": "containers"
+                }
+            ]
+        }
+        """
+        # schema_registry_client_conf = {
+        #     'url':'http://localhost:8081'}
+        schema_registry_client_conf = {'url': 'http://localhost:8081'}
+        schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
+
+        try:
+            schema_str = schema_registry_client.get_latest_version(
+                it.kafka_topics['docker_topic'] + '-value').schema.schema_str
+        except SchemaRegistryError as e:
+            # Handle schema registry error
+            print(f'Error registering schema: {e}')
+
+        avro_deserializer = AvroDeserializer(schema_registry_client, schema_str)
+    else:
+        avro_deserializer = None
+    return avro_deserializer
+
+
+def process_kafka_msg(avro_deserializer):
+    """_summary_
+
+    :param avro_deserializer: _description_
+    :type avro_deserializer: _type_
+    :raises KafkaException: _description_
+    :return: _description_
+    :rtype: _type_
+    """
+    msg = it.kafka_consumer.poll(timeout=1.0)
+
+    if msg is None:
+        return None
+
+    if msg.error():
+        if msg.error().code() == KafkaError._PARTITION_EOF:
+            # End of partition event
+            sys.stderr.write('%% %s [%d] reached end at offset %d\n' % (
+                msg.topic(), msg.partition(), msg.offset()))
+        elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
+            sys.stderr.write(
+                'Topic unknown, creating %s topic\n' % (
+                    it.kafka_topics['docker_topic']))
+        elif msg.error():
+            raise KafkaException(msg.error())
+
+    else:
+        (_, dval) = kafka.msg_process(msg, avro_deserializer)
+        return dval
+
+
 def streaming_eval(
     my_instance, df_indiv_clust, labels_, mode, tick, constraints_dual,
     tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place, tol_step,
@@ -529,66 +629,8 @@ def streaming_eval(
         my_instance, tmin, tmax, labels_
     )
 
-    schema_str = """
-        {
-            "namespace": "com.example",
-            "type": "record",
-            "name": "Person",
-            "fields": [
-                {
-                    "type": "string",
-                    "name": "timestamp"
-                },
-                {
-                "type": {
-                    "type": "array",
-                    "items": {
-                    "type": "record",
-                    "name": "Container",
-                    "namespace": "com.smile.containers",
-                    "fields": [
-                        {
-                        "type": "string",
-                        "name": "timestamp"
-                        },
-                        {
-                        "type": "string",
-                        "name": "container_id"
-                        },
-                        {
-                        "type": "string",
-                        "name": "machine_id"
-                        },
-                        {
-                        "type": "float",
-                        "name": "cpu"
-                        }
-                    ]
-                    }
-                },
-                "name": "containers"
-                }
-            ]
-        }
-        """
     use_schema = False
-    if use_schema:
-        # schema_registry_client_conf = {
-        #     'url':'http://localhost:8081'}
-        schema_registry_client_conf = {'url': 'http://localhost:8081'}
-        schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
-
-        try:
-            schema_str = schema_registry_client.get_latest_version(
-                it.kafka_topics['docker_topic'] + '-value').schema.schema_str
-        except SchemaRegistryError as e:
-            # Handle schema registry error
-            print(f'Error registering schema: {e}')
-    # send node meta stats for mock
-
-        avro_deserializer = AvroDeserializer(schema_registry_client, schema_str)
-    else:
-        avro_deserializer = None
+    avro_deserializer = connect_schema(use_schema)
     # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
     # history = True # consider historical data
     # kafka.produce_data(my_instance, time_to_send, history) # send last historical data to kafka
@@ -631,89 +673,89 @@ def streaming_eval(
 
             loop_time = time.time()
             it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
-            msg = it.kafka_consumer.poll(timeout=1.0)
+            dval = process_kafka_msg(avro_deserializer)
 
-            if msg is None:
+            if dval is None:
                 continue
-
-            if msg.error():
-                if msg.error().code() == KafkaError._PARTITION_EOF:
-                    # End of partition event
-                    sys.stderr.write('%% %s [%d] reached end at offset %d\n' % (
-                        msg.topic(), msg.partition(), msg.offset()))
-                elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
-                    sys.stderr.write(
-                        'Topic unknown, creating %s topic\n' % (
-                            it.kafka_topics['docker_topic']))
-                elif msg.error():
-                    raise KafkaException(msg.error())
-                    break
-
             else:
-                (_, dval) = kafka.msg_process(msg, avro_deserializer)
-                if dval:
-                    key = list(dval.values())[0]
-                    value = list(dval.values())[1]
-                    file = list(dval.values())[2]
-                    last_index = my_instance.df_indiv.index.levels[0][-1]
-                    # print('last_index: ',last_index)
-                    subset = my_instance.df_indiv[
-                        my_instance.df_indiv.timestamp == last_index
-                    ].copy()
-                    subset.reset_index(drop=True, inplace=True)
-                    subset.loc[:, 'timestamp'] = int(key)
-                    subset.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
-                    subset.sort_index(inplace=True)
+                key = list(dval.values())[0]
+                value = list(dval.values())[1]
+                file = list(dval.values())[2]
+                last_index = my_instance.df_indiv.index.levels[0][-1]
+                # print('last_index: ',last_index)
+                subset = my_instance.df_indiv[
+                    my_instance.df_indiv.timestamp == last_index
+                ].copy()
+                subset.reset_index(drop=True, inplace=True)
+                subset.loc[:, 'timestamp'] = int(key)
+                subset.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
+                subset.sort_index(inplace=True)
 
-                    new_df_container = reassign_node(value)
+                new_df_container = reassign_node(value)
 
-                    new_df_container['machine_id'] = subset['machine_id'].where(
-                        new_df_container['container_id'] == subset['container_id']
-                    )
-                    subset = subset.truncate(before=-1, after=-1)
-                    # print('new_df_container: ',new_df_container)
-                    logging.info('\n # Enter loop number %d #\n' % loop_nb)
-                    it.results_file.write('\n # Loop number %d #\n' % loop_nb)
-                    it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
+                new_df_container['machine_id'] = subset['machine_id'].where(
+                    new_df_container['container_id'] == subset['container_id']
+                )
+                subset = subset.truncate(before=-1, after=-1)
+                # print('new_df_container: ',new_df_container)
+                logging.info('\n # Enter loop number %d #\n' % loop_nb)
+                it.results_file.write('\n # Loop number %d #\n' % loop_nb)
+                it.optim_file.write('\n # Enter loop number %d #\n' % loop_nb)
 
-                    # TODO not fully tested (replace containers)
+                # TODO not fully tested (replace containers)
 
-                    new_df_host = new_df_container.groupby(
-                        [new_df_container[it.tick_field], it.host_field], as_index=False
-                    ).agg(it.dict_agg_metrics)
-                    new_df_host = new_df_host.astype({
-                        it.host_field: str,
-                        it.tick_field: int})
-                    # new_df_host.sort_values(it.tick_field, inplace=True)
-                    # Set remaining machine_ids from df_host to 0.0
-                    previous_timestamp = last_index
-                    existing_machine_ids = my_instance.df_host[
-                        my_instance.df_host[it.tick_field] == previous_timestamp
-                    ][it.host_field].unique()
-                    missing_machine_ids = set(existing_machine_ids) - set(
-                        new_df_host[it.host_field])
+                new_df_host = new_df_container.groupby(
+                    [new_df_container[it.tick_field], it.host_field], as_index=False
+                ).agg(it.dict_agg_metrics)
+                new_df_host = new_df_host.astype({
+                    it.host_field: str,
+                    it.tick_field: int})
+                # new_df_host.sort_values(it.tick_field, inplace=True)
+                # Set remaining machine_ids from df_host to 0.0
+                previous_timestamp = last_index
+                existing_machine_ids = my_instance.df_host[
+                    my_instance.df_host[it.tick_field] == previous_timestamp
+                ][it.host_field].unique()
+                missing_machine_ids = set(existing_machine_ids) - set(
+                    new_df_host[it.host_field])
 
-                    missing_rows = pd.DataFrame({
-                        'timestamp': int(key),
-                        'machine_id': list(missing_machine_ids),
-                        'cpu': 0.0
-                    })
-                    # new_df_host.sort_values(it.tick_field, inplace=True)
-                    new_df_host = pd.concat([new_df_host, missing_rows])
-                    new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
+                missing_rows = pd.DataFrame({
+                    'timestamp': int(key),
+                    'machine_id': list(missing_machine_ids),
+                    'cpu': 0.0
+                })
+                # new_df_host.sort_values(it.tick_field, inplace=True)
+                new_df_host = pd.concat([new_df_host, missing_rows])
+                new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
 
-                    # update df_indiv on every loop!
-                    my_instance.df_indiv = pd.concat([
-                        my_instance.df_indiv, new_df_container
-                    ])
-                    my_instance.df_host = pd.concat([
-                        my_instance.df_host, new_df_host
-                    ])
+                # update df_indiv on every loop!
+                my_instance.df_indiv = pd.concat([
+                    my_instance.df_indiv, new_df_container
+                ])
+                my_instance.df_host = pd.concat([
+                    my_instance.df_host, new_df_host
+                ])
 
-                    # print('\n # Step 1: Check Progress time no loop%d #\n' % loop_nb)
+                # print('\n # Step 1: Check Progress time no loop%d #\n' % loop_nb)
+                (temp_df_host, nb_overload, loop_nb,
+                    nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
+                    my_instance, 'local', tmin, tmax, labels_, loop_nb,
+                    constraints_dual, clustering_dual_values, placement_dual_values,
+                    tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
+                df_host_evo = pd.concat([
+                    df_host_evo,
+                    temp_df_host[~temp_df_host[it.tick_field].isin(
+                        df_host_evo[it.tick_field].unique())]
+                ])
+
+                total_nb_overload += nb_overload
+                nb_clust_changes += nb_clust_changes_loop
+                nb_place_changes += nb_place_changes_loop
+
+                if mode == 'event':
                     (temp_df_host, nb_overload, loop_nb,
-                        nb_clust_changes_loop, nb_place_changes_loop) = progress_time_noloop(
-                        my_instance, 'local', tmin, tmax, labels_, loop_nb,
+                        nb_clust_changes, nb_place_changes) = progress_time_noloop(
+                        my_instance, 'loop', tmin, tmax, labels_, loop_nb,
                         constraints_dual, clustering_dual_values, placement_dual_values,
                         tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
                     df_host_evo = pd.concat([
@@ -721,109 +763,93 @@ def streaming_eval(
                         temp_df_host[~temp_df_host[it.tick_field].isin(
                             df_host_evo[it.tick_field].unique())]
                     ])
-
                     total_nb_overload += nb_overload
+
+                if analysis_duration == tick:  # equate to tick size
+                    print('\n # Enter loop number %d #\n' % loop_nb)
+
+                    # print('\n # Step 2: evaluate the solution at loop: %d #\n' % loop_nb)
+                    analysis_duration = 1
+
+                    start = time.time()
+                    print('tmin, tmax: ', tmin, tmax)
+                    (working_df_indiv, df_clust, w, u, v) = build_matrices(
+                        my_instance, tmin, tmax, labels_
+                    )
+
+                    add_time(loop_nb, 'build_matrices', (time.time() - start))
+                    nb_clust_changes_loop = 0
+                    nb_place_changes_loop = 0
+
+                    (init_loop_obj_nodes, init_loop_obj_delta) = mdl.get_obj_value_indivs(
+                        working_df_indiv)
+
+                    # TODO not very practical
+                    # plot.plot_clustering_containers_by_node(
+                    #     working_df_indiv, my_instance.dict_id_c, labels_)
+
+                    (nb_clust_changes_loop, nb_place_changes_loop,
+                        init_loop_silhouette, end_loop_silhouette,
+                        clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
+                        place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
+                        clust_model, place_model,
+                        clustering_dual_values, placement_dual_values,
+                        df_clust, cluster_profiles, labels_) = eval_sols(
+                        my_instance, working_df_indiv, cluster_method,
+                        w, u, v, clust_model, place_model,
+                        constraints_dual, clustering_dual_values, placement_dual_values,
+                        tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
+                        df_clust, cluster_profiles, labels_, loop_nb, solver
+                    )
+
+                    it.results_file.write(
+                        'Number of changes in clustering : %d\n' % nb_clust_changes_loop
+                    )
+                    it.results_file.write(
+                        'Number of changes in placement : %d\n' % nb_place_changes_loop
+                    )
                     nb_clust_changes += nb_clust_changes_loop
                     nb_place_changes += nb_place_changes_loop
 
-                    if mode == 'event':
-                        (temp_df_host, nb_overload, loop_nb,
-                            nb_clust_changes, nb_place_changes) = progress_time_noloop(
-                            my_instance, 'loop', tmin, tmax, labels_, loop_nb,
-                            constraints_dual, clustering_dual_values, placement_dual_values,
-                            tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
-                        df_host_evo = pd.concat([
-                            df_host_evo,
-                            temp_df_host[~temp_df_host[it.tick_field].isin(
-                                df_host_evo[it.tick_field].unique())]
-                        ])
-                        total_nb_overload += nb_overload
+                    # update clustering & node consumption plot
+                    plot.update_clustering_plot(
+                        fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
 
-                    if analysis_duration == tick:  # equate to tick size
-                        print('\n # Enter loop number %d #\n' % loop_nb)
+                    plot.update_cluster_profiles(
+                        fig_mean_clust, ax_mean_clust, cluster_profiles,
+                        sorted(working_df_indiv[it.tick_field].unique())
+                    )
 
-                        # print('\n # Step 2: evaluate the solution at loop: %d #\n' % loop_nb)
-                        analysis_duration = 1
+                    plot.update_nodes_plot(
+                        fig_node, ax_node, working_df_indiv, my_instance.dict_id_n)
 
-                        start = time.time()
-                        print('tmin, tmax: ', tmin, tmax)
-                        (working_df_indiv, df_clust, w, u, v) = build_matrices(
-                            my_instance, tmin, tmax, labels_
+                    working_df_indiv = my_instance.df_indiv[
+                        (my_instance.
+                            df_indiv[it.tick_field] >= tmin) & (
+                            my_instance.df_indiv[it.tick_field] <= tmax)]
+                    working_df_host = working_df_indiv.groupby(
+                        [working_df_indiv[it.tick_field], it.host_field],
+                        as_index=False).agg(it.dict_agg_metrics)
+
+                    if loop_nb > 1:
+                        df_host_evo = pd.concat(
+                            [
+                                df_host_evo,
+                                working_df_host[~working_df_host[it.tick_field].isin(
+                                    df_host_evo[it.tick_field].unique())]
+                            ]
                         )
 
-                        add_time(loop_nb, 'build_matrices', (time.time() - start))
-                        nb_clust_changes_loop = 0
-                        nb_place_changes_loop = 0
-
-                        (init_loop_obj_nodes, init_loop_obj_delta) = mdl.get_obj_value_indivs(
-                            working_df_indiv)
-
-                        # TODO not very practical
-                        # plot.plot_clustering_containers_by_node(
-                        #     working_df_indiv, my_instance.dict_id_c, labels_)
-
-                        (nb_clust_changes_loop, nb_place_changes_loop,
-                            init_loop_silhouette, end_loop_silhouette,
-                            clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
-                            place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
-                            clust_model, place_model,
-                            clustering_dual_values, placement_dual_values,
-                            df_clust, cluster_profiles, labels_) = eval_sols(
-                            my_instance, working_df_indiv, cluster_method,
-                            w, u, v, clust_model, place_model,
-                            constraints_dual, clustering_dual_values, placement_dual_values,
-                            tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
-                            df_clust, cluster_profiles, labels_, loop_nb, solver
-                        )
-
-                        it.results_file.write(
-                            'Number of changes in clustering : %d\n' % nb_clust_changes_loop
-                        )
-                        it.results_file.write(
-                            'Number of changes in placement : %d\n' % nb_place_changes_loop
-                        )
-                        nb_clust_changes += nb_clust_changes_loop
-                        nb_place_changes += nb_place_changes_loop
-
-                        # update clustering & node consumption plot
-                        plot.update_clustering_plot(
-                            fig_clust, ax_clust, df_clust, my_instance.dict_id_c)
-
-                        plot.update_cluster_profiles(
-                            fig_mean_clust, ax_mean_clust, cluster_profiles,
-                            sorted(working_df_indiv[it.tick_field].unique())
-                        )
-
-                        plot.update_nodes_plot(
-                            fig_node, ax_node, working_df_indiv, my_instance.dict_id_n)
-
-                        working_df_indiv = my_instance.df_indiv[
-                            (my_instance.
-                                df_indiv[it.tick_field] >= tmin) & (
-                                my_instance.df_indiv[it.tick_field] <= tmax)]
-                        working_df_host = working_df_indiv.groupby(
-                            [working_df_indiv[it.tick_field], it.host_field],
-                            as_index=False).agg(it.dict_agg_metrics)
-
-                        if loop_nb > 1:
-                            df_host_evo = pd.concat(
-                                [
-                                    df_host_evo,
-                                    working_df_host[~working_df_host[it.tick_field].isin(
-                                        df_host_evo[it.tick_field].unique())]
-                                ]
-                            )
-
-                        loop_time = (time.time() - loop_time)
-                        (end_loop_obj_nodes, end_loop_obj_delta) = mdl.get_obj_value_host(
-                            working_df_host)
-                        it.results_file.write(
-                            'Loop delta before changes : %f\n' % init_loop_obj_delta)
-                        it.results_file.write(
-                            'Loop delta after changes : %f\n' % end_loop_obj_delta)
-                        it.results_file.write('Loop time : %f s\n' % loop_time)
-                        add_time(loop_nb, 'total_loop', loop_time)
-                        total_loop_time += loop_time
+                    loop_time = (time.time() - loop_time)
+                    (end_loop_obj_nodes, end_loop_obj_delta) = mdl.get_obj_value_host(
+                        working_df_host)
+                    it.results_file.write(
+                        'Loop delta before changes : %f\n' % init_loop_obj_delta)
+                    it.results_file.write(
+                        'Loop delta after changes : %f\n' % end_loop_obj_delta)
+                    it.results_file.write('Loop time : %f s\n' % loop_time)
+                    add_time(loop_nb, 'total_loop', loop_time)
+                    total_loop_time += loop_time
 
             # Save loop indicators in df
             it.loop_results = pd.concat(
@@ -853,25 +879,25 @@ def streaming_eval(
             # input('\nPress any key to progress in time ...\n')
             tmax += tick
             tmin = tmax - (my_instance.window_duration - 1)
-            if tol_clust < 1.0:
-                tol_clust += tol_step
-            if tol_place < 1.0:
-                tol_place += tol_step
+            # if tol_clust < 1.0:
+            #     tol_clust += tol_step
+            # if tol_place < 1.0:
+            #     tol_place += tol_step
 
-                # if tmax >= my_instance.time:
+            # if tmax >= my_instance.time:
 
-                #     it.Sentry = True  # change to False to end loop according to mock data
-                # else:
-                #     loop_nb += 1
-                my_instance.time += 1
-                loop_nb += 1
-                # mem_after = process_memory()
-                # memory_usage.append(mem_after - mem_before)
-                mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
-                it.memory_usage.append(mem_after)
-                it.time_at.append(key)
-                if file:
-                    break
+            #     it.Sentry = True  # change to False to end loop according to mock data
+            # else:
+            #     loop_nb += 1
+            my_instance.time += 1
+            loop_nb += 1
+            # mem_after = process_memory()
+            # memory_usage.append(mem_after - mem_before)
+            mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
+            it.memory_usage.append(mem_after)
+            it.time_at.append(key)
+            if file:
+                break
 
     finally:
         # Close down consumer to commit final offsets.

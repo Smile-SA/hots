@@ -32,6 +32,7 @@ dependencies = [
     "click",
     "clusopt_core",
     "confluent-kafka",
+    "fastavro",
     "matplotlib",
     "networkx",
     "numpy",

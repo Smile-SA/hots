@@ -242,7 +242,7 @@ def main():
                 print('Schema registry is connected.')
             else:
                 print('Schema registry is not connected.')
-        except:
+        except Exception:
             print(f'Check if Schema Registry is running or disable by setting UseSchema to False ')
             sys.exit()
 
@@ -265,7 +265,7 @@ def main():
     try:
         committed = consumer.committed([tp])
         print('Partition offset before: ', committed[0].offset)
-    except:
+    except Exception:
         # Handle schema registry error
         print(f'Error connecting to consumer: ')
 

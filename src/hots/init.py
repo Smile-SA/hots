@@ -216,9 +216,9 @@ def define_globals(p_path, config):
     clustering_file = open(p_path / 'clustering_logs.log', 'w')
 
     Kafka_topics = config['kafkaConf']['topics']
-    kafka.Kafka_availability(config)
-    Kafka_Producer = kafka.GetProducer(config)
-    Kafka_Consumer = kafka.GetConsumer(config)
+    kafka.kafka_availability(config)
+    Kafka_Producer = kafka.get_producer(config)
+    Kafka_Consumer = kafka.get_consumer(config)
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'

@@ -58,7 +58,7 @@ def GetConsumer():
     consumer = Consumer(conf)
     return consumer
 
-def Publish(producer, msg, topic, avro_serializer, file_complete):
+def publish(producer, msg, topic, avro_serializer, file_complete):
     try:
 
         key = 'thesis_ex_10'
@@ -76,7 +76,7 @@ def Publish(producer, msg, topic, avro_serializer, file_complete):
             producer.produce(topic=topic, key=string_serializer(key),value=avro_serializer(message, SerializationContext(topic, MessageField.VALUE)), on_delivery=delivery_report)
         producer.flush()
     except KafkaException as e:
-        print('Could no Publish message: {}'.format(e))
+        print('Could no publish message: {}'.format(e))
 
 def delivery_report(err, msg):
     if err is not None:
@@ -99,7 +99,7 @@ def balance_offset(consumer, tp):
         # Sleep for a short period before checking again
         time.sleep(5.0)
 
-def Kafka_availability():
+def kafka_availability():
     admin_client = AdminClient({'bootstrap.servers': '10.3.73.151:9092',
                     #  'security.protocol':'SSL',
                     #  'ssl.ca.location':'/home/muena/ssl',
@@ -176,7 +176,7 @@ def main():
     }
     producer_topic = kafkaConf['docker_topic']
 
-    Kafka_availability() # Wait for 10 seconds to see if kafka broker is up!
+    kafka_availability() # Wait for 10 seconds to see if kafka broker is up!
 
     avro_serializer = None
     if UseSchema:  # If you want to use avro schema (More CPU!!)
@@ -253,7 +253,7 @@ def main():
                     }
                     z[curr_time]['containers'].append(y)
                 else:
-                    Publish(
+                    publish(
                         producer=producer, msg=z, topic=producer_topic,
                         avro_serializer=avro_serializer, file_complete=False)
                     print()
@@ -270,7 +270,7 @@ def main():
                     }
         else:
             if z:
-                Publish(
+                publish(
                     producer=producer, msg=z, topic=producer_topic,
                     avro_serializer=avro_serializer, file_complete=True)
                 # print('Another one')

@@ -62,7 +62,9 @@ from .instance import Instance
               help='Use specific value for epsilonC (clustering conflict threshold)')
 @click.option('-ea', '--tolplace', required=False, type=str,
               help='Use specific value for epsilonA (placement conflict threshold)')
-def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace):
+@click.option('-ka', '--kafka', required=False, type=bool, default=False,
+              help='Use Kafka streaming platform for data processing')
+def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace, kafka):
     """Use method to propose a placement solution for micro-services adjusted in time.
 
     :param path: path to folder with data and parameters file
@@ -83,6 +85,8 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     :type tolclust: str
     :param tolplace: threshold to use for placement conflict
     :type tolplace: str
+    :param kafka: streaming platform
+    :type kafka: bool
     """
     # Initialization part
     main_time = time.time()

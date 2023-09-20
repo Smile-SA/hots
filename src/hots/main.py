@@ -58,11 +58,11 @@ from .instance import Instance
 @click.option('-p', '--param', required=False, type=str, help='Use a specific parameter file')
 @click.option('-o', '--output', required=False, type=str,
               help='Use a specific directory for output')
-@click.option('-ec', '--tolclust', required=False, type=str,
+@click.option('-C', '--tolclust', required=False, type=str,
               help='Use specific value for epsilonC (clustering conflict threshold)')
-@click.option('-ea', '--tolplace', required=False, type=str,
+@click.option('-A', '--tolplace', required=False, type=str,
               help='Use specific value for epsilonA (placement conflict threshold)')
-@click.option('-ka', '--kafka', required=False, type=bool, default=False,
+@click.option('-K', '--kafka', required=False, type=bool, default=False,
               help='Use Kafka streaming platform for data processing')
 def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace, kafka):
     """Use method to propose a placement solution for micro-services adjusted in time.

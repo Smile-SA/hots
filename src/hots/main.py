@@ -62,9 +62,9 @@ from .instance import Instance
               help='Use specific value for epsilonC (clustering conflict threshold)')
 @click.option('-A', '--tolplace', required=False, type=str,
               help='Use specific value for epsilonA (placement conflict threshold)')
-@click.option('-K', '--kafka', required=False, type=bool, default=False,
+@click.option('-K', '--use_kafka', required=False, type=bool, default=False,
               help='Use Kafka streaming platform for data processing')
-def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace, kafka):
+def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka):
     """Use method to propose a placement solution for micro-services adjusted in time.
 
     :param path: path to folder with data and parameters file
@@ -85,8 +85,8 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     :type tolclust: str
     :param tolplace: threshold to use for placement conflict
     :type tolplace: str
-    :param kafka: streaming platform
-    :type kafka: bool
+    :param use_kafka: streaming platform
+    :type use_kafka: bool
     """
     # Initialization part
     main_time = time.time()
@@ -99,7 +99,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
     start = time.time()
     (config, output_path, my_instance) = preprocess(
-        path, k, tau, method, cluster_method, param, output, tolclust, tolplace, kafka
+        path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka
     )
     add_time(-1, 'preprocess', (time.time() - start))
     mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
@@ -133,7 +133,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     (df_host_evo, nb_overloads) = run_period(
         my_instance, df_host_evo,
         df_indiv_clust, labels_,
-        config, output_path, method, cluster_method, kafka
+        config, output_path, method, cluster_method, use_kafka
     )
     add_time(-1, 'total_t_run', (time.time() - start))
     total_method_time = time.time() - total_method_time
@@ -221,7 +221,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
 
 def preprocess(
-    path, k, tau, method, cluster_method, param, output, tolclust, tolplace, kafka
+    path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka
 ):
     """Load configuration, data and initialize needed objects.
 
@@ -243,15 +243,15 @@ def preprocess(
     :type tolclust: float
     :param tolplace: threshold to use for placement conflict
     :type tolplace: float
-    :param kafka: streaming platform
-    :type kafka: bool
+    :param use_kafka: streaming platform
+    :type use_kafka: bool
     :return: tuple with needed parameters, path to output and Instance object
     :rtype: Tuple[Dict, str, Instance]
     """
     # TODO what if we want tick < tau ?
     print('Preprocessing ...')
     (config, output_path) = it.read_params(
-        path, k, tau, method, cluster_method, param, output, kafka)
+        path, k, tau, method, cluster_method, param, output, use_kafka)
     config = spec_params(config, [tolclust, tolplace])
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
@@ -259,7 +259,7 @@ def preprocess(
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    instance = Instance(path, config)
+    instance = Instance(path, config, use_kafka)
     it.results_file.write('Method used : %s\n' % method)
     instance.print_times(config['loop']['tick'])
 
@@ -394,7 +394,7 @@ def analysis_period(my_instance, config, method):
 
 def run_period(
     my_instance, df_host_evo, df_indiv_clust, labels_, config, output_path,
-    method, cluster_method, kafka
+    method, cluster_method, use_kafka
 ):
     """Perform all needed process during evaluation period.
 
@@ -414,8 +414,8 @@ def run_period(
     :type method: str
     :param cluster_method: method to use for clustering
     :type cluster_method: str
-    :param kafka: streaming platform
-    :type kafka: bool
+    :param use_kafka: streaming platform
+    :type use_kafka: bool
     :return: evolving node data and number of nodes overloads
     :rtype: Tuple[pd.DataFrame, int]
     """
@@ -438,7 +438,7 @@ def run_period(
             config['loop']['tol_step'],
             cluster_method,
             config['optimization']['solver'],
-            df_host_evo, kafka)
+            df_host_evo, use_kafka)
         fig_node.savefig(output_path + '/node_evo_plot.svg')
         fig_clust.savefig(output_path + '/clust_evo_plot.svg')
         fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
@@ -479,6 +479,7 @@ def connect_schema(use_schema):
     :rtype: _type_
     """
     if use_schema:
+        # TODO externalize this schema (generalize)
         schema_str = """
         {
             "namespace": "com.example",
@@ -573,7 +574,7 @@ def process_kafka_msg(avro_deserializer):
 def streaming_eval(
     my_instance, df_indiv_clust, labels_, mode, tick, constraints_dual,
     tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place, tol_step,
-    cluster_method, solver, df_host_evo, kafka
+    cluster_method, solver, df_host_evo, use_kafka
 ):
     """Define the streaming process for evaluation.
 
@@ -607,8 +608,8 @@ def streaming_eval(
     :type solver: str
     :param df_host_evo: evolving node data
     :type df_host_evo: pd.DataFrame
-    :param kafka: streaming platform
-    :type kafka: bool
+    :param use_kafka: streaming platform
+    :type use_kafka: bool
     :return: figures to plot to see clustering and nodes evolution + evolving node data + number
         of node overloads
     :rtype: Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]
@@ -658,7 +659,7 @@ def streaming_eval(
         tmax += tick
         tmin = tmax - (my_instance.window_duration - 1)
 
-    if kafka:
+    if use_kafka:
         use_schema = False
         avro_deserializer = connect_schema(use_schema)
         # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]

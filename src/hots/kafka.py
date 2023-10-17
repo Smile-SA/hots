@@ -6,10 +6,10 @@ import socket
 import sys
 import time
 
-from confluent_kafka import Consumer, KafkaException, Producer, TopicPartition
+from confluent_kafka import Consumer, KafkaError, KafkaException, Producer, TopicPartition
 from confluent_kafka.admin import AdminClient
 from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroSerializer
+from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
 from confluent_kafka.schema_registry.error import SchemaRegistryError
 from confluent_kafka.serialization import (MessageField, SerializationContext,
                                            StringSerializer)
@@ -404,3 +404,104 @@ def csv_to_stream(config, use_schema=False):
             # check if the producer offset balanced with consumer offset
             # balance_offset(consumer, tp)
             end = False
+
+
+def connect_schema(use_schema):
+    """_summary_
+
+    :param use_schema: _description_
+    :type use_schema: _type_
+    :return: _description_
+    :rtype: _type_
+    """
+    if use_schema:
+        # TODO externalize this schema (generalize)
+        schema_str = """
+        {
+            "namespace": "com.example",
+            "type": "record",
+            "name": "Person",
+            "fields": [
+                {
+                    "type": "string",
+                    "name": "timestamp"
+                },
+                {
+                "type": {
+                    "type": "array",
+                    "items": {
+                    "type": "record",
+                    "name": "Container",
+                    "namespace": "com.smile.containers",
+                    "fields": [
+                        {
+                        "type": "string",
+                        "name": "timestamp"
+                        },
+                        {
+                        "type": "string",
+                        "name": "container_id"
+                        },
+                        {
+                        "type": "string",
+                        "name": "machine_id"
+                        },
+                        {
+                        "type": "float",
+                        "name": "cpu"
+                        }
+                    ]
+                    }
+                },
+                "name": "containers"
+                }
+            ]
+        }
+        """
+        # schema_registry_client_conf = {
+        #     'url':'http://localhost:8081'}
+        schema_registry_client_conf = {'url': 'http://localhost:8081'}
+        schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
+
+        try:
+            schema_str = schema_registry_client.get_latest_version(
+                it.kafka_topics['docker_topic'] + '-value').schema.schema_str
+        except SchemaRegistryError as e:
+            # Handle schema registry error
+            print(f'Error registering schema: {e}')
+
+        avro_deserializer = AvroDeserializer(schema_registry_client, schema_str)
+    else:
+        avro_deserializer = None
+    return avro_deserializer
+
+
+def process_kafka_msg(avro_deserializer):
+    """_summary_
+
+    :param avro_deserializer: _description_
+    :type avro_deserializer: _type_
+    :raises KafkaException: _description_
+    :return: _description_
+    :rtype: _type_
+    """
+    msg = it.kafka_consumer.poll(timeout=1.0)
+
+    if msg is None:
+        return None
+
+    if msg.error():
+        if msg.error().code() == KafkaError._PARTITION_EOF:
+            # End of partition event
+            sys.stderr.write('%% %s [%d] reached end at offset %d\n' % (
+                msg.topic(), msg.partition(), msg.offset()))
+        elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
+            sys.stderr.write(
+                'Topic unknown, creating %s topic\n' % (
+                    it.kafka_topics['docker_topic']))
+        elif msg.error():
+            raise KafkaException(msg.error())
+
+    else:
+        (_, dval) = msg_process(msg, avro_deserializer)
+        return dval

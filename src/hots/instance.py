@@ -4,9 +4,10 @@ parameters. Provide Instance-related methods.
 """
 
 import math
+import sys
 
 from . import init as it
-from . import kafka
+# from . import kafka
 from . import node as nd
 
 
@@ -44,7 +45,8 @@ class Instance:
         :type use_kafka: bool
         """
         if use_kafka:
-            kafka.csv_to_stream(config)
+            # kafka.csv_to_stream(config)
+            sys.exit('Historical data in Kafka not ok yet.')
         else:
             (self.df_indiv,  # container usage
              self.df_host,  # node usage

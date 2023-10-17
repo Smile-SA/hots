@@ -17,17 +17,11 @@ import logging
 import math
 import os
 import signal
-import sys
 import time
 
 import click
 
 from clusopt_core.cluster import Streamkm
-
-from confluent_kafka import KafkaError, KafkaException
-from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroDeserializer
-from confluent_kafka.schema_registry.error import SchemaRegistryError
 
 from matplotlib import pyplot as plt
 
@@ -122,10 +116,6 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
      df_indiv_clust, labels_) = analysis_period(
         my_instance, config, method
     )
-    # print(df_host_evo) # timestamp machine_id cpu
-    # print('df_host_evo',df_host_evo)
-    # print('df_indiv_clust',df_indiv_clust)
-    # print('labels_',labels_)
     add_time(-1, 'total_t_obs', (time.time() - start))
 
     # Run period
@@ -470,107 +460,6 @@ def signal_handler_sigint(signal_number, frame):
     it.Sentry = False
 
 
-def connect_schema(use_schema):
-    """_summary_
-
-    :param use_schema: _description_
-    :type use_schema: _type_
-    :return: _description_
-    :rtype: _type_
-    """
-    if use_schema:
-        # TODO externalize this schema (generalize)
-        schema_str = """
-        {
-            "namespace": "com.example",
-            "type": "record",
-            "name": "Person",
-            "fields": [
-                {
-                    "type": "string",
-                    "name": "timestamp"
-                },
-                {
-                "type": {
-                    "type": "array",
-                    "items": {
-                    "type": "record",
-                    "name": "Container",
-                    "namespace": "com.smile.containers",
-                    "fields": [
-                        {
-                        "type": "string",
-                        "name": "timestamp"
-                        },
-                        {
-                        "type": "string",
-                        "name": "container_id"
-                        },
-                        {
-                        "type": "string",
-                        "name": "machine_id"
-                        },
-                        {
-                        "type": "float",
-                        "name": "cpu"
-                        }
-                    ]
-                    }
-                },
-                "name": "containers"
-                }
-            ]
-        }
-        """
-        # schema_registry_client_conf = {
-        #     'url':'http://localhost:8081'}
-        schema_registry_client_conf = {'url': 'http://localhost:8081'}
-        schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
-
-        try:
-            schema_str = schema_registry_client.get_latest_version(
-                it.kafka_topics['docker_topic'] + '-value').schema.schema_str
-        except SchemaRegistryError as e:
-            # Handle schema registry error
-            print(f'Error registering schema: {e}')
-
-        avro_deserializer = AvroDeserializer(schema_registry_client, schema_str)
-    else:
-        avro_deserializer = None
-    return avro_deserializer
-
-
-def process_kafka_msg(avro_deserializer):
-    """_summary_
-
-    :param avro_deserializer: _description_
-    :type avro_deserializer: _type_
-    :raises KafkaException: _description_
-    :return: _description_
-    :rtype: _type_
-    """
-    msg = it.kafka_consumer.poll(timeout=1.0)
-
-    if msg is None:
-        return None
-
-    if msg.error():
-        if msg.error().code() == KafkaError._PARTITION_EOF:
-            # End of partition event
-            sys.stderr.write('%% %s [%d] reached end at offset %d\n' % (
-                msg.topic(), msg.partition(), msg.offset()))
-        elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
-            sys.stderr.write(
-                'Topic unknown, creating %s topic\n' % (
-                    it.kafka_topics['docker_topic']))
-        elif msg.error():
-            raise KafkaException(msg.error())
-
-    else:
-        (_, dval) = kafka.msg_process(msg, avro_deserializer)
-        return dval
-
-
 def streaming_eval(
     my_instance, df_indiv_clust, labels_, mode, tick, constraints_dual,
     tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place, tol_step,
@@ -661,7 +550,7 @@ def streaming_eval(
 
     if use_kafka:
         use_schema = False
-        avro_deserializer = connect_schema(use_schema)
+        avro_deserializer = kafka.connect_schema(use_schema)
         # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
         # history = True # consider historical data
         # send last historical data to kafka
@@ -687,7 +576,7 @@ def streaming_eval(
 
                 loop_time = time.time()
                 it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
-                dval = process_kafka_msg(avro_deserializer)
+                dval = kafka.process_kafka_msg(avro_deserializer)
 
                 if dval is None:
                     continue

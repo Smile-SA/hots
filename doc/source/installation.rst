@@ -67,6 +67,14 @@ immediately active (you don't need to reinstall after each change).
 
 .. hint::
 
+   If you want to use Kafka for data processing, you have to replace the last command with:
+
+   .. code:: console
+
+      pip installe -e .[dev,kafka]
+
+.. hint::
+
    If you need to change this documentation too, you may rather replace the last command with:
 
    .. code:: console

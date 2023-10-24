@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import kafka
+from . import reader
 
 # Functions definitions #
 
@@ -69,7 +69,7 @@ def init_dfs(data):
 
 
 def read_params(
-    path, k, tau, method, cluster_method, param, output_path
+    path, k, tau, method, cluster_method, param, output_path, kafka_var
 ):
     """Get parameters from file and build the Dict config object.
 
@@ -87,6 +87,8 @@ def read_params(
     :type param: str
     :param output_path: _description_
     :type output_path: str
+    :param kafka_var: streaming platform
+    :type kafka_var: bool
     :raises ValueError: _description_
     :raises ValueError: _description_
     :return: _description_
@@ -119,7 +121,7 @@ def read_params(
                 method, cluster_method
             ))
     output_path.mkdir(parents=True, exist_ok=True)
-    define_globals(output_path, config)
+    define_globals(output_path, config, kafka_var)
     if method not in methods:
         raise ValueError('Method %s is not accepted' % method)
     if cluster_method not in cluster_methods:
@@ -156,13 +158,15 @@ def set_times_df():
     ])
 
 
-def define_globals(p_path, config):
+def define_globals(p_path, config, kafka_var):
     """Define the fields, as global variables, from config.
 
     :param p_path: _description_
     :type p_path: Path
     :param config: _description_
     :type config: Dict
+    :param kafka_var: streaming platform
+    :type kafka_var: bool
     """
     global indiv_field
     global host_field
@@ -215,10 +219,11 @@ def define_globals(p_path, config):
     optim_file = open(p_path / 'optim_logs.log', 'w')
     clustering_file = open(p_path / 'clustering_logs.log', 'w')
 
-    kafka_topics = config['kafkaConf']['topics']
-    kafka.kafka_availability(config)
-    kafka_producer = kafka.get_producer(config)
-    kafka_consumer = kafka.get_consumer(config)
+    if kafka_var:
+        kafka_topics = config['kafkaConf']['topics']
+        reader.kafka_availability(config)
+        kafka_producer = reader.get_producer(config)
+        kafka_consumer = reader.get_consumer(config)
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'

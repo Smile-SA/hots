@@ -49,43 +49,43 @@
   },
   "placement":{
     "enable": true
+  },
+  "kafkaConf":{
+    "topics":{
+      "docker_topic": "DockerPlacer",
+      "mock_topic": "MockPlacement"
     },
-    "kafkaConf":{
-      "topics":{
-        "docker_topic": "DockerPlacer",
-        "mock_topic": "MockPlacement"
-      },
-      "Producer":{
-        "brokers":["10.3.73.151:9092"]
-      },
-      "Consumer":{
-        "group": "DockerPlacerConsumer",
-        "brokers":["10.3.73.151:9092"]
+    "Producer":{
+      "brokers":["0.0.0.0:9092"]
+    },
+    "Consumer":{
+      "group": "DockerPlacerConsumer",
+      "brokers":["0.0.0.0:9092"]
 
-      },
-      "schema":{
-        "type": "record",
-        "name": "ContainerData",
-        "namespace": "com.smile.hots",
-        "fields": [
-          {
-            "name": "containers",
-            "type": {
-              "type": "array",
-              "items": {
-                "type": "record",
-                "name": "Container",
-                "fields": [
-                  {"name": "timestamp", "type": "int"},
-                  {"name": "container_id", "type": "string"},
-                  {"name": "machine_id", "type": "string"},
-                  {"name": "cpu", "type": "float"}
-                ]
-              }
+    },
+    "schema":{
+      "type": "record",
+      "name": "ContainerData",
+      "namespace": "com.smile.hots",
+      "fields": [
+        {
+          "name": "containers",
+          "type": {
+            "type": "array",
+            "items": {
+              "type": "record",
+              "name": "Container",
+              "fields": [
+                {"name": "timestamp", "type": "int"},
+                {"name": "container_id", "type": "string"},
+                {"name": "machine_id", "type": "string"},
+                {"name": "cpu", "type": "float"}
+              ]
             }
           }
-        ]
-      }
+        }
+      ]
+    }
   }
     
 }

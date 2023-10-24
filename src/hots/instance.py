@@ -4,6 +4,7 @@ parameters. Provide Instance-related methods.
 """
 
 import math
+import sys
 
 from . import init as it
 from . import node as nd
@@ -32,47 +33,53 @@ class Instance:
     :type dict_id_c: Dict
     """
 
-    def __init__(self, path, config):
+    def __init__(self, path, config, use_kafka):
         """Instance constructor
 
         :param path: Filesystem path to the input files
         :type path: str
         :param config: Configuration dict from config file
         :type config: Dict
+        :param use_kafka: streaming platform
+        :type use_kafka: bool
         """
-        (self.df_indiv,  # container usage
-         self.df_host,  # node usage
-         self.df_host_meta) = it.init_dfs(path)  # node meta deta
-        # new data
-        # self.df_container = self.df_indiv[self.df_indiv["timestamp"] < 2]
-        # self.df_container.reset_index()
+        if use_kafka:
+            # kafka.csv_to_stream(config)
+            sys.exit('Historical data in Kafka not ok yet.')
+        else:
+            (self.df_indiv,  # container usage
+             self.df_host,  # node usage
+             self.df_host_meta) = it.init_dfs(path)  # node meta deta
+            # new data
+            # self.df_container = self.df_indiv[self.df_indiv["timestamp"] < 2]
+            # self.df_container.reset_index()
 
-        # count of unique time values from timestamp column = 6
-        self.time: int = self.df_indiv[it.tick_field].nunique()
-        # count of unique machine_id values from machine_id column
-        self.nb_nodes = self.df_host_meta[it.host_field].nunique()
-        # count of unique container_ids from column container_id
-        self.nb_containers = self.df_indiv[it.indiv_field].nunique()
-        # gets default cluster numbers set to 3
-        self.nb_clusters = config['clustering']['nb_clusters']
+            # count of unique time values from timestamp column = 6
+            self.time: int = self.df_indiv[it.tick_field].nunique()
+            # count of unique machine_id values from machine_id column
+            self.nb_nodes = self.df_host_meta[it.host_field].nunique()
+            # count of unique container_ids from column container_id
+            self.nb_containers = self.df_indiv[it.indiv_field].nunique()
+            # gets default cluster numbers set to 3
+            self.nb_clusters = config['clustering']['nb_clusters']
 
-        self.df_indiv = self.df_indiv.astype({
-            it.indiv_field: str,
-            it.host_field: str,
-            it.tick_field: int})
-        self.df_host = self.df_host.astype({
-            it.host_field: str,
-            it.tick_field: int})
-        self.df_host_meta = self.df_host_meta.astype({it.host_field: str})
+            self.df_indiv = self.df_indiv.astype({
+                it.indiv_field: str,
+                it.host_field: str,
+                it.tick_field: int})
+            self.df_host = self.df_host.astype({
+                it.host_field: str,
+                it.tick_field: int})
+            self.df_host_meta = self.df_host_meta.astype({it.host_field: str})
 
-        self.df_host.sort_values(it.tick_field, inplace=True)
-        self.df_indiv.sort_values(it.tick_field, inplace=True)
-        self.df_host.set_index(
-            [it.tick_field, it.host_field], inplace=True, drop=False)
-        self.df_indiv.set_index(
-            [it.tick_field, it.indiv_field], inplace=True, drop=False)
+            self.df_host.sort_values(it.tick_field, inplace=True)
+            self.df_indiv.sort_values(it.tick_field, inplace=True)
+            self.df_host.set_index(
+                [it.tick_field, it.host_field], inplace=True, drop=False)
+            self.df_indiv.set_index(
+                [it.tick_field, it.indiv_field], inplace=True, drop=False)
 
-        self.percentage_to_timestamp(config)
+            self.percentage_to_timestamp(config)
 
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.dict_id_c = {}

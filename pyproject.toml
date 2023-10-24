@@ -31,12 +31,9 @@ requires-python = ">=3.8"
 dependencies = [
     "click",
     "clusopt_core",
-    "confluent-kafka",
-    "fastavro",
     "matplotlib",
     "networkx",
     "numpy",
-    "requests",
     "pandas",
     "psutil",
     "pyomo",
@@ -71,6 +68,11 @@ dev = [
 ]
 doc = [
     "Sphinx",
+]
+kafka = [
+    "confluent-kafka",
+    "fastavro",
+    "requests",
 ]
 testing = [
     "pytest",

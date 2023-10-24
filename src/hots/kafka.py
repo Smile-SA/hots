@@ -51,7 +51,6 @@ def msg_process(msg, avro_deserializer):
         val = json.loads(dval)
     else:
         val = avro_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
-    # print(time_start, val)
     return (time_start, val)
 
 
@@ -77,7 +76,8 @@ def produce_data(my_instance: Instance, timestamp, history):
     df_con_dict = df_container.to_dict('records')
     z = df_con_dict
     topic = it.kafka_topics['mock_topic']
-    publish(it.kafka_producer, z, topic)  # Push to Kafka
+    # Push to Kafka
+    publish(it.kafka_producer, z, topic)
 
 
 def get_producer(config):

@@ -1,4 +1,4 @@
-"""Describe needed resources for Kafka streaming platform."""
+"""Describe needed resources for reading data, either with or without Kafka streaming platform."""
 
 import csv
 import json
@@ -6,18 +6,34 @@ import socket
 import sys
 import time
 
-from confluent_kafka import Consumer, KafkaError, KafkaException, Producer, TopicPartition
-from confluent_kafka.admin import AdminClient
-from confluent_kafka.schema_registry import SchemaRegistryClient
-from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
-from confluent_kafka.schema_registry.error import SchemaRegistryError
-from confluent_kafka.serialization import (MessageField, SerializationContext,
-                                           StringSerializer)
+try:
+    from confluent_kafka import Consumer, KafkaError, KafkaException, Producer, TopicPartition
+    from confluent_kafka.admin import AdminClient
+    from confluent_kafka.schema_registry import SchemaRegistryClient
+    from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
+    from confluent_kafka.schema_registry.error import SchemaRegistryError
+    from confluent_kafka.serialization import (MessageField, SerializationContext,
+                                            StringSerializer)
 
-import requests
+    import requests
+except ImportError:
+    _has_kafka = False
+else:
+    _has_kafka = True
 
 from . import init as it
 from .instance import Instance
+
+
+def test_option_kafka(use_kafka):
+    """test optional kafka"""
+    if use_kafka:
+        if not _has_kafka:
+            raise ImportError('Kafka is required to do it.')
+        print('ok you have kafka')
+    else:
+        print('no kafka required.')
+    input()
 
 
 def acked(err, msg):

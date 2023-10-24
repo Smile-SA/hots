@@ -34,7 +34,7 @@ import psutil
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
-from . import kafka
+from . import reader
 from . import model as mdl
 from . import node
 from . import placement as place
@@ -86,6 +86,8 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     main_time = time.time()
     tot_mem_before = process_memory()
     start_time = time.time()
+
+    reader.test_option_kafka(use_kafka)
 
     signal.signal(signal.SIGINT, signal_handler_sigint)
     if not path[-1] == '/':
@@ -550,11 +552,11 @@ def streaming_eval(
 
     if use_kafka:
         use_schema = False
-        avro_deserializer = kafka.connect_schema(use_schema)
+        avro_deserializer = reader.connect_schema(use_schema)
         # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
         # history = True # consider historical data
         # send last historical data to kafka
-        # kafka.produce_data(my_instance, time_to_send, history)
+        # reader.produce_data(my_instance, time_to_send, history)
 
         analysis_duration = 1  # perform optimization and placement when it equates the tick value
         it.time_at = []
@@ -576,7 +578,7 @@ def streaming_eval(
 
                 loop_time = time.time()
                 it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
-                dval = kafka.process_kafka_msg(avro_deserializer)
+                dval = reader.process_kafka_msg(avro_deserializer)
 
                 if dval is None:
                     continue

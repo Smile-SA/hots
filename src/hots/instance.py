@@ -7,7 +7,6 @@ import math
 import sys
 
 from . import init as it
-# from . import kafka
 from . import node as nd
 
 

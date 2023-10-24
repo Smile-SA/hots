@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from . import kafka
+from . import reader
 
 # Functions definitions #
 
@@ -221,9 +221,9 @@ def define_globals(p_path, config, kafka_var):
 
     if kafka_var:
         kafka_topics = config['kafkaConf']['topics']
-        kafka.kafka_availability(config)
-        kafka_producer = kafka.get_producer(config)
-        kafka_consumer = kafka.get_consumer(config)
+        reader.kafka_availability(config)
+        kafka_producer = reader.get_producer(config)
+        kafka_consumer = reader.get_consumer(config)
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'

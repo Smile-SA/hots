@@ -423,16 +423,6 @@ def spec_params(config, list_params):
     return config
 
 
-# TODO remove ?
-def init_data_reading(use_kafka):
-    """Initialize the reading process of data, with or without Kafka.
-
-    :param use_kafka: streaming platform
-    :type use_kafka: bool
-    """
-    reader.init_reader(use_kafka)
-
-
 def analysis_period(my_instance, config, method):
     """Perform all needed process during analysis period (T_init).
 

@@ -34,11 +34,11 @@ import psutil
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
-from . import reader
 from . import model as mdl
 from . import node
 from . import placement as place
 from . import plot
+from . import reader
 from .instance import Instance
 
 
@@ -114,10 +114,19 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
 
     # Global loop for getting data
     reader.init_reader(path, use_kafka)
-    global_end = False
-    while not global_end:
-        print('we get one more timestamp data')
-        input()
+    print(it.csv_reader)
+    print(it.avro_deserializer)
+    it.Sentry = True
+    # print('df_indiv1: ',my_instance.df_indiv)
+    print('Ready for new data...')
+    try:
+        while it.Sentry:
+            print('Getting next data one more timestamp data')
+            input()
+    finally:
+        # Close down consumer to commit final offsets.
+        print('close kafka consumer')
+        it.kafka_consumer.close()
 
     # Analysis period
     start = time.time()
@@ -281,16 +290,6 @@ def spec_params(config, list_params):
     if list_params[1] is not None:
         config['loop']['tol_dual_place'] = float(list_params[1])
     return config
-
-
-# TODO remove ?
-def init_data_reading(use_kafka):
-    """Initialize the reading process of data, with or without Kafka.
-
-    :param use_kafka: streaming platform
-    :type use_kafka: bool
-    """
-    reader.init_reader(use_kafka)
 
 
 def analysis_period(my_instance, config, method):

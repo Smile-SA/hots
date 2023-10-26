@@ -23,7 +23,6 @@ else:
     _has_kafka = True
 
 from . import init as it
-from .instance import Instance
 
 
 def test_option_kafka(use_kafka):
@@ -49,14 +48,19 @@ def init_reader(path, use_kafka):
     if use_kafka:
         if not _has_kafka:
             raise ImportError('Kafka is required to do it.')
-        print('ok you have kafka')
+        else:
+            use_schema = False
+            it.avro_deserializer = connect_schema(use_schema)
+            it.csv_reader = None
+            print('ok you have kafka')
     else:
         print('no kafka required.')
         with open(p_data / 'container_usage.csv', 'r') as f:
-            reader = csv.reader(f)
-            for row in reader:
-                print(row)
-                input()
+            it.csv_reader = csv.reader(f)
+            it.avro_deserializer = None
+            # for row in it.reader:
+            #     print(row)
+            #     input()
 
 
 def acked(err, msg):
@@ -93,7 +97,7 @@ def msg_process(msg, avro_deserializer):
     return (time_start, val)
 
 
-def produce_data(my_instance: Instance, timestamp, history):
+def produce_data(my_instance, timestamp, history):
     """Summary.
 
     :param my_instance: _description_

@@ -34,11 +34,11 @@ import psutil
 from . import clustering as clt
 from . import container as ctnr
 from . import init as it
-from . import reader
 from . import model as mdl
 from . import node
 from . import placement as place
 from . import plot
+from . import reader
 from .instance import Instance
 
 
@@ -87,8 +87,6 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     tot_mem_before = process_memory()
     start_time = time.time()
 
-    reader.test_option_kafka(use_kafka)
-
     signal.signal(signal.SIGINT, signal_handler_sigint)
     if not path[-1] == '/':
         path += '/'
@@ -99,7 +97,9 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     )
     add_time(-1, 'preprocess', (time.time() - start))
     mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
+
     # Plot initial data
+    # TODO remove ? better option to performe ?
     if False:
         indivs_cons = ctnr.plot_all_data_all_containers(
             my_instance.df_indiv, sep_time=my_instance.sep_time)
@@ -111,6 +111,21 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
             title='Initial Node consumption')
         node_evo_fig.savefig(path + '/init_node_plot.svg')
     total_method_time = time.time()
+
+    # Global loop for getting data
+    reader.init_reader(path, use_kafka)
+    print(it.csv_reader)
+    print(it.avro_deserializer)
+    it.Sentry = True
+    # print('df_indiv1: ',my_instance.df_indiv)
+    print('Ready for new data...')
+    try:
+        while it.Sentry:
+            print('Getting next data one more timestamp data')
+            input()
+    finally:
+        # Close down consumer to commit final offsets.
+        reader.close_reader(use_kafka)
 
     # Analysis period
     start = time.time()

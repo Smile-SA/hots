@@ -5,6 +5,7 @@ import json
 import socket
 import sys
 import time
+from pathlib import Path
 
 try:
     from confluent_kafka import Consumer, KafkaError, KafkaException, Producer, TopicPartition
@@ -13,7 +14,7 @@ try:
     from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
     from confluent_kafka.schema_registry.error import SchemaRegistryError
     from confluent_kafka.serialization import (MessageField, SerializationContext,
-                                            StringSerializer)
+                                               StringSerializer)
 
     import requests
 except ImportError:
@@ -22,11 +23,10 @@ else:
     _has_kafka = True
 
 from . import init as it
-from .instance import Instance
 
 
 def test_option_kafka(use_kafka):
-    """test optional kafka"""
+    """Test optional kafka."""
     if use_kafka:
         if not _has_kafka:
             raise ImportError('Kafka is required to do it.')
@@ -36,8 +36,44 @@ def test_option_kafka(use_kafka):
     input()
 
 
+def init_reader(path, use_kafka):
+    """Initialize the reader for data, with or without Kafka.
+
+    :param path: initial folder path
+    :type path: str
+    :param use_kafka: streaming platform
+    :type use_kafka: bool
+    """
+    p_data = Path(path)
+    if use_kafka:
+        if not _has_kafka:
+            raise ImportError('Kafka is required to do it.')
+        else:
+            use_schema = False
+            it.avro_deserializer = connect_schema(use_schema)
+            it.csv_reader = None
+            print('ok you have kafka')
+    else:
+        print('no kafka required.')
+        with open(p_data / 'container_usage.csv', 'r') as f:
+            it.csv_reader = csv.reader(f)
+            it.avro_deserializer = None
+            # for row in it.reader:
+            #     print(row)
+            #     input()
+
+
+def close_reader(use_kafka):
+    """Close the CSV reader or Kafka consumer."""
+    if use_kafka:
+        print('close kafka consumer')
+        it.kafka_consumer.close()
+    else:
+        print('close csv reader or f ?')
+
+
 def acked(err, msg):
-    """_summary_
+    """Summary.
 
     :param err: _description_
     :type err: _type_
@@ -51,7 +87,7 @@ def acked(err, msg):
 
 
 def msg_process(msg, avro_deserializer):
-    """_summary_
+    """Summary.
 
     :param msg: _description_
     :type msg: _type_
@@ -70,8 +106,8 @@ def msg_process(msg, avro_deserializer):
     return (time_start, val)
 
 
-def produce_data(my_instance: Instance, timestamp, history):
-    """_summary_
+def produce_data(my_instance, timestamp, history):
+    """Summary.
 
     :param my_instance: _description_
     :type my_instance: Instance
@@ -97,7 +133,7 @@ def produce_data(my_instance: Instance, timestamp, history):
 
 
 def get_producer(config):
-    """_summary_
+    """Summary.
 
     :param config: _description_
     :type config: _type_
@@ -112,7 +148,7 @@ def get_producer(config):
 
 
 def get_consumer(config):
-    """_summary_
+    """Summary.
 
     :param config: _description_
     :type config: _type_
@@ -130,7 +166,7 @@ def get_consumer(config):
 
 
 def publish(producer, msg, topic):
-    """_summary_
+    """Summary.
 
     :param producer: _description_
     :type producer: _type_
@@ -145,7 +181,7 @@ def publish(producer, msg, topic):
 
 
 def kafka_availability(config):
-    """_summary_
+    """Summary.
 
     :param config: _description_
     :type config: _type_
@@ -165,7 +201,7 @@ def kafka_availability(config):
 
 # Producing data stream part
 def publish_stream(producer, msg, topic, avro_serializer, file_complete):
-    """_summary_
+    """Summary.
 
     :param producer: _description_
     :type producer: _type_
@@ -202,7 +238,7 @@ def publish_stream(producer, msg, topic, avro_serializer, file_complete):
 
 
 def delivery_report(err, msg):
-    """_summary_
+    """Summary.
 
     :param err: _description_
     :type err: _type_
@@ -219,7 +255,7 @@ def delivery_report(err, msg):
 
 
 def balance_offset(consumer, tp):
-    """_summary_
+    """Summary.
 
     :param consumer: _description_
     :type consumer: _type_
@@ -240,7 +276,7 @@ def balance_offset(consumer, tp):
 
 
 def connect_schema_registry(schema_str, producer_topic):
-    """_summary_
+    """Summary.
 
     :param schema_str: _description_
     :type schema_str: _type_
@@ -277,7 +313,7 @@ def connect_schema_registry(schema_str, producer_topic):
 
 
 def csv_to_stream(config, use_schema=False):
-    """_summary_"""
+    """Summary."""
     # TODO externalize this schema (general)
     schema_str = """
         {
@@ -423,7 +459,7 @@ def csv_to_stream(config, use_schema=False):
 
 
 def connect_schema(use_schema):
-    """_summary_
+    """Summary.
 
     :param use_schema: _description_
     :type use_schema: _type_
@@ -493,7 +529,7 @@ def connect_schema(use_schema):
 
 
 def process_kafka_msg(avro_deserializer):
-    """_summary_
+    """Summary.
 
     :param avro_deserializer: _description_
     :type avro_deserializer: _type_

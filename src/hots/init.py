@@ -1,7 +1,4 @@
-"""
-Provide stuff for initialization step (load DataFrames,
-global variables)
-"""
+"""Provide stuff for initialization step (load DataFrames, global variables)."""
 
 import json
 from pathlib import Path
@@ -192,6 +189,9 @@ def define_globals(p_path, config, kafka_var):
 
     global streamkm_model
 
+    global csv_reader
+
+    global avro_deserializer
     global Sentry
     global kafka_producer
     global kafka_consumer

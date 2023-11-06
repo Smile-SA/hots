@@ -35,3 +35,6 @@ init_setup.sh
 
 # doc built
 */build
+
+# test file
+/tests

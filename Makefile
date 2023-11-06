@@ -7,7 +7,7 @@ venv:
 install: venv
 	./venv/bin/pip install --upgrade setuptools
 	./venv/bin/pip install -U pip wheel
-	./venv/bin/pip install -e .[dev]
+	./venv/bin/pip install -e .[dev,kafka]
 
 .PHONY: doc
 doc:

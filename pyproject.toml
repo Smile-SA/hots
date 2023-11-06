@@ -35,6 +35,7 @@ dependencies = [
     "networkx",
     "numpy",
     "pandas",
+    "psutil",
     "pyomo",
     "scikit-learn",
     "scipy",
@@ -67,6 +68,11 @@ dev = [
 ]
 doc = [
     "Sphinx",
+]
+kafka = [
+    "confluent-kafka",
+    "fastavro",
+    "requests",
 ]
 testing = [
     "pytest",

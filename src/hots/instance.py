@@ -1,6 +1,7 @@
-"""
-Define the Instance class, which represents the problem we are facing, with its data, information,
-parameters. Provide Instance-related methods.
+"""Define the Instance class.
+
+This class represents the problem we are facing, with its data, information, parameters.
+This module provides also Instance-related methods.
 """
 
 import math
@@ -32,22 +33,30 @@ class Instance:
     :type dict_id_c: Dict
     """
 
-    def __init__(self, path, config):
-        """Instance constructor
+    def __init__(self, path, config, use_kafka):
+        """Instance constructor.
 
         :param path: Filesystem path to the input files
         :type path: str
         :param config: Configuration dict from config file
         :type config: Dict
+        :param use_kafka: streaming platform
+        :type use_kafka: bool
         """
-        (self.df_indiv,
-         self.df_host,
-         self.df_host_meta) = it.init_dfs(path)
+        (self.df_indiv,  # container usage
+            self.df_host,  # node usage
+            self.df_host_meta) = it.init_dfs(path)  # node meta deta
+        # new data
+        # self.df_container = self.df_indiv[self.df_indiv["timestamp"] < 2]
+        # self.df_container.reset_index()
 
+        # count of unique time values from timestamp column = 6
         self.time: int = self.df_indiv[it.tick_field].nunique()
-
+        # count of unique machine_id values from machine_id column
         self.nb_nodes = self.df_host_meta[it.host_field].nunique()
+        # count of unique container_ids from column container_id
         self.nb_containers = self.df_indiv[it.indiv_field].nunique()
+        # gets default cluster numbers set to 3
         self.nb_clusters = config['clustering']['nb_clusters']
 
         self.df_indiv = self.df_indiv.astype({
@@ -114,11 +123,12 @@ class Instance:
         self.sep_time = self.df_indiv[it.tick_field].min() + sep_nb_data - 1
         if config['loop']['tick'] == 'default':
             config['loop']['tick'] = self.window_duration - 1
+            # config['loop']['tick'] = 2
         else:
             config['loop']['tick'] = math.floor(
                 self.time * int(config['loop']['tick']) / 100
             ) - 1
-
+        # self.window_duration = 3
         if self.window_duration <= 1:
             self.window_duration += 1
         if self.sep_time <= 0:

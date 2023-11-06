@@ -63,6 +63,15 @@ def init_reader(path, use_kafka):
             #     input()
 
 
+def close_reader(use_kafka):
+    """Close the CSV reader or Kafka consumer."""
+    if use_kafka:
+        print('close kafka consumer')
+        it.kafka_consumer.close()
+    else:
+        print('close csv reader or f ?')
+
+
 def acked(err, msg):
     """Summary.
 

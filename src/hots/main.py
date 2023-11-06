@@ -125,8 +125,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
             input()
     finally:
         # Close down consumer to commit final offsets.
-        print('close kafka consumer')
-        it.kafka_consumer.close()
+        reader.close_reader(use_kafka)
 
     # Analysis period
     start = time.time()

@@ -116,13 +116,13 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     reader.init_reader(path, use_kafka)
     print(it.csv_reader)
     print(it.avro_deserializer)
-    it.Sentry = True
+    it.s_entry = True
     # print('df_indiv1: ',my_instance.df_indiv)
     print('Ready for new data...')
     try:
         reader.get_next_data(use_kafka)
         input()
-        while it.Sentry:
+        while it.s_entry:
             print('Getting next data one more timestamp data')
             input()
     finally:
@@ -477,7 +477,7 @@ def run_period(
 def signal_handler_sigint(signal_number, frame):
     """Handle for exiting application via signal."""
     print('Exit application')
-    it.Sentry = False
+    it.s_entry = False
 
 
 def streaming_eval(
@@ -589,11 +589,11 @@ def streaming_eval(
         #     it.time_at.append(x)
         #     it.memory_usage.append(mem_before)
         #     it.total_mem_use.append(tot_mem_after)
-        it.Sentry = True
+        it.s_entry = True
         # print('df_indiv1: ',my_instance.df_indiv)
         print('Ready for new data...')
         try:
-            while it.Sentry:
+            while it.s_entry:
 
                 loop_time = time.time()
                 it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
@@ -810,7 +810,7 @@ def streaming_eval(
 
                 # if tmax >= my_instance.time:
 
-                #     it.Sentry = True  # change to False to end loop according to mock data
+                #     it.s_entry = True  # change to False to end loop according to mock data
                 # else:
                 #     loop_nb += 1
                 my_instance.time += 1

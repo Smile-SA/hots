@@ -192,7 +192,7 @@ def define_globals(p_path, config, kafka_var):
     global csv_reader
 
     global avro_deserializer
-    global Sentry
+    global s_entry
     global kafka_producer
     global kafka_consumer
     global kafka_topics

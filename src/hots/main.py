@@ -570,7 +570,8 @@ def streaming_eval(
 
     if use_kafka:
         use_schema = False
-        avro_deserializer = reader.connect_schema(use_schema)
+        avro_deserializer = reader.connect_schema(
+            use_schema, it.kafka_schema_url)
         # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
         # history = True # consider historical data
         # send last historical data to kafka

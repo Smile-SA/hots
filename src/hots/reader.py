@@ -432,18 +432,18 @@ def csv_to_stream(data, config, use_schema=False):
             end = False
 
 
-def connect_schema(use_schema):
+def connect_schema(use_schema, schema_url):
     """Summary.
 
     :param use_schema: _description_
     :type use_schema: _type_
+    :param use_schema_url: _description_
+    :type use_schema_url: _type_
     :return: _description_
     :rtype: _type_
     """
     if use_schema:
-        # schema_registry_client_conf = {
-        #     'url':'http://localhost:8081'}
-        schema_registry_client_conf = {'url': 'http://localhost:8081'}
+        schema_registry_client_conf = {'url': schema_url}
         schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
 
         try:

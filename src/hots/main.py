@@ -268,7 +268,7 @@ def preprocess(
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    reader.csv_to_stream(config)
+    reader.csv_to_stream(path, config)
     instance = Instance(path, config, use_kafka)
     it.results_file.write('Method used : %s\n' % method)
     instance.print_times(config['loop']['tick'])

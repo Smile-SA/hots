@@ -327,8 +327,16 @@ def connect_schema_registry(schema_str, producer_topic):
     return AvroSerializer(schema_registry_client, schema_str)
 
 
-def csv_to_stream(config, use_schema=False):
-    """Summary."""
+def csv_to_stream(data, config, use_schema=False):
+    """Start the streaming for Kafka.
+
+    :param data: Filesystem path to the input files
+    :type data: str
+    :param config: Configuration dict from config file
+    :type config: Dict
+    :param use_schema: Schema to be used by Kafka
+    :type use_schema: bool
+    """
     # TODO externalize this schema (general)
     schema_str = """
         {
@@ -376,8 +384,9 @@ def csv_to_stream(config, use_schema=False):
         ]
         }
         """
-    file_path = '/home/etilec/Documents/code/temp_hots/mock_container_usage.csv'
-    rdr = csv.reader(open(file_path))
+    p_data = Path(data)
+    # file_path = '/home/etilec/Documents/code/temp_hots/mock_container_usage.csv'
+    rdr = csv.reader(open(p_data / 'container_usage.csv'))
 
     end = True
     curr_time = 0

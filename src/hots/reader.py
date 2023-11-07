@@ -231,7 +231,7 @@ def publish_stream(producer, msg, topic, avro_serializer, file_complete):
     """
     try:
 
-        key = 'thesis_ex_10'
+        key = 'testing hots'
         timestamp, value = list(msg.items())[0]
         message = {
             'timestamp': timestamp,

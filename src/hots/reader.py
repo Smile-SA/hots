@@ -63,6 +63,21 @@ def init_reader(path, use_kafka):
             #     input()
 
 
+def get_next_data(use_kafka):
+    """Get next data (one timestamp ?).
+
+    :param use_kafka: streaming platform
+    :type use_kafka: bool
+    """
+    while True:
+        if use_kafka:
+            it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
+            dval = process_kafka_msg(it.avro_deserializer)
+            print(dval)
+            if dval is None:
+                continue
+
+
 def close_reader(use_kafka):
     """Close the CSV reader or Kafka consumer."""
     if use_kafka:

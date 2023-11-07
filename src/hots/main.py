@@ -120,6 +120,8 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     # print('df_indiv1: ',my_instance.df_indiv)
     print('Ready for new data...')
     try:
+        reader.get_next_data(use_kafka)
+        input()
         while it.Sentry:
             print('Getting next data one more timestamp data')
             input()
@@ -266,6 +268,7 @@ def preprocess(
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
+    reader.csv_to_stream(config)
     instance = Instance(path, config, use_kafka)
     it.results_file.write('Method used : %s\n' % method)
     instance.print_times(config['loop']['tick'])

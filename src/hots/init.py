@@ -196,6 +196,7 @@ def define_globals(p_path, config, kafka_var):
     global kafka_producer
     global kafka_consumer
     global kafka_topics
+    global kafka_schema
     global tick_time
     global time_at
     global memory_usage
@@ -224,6 +225,7 @@ def define_globals(p_path, config, kafka_var):
         reader.kafka_availability(config)
         kafka_producer = reader.get_producer(config)
         kafka_consumer = reader.get_consumer(config)
+        kafka_schema = config['kafkaConf']['schema']
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'

@@ -337,55 +337,7 @@ def csv_to_stream(data, config, use_schema=False):
     :param use_schema: Schema to be used by Kafka
     :type use_schema: bool
     """
-    # TODO externalize this schema (general)
-    schema_str = """
-        {
-        "namespace": "com.example",
-        "type": "record",
-        "name": "Person",
-        "fields": [
-            {
-                "type": "string",
-                "name": "timestamp"
-            },
-            {
-            "type": {
-                "type": "array",
-                "items": {
-                "type": "record",
-                "name": "Container",
-                "namespace": "com.smile.containers",
-                "fields": [
-                    {
-                    "type": "string",
-                    "name": "timestamp"
-                    },
-                    {
-                    "type": "string",
-                    "name": "container_id"
-                    },
-                    {
-                    "type": "string",
-                    "name": "machine_id"
-                    },
-                    {
-                    "type": "float",
-                    "name": "cpu"
-                    }
-                ]
-                }
-            },
-            "name": "containers"
-            },
-            {
-                "type": "boolean",
-                "name": "file"
-            }
-        ]
-        }
-        """
     p_data = Path(data)
-    # file_path = '/home/etilec/Documents/code/temp_hots/mock_container_usage.csv'
     rdr = csv.reader(open(p_data / 'container_usage.csv'))
 
     end = True
@@ -394,16 +346,14 @@ def csv_to_stream(data, config, use_schema=False):
     first_line = True
     z = {}
 
-    kafka_conf = {
-        'docker_topic': 'DockerPlacer',
-    }
-    producer_topic = kafka_conf['docker_topic']
+    producer_topic = it.kafka_topics['docker_topic']
 
     kafka_availability(config)  # Wait for 10 seconds to see if kafka broker is up!
 
     avro_serializer = None
     if use_schema:  # If you want to use avro schema (More CPU)
-        avro_serializer = connect_schema_registry(schema_str, producer_topic)
+        avro_serializer = connect_schema_registry(
+            config['kafkaConf']['schema'], producer_topic)
 
     producer = get_producer(config)
 
@@ -491,62 +441,19 @@ def connect_schema(use_schema):
     :rtype: _type_
     """
     if use_schema:
-        # TODO externalize this schema (generalize)
-        schema_str = """
-        {
-            "namespace": "com.example",
-            "type": "record",
-            "name": "Person",
-            "fields": [
-                {
-                    "type": "string",
-                    "name": "timestamp"
-                },
-                {
-                "type": {
-                    "type": "array",
-                    "items": {
-                    "type": "record",
-                    "name": "Container",
-                    "namespace": "com.smile.containers",
-                    "fields": [
-                        {
-                        "type": "string",
-                        "name": "timestamp"
-                        },
-                        {
-                        "type": "string",
-                        "name": "container_id"
-                        },
-                        {
-                        "type": "string",
-                        "name": "machine_id"
-                        },
-                        {
-                        "type": "float",
-                        "name": "cpu"
-                        }
-                    ]
-                    }
-                },
-                "name": "containers"
-                }
-            ]
-        }
-        """
         # schema_registry_client_conf = {
         #     'url':'http://localhost:8081'}
         schema_registry_client_conf = {'url': 'http://localhost:8081'}
         schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
 
         try:
-            schema_str = schema_registry_client.get_latest_version(
-                it.kafka_topics['docker_topic'] + '-value').schema.schema_str
+            it.kafka_schema = schema_registry_client.get_latest_version(
+                it.kafka_topics['docker_topic'] + '-value').schema.it.kafka_schema
         except SchemaRegistryError as e:
             # Handle schema registry error
             print(f'Error registering schema: {e}')
 
-        avro_deserializer = AvroDeserializer(schema_registry_client, schema_str)
+        avro_deserializer = AvroDeserializer(schema_registry_client, it.kafka_schema)
     else:
         avro_deserializer = None
     return avro_deserializer

@@ -75,6 +75,7 @@ def get_next_data(
                 print('key : ', key)
                 print('value : ', value)
                 print('file : ', file)
+                input()
 
 
 def close_reader(use_kafka):

@@ -72,9 +72,10 @@ def get_next_data(
                 key = list(dval.values())[0]
                 value = list(dval.values())[1]
                 file = list(dval.values())[2]
-                # print('key : ', key)
-                # print('value : ', value)
-                # print('file : ', file)
+                print('key : ', key)
+                print('value : ', value)
+                print('file : ', file)
+                input()
             if file:
                 break
 
@@ -507,8 +508,8 @@ def consume_all_data(config):
 
             msg = consumer.poll(timeout=5.0)
             if msg is None:
-                print('end ?')
-                continue
+                print('Look like there is no data left.')
+                break
 
             if msg.error():
                 if msg.error().code() == KafkaError._PARTITION_EOF:

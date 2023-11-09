@@ -95,7 +95,6 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     (config, output_path, my_instance) = preprocess(
         path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka
     )
-    input()
     add_time(-1, 'preprocess', (time.time() - start))
     mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
 
@@ -273,12 +272,12 @@ def preprocess(
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')
 
-    # reader.consume_all_data(config)
-    reader.delete_kafka_topic(config)
+    reader.consume_all_data(config)
+    # reader.delete_kafka_topic(config)
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    reader.csv_to_stream(path, config)
+    # reader.csv_to_stream(path, config)
     instance = Instance(path, config, use_kafka)
     it.results_file.write('Method used : %s\n' % method)
     instance.print_times(config['loop']['tick'])

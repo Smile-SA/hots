@@ -117,6 +117,8 @@ def msg_process(msg, avro_deserializer):
     if avro_deserializer is None:
         dval = msg.value()
         val = json.loads(dval)
+        print(dval)
+        print(val)
     else:
         val = avro_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
     return (time_start, val)
@@ -484,3 +486,62 @@ def process_kafka_msg(avro_deserializer):
     else:
         (_, dval) = msg_process(msg, avro_deserializer)
         return dval
+
+
+def consume_all_data(config):
+    """Consume all data in queue.
+
+    :param config: _description_
+    :type config: _type_
+    """
+    consumer_conf = {
+        'bootstrap.servers': config['kafkaConf']['Consumer']['brokers'][0],
+        'group.id': config['kafkaConf']['Consumer']['group']
+    }
+
+    consumer = Consumer(consumer_conf)
+
+    try:
+        while it.s_entry:
+            consumer.subscribe([it.kafka_topics['docker_topic']])
+
+            msg = consumer.poll(timeout=5.0)
+            if msg is None:
+                print('end ?')
+                continue
+
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    # End of partition event
+                    sys.stderr.write(
+                        '%% %s [%d] reached end at offset %d\n' %
+                        (msg.topic(), msg.partition(), msg.offset())
+                    )
+                elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
+                    sys.stderr.write(
+                        'Topic unknown, creating %s topic\n' %
+                        (it.kafka_topics['docker_topic'])
+                    )
+                elif msg.error():
+                    raise KafkaException(msg.error())
+            else:
+                print(msg)
+                msg_process(msg, None)
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        consumer.close()
+
+
+def delete_kafka_topic(config):
+    """Delete all topics in Kafka.
+
+    :param config: _description_
+    :type config: _type_
+    """
+    admin_client = AdminClient({
+        'bootstrap.servers': [config['kafkaConf']['Producer']['brokers'][0]]
+    })
+    print(it.kafka_topics.values())
+    admin_client.delete_topics(topics=list(it.kafka_topics.values()))

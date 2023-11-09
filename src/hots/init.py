@@ -221,6 +221,8 @@ def define_globals(p_path, config, kafka_var):
     optim_file = open(p_path / 'optim_logs.log', 'w')
     clustering_file = open(p_path / 'clustering_logs.log', 'w')
 
+    s_entry = True
+
     if kafka_var:
         kafka_topics = config['kafkaConf']['topics']
         reader.kafka_availability(config)

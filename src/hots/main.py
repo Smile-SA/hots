@@ -95,6 +95,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     (config, output_path, my_instance) = preprocess(
         path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka
     )
+    input()
     add_time(-1, 'preprocess', (time.time() - start))
     mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
 
@@ -116,7 +117,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     reader.init_reader(path, use_kafka)
     print(it.csv_reader)
     print(it.avro_deserializer)
-    it.s_entry = True
+    # it.s_entry = True
     current_time = 0
     # Offline / online separation : TODO in parameters
     offline_sep = 3
@@ -271,6 +272,9 @@ def preprocess(
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')
+
+    # reader.consume_all_data(config)
+    reader.delete_kafka_topic(config)
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')

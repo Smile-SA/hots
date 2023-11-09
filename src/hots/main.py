@@ -117,12 +117,18 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     print(it.csv_reader)
     print(it.avro_deserializer)
     it.s_entry = True
-    # print('df_indiv1: ',my_instance.df_indiv)
+    current_time = 0
+    # Offline / online separation : TODO in parameters
+    offline_sep = 3
     print('Ready for new data...')
     try:
-        reader.get_next_data(use_kafka)
         input()
         while it.s_entry:
+            if current_time < offline_sep:
+                current_data = reader.get_next_data(
+                    current_time, offline_sep, offline_sep + 1, use_kafka
+                )
+                print(current_data)
             print('Getting next data one more timestamp data')
             input()
     finally:

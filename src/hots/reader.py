@@ -25,17 +25,6 @@ else:
 from . import init as it
 
 
-def test_option_kafka(use_kafka):
-    """Test optional kafka."""
-    if use_kafka:
-        if not _has_kafka:
-            raise ImportError('Kafka is required to do it.')
-        print('ok you have kafka')
-    else:
-        print('no kafka required.')
-    input()
-
-
 def init_reader(path, use_kafka):
     """Initialize the reader for data, with or without Kafka.
 
@@ -50,7 +39,7 @@ def init_reader(path, use_kafka):
             raise ImportError('Kafka is required to do it.')
         else:
             use_schema = False
-            it.avro_deserializer = connect_schema(use_schema)
+            it.avro_deserializer = connect_schema(use_schema, it.kafka_schema_url)
             it.csv_reader = None
             print('ok you have kafka')
     else:
@@ -63,19 +52,29 @@ def init_reader(path, use_kafka):
             #     input()
 
 
-def get_next_data(use_kafka):
+def get_next_data(
+    current_time, tick, window_size, use_kafka
+):
     """Get next data (one timestamp ?).
 
     :param use_kafka: streaming platform
     :type use_kafka: bool
     """
-    while True:
+    end = False
+    while not end:
         if use_kafka:
             it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
             dval = process_kafka_msg(it.avro_deserializer)
             print(dval)
             if dval is None:
                 continue
+            else:
+                key = list(dval.values())[0]
+                value = list(dval.values())[1]
+                file = list(dval.values())[2]
+                print('key : ', key)
+                print('value : ', value)
+                print('file : ', file)
 
 
 def close_reader(use_kafka):
@@ -370,8 +369,6 @@ def csv_to_stream(data, config, use_schema=False):
 
     while end:
         row = next(rdr, None)
-        print(row)
-        input()
         if first_line:
             first_line = False
             continue
@@ -379,7 +376,6 @@ def csv_to_stream(data, config, use_schema=False):
         if row:
             curr_time = row[0]
             if first_time:
-
                 first_time = False
                 z[curr_time] = {
                     'containers': [{
@@ -391,9 +387,7 @@ def csv_to_stream(data, config, use_schema=False):
                     }]
 
                 }
-
             else:
-
                 if curr_time in z:
                     y = {
                         'timestamp': row[0],

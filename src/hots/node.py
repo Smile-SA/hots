@@ -1,7 +1,4 @@
-"""
-Provide actions specific to nodes (plot nodes data, build dictionnary
-for node IDs, compute different statistic measures ...)
-"""
+"""Provide actions specific to nodes (plot nodes data, compute stat measures ...)."""
 
 import math
 
@@ -78,8 +75,7 @@ def plot_all_data_all_nodes_end(df_host, total_time):
 
 
 def plot_total_usage(df_host, title='Total conso on all nodes'):
-    """Plot the global resources consumption and return the global
-    maximum usage for each metric.
+    """Plot the global resources consumption and return the global maximum usage for each metric.
 
     :param df_host: _description_
     :type df_host: pd.DataFrame
@@ -171,8 +167,7 @@ def get_list_var(df_host, total_time):
 
 
 def get_variance_consumption(df_host):
-    """Compute the variance and standard deviation consumption for each metric
-    in each node and globally.
+    """Compute the variance and std dev consumption for each metric in each node and globally.
 
     :param df_host: _description_
     :type df_host: pd.DataFrame
@@ -255,8 +250,7 @@ def get_list_vmr(df_host, total_time):
 
 
 def get_nodes_variance(df_host, total_time, part):
-    """Compute the Variance for each metric in each node and return the results
-    in two numpy arrays.
+    """Compute the Variance for each metric in each node.
 
     :param df_host: _description_
     :type df_host: pd.DataFrame
@@ -402,3 +396,17 @@ def check_capacities(df_host, df_host_meta):
             host_overload.append(host)
 
     return host_overload
+
+
+def reassign_node(c_info):
+    """Reassign node in containers df."""
+    # c_info = value['containers']
+    new_df_container = pd.DataFrame(c_info)
+    new_df_container = new_df_container.astype({
+        it.indiv_field: str,
+        it.host_field: str,
+        it.tick_field: int})
+    new_df_container.sort_values(it.tick_field, inplace=True)
+    new_df_container.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
+    new_df_container.sort_index(inplace=True)
+    return new_df_container

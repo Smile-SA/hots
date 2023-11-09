@@ -23,6 +23,7 @@ else:
     _has_kafka = True
 
 from . import init as it
+from . import node
 
 
 def init_reader(path, use_kafka):
@@ -75,6 +76,8 @@ def get_next_data(
                 print('key : ', key)
                 print('value : ', value)
                 print('file : ', file)
+                new_df_container = node.reassign_node(value)
+                print(new_df_container)
                 input()
             if file:
                 break

@@ -122,7 +122,6 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     offline_sep = 3
     print('Ready for new data...')
     try:
-        input()
         while it.s_entry:
             if current_time < offline_sep:
                 current_data = reader.get_next_data(
@@ -277,7 +276,7 @@ def preprocess(
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    # reader.csv_to_stream(path, config)
+    reader.csv_to_stream(path, config)
     instance = Instance(path, config, use_kafka)
     it.results_file.write('Method used : %s\n' % method)
     instance.print_times(config['loop']['tick'])

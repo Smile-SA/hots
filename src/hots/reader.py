@@ -72,10 +72,11 @@ def get_next_data(
                 key = list(dval.values())[0]
                 value = list(dval.values())[1]
                 file = list(dval.values())[2]
-                print('key : ', key)
-                print('value : ', value)
-                print('file : ', file)
-                input()
+                # print('key : ', key)
+                # print('value : ', value)
+                # print('file : ', file)
+            if file:
+                break
 
 
 def close_reader(use_kafka):

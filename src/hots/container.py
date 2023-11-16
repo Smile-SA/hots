@@ -1,7 +1,4 @@
-"""
-Provide actions specific to containers (plot containers data,
-build dictionnary for container IDs ...)
-"""
+"""Provide actions specific to containers."""
 
 from itertools import combinations
 

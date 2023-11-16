@@ -1,7 +1,4 @@
-"""
-Provide all plotting methods : different clustering results views,
-containers data, nodes data, continous plot in evaluation step.
-"""
+"""Provide all plotting methods."""
 
 import math
 
@@ -131,8 +128,9 @@ def plot_containers_clustering_together(df_clust, metric='cpu'):
 def plot_clustering_containers_by_node(
     df_indiv, dict_id_c, labels_, filter_big=False, metric=None
 ):
-    """Plot containers consumption grouped by node, one container added above
-    another, with their cluster color.
+    """Plot containers consumption grouped by node.
+
+    One container is added above another, with their cluster color.
 
     :param df_indiv: _description_
     :type df_indiv: pd.DataFrame
@@ -190,8 +188,9 @@ def plot_clustering_containers_by_node(
 def plot_clustering_containers_by_node_spec_cont(
     df_indiv, dict_id_c, labels_, containers_toshow, metric='cpu'
 ):
-    """Plot containers consumption grouped by node, one container added above
-    another, with their cluster color.
+    """Plot containers consumption grouped by node.
+
+    One container is added above another, with their cluster color.
 
     :param df_indiv: _description_
     :type df_indiv: pd.DataFrame

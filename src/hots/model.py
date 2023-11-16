@@ -1,7 +1,8 @@
 """
-Define the optimization models we have, with its objective, constraints,
-variables, and build it from the ``Instance``. Provide all optimization models
-related methods.
+Define the optimization models.
+
+Describing its objective, constraints, variables, and build it from the ``Instance``.
+Provide all optimization models related methods.
 The optimization model description is based on Pyomo.
 """
 

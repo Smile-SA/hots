@@ -127,9 +127,21 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
                 current_data = reader.get_next_data(
                     current_time, offline_sep, offline_sep + 1, use_kafka
                 )
+                current_time += offline_sep
                 print(current_data)
-            print('Getting next data one more timestamp data')
+                print(current_time)
+                print('perform analysis')
+            else:
+                current_data = reader.get_next_data(
+                    current_time, config['loop']['tick'],
+                    config['loop']['tick'] - current_time + 1, use_kafka
+                )
+                current_time += config['loop']['tick']
+                print(current_data)
+                print(current_time)
+                print('perform loop')
             input()
+
     finally:
         # Close down consumer to commit final offsets.
         reader.close_reader(use_kafka)

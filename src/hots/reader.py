@@ -7,6 +7,8 @@ import sys
 import time
 from pathlib import Path
 
+import pandas as pd
+
 try:
     from confluent_kafka import Consumer, KafkaError, KafkaException, Producer, TopicPartition
     from confluent_kafka.admin import AdminClient
@@ -53,6 +55,7 @@ def init_reader(path, use_kafka):
             #     input()
 
 
+# TODO window_size useless ?
 def get_next_data(
     current_time, tick, window_size, use_kafka
 ):
@@ -61,6 +64,9 @@ def get_next_data(
     :param use_kafka: streaming platform
     :type use_kafka: bool
     """
+    print('current time : ', current_time)
+    print('tick: ', tick)
+    new_df_container = pd.DataFrame()
     end = False
     while not end:
         if use_kafka:
@@ -76,11 +82,16 @@ def get_next_data(
                 print('key : ', key)
                 print('value : ', value)
                 print('file : ', file)
-                new_df_container = node.reassign_node(value)
+                new_df_container = pd.concat([
+                    new_df_container, node.reassign_node(value)])
                 print(new_df_container)
+                if int(key) >= current_time + tick:
+                    end = True
+                    print('end')
                 input()
             if file:
                 break
+    return new_df_container
 
 
 def close_reader(use_kafka):

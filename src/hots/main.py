@@ -360,9 +360,7 @@ def analysis_period(my_instance, config, method):
                 df_indiv[it.tick_field] >= start_point) & (
                 my_instance.df_indiv[it.tick_field] <= end_point)
         ]
-        print('df for analysis')
-        print(working_df_indiv)
-        input()
+
         # First clustering part
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')

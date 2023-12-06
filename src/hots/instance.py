@@ -33,22 +33,18 @@ class Instance:
     :type dict_id_c: Dict
     """
 
-    def __init__(self, path, config, use_kafka):
+    def __init__(self, path, config):
         """Instance constructor.
 
         :param path: Filesystem path to the input files
         :type path: str
         :param config: Configuration dict from config file
         :type config: Dict
-        :param use_kafka: streaming platform
-        :type use_kafka: bool
         """
+        # TODO update by empty df_indiv and df_host => how to init df_host_meta ?
         (self.df_indiv,  # container usage
             self.df_host,  # node usage
             self.df_host_meta) = it.init_dfs(path)  # node meta deta
-        # new data
-        # self.df_container = self.df_indiv[self.df_indiv["timestamp"] < 2]
-        # self.df_container.reset_index()
 
         # count of unique time values from timestamp column = 6
         self.time: int = self.df_indiv[it.tick_field].nunique()

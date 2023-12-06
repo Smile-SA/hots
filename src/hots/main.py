@@ -113,13 +113,13 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     total_method_time = time.time()
 
     # Global loop for getting data
-    reader.init_reader(path, use_kafka)
     print(it.csv_reader)
     print(it.avro_deserializer)
     # it.s_entry = True
     current_time = 0
     # Offline / online separation : TODO in parameters
     offline_sep = 3
+    my_instance.sep_time = offline_sep
     print('Ready for new data...')
     try:
         while it.s_entry:
@@ -128,17 +128,25 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
                     current_time, offline_sep, offline_sep + 1, use_kafka
                 )
                 current_time += offline_sep
-                print(current_data)
-                print(current_time)
-                print('perform analysis')
+                my_instance.df_indiv = current_data
+                # Analysis period
+                start = time.time()
+                (my_instance, df_host_evo,
+                 df_indiv_clust, labels_) = analysis_period(
+                    my_instance, config, method
+                )
+                add_time(-1, 'total_t_obs', (time.time() - start))
             else:
                 current_data = reader.get_next_data(
                     current_time, config['loop']['tick'],
                     config['loop']['tick'] - current_time + 1, use_kafka
                 )
                 current_time += config['loop']['tick']
+                my_instance.df_indiv = pd.concat(
+                    [my_instance.df_indiv, current_data])
                 print(current_data)
                 print(current_time)
+                print(my_instance.df_indiv)
                 print('perform loop')
             input()
 
@@ -283,13 +291,14 @@ def preprocess(
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')
 
-    reader.consume_all_data(config)
-    # reader.delete_kafka_topic(config)
-
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    reader.csv_to_stream(path, config)
-    instance = Instance(path, config, use_kafka)
+    if use_kafka:
+        reader.consume_all_data(config)
+        # reader.delete_kafka_topic(config)
+        reader.csv_to_stream(path, config)
+    reader.init_reader(path, use_kafka)
+    instance = Instance(path, config)
     it.results_file.write('Method used : %s\n' % method)
     instance.print_times(config['loop']['tick'])
 
@@ -351,8 +360,9 @@ def analysis_period(my_instance, config, method):
                 df_indiv[it.tick_field] >= start_point) & (
                 my_instance.df_indiv[it.tick_field] <= end_point)
         ]
-        print('Check Stats', start_point, end_point, working_df_indiv, my_instance.df_host)
-        # working_df_indiv contains info of historical data 1/3 of the data
+        print('df for analysis')
+        print(working_df_indiv)
+        input()
         # First clustering part
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')

@@ -72,23 +72,17 @@ def get_next_data(
         if use_kafka:
             it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
             dval = process_kafka_msg(it.avro_deserializer)
-            print(dval)
             if dval is None:
                 continue
             else:
                 key = list(dval.values())[0]
                 value = list(dval.values())[1]
                 file = list(dval.values())[2]
-                print('key : ', key)
-                print('value : ', value)
-                print('file : ', file)
                 new_df_container = pd.concat([
                     new_df_container, node.reassign_node(value)])
-                print(new_df_container)
                 if int(key) >= current_time + tick:
                     end = True
                     print('end')
-                input()
             if file:
                 break
     return new_df_container

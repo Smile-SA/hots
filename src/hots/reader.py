@@ -56,6 +56,7 @@ def init_reader(path, use_kafka):
 
 
 # TODO window_size useless ?
+# TODO progress time no loop here
 def get_next_data(
     current_time, tick, window_size, use_kafka
 ):

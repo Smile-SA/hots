@@ -115,13 +115,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     # Global loop for getting data
     print(it.csv_reader)
     print(it.avro_deserializer)
-    # it.s_entry = True
     current_time = 0
-    # Offline / online separation : TODO in parameters
-    offline_sep = 3
-    my_instance.sep_time = offline_sep
-    tick = config['loop']['tick']
-
     total_loop_time = 0.0
     loop_nb = 1
     nb_clust_changes = 0
@@ -131,11 +125,11 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     print('Ready for new data...')
     try:
         while it.s_entry:
-            if current_time < offline_sep:
+            if current_time < my_instance.sep_time:
                 current_data = reader.get_next_data(
-                    current_time, offline_sep, offline_sep + 1, use_kafka
+                    current_time, my_instance.sep_time, my_instance.sep_time + 1, use_kafka
                 )
-                current_time += offline_sep
+                current_time += my_instance.sep_time
                 my_instance.df_indiv = current_data
                 my_instance.df_host = current_data.groupby(
                     [current_data[it.tick_field], current_data[it.host_field]],
@@ -170,7 +164,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
                 )
                 add_time(0, 'total_loop', (time.time() - start))
                 print('ready for loop ?')
-                tmax += tick
+                tmax += config['loop']['tick']
                 tmin = tmax - (my_instance.window_duration - 1)
 
             else:
@@ -243,7 +237,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
                 )
                 nb_clust_changes += nb_clust_changes_loop
                 nb_place_changes += nb_place_changes_loop
-                tmax += tick
+                tmax += config['loop']['tick']
                 tmin = tmax - (my_instance.window_duration - 1)
                 my_instance.time += 1
                 loop_nb += 1
@@ -400,7 +394,7 @@ def preprocess(
     reader.init_reader(path, use_kafka)
     instance = Instance(path, config)
     it.results_file.write('Method used : %s\n' % method)
-    instance.print_times(config['loop']['tick'])
+    instance.print_times()
 
     return (config, output_path, instance)
 

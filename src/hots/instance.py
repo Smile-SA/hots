@@ -71,14 +71,18 @@ class Instance:
         self.df_indiv.set_index(
             [it.tick_field, it.indiv_field], inplace=True, drop=False)
 
-        self.percentage_to_timestamp(config)
+        # TODO remove as we are now in streaming => direct timestamp given
+        # self.percentage_to_timestamp(config)
+
+        self.window_duration = int(config['analysis']['window_duration'])
+        self.sep_time = int(config['analysis']['sep_time'])
+        self.tick = int(config['loop']['tick'])
 
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.dict_id_c = {}
 
-        self.print()
-
     # TODO rewrite with __str__
+    # TODO not relevant with streaming
     def print(self):
         """Print Instance information."""
         it.results_file.writelines(['### Problem instance informations ###\n',
@@ -92,16 +96,16 @@ class Instance:
                                         (self.window_duration / self.time)),
                                     '\n'])
 
-    def print_times(self, tick):
+    def print_times(self):
         """Print time informations.
 
         :param tick: _description_
         :type tick: int
         """
-        print('Total time : ', self.time)
+        # print('Total time : ', self.time)
         print('Window duration : ', self.window_duration)
         print('Separation time : ', self.sep_time)
-        print('Ticks : ', tick)
+        print('Ticks : ', self.tick)
 
     def percentage_to_timestamp(self, config):
         """Transform percentage config time to timestamp.

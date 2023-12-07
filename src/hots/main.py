@@ -116,11 +116,13 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     print(it.csv_reader)
     print(it.avro_deserializer)
     current_time = 0
-    total_loop_time = 0.0
+    # TODO check these stats retrieving
+    # total_loop_time = 0.0
     loop_nb = 1
     nb_clust_changes = 0
     nb_place_changes = 0
-    total_nb_overload = 0
+    # total_nb_overload = 0
+    nb_overloads = 0
 
     print('Ready for new data...')
     try:
@@ -225,7 +227,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
                     config['loop']['tol_move_clust'],
                     config['loop']['tol_open_clust'],
                     config['loop']['tol_dual_place'],
-                    config['loop']['tol_move_place'],                                   
+                    config['loop']['tol_move_place'],
                     df_clust, cluster_profiles, labels_, loop_nb,
                     config['optimization']['solver']
                 )
@@ -248,21 +250,21 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
         # Close down consumer to commit final offsets.
         reader.close_reader(use_kafka)
 
-    # Analysis period
-    start = time.time()
-    (my_instance, df_host_evo,
-     df_indiv_clust, labels_) = analysis_period(
-        my_instance, config, method
-    )
-    add_time(-1, 'total_t_obs', (time.time() - start))
+    # # Analysis period
+    # start = time.time()
+    # (my_instance, df_host_evo,
+    #  df_indiv_clust, labels_) = analysis_period(
+    #     my_instance, config, method
+    # )
+    # add_time(-1, 'total_t_obs', (time.time() - start))
 
-    # Run period
-    start = time.time()
-    (df_host_evo, nb_overloads) = run_period(
-        my_instance, df_host_evo,
-        df_indiv_clust, labels_,
-        config, output_path, method, cluster_method, use_kafka
-    )
+    # # Run period
+    # start = time.time()
+    # (df_host_evo, nb_overloads) = run_period(
+    #     my_instance, df_host_evo,
+    #     df_indiv_clust, labels_,
+    #     config, output_path, method, cluster_method, use_kafka
+    # )
     add_time(-1, 'total_t_run', (time.time() - start))
     total_method_time = time.time() - total_method_time
     # print("final df_host_evo: ",df_host_evo)

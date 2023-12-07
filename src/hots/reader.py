@@ -7,6 +7,8 @@ import sys
 import time
 from pathlib import Path
 
+import pandas as pd
+
 try:
     from confluent_kafka import Consumer, KafkaError, KafkaException, Producer, TopicPartition
     from confluent_kafka.admin import AdminClient
@@ -23,17 +25,7 @@ else:
     _has_kafka = True
 
 from . import init as it
-
-
-def test_option_kafka(use_kafka):
-    """Test optional kafka."""
-    if use_kafka:
-        if not _has_kafka:
-            raise ImportError('Kafka is required to do it.')
-        print('ok you have kafka')
-    else:
-        print('no kafka required.')
-    input()
+from . import node
 
 
 def init_reader(path, use_kafka):
@@ -50,7 +42,7 @@ def init_reader(path, use_kafka):
             raise ImportError('Kafka is required to do it.')
         else:
             use_schema = False
-            it.avro_deserializer = connect_schema(use_schema)
+            it.avro_deserializer = connect_schema(use_schema, it.kafka_schema_url)
             it.csv_reader = None
             print('ok you have kafka')
     else:
@@ -61,6 +53,40 @@ def init_reader(path, use_kafka):
             # for row in it.reader:
             #     print(row)
             #     input()
+
+
+# TODO window_size useless ?
+# TODO progress time no loop here
+def get_next_data(
+    current_time, tick, window_size, use_kafka
+):
+    """Get next data (one timestamp ?).
+
+    :param use_kafka: streaming platform
+    :type use_kafka: bool
+    """
+    print('current time : ', current_time)
+    print('tick: ', tick)
+    new_df_container = pd.DataFrame()
+    end = False
+    while not end:
+        if use_kafka:
+            it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
+            dval = process_kafka_msg(it.avro_deserializer)
+            if dval is None:
+                continue
+            else:
+                key = list(dval.values())[0]
+                value = list(dval.values())[1]
+                file = list(dval.values())[2]
+                new_df_container = pd.concat([
+                    new_df_container, node.reassign_node(value)])
+                if int(key) >= current_time + tick:
+                    end = True
+                    print('end')
+            if file:
+                break
+    return new_df_container
 
 
 def close_reader(use_kafka):
@@ -101,6 +127,8 @@ def msg_process(msg, avro_deserializer):
     if avro_deserializer is None:
         dval = msg.value()
         val = json.loads(dval)
+        print(dval)
+        print(val)
     else:
         val = avro_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
     return (time_start, val)
@@ -216,7 +244,7 @@ def publish_stream(producer, msg, topic, avro_serializer, file_complete):
     """
     try:
 
-        key = 'thesis_ex_10'
+        key = 'testing hots'
         timestamp, value = list(msg.items())[0]
         message = {
             'timestamp': timestamp,
@@ -312,57 +340,18 @@ def connect_schema_registry(schema_str, producer_topic):
     return AvroSerializer(schema_registry_client, schema_str)
 
 
-def csv_to_stream(config, use_schema=False):
-    """Summary."""
-    # TODO externalize this schema (general)
-    schema_str = """
-        {
-        "namespace": "com.example",
-        "type": "record",
-        "name": "Person",
-        "fields": [
-            {
-                "type": "string",
-                "name": "timestamp"
-            },
-            {
-            "type": {
-                "type": "array",
-                "items": {
-                "type": "record",
-                "name": "Container",
-                "namespace": "com.smile.containers",
-                "fields": [
-                    {
-                    "type": "string",
-                    "name": "timestamp"
-                    },
-                    {
-                    "type": "string",
-                    "name": "container_id"
-                    },
-                    {
-                    "type": "string",
-                    "name": "machine_id"
-                    },
-                    {
-                    "type": "float",
-                    "name": "cpu"
-                    }
-                ]
-                }
-            },
-            "name": "containers"
-            },
-            {
-                "type": "boolean",
-                "name": "file"
-            }
-        ]
-        }
-        """
-    file_path = '/home/etilec/Documents/code/temp_hots/mock_container_usage.csv'
-    rdr = csv.reader(open(file_path))
+def csv_to_stream(data, config, use_schema=False):
+    """Start the streaming for Kafka.
+
+    :param data: Filesystem path to the input files
+    :type data: str
+    :param config: Configuration dict from config file
+    :type config: Dict
+    :param use_schema: Schema to be used by Kafka
+    :type use_schema: bool
+    """
+    p_data = Path(data)
+    rdr = csv.reader(open(p_data / 'container_usage.csv'))
 
     end = True
     curr_time = 0
@@ -370,16 +359,14 @@ def csv_to_stream(config, use_schema=False):
     first_line = True
     z = {}
 
-    kafka_conf = {
-        'docker_topic': 'DockerPlacer',
-    }
-    producer_topic = kafka_conf['docker_topic']
+    producer_topic = it.kafka_topics['docker_topic']
 
     kafka_availability(config)  # Wait for 10 seconds to see if kafka broker is up!
 
     avro_serializer = None
     if use_schema:  # If you want to use avro schema (More CPU)
-        avro_serializer = connect_schema_registry(schema_str, producer_topic)
+        avro_serializer = connect_schema_registry(
+            config['kafkaConf']['schema'], producer_topic)
 
     producer = get_producer(config)
 
@@ -396,8 +383,6 @@ def csv_to_stream(config, use_schema=False):
 
     while end:
         row = next(rdr, None)
-        print(row)
-        input()
         if first_line:
             first_line = False
             continue
@@ -405,7 +390,6 @@ def csv_to_stream(config, use_schema=False):
         if row:
             curr_time = row[0]
             if first_time:
-
                 first_time = False
                 z[curr_time] = {
                     'containers': [{
@@ -417,9 +401,7 @@ def csv_to_stream(config, use_schema=False):
                     }]
 
                 }
-
             else:
-
                 if curr_time in z:
                     y = {
                         'timestamp': row[0],
@@ -458,71 +440,28 @@ def csv_to_stream(config, use_schema=False):
             end = False
 
 
-def connect_schema(use_schema):
+def connect_schema(use_schema, schema_url):
     """Summary.
 
     :param use_schema: _description_
     :type use_schema: _type_
+    :param use_schema_url: _description_
+    :type use_schema_url: _type_
     :return: _description_
     :rtype: _type_
     """
     if use_schema:
-        # TODO externalize this schema (generalize)
-        schema_str = """
-        {
-            "namespace": "com.example",
-            "type": "record",
-            "name": "Person",
-            "fields": [
-                {
-                    "type": "string",
-                    "name": "timestamp"
-                },
-                {
-                "type": {
-                    "type": "array",
-                    "items": {
-                    "type": "record",
-                    "name": "Container",
-                    "namespace": "com.smile.containers",
-                    "fields": [
-                        {
-                        "type": "string",
-                        "name": "timestamp"
-                        },
-                        {
-                        "type": "string",
-                        "name": "container_id"
-                        },
-                        {
-                        "type": "string",
-                        "name": "machine_id"
-                        },
-                        {
-                        "type": "float",
-                        "name": "cpu"
-                        }
-                    ]
-                    }
-                },
-                "name": "containers"
-                }
-            ]
-        }
-        """
-        # schema_registry_client_conf = {
-        #     'url':'http://localhost:8081'}
-        schema_registry_client_conf = {'url': 'http://localhost:8081'}
+        schema_registry_client_conf = {'url': schema_url}
         schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
 
         try:
-            schema_str = schema_registry_client.get_latest_version(
-                it.kafka_topics['docker_topic'] + '-value').schema.schema_str
+            it.kafka_schema = schema_registry_client.get_latest_version(
+                it.kafka_topics['docker_topic'] + '-value').schema.it.kafka_schema
         except SchemaRegistryError as e:
             # Handle schema registry error
             print(f'Error registering schema: {e}')
 
-        avro_deserializer = AvroDeserializer(schema_registry_client, schema_str)
+        avro_deserializer = AvroDeserializer(schema_registry_client, it.kafka_schema)
     else:
         avro_deserializer = None
     return avro_deserializer
@@ -557,3 +496,62 @@ def process_kafka_msg(avro_deserializer):
     else:
         (_, dval) = msg_process(msg, avro_deserializer)
         return dval
+
+
+def consume_all_data(config):
+    """Consume all data in queue.
+
+    :param config: _description_
+    :type config: _type_
+    """
+    consumer_conf = {
+        'bootstrap.servers': config['kafkaConf']['Consumer']['brokers'][0],
+        'group.id': config['kafkaConf']['Consumer']['group']
+    }
+
+    consumer = Consumer(consumer_conf)
+
+    try:
+        while it.s_entry:
+            consumer.subscribe([it.kafka_topics['docker_topic']])
+
+            msg = consumer.poll(timeout=5.0)
+            if msg is None:
+                print('Look like there is no data left.')
+                break
+
+            if msg.error():
+                if msg.error().code() == KafkaError._PARTITION_EOF:
+                    # End of partition event
+                    sys.stderr.write(
+                        '%% %s [%d] reached end at offset %d\n' %
+                        (msg.topic(), msg.partition(), msg.offset())
+                    )
+                elif msg.error().code() == KafkaError.UNKNOWN_TOPIC_OR_PART:
+                    sys.stderr.write(
+                        'Topic unknown, creating %s topic\n' %
+                        (it.kafka_topics['docker_topic'])
+                    )
+                elif msg.error():
+                    raise KafkaException(msg.error())
+            else:
+                print(msg)
+                msg_process(msg, None)
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        consumer.close()
+
+
+def delete_kafka_topic(config):
+    """Delete all topics in Kafka.
+
+    :param config: _description_
+    :type config: _type_
+    """
+    admin_client = AdminClient({
+        'bootstrap.servers': [config['kafkaConf']['Producer']['brokers'][0]]
+    })
+    print(it.kafka_topics.values())
+    admin_client.delete_topics(topics=list(it.kafka_topics.values()))

@@ -1,6 +1,9 @@
 """Provide external tools usefull for the code."""
 
 import sys
+from pathlib import Path
+
+import pandas as pd
 
 
 def print_size_vars(list_vars):
@@ -65,3 +68,23 @@ def change_max_dataset(
                 (df_indiv[col_time] == row[1][col_time]) & (
                     df_indiv[col_indiv] == container), col_val
             ] = new_max
+
+
+def order_csv_timestamp(path, save=True):
+    """Order the CSV file by timestamp.
+
+    :param path: initial folder path
+    :type path: str
+    :param save: save or not the new file
+    :type save: bool
+    """
+    p_data = Path(path)
+    data = pd.read_csv(
+        p_data / 'container_usage.csv', index_col=False
+    )
+    print(data)
+    data = data.sort_values(['timestamp'])
+    print(data)
+    data.to_csv(
+        p_data / 'container_usage.csv', index=False)
+    print('New CSV file written.')

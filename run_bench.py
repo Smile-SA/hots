@@ -1,9 +1,4 @@
-"""
-=========
-run bench hots
-=========
-Run the bench of hots with one dataset, specifying the parameters k and tau you want.
-"""
+"""Run the bench of hots with one dataset, specifying the parameters k and tau you want."""
 
 import subprocess
 

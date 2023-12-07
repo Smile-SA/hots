@@ -1,7 +1,4 @@
-"""
-Provide placement heuristics and all placement-related methods (check capacity, change assignment
-...).
-"""
+"""Provide placement heuristics and all placement-related methods."""
 
 import math
 import random

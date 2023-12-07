@@ -1,5 +1,6 @@
 """
 Provide clustering algorithms and all clustering-related methods.
+
 Here are the available clustering algorithms : k-means, hierarchical,
 spectral, custom spectral.
 """
@@ -406,8 +407,7 @@ def get_distance_cluster(instance, cluster_centers_):
 
 def get_distance_container_cluster(conso_cont, profile):
     """
-    Compute the distance between the container profile and his cluster's
-    mean profile.
+    Compute the distance between the container profile and his cluster's mean profile.
 
     :param conso_cont: _description_
     :type conso_cont: np.array

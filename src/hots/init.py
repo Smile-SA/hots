@@ -192,10 +192,12 @@ def define_globals(p_path, config, kafka_var):
     global csv_reader
 
     global avro_deserializer
-    global Sentry
+    global s_entry
     global kafka_producer
     global kafka_consumer
     global kafka_topics
+    global kafka_schema
+    global kafka_schema_url
     global tick_time
     global time_at
     global memory_usage
@@ -219,11 +221,15 @@ def define_globals(p_path, config, kafka_var):
     optim_file = open(p_path / 'optim_logs.log', 'w')
     clustering_file = open(p_path / 'clustering_logs.log', 'w')
 
+    s_entry = True
+
     if kafka_var:
         kafka_topics = config['kafkaConf']['topics']
         reader.kafka_availability(config)
         kafka_producer = reader.get_producer(config)
         kafka_consumer = reader.get_consumer(config)
+        kafka_schema = config['kafkaConf']['schema']
+        kafka_schema_url = config['kafkaConf']['schema_url']
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'

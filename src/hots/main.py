@@ -113,16 +113,143 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     total_method_time = time.time()
 
     # Global loop for getting data
-    reader.init_reader(path, use_kafka)
     print(it.csv_reader)
     print(it.avro_deserializer)
-    it.Sentry = True
-    # print('df_indiv1: ',my_instance.df_indiv)
+    # it.s_entry = True
+    current_time = 0
+    # Offline / online separation : TODO in parameters
+    offline_sep = 3
+    my_instance.sep_time = offline_sep
+    tick = config['loop']['tick']
+
+    total_loop_time = 0.0
+    loop_nb = 1
+    nb_clust_changes = 0
+    nb_place_changes = 0
+    total_nb_overload = 0
+
     print('Ready for new data...')
     try:
-        while it.Sentry:
-            print('Getting next data one more timestamp data')
+        while it.s_entry:
+            if current_time < offline_sep:
+                current_data = reader.get_next_data(
+                    current_time, offline_sep, offline_sep + 1, use_kafka
+                )
+                current_time += offline_sep
+                my_instance.df_indiv = current_data
+                my_instance.df_host = current_data.groupby(
+                    [current_data[it.tick_field], current_data[it.host_field]],
+                    as_index=False).agg(it.dict_agg_metrics)
+
+                # Analysis period
+                start = time.time()
+                (my_instance, df_host_evo,
+                 df_indiv_clust, labels_) = analysis_period(
+                    my_instance, config, method
+                )
+                add_time(-1, 'total_t_obs', (time.time() - start))
+
+                cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
+                tmin = my_instance.sep_time - (my_instance.window_duration - 1)
+                tmax = my_instance.sep_time
+
+                # it.results_file.write('Loop mode : %s\n' % mode)
+                logging.info('Beginning the loop process ...\n')
+
+                (working_df_indiv, df_clust, w, u, v) = build_matrices(
+                    my_instance, tmin, tmax, labels_
+                )
+
+                # build initial optimisation model in pre loop using offline data
+                start = time.time()
+                (clust_model, place_model,
+                 clustering_dual_values, placement_dual_values) = pre_loop(
+                    my_instance, working_df_indiv, df_clust,
+                    w, u, config['loop']['constraints_dual'], v,
+                    cluster_method, config['optimization']['solver']
+                )
+                add_time(0, 'total_loop', (time.time() - start))
+                print('ready for loop ?')
+                tmax += tick
+                tmin = tmax - (my_instance.window_duration - 1)
+
+            else:
+                last_index = my_instance.df_indiv.index.levels[0][-1]
+                current_data = reader.get_next_data(
+                    current_time, config['loop']['tick'],
+                    config['loop']['tick'] - current_time + 1, use_kafka
+                )
+                current_time += config['loop']['tick']
+                my_instance.df_indiv = pd.concat(
+                    [my_instance.df_indiv, current_data])
+                new_df_host = current_data.groupby(
+                    [current_data[it.tick_field], it.host_field], as_index=False
+                ).agg(it.dict_agg_metrics)
+                new_df_host = new_df_host.astype({
+                    it.host_field: str,
+                    it.tick_field: int}
+                )
+                previous_timestamp = last_index
+                existing_machine_ids = my_instance.df_host[
+                    my_instance.df_host[it.tick_field] == previous_timestamp
+                ][it.host_field].unique()
+                missing_machine_ids = set(existing_machine_ids) - set(
+                    new_df_host[it.host_field])
+
+                missing_rows = pd.DataFrame({
+                    'timestamp': int(current_time),
+                    'machine_id': list(missing_machine_ids),
+                    'cpu': 0.0
+                })
+                # new_df_host.sort_values(it.tick_field, inplace=True)
+                new_df_host = pd.concat([new_df_host, missing_rows])
+                new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
+                my_instance.df_host = pd.concat([
+                    my_instance.df_host, new_df_host
+                ])
+                print(current_data)
+                print(current_time)
+                print(my_instance.df_indiv)
+                print('perform loop')
+                (working_df_indiv, df_clust, w, u, v) = build_matrices(
+                    my_instance, tmin, tmax, labels_
+                )
+                nb_clust_changes_loop = 0
+                nb_place_changes_loop = 0
+                (nb_clust_changes_loop, nb_place_changes_loop,
+                    init_loop_silhouette, end_loop_silhouette,
+                    clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
+                    place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
+                    clust_model, place_model,
+                    clustering_dual_values, placement_dual_values,
+                    df_clust, cluster_profiles, labels_) = eval_sols(
+                    my_instance, working_df_indiv, cluster_method,
+                    w, u, v, clust_model, place_model,
+                    config['loop']['constraints_dual'],
+                    clustering_dual_values, placement_dual_values,
+                    config['loop']['tol_dual_clust'],
+                    config['loop']['tol_move_clust'],
+                    config['loop']['tol_open_clust'],
+                    config['loop']['tol_dual_place'],
+                    config['loop']['tol_move_place'],                                   
+                    df_clust, cluster_profiles, labels_, loop_nb,
+                    config['optimization']['solver']
+                )
+                it.results_file.write(
+                    'Number of changes in clustering : %d\n' % nb_clust_changes_loop
+                )
+                it.results_file.write(
+                    'Number of changes in placement : %d\n' % nb_place_changes_loop
+                )
+                nb_clust_changes += nb_clust_changes_loop
+                nb_place_changes += nb_place_changes_loop
+                tmax += tick
+                tmin = tmax - (my_instance.window_duration - 1)
+                my_instance.time += 1
+                loop_nb += 1
+                print('success ?')
             input()
+
     finally:
         # Close down consumer to commit final offsets.
         reader.close_reader(use_kafka)
@@ -266,7 +393,12 @@ def preprocess(
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    instance = Instance(path, config, use_kafka)
+    if use_kafka:
+        reader.consume_all_data(config)
+        # reader.delete_kafka_topic(config)
+        reader.csv_to_stream(path, config)
+    reader.init_reader(path, use_kafka)
+    instance = Instance(path, config)
     it.results_file.write('Method used : %s\n' % method)
     instance.print_times(config['loop']['tick'])
 
@@ -328,8 +460,7 @@ def analysis_period(my_instance, config, method):
                 df_indiv[it.tick_field] >= start_point) & (
                 my_instance.df_indiv[it.tick_field] <= end_point)
         ]
-        print('Check Stats', start_point, end_point, working_df_indiv, my_instance.df_host)
-        # working_df_indiv contains info of historical data 1/3 of the data
+
         # First clustering part
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')
@@ -474,7 +605,7 @@ def run_period(
 def signal_handler_sigint(signal_number, frame):
     """Handle for exiting application via signal."""
     print('Exit application')
-    it.Sentry = False
+    it.s_entry = False
 
 
 def streaming_eval(
@@ -567,7 +698,8 @@ def streaming_eval(
 
     if use_kafka:
         use_schema = False
-        avro_deserializer = reader.connect_schema(use_schema)
+        avro_deserializer = reader.connect_schema(
+            use_schema, it.kafka_schema_url)
         # time_to_send = my_instance.df_indiv['timestamp'].iloc[-1]
         # history = True # consider historical data
         # send last historical data to kafka
@@ -585,11 +717,11 @@ def streaming_eval(
         #     it.time_at.append(x)
         #     it.memory_usage.append(mem_before)
         #     it.total_mem_use.append(tot_mem_after)
-        it.Sentry = True
+        it.s_entry = True
         # print('df_indiv1: ',my_instance.df_indiv)
         print('Ready for new data...')
         try:
-            while it.Sentry:
+            while it.s_entry:
 
                 loop_time = time.time()
                 it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
@@ -806,7 +938,7 @@ def streaming_eval(
 
                 # if tmax >= my_instance.time:
 
-                #     it.Sentry = True  # change to False to end loop according to mock data
+                #     it.s_entry = True  # change to False to end loop according to mock data
                 # else:
                 #     loop_nb += 1
                 my_instance.time += 1

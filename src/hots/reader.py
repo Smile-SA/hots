@@ -98,42 +98,6 @@ def close_reader(use_kafka):
         print('close csv reader or f ?')
 
 
-def init_reader(path, use_kafka):
-    """Initialize the reader for data, with or without Kafka.
-
-    :param path: initial folder path
-    :type path: str
-    :param use_kafka: streaming platform
-    :type use_kafka: bool
-    """
-    p_data = Path(path)
-    if use_kafka:
-        if not _has_kafka:
-            raise ImportError('Kafka is required to do it.')
-        else:
-            use_schema = False
-            it.avro_deserializer = connect_schema(use_schema)
-            it.csv_reader = None
-            print('ok you have kafka')
-    else:
-        print('no kafka required.')
-        with open(p_data / 'container_usage.csv', 'r') as f:
-            it.csv_reader = csv.reader(f)
-            it.avro_deserializer = None
-            # for row in it.reader:
-            #     print(row)
-            #     input()
-
-
-def close_reader(use_kafka):
-    """Close the CSV reader or Kafka consumer."""
-    if use_kafka:
-        print('close kafka consumer')
-        it.kafka_consumer.close()
-    else:
-        print('close csv reader or f ?')
-
-
 def acked(err, msg):
     """Summary.
 

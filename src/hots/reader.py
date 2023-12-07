@@ -85,6 +85,7 @@ def get_next_data(
                     end = True
                     print('end')
             if file:
+                it.s_entry = False
                 break
     return new_df_container
 

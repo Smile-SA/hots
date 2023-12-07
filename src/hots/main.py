@@ -243,9 +243,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
                 tmin = tmax - (my_instance.window_duration - 1)
                 my_instance.time += 1
                 loop_nb += 1
-                print('success ?')
             input()
-
     finally:
         # Close down consumer to commit final offsets.
         reader.close_reader(use_kafka)
@@ -389,10 +387,11 @@ def preprocess(
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    if use_kafka:
-        reader.consume_all_data(config)
-        # reader.delete_kafka_topic(config)
-        reader.csv_to_stream(path, config)
+    # if use_kafka:
+    #     reader.consume_all_data(config)
+    #     input()
+    #     reader.delete_kafka_topic(config)
+    #     reader.csv_to_stream(path, config)
     reader.init_reader(path, use_kafka)
     instance = Instance(path, config)
     it.results_file.write('Method used : %s\n' % method)

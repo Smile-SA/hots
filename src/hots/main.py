@@ -94,7 +94,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
         config_path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka
     )
     add_time(-1, 'preprocess', (time.time() - start))
-    mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
 
     total_method_time = time.time()
 
@@ -122,6 +121,7 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 my_instance.df_host = current_data.groupby(
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
+                my_instance.set_host_meta()
 
                 # Analysis period
                 start = time.time()
@@ -309,15 +309,12 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     # else:
     #     logging.info('We do not perform allocation \n')
     tot_mem_after = process_memory()
-    mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
     end_time = time.time()
 
     # Calculate the elapsed time
     elapsed_time = end_time - start_time
     print('Elapsed time:', elapsed_time, 'seconds')
     print('memory use: ', tot_mem_after - tot_mem_before)
-    print('dataframe memory use: ', mem_before)
-    print('dataframe memory use: ', mem_after)
     main_time = time.time() - main_time
     add_time(-1, 'total_time', main_time)
     node.plot_data_all_nodes(
@@ -370,17 +367,18 @@ def preprocess(
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')
+    it.results_file.write('Method used : %s\n' % method)
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    # if use_kafka:
-    #     reader.consume_all_data(config)
-    #     input()
-    #     reader.delete_kafka_topic(config)
-    #     reader.csv_to_stream(parent_path, config)
+    # reader.consume_all_data(config)
+    if use_kafka and config['csv']:
+        # TODO check this if statement
+        reader.consume_all_data(config)
+        reader.delete_kafka_topic(config)
+        reader.csv_to_stream(parent_path, config)
     reader.init_reader(parent_path, use_kafka)
     instance = Instance(parent_path, config)
-    it.results_file.write('Method used : %s\n' % method)
     instance.print_times()
 
     return (config, output_path, instance)

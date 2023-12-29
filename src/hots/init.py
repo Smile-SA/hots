@@ -92,13 +92,8 @@ def read_params(
     :rtype: Dict
     """
     p_path = Path(path)
-    if param is not None:
-        config_path = Path(param)
-    elif Path(p_path / 'params.json').exists():
-        config_path = p_path / 'params.json'
-    else:
-        config_path = 'tests/params_default.json'
-    with open(config_path, 'r') as f:
+    # TODO check if path is json file
+    with open(p_path, 'r') as f:
         config = json.load(f)
     if k is not None:
         config['clustering']['nb_clusters'] = k
@@ -112,7 +107,7 @@ def read_params(
     else:
         output_path = Path(
             '%sk%d_tau%d_%s_%s' % (
-                path,
+                str(p_path.parent),
                 config['clustering']['nb_clusters'],
                 int(tau),
                 method, cluster_method
@@ -123,7 +118,7 @@ def read_params(
         raise ValueError('Method %s is not accepted' % method)
     if cluster_method not in cluster_methods:
         raise ValueError('Updating clustering method %s is not accepted' % cluster_method)
-    return (config, str(output_path))
+    return (config, str(output_path), str(p_path.parent))
 
 
 def set_loop_results():

@@ -43,7 +43,7 @@ from .instance import Instance
 
 
 @click.command()
-@click.argument('path', required=True, type=click.Path(exists=True))
+@click.argument('config_path', required=True, type=click.Path(exists=True))
 @click.option('-k', required=False, type=int, help='Number of clusters')
 @click.option('-t', '--tau', required=False, type=int, help='Time window size')
 @click.option('-m', '--method', required=False, type=str, default='loop', help='Method used')
@@ -58,11 +58,11 @@ from .instance import Instance
               help='Use specific value for epsilonA (placement conflict threshold)')
 @click.option('-K', '--use_kafka', required=False, type=bool, default=False,
               help='Use Kafka streaming platform for data processing')
-def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka):
+def main(config_path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka):
     """Use method to propose a placement solution for micro-services adjusted in time.
 
-    :param path: path to folder with data and parameters file
-    :type path: click.Path
+    :param config_path: path to config file with all information
+    :type config_path: click.Path
     :param k: number of clusters to use for clustering
     :type k: int
     :param tau: time window size for the loop
@@ -88,28 +88,14 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     start_time = time.time()
 
     signal.signal(signal.SIGINT, signal_handler_sigint)
-    if not path[-1] == '/':
-        path += '/'
 
     start = time.time()
     (config, output_path, my_instance) = preprocess(
-        path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka
+        config_path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka
     )
     add_time(-1, 'preprocess', (time.time() - start))
     mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
 
-    # Plot initial data
-    # TODO remove ? better option to performe ?
-    if False:
-        indivs_cons = ctnr.plot_all_data_all_containers(
-            my_instance.df_indiv, sep_time=my_instance.sep_time)
-        indivs_cons.savefig(path + '/indivs_cons.svg')
-        node_evo_fig = plot.plot_containers_groupby_nodes(
-            my_instance.df_indiv,
-            my_instance.df_host_meta[it.metrics[0]].max(),
-            my_instance.sep_time,
-            title='Initial Node consumption')
-        node_evo_fig.savefig(path + '/init_node_plot.svg')
     total_method_time = time.time()
 
     # Global loop for getting data
@@ -353,7 +339,7 @@ def preprocess(
 ):
     """Load configuration, data and initialize needed objects.
 
-    :param path: initial folder path
+    :param path: initial config file path
     :type path: str
     :param k: number of clusters to use for clustering
     :type k: int
@@ -378,7 +364,7 @@ def preprocess(
     """
     # TODO what if we want tick < tau ?
     print('Preprocessing ...')
-    (config, output_path) = it.read_params(
+    (config, output_path, parent_path) = it.read_params(
         path, k, tau, method, cluster_method, param, output, use_kafka)
     config = spec_params(config, [tolclust, tolplace])
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
@@ -391,9 +377,9 @@ def preprocess(
     #     reader.consume_all_data(config)
     #     input()
     #     reader.delete_kafka_topic(config)
-    #     reader.csv_to_stream(path, config)
-    reader.init_reader(path, use_kafka)
-    instance = Instance(path, config)
+    #     reader.csv_to_stream(parent_path, config)
+    reader.init_reader(parent_path, use_kafka)
+    instance = Instance(parent_path, config)
     it.results_file.write('Method used : %s\n' % method)
     instance.print_times()
 

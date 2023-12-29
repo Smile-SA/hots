@@ -1,4 +1,5 @@
 {
+  "csv": 1,
   "analysis": {
     "window_duration": "3",
     "sep_time": "3"

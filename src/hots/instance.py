@@ -139,12 +139,13 @@ class Instance:
         # if self.window_duration == config['loop']['tick']:
         #     self.window_duration += 1
 
-    def set_host_meta(self):
+    def set_host_meta(self, host_meta_path):
         """Create the dataframe for host meta data from first streaming data."""
-        df_columns = [it.host_field]
-        for metric in it.metrics:
-            df_columns.append(metric)
-        self.df_host_meta = pd.DataFrame(columns=df_columns)
+        # df_columns = [it.host_field]
+        # for metric in it.metrics:
+        #     df_columns.append(metric)
+        # self.df_host_meta = pd.DataFrame(columns=df_columns)
+        self.df_host_meta = it.df_from_csv(host_meta_path)
         nd.build_dict_id_nodes(self.df_host_meta)
 
     def get_node_from_container(self, container_id):

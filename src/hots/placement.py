@@ -789,6 +789,7 @@ def nb_min_nodes(instance, total_time):
         if max_t_metric > max_metric:
             max_metric = max_t_metric
 
+    print(instance.df_host_meta)
     cap_metric = instance.df_host_meta[it.metrics[0]].to_numpy()[0]
     return (math.ceil(max_metric / cap_metric))
 

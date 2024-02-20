@@ -47,12 +47,11 @@ def init_reader(path, use_kafka):
             print('ok you have kafka')
     else:
         print('no kafka required.')
-        with open(p_data / 'container_usage.csv', 'r') as f:
-            it.csv_reader = csv.reader(f)
-            it.avro_deserializer = None
-            # for row in it.reader:
-            #     print(row)
-            #     input()
+        f = open(p_data / 'container_usage.csv', 'r')
+        it.csv_reader = csv.reader(f)
+        it.avro_deserializer = None
+        header = next(it.csv_reader, None)
+        print('Headers : ', header)
 
 
 # TODO window_size useless ?
@@ -87,6 +86,21 @@ def get_next_data(
             if file:
                 it.s_entry = False
                 break
+        else:
+            row = next(it.csv_reader, None)
+            if int(row[0]) <= current_time + tick:
+                new_df_container = pd.concat([
+                    new_df_container,
+                    pd.DataFrame.from_records([{
+                        it.tick_field: int(row[0]),
+                        it.indiv_field: row[1],
+                        it.host_field: row[2],
+                        it.metrics[0]: float(row[3])
+                    }])]
+                )
+            else:
+                new_df_container.reset_index(drop=True, inplace=True)
+                end = True
     return new_df_container
 
 

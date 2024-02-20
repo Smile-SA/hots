@@ -121,7 +121,7 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 my_instance.df_host = current_data.groupby(
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
-                my_instance.set_host_meta()
+                my_instance.set_host_meta(config['host_meta_path'])
 
                 # Analysis period
                 start = time.time()

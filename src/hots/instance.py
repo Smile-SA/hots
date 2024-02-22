@@ -145,8 +145,10 @@ class Instance:
         # for metric in it.metrics:
         #     df_columns.append(metric)
         # self.df_host_meta = pd.DataFrame(columns=df_columns)
+        print(host_meta_path)
         self.df_host_meta = it.df_from_csv(host_meta_path)
-        nd.build_dict_id_nodes(self.df_host_meta)
+        self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
+        self.nb_nodes = self.df_host_meta[it.host_field].nunique()
 
     def get_node_from_container(self, container_id):
         """Get node ID from container ID.

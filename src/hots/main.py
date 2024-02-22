@@ -132,8 +132,10 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 add_time(-1, 'total_t_obs', (time.time() - start))
 
                 cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
-                tmin = my_instance.sep_time - (my_instance.window_duration - 1)
-                tmax = my_instance.sep_time
+                # tmin = my_instance.sep_time - (my_instance.window_duration - 1)
+                # tmax = my_instance.sep_time
+                tmin = my_instance.df_indiv[it.tick_field].min()
+                tmax = my_instance.df_indiv[it.tick_field].max()
 
                 # it.results_file.write('Loop mode : %s\n' % mode)
                 logging.info('Beginning the loop process ...\n')
@@ -425,20 +427,26 @@ def analysis_period(my_instance, config, method):
     elif method in ['heur', 'loop']:
 
         # Compute starting point
-        n_iter = math.floor((
-            my_instance.sep_time + 1 - my_instance.df_host[it.tick_field].min()
-        ) / my_instance.window_duration)
-        start_point = (
-            my_instance.sep_time - n_iter * my_instance.window_duration
-        ) + 1
-        end_point = (
-            start_point + my_instance.window_duration - 1
-        )
-        working_df_indiv = my_instance.df_indiv[
-            (my_instance.
-                df_indiv[it.tick_field] >= start_point) & (
-                my_instance.df_indiv[it.tick_field] <= end_point)
-        ]
+        # n_iter = math.floor((
+        #     my_instance.sep_time + 1 - my_instance.df_host[it.tick_field].min()
+        # ) / my_instance.window_duration)
+        # start_point = (
+        #     my_instance.sep_time - n_iter * my_instance.window_duration
+        # ) + 1
+        # end_point = (
+        #     start_point + my_instance.window_duration - 1
+        # )
+        # working_df_indiv = my_instance.df_indiv[
+        #     (my_instance.
+        #         df_indiv[it.tick_field] >= start_point) & (
+        #         my_instance.df_indiv[it.tick_field] <= end_point)
+        # ]
+        working_df_indiv = my_instance.df_indiv
+        # print(start_point, end_point)
+        print(working_df_indiv)
+        my_instance.working_df_indiv = working_df_indiv
+        print(my_instance.working_df_indiv)
+        print(my_instance.df_indiv)
 
         # First clustering part
         logging.info('Starting first clustering ...')
@@ -464,7 +472,7 @@ def analysis_period(my_instance, config, method):
         print('\nClustering computing time : %f s\n\n' %
               (time.time() - start))
         add_time(-1, 'clustering_0', (time.time() - start))
-        n_iter = n_iter - 1
+        # n_iter = n_iter - 1
 
         # Loop for incrementing clustering (during analysis)
         # TODO finish

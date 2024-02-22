@@ -1,4 +1,10 @@
 {
+  "csv": 1,
+  "host_meta": {
+    "n_1": 6,
+    "n_2": 6
+  },
+  "host_meta_path": "tests/data/thesis_ex_10/node_meta.csv",
   "analysis": {
     "window_duration": "3",
     "sep_time": "3"

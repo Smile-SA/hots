@@ -6,6 +6,8 @@ This module provides also Instance-related methods.
 
 import math
 
+import pandas as pd
+
 from . import init as it
 from . import node as nd
 
@@ -52,8 +54,7 @@ class Instance:
         # self.nb_nodes = self.df_host_meta[it.host_field].nunique()
         # # count of unique container_ids from column container_id
         # self.nb_containers = self.df_indiv[it.indiv_field].nunique()
-        # # gets default cluster numbers set to 3
-        # self.nb_clusters = config['clustering']['nb_clusters']
+        self.nb_clusters = config['clustering']['nb_clusters']
 
         # self.df_indiv = self.df_indiv.astype({
         #     it.indiv_field: str,
@@ -79,7 +80,7 @@ class Instance:
         self.tick = int(config['loop']['tick'])
 
         # self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
-        # self.dict_id_c = {}
+        self.dict_id_c = {}
 
     # TODO rewrite with __str__
     # TODO not relevant with streaming
@@ -137,6 +138,17 @@ class Instance:
             config['loop']['tick'] = 1
         # if self.window_duration == config['loop']['tick']:
         #     self.window_duration += 1
+
+    def set_host_meta(self, host_meta_path):
+        """Create the dataframe for host meta data from first streaming data."""
+        # df_columns = [it.host_field]
+        # for metric in it.metrics:
+        #     df_columns.append(metric)
+        # self.df_host_meta = pd.DataFrame(columns=df_columns)
+        print(host_meta_path)
+        self.df_host_meta = it.df_from_csv(host_meta_path)
+        self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
+        self.nb_nodes = self.df_host_meta[it.host_field].nunique()
 
     def get_node_from_container(self, container_id):
         """Get node ID from container ID.

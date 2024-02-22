@@ -43,7 +43,7 @@ from .instance import Instance
 
 
 @click.command()
-@click.argument('path', required=True, type=click.Path(exists=True))
+@click.argument('config_path', required=True, type=click.Path(exists=True))
 @click.option('-k', required=False, type=int, help='Number of clusters')
 @click.option('-t', '--tau', required=False, type=int, help='Time window size')
 @click.option('-m', '--method', required=False, type=str, default='loop', help='Method used')
@@ -58,11 +58,11 @@ from .instance import Instance
               help='Use specific value for epsilonA (placement conflict threshold)')
 @click.option('-K', '--use_kafka', required=False, type=bool, default=False,
               help='Use Kafka streaming platform for data processing')
-def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka):
+def main(config_path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka):
     """Use method to propose a placement solution for micro-services adjusted in time.
 
-    :param path: path to folder with data and parameters file
-    :type path: click.Path
+    :param config_path: path to config file with all information
+    :type config_path: click.Path
     :param k: number of clusters to use for clustering
     :type k: int
     :param tau: time window size for the loop
@@ -88,28 +88,13 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     start_time = time.time()
 
     signal.signal(signal.SIGINT, signal_handler_sigint)
-    if not path[-1] == '/':
-        path += '/'
 
     start = time.time()
     (config, output_path, my_instance) = preprocess(
-        path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka
+        config_path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka
     )
     add_time(-1, 'preprocess', (time.time() - start))
-    mem_before = my_instance.df_indiv.memory_usage(index=True).sum()
 
-    # Plot initial data
-    # TODO remove ? better option to performe ?
-    if False:
-        indivs_cons = ctnr.plot_all_data_all_containers(
-            my_instance.df_indiv, sep_time=my_instance.sep_time)
-        indivs_cons.savefig(path + '/indivs_cons.svg')
-        node_evo_fig = plot.plot_containers_groupby_nodes(
-            my_instance.df_indiv,
-            my_instance.df_host_meta[it.metrics[0]].max(),
-            my_instance.sep_time,
-            title='Initial Node consumption')
-        node_evo_fig.savefig(path + '/init_node_plot.svg')
     total_method_time = time.time()
 
     # Global loop for getting data
@@ -136,6 +121,7 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
                 my_instance.df_host = current_data.groupby(
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
+                my_instance.set_host_meta(config['host_meta_path'])
 
                 # Analysis period
                 start = time.time()
@@ -146,8 +132,10 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
                 add_time(-1, 'total_t_obs', (time.time() - start))
 
                 cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
-                tmin = my_instance.sep_time - (my_instance.window_duration - 1)
-                tmax = my_instance.sep_time
+                # tmin = my_instance.sep_time - (my_instance.window_duration - 1)
+                # tmax = my_instance.sep_time
+                tmin = my_instance.df_indiv[it.tick_field].min()
+                tmax = my_instance.df_indiv[it.tick_field].max()
 
                 # it.results_file.write('Loop mode : %s\n' % mode)
                 logging.info('Beginning the loop process ...\n')
@@ -323,15 +311,12 @@ def main(path, k, tau, method, cluster_method, param, output, tolclust, tolplace
     # else:
     #     logging.info('We do not perform allocation \n')
     tot_mem_after = process_memory()
-    mem_after = my_instance.df_indiv.memory_usage(index=True).sum()
     end_time = time.time()
 
     # Calculate the elapsed time
     elapsed_time = end_time - start_time
     print('Elapsed time:', elapsed_time, 'seconds')
     print('memory use: ', tot_mem_after - tot_mem_before)
-    print('dataframe memory use: ', mem_before)
-    print('dataframe memory use: ', mem_after)
     main_time = time.time() - main_time
     add_time(-1, 'total_time', main_time)
     node.plot_data_all_nodes(
@@ -353,7 +338,7 @@ def preprocess(
 ):
     """Load configuration, data and initialize needed objects.
 
-    :param path: initial folder path
+    :param path: initial config file path
     :type path: str
     :param k: number of clusters to use for clustering
     :type k: int
@@ -378,23 +363,24 @@ def preprocess(
     """
     # TODO what if we want tick < tau ?
     print('Preprocessing ...')
-    (config, output_path) = it.read_params(
+    (config, output_path, parent_path) = it.read_params(
         path, k, tau, method, cluster_method, param, output, use_kafka)
     config = spec_params(config, [tolclust, tolplace])
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
     plt.style.use('bmh')
+    it.results_file.write('Method used : %s\n' % method)
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    # if use_kafka:
-    #     reader.consume_all_data(config)
-    #     input()
-    #     reader.delete_kafka_topic(config)
-    #     reader.csv_to_stream(path, config)
-    reader.init_reader(path, use_kafka)
-    instance = Instance(path, config)
-    it.results_file.write('Method used : %s\n' % method)
+    # reader.consume_all_data(config)
+    if use_kafka and config['csv']:
+        # TODO check this if statement
+        reader.consume_all_data(config)
+        reader.delete_kafka_topic(config)
+        reader.csv_to_stream(parent_path, config)
+    reader.init_reader(parent_path, use_kafka)
+    instance = Instance(parent_path, config)
     instance.print_times()
 
     return (config, output_path, instance)
@@ -441,20 +427,26 @@ def analysis_period(my_instance, config, method):
     elif method in ['heur', 'loop']:
 
         # Compute starting point
-        n_iter = math.floor((
-            my_instance.sep_time + 1 - my_instance.df_host[it.tick_field].min()
-        ) / my_instance.window_duration)
-        start_point = (
-            my_instance.sep_time - n_iter * my_instance.window_duration
-        ) + 1
-        end_point = (
-            start_point + my_instance.window_duration - 1
-        )
-        working_df_indiv = my_instance.df_indiv[
-            (my_instance.
-                df_indiv[it.tick_field] >= start_point) & (
-                my_instance.df_indiv[it.tick_field] <= end_point)
-        ]
+        # n_iter = math.floor((
+        #     my_instance.sep_time + 1 - my_instance.df_host[it.tick_field].min()
+        # ) / my_instance.window_duration)
+        # start_point = (
+        #     my_instance.sep_time - n_iter * my_instance.window_duration
+        # ) + 1
+        # end_point = (
+        #     start_point + my_instance.window_duration - 1
+        # )
+        # working_df_indiv = my_instance.df_indiv[
+        #     (my_instance.
+        #         df_indiv[it.tick_field] >= start_point) & (
+        #         my_instance.df_indiv[it.tick_field] <= end_point)
+        # ]
+        working_df_indiv = my_instance.df_indiv
+        # print(start_point, end_point)
+        print(working_df_indiv)
+        my_instance.working_df_indiv = working_df_indiv
+        print(my_instance.working_df_indiv)
+        print(my_instance.df_indiv)
 
         # First clustering part
         logging.info('Starting first clustering ...')
@@ -480,7 +472,7 @@ def analysis_period(my_instance, config, method):
         print('\nClustering computing time : %f s\n\n' %
               (time.time() - start))
         add_time(-1, 'clustering_0', (time.time() - start))
-        n_iter = n_iter - 1
+        # n_iter = n_iter - 1
 
         # Loop for incrementing clustering (during analysis)
         # TODO finish

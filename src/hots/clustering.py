@@ -56,6 +56,7 @@ def build_matrix_indiv_attr(df):
     :rtype: Tuple[pd.DataFrame, Dict]
     """
     print('Setup for clustering ...')
+    print(df)
     list_args = list(df.groupby(df[it.indiv_field]))
     lines = []
     dict_id_c = {}

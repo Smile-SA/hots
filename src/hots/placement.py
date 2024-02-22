@@ -29,6 +29,9 @@ def assign_container_node(node_id, container_id, instance, remove=True):
         instance.df_indiv[it.indiv_field] == container_id
     ][it.host_field].to_numpy()[0]
 
+    print(instance.df_host)
+    print(instance.df_indiv)
+    print(node_id, it.metrics)
     instance.df_host.loc[
         instance.df_host[it.host_field] == node_id, it.metrics
     ] = instance.df_host.loc[
@@ -399,6 +402,17 @@ def colocalize_clusters(
             instance.
             df_indiv[it.indiv_field] == list_containers_j[c]
         ][it.metrics[0]].to_numpy()[:total_time]
+        # new_cons_i = instance.working_df_indiv.loc[
+        #     instance.working_df_indiv[it.indiv_field] == list_containers_i[c]
+        # ][it.metrics[0]].to_numpy()
+        # new_cons_j = instance.working_df_indiv.loc[
+        #     instance.working_df_indiv[it.indiv_field] == list_containers_j[c]
+        # ][it.metrics[0]].to_numpy()
+        # print(cons_i)
+        # print(cons_j)
+        # print('from working df :')
+        # print(new_cons_i)
+        # print(new_cons_j)
 
         cap_node = instance.df_host_meta.loc[
             instance.
@@ -562,6 +576,7 @@ def allocation_distant_pairwise(
 
     total_time = instance.sep_time
     min_nodes = nb_nodes or nb_min_nodes(instance, total_time)
+    print(min_nodes)
     conso_nodes = np.zeros((instance.nb_nodes, total_time))
     n = 0
 
@@ -783,13 +798,28 @@ def nb_min_nodes(instance, total_time):
     # return max(min_nodes_cpu, min_nodes_mem)
 
     max_metric = 0.0
+    print(instance.df_indiv)
+    print(instance.working_df_indiv)
+    print(total_time)
     for t in range(total_time):
         max_t_metric = instance.df_indiv[
             instance.df_indiv[it.tick_field] == t][it.metrics[0]].sum()
         if max_t_metric > max_metric:
             max_metric = max_t_metric
 
+    print('using df_indiv :')
     cap_metric = instance.df_host_meta[it.metrics[0]].to_numpy()[0]
+    print(max_metric, cap_metric)
+
+    for t in instance.working_df_indiv[it.tick_field].unique():
+        max_t_metric = instance.working_df_indiv[
+            instance.working_df_indiv[it.tick_field] == t][it.metrics[0]].sum()
+        if max_t_metric > max_metric:
+            max_metric = max_t_metric
+
+    cap_metric = instance.df_host_meta[it.metrics[0]].to_numpy()[0]
+    print('using working df')
+    print(max_metric, cap_metric)
     return (math.ceil(max_metric / cap_metric))
 
 

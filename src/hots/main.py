@@ -378,7 +378,7 @@ def preprocess(
 
     # Init containers & nodes data, then Instance
     logging.info('Loading data and creating Instance (Instance information are in results file)\n')
-    reader.consume_all_data(config)
+    # reader.consume_all_data(config)
     if use_kafka and config['csv']:
         # TODO check this if statement
         reader.consume_all_data(config)

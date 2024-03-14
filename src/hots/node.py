@@ -360,7 +360,7 @@ def get_nodes_load_info(df_host, df_host_meta):
             df_host_meta[it.host_field] == node
         ][metric].to_numpy()[0]
         results_df = pd.concat([
-            results_df,
+            results_df if not results_df.empty else None,
             pd.DataFrame.from_records([{
                 it.host_field: node,
                 'load_var': data_n[metric].var(),

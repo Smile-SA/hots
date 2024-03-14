@@ -13,6 +13,7 @@ The entire methodology is called from here (initialization, clustering,
 allocation, evaluation, access to optimization model...).
 """
 
+import json
 import logging
 import math
 import os
@@ -84,8 +85,7 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     """
     # Initialization part
     main_time = time.time()
-    tot_mem_before = process_memory()
-    start_time = time.time()
+    # tot_mem_before = process_memory()
 
     signal.signal(signal.SIGINT, signal_handler_sigint)
 
@@ -98,8 +98,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     total_method_time = time.time()
 
     # Global loop for getting data
-    print(it.csv_reader)
-    print(it.avro_deserializer)
     current_time = 0
     # TODO check these stats retrieving
     # total_loop_time = 0.0
@@ -109,7 +107,7 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     # total_nb_overload = 0
     nb_overloads = 0
 
-    print('Ready for new data...')
+    print('Ready for new data')
     try:
         while it.s_entry:
             if current_time < my_instance.sep_time:
@@ -122,6 +120,7 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
                 my_instance.set_host_meta(config['host_meta_path'])
+                my_instance.set_meta_info()
 
                 # Analysis period
                 start = time.time()
@@ -153,7 +152,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                     cluster_method, config['optimization']['solver']
                 )
                 add_time(0, 'total_loop', (time.time() - start))
-                print('ready for loop ?')
                 tmax += config['loop']['tick']
                 tmin = tmax - (my_instance.window_duration - 1)
 
@@ -191,10 +189,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 my_instance.df_host = pd.concat([
                     my_instance.df_host, new_df_host
                 ])
-                print(current_data)
-                print(current_time)
-                print(my_instance.df_indiv)
-                print('perform loop')
                 (working_df_indiv, df_clust, w, u, v) = build_matrices(
                     my_instance, tmin, tmax, labels_
                 )
@@ -229,9 +223,8 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 nb_place_changes += nb_place_changes_loop
                 tmax += config['loop']['tick']
                 tmin = tmax - (my_instance.window_duration - 1)
-                my_instance.time += 1
+                # my_instance.time += 1
                 loop_nb += 1
-            input()
     finally:
         # Close down consumer to commit final offsets.
         reader.close_reader(use_kafka)
@@ -310,14 +303,11 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     #         my_instance, working_df_indiv, config['allocation']))
     # else:
     #     logging.info('We do not perform allocation \n')
-    tot_mem_after = process_memory()
-    end_time = time.time()
-
-    # Calculate the elapsed time
-    elapsed_time = end_time - start_time
-    print('Elapsed time:', elapsed_time, 'seconds')
-    print('memory use: ', tot_mem_after - tot_mem_before)
+    
+    # tot_mem_after = process_memory()
+    # print('memory use: ', tot_mem_after - tot_mem_before)
     main_time = time.time() - main_time
+    print('\nTotal computing time : %f s' % (main_time))
     add_time(-1, 'total_time', main_time)
     node.plot_data_all_nodes(
         df_host_evo, it.metrics[0],
@@ -441,19 +431,14 @@ def analysis_period(my_instance, config, method):
         #         df_indiv[it.tick_field] >= start_point) & (
         #         my_instance.df_indiv[it.tick_field] <= end_point)
         # ]
-        working_df_indiv = my_instance.df_indiv
-        # print(start_point, end_point)
-        print(working_df_indiv)
-        my_instance.working_df_indiv = working_df_indiv
-        print(my_instance.working_df_indiv)
-        print(my_instance.df_indiv)
+        my_instance.working_df_indiv = my_instance.df_indiv
 
         # First clustering part
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')
         start = time.time()
         (df_indiv_clust, my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-            working_df_indiv)
+            my_instance.working_df_indiv)
 
         labels_ = clt.perform_clustering(
             df_indiv_clust, config['clustering']['algo'], my_instance.nb_clusters)
@@ -469,8 +454,6 @@ def analysis_period(my_instance, config, method):
             cluster_profiles, cluster_vars)
         it.results_file.write('\nClustering computing time : %f s\n\n' %
                               (time.time() - start))
-        print('\nClustering computing time : %f s\n\n' %
-              (time.time() - start))
         add_time(-1, 'clustering_0', (time.time() - start))
         # n_iter = n_iter - 1
 
@@ -498,11 +481,13 @@ def analysis_period(my_instance, config, method):
 
         # First placement part
         if config['placement']['enable']:
+            #TODO possibility to use initial placement even after clustering solution
             logging.info('Performing placement ... \n')
             start = time.time()
             place.allocation_distant_pairwise(
                 my_instance, cluster_var_matrix, labels_)
-            print('Placement heuristic time : %f s' % (time.time() - start))
+            it.results_file.write('\Placement heuristic time : %f s\n\n' %
+                (time.time() - start))
             add_time(-1, 'placement_0', (time.time() - start))
         else:
             logging.info('We do not perform placement \n')
@@ -1242,7 +1227,7 @@ def pre_loop(
     :rtype: Tuple[mdl.Model, mdl.Model, Dict, Dict]
     """
     logging.info('Evaluation of problems with initial solutions')
-    print('Building clustering model ...')
+    print('Building first clustering model ...')
     start = time.time()
     clust_model = mdl.Model(
         1,
@@ -1258,7 +1243,6 @@ def pre_loop(
     logging.info('Solving linear relaxation ...')
     add_time(0, 'solve_clustering_model', (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
-    print('\n ## Pyomo solve ## \n\n')
     clust_model.solve(solver)
     clustering_dual_values = mdl.fill_dual_values(clust_model)
 
@@ -1285,7 +1269,7 @@ def pre_loop(
 
     # evaluate placement
     logging.info('# Placement evaluation #')
-    print('Building placement model ...')
+    print('Building first placement model ...')
     start = time.time()
     place_model = mdl.Model(
         2,
@@ -1300,7 +1284,6 @@ def pre_loop(
     print('Solving first placement ...')
     logging.info('Placement problem not evaluated yet\n')
     add_time(0, 'solve_placement_model', (time.time() - start))
-    print('\n ## Pyomo solve ## \n\n')
     place_model.solve(solver)
     placement_dual_values = mdl.fill_dual_values(place_model)
 
@@ -1514,6 +1497,7 @@ def eval_clustering(
     """
     nb_clust_changes_loop = 0
     logging.info('# Clustering evaluation #')
+    print('# Clustering evaluation #')
 
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 
@@ -1571,6 +1555,7 @@ def eval_clustering(
 
     end_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 
+    print('# End of clustering evaluation #')
     return (dv, nb_clust_changes_loop,
             init_loop_silhouette, end_loop_silhouette,
             clustering_dual_values, clust_model,
@@ -1618,6 +1603,7 @@ def eval_placement(
     :rtype: Tuple[int, Dict, mdl.Model, int, int, float, float]
     """
     logging.info('# Placement evaluation #')
+    print('# Placement evaluation #')
 
     start = time.time()
     # TODO update without re-creating from scratch ? Study
@@ -1671,11 +1657,43 @@ def eval_placement(
             add_time(loop_nb, 'solve_new_placement', (time.time() - start))
         else:
             logging.info('No container to move : we do nothing ...\n')
+        
+    # TEST : we force moving containers message here
+    move_containers_info(my_instance)
+    print('# End of placement evaluation #')
 
     return (nb_place_changes_loop, placement_dual_values, place_model,
             place_conf_nodes, place_conf_edges,
             place_max_deg, place_mean_deg)
 
+
+def move_containers_info(my_instance):
+    """Create the list of containers to move and send it."""
+    # moving_containers = []
+    # moves = 2
+    # print('here is the current data : ')
+    # print(my_instance.df_indiv)
+    # print(my_instance.working_df_indiv)
+    # for i in range(moves):
+    #     c_id = input('Enter container name : ')
+    #     old_node = input('Enter old host : ')
+    #     new_node = input('Enter new host : ')
+    #     moving_containers.append({
+    #         'container_name': c_id,
+    #         'old_host_name': old_node,
+    #         'new_host_name': new_node
+    #     })
+    # print('Sending these moving containers :')
+    # print(moving_containers)
+    with open('tests/moving_containers_test.json', "r") as json_file:
+        data = json.load(json_file)
+    print('Sending these moving containers :')
+    print(data)
+    it.kafka_producer.produce(
+        it.kafka_topics['docker_replacer'],
+        json.dumps(data))
+    it.kafka_producer.flush()
+    time.sleep(1)
 
 def loop_kmeans(my_instance, df_clust, labels_):
     """Update clustering via kmeans from scratch.
@@ -1829,7 +1847,7 @@ def add_time(loop_nb, action, time):
     """
     it.times_df = pd.concat(
         [
-            it.times_df,
+            it.times_df if not it.times_df.empty else None,
             pd.DataFrame.from_records([{
                 'num_loop': loop_nb,
                 'action': action,

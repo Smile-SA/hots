@@ -44,14 +44,13 @@ def init_reader(path, use_kafka):
             use_schema = False
             it.avro_deserializer = connect_schema(use_schema, it.kafka_schema_url)
             it.csv_reader = None
-            print('ok you have kafka')
     else:
-        print('no kafka required.')
         f = open(p_data / 'container_usage.csv', 'r')
         it.csv_reader = csv.reader(f)
         it.avro_deserializer = None
         header = next(it.csv_reader, None)
         print('Headers : ', header)
+        #TODO and then ?
 
 
 # TODO window_size useless ?
@@ -64,8 +63,9 @@ def get_next_data(
     :param use_kafka: streaming platform
     :type use_kafka: bool
     """
-    print('current time : ', current_time)
-    print('tick: ', tick)
+    print('We are in time %d and waiting for %d new datapoints ...' % (
+        current_time, tick
+    ))
     new_df_container = pd.DataFrame()
     end = False
     while not end:
@@ -82,7 +82,6 @@ def get_next_data(
                     new_df_container, node.reassign_node(value)])
                 if int(key) >= current_time + tick:
                     end = True
-                    print('end')
             if file:
                 it.s_entry = False
                 break
@@ -142,8 +141,6 @@ def msg_process(msg, avro_deserializer):
     if avro_deserializer is None:
         dval = msg.value()
         val = json.loads(dval)
-        print(dval)
-        print(val)
     else:
         val = avro_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
     return (time_start, val)
@@ -550,7 +547,7 @@ def consume_all_data(config):
                 elif msg.error():
                     raise KafkaException(msg.error())
             else:
-                print(msg)
+                print(msg.value())
                 msg_process(msg, None)
 
     except KeyboardInterrupt:

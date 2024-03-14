@@ -139,13 +139,17 @@ class Instance:
         # if self.window_duration == config['loop']['tick']:
         #     self.window_duration += 1
 
+    def set_meta_info(self):
+        """Define the number of containers and nodes from data."""
+        self.nb_nodes = self.df_host_meta[it.host_field].nunique()
+        self.nb_containers = self.df_indiv[it.indiv_field].nunique()
+
     def set_host_meta(self, host_meta_path):
         """Create the dataframe for host meta data from first streaming data."""
         # df_columns = [it.host_field]
         # for metric in it.metrics:
         #     df_columns.append(metric)
         # self.df_host_meta = pd.DataFrame(columns=df_columns)
-        print(host_meta_path)
         self.df_host_meta = it.df_from_csv(host_meta_path)
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.nb_nodes = self.df_host_meta[it.host_field].nunique()

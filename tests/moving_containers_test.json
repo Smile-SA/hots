@@ -1,0 +1,15 @@
+{
+    "move": [
+        {
+            "container_name": "webserver-vm1-1",
+            "old_host": "vm1",
+            "new_host": "vm2"
+        },
+        {
+            "container_name": "webserver-vm1-2",
+            "old_host": "vm2",
+            "new_host": "vm1"
+        }
+    ],
+    "timestamp": 3
+}

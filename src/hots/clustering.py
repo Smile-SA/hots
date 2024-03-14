@@ -55,8 +55,7 @@ def build_matrix_indiv_attr(df):
     :return: _description_
     :rtype: Tuple[pd.DataFrame, Dict]
     """
-    print('Setup for clustering ...')
-    print(df)
+    print('Building matrices ...')
     list_args = list(df.groupby(df[it.indiv_field]))
     lines = []
     dict_id_c = {}
@@ -584,11 +583,7 @@ def change_clustering_maxkcut(conflict_graph, df_clust, labels_, dict_id_c):
     profiles = get_cluster_mean_profile(
         df_clust_new['cluster'].nunique(), df_clust_new
     )
-    print(df_clust)
-    print(df_clust_new)
-    print(profiles)
-    print(conflict_graph)
-    print(mvg_containers)
+
     for indiv, occur in mvg_containers:
         indiv_s = dict_id_c[int(indiv)]
         min_dist = float('inf')

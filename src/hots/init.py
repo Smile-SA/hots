@@ -208,6 +208,7 @@ def define_globals(p_path, config, kafka_var):
                        'kmeans-scratch',
                        'stream-km']
 
+    #TODO possibility to disable results compute / building  
     loop_results = set_loop_results()
     times_df = set_times_df()
 

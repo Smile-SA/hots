@@ -6,7 +6,7 @@ import socket
 import sys
 import time
 from pathlib import Path
-
+from .instance import Instance
 import pandas as pd
 
 try:
@@ -67,9 +67,11 @@ def get_next_data(
         current_time, tick
     ))
     new_df_container = pd.DataFrame()
-    end = False
-    while not end:
+    
+    it.end = False
+    while not it.end:
         if use_kafka:
+            
             it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
             dval = process_kafka_msg(it.avro_deserializer)
             if dval is None:
@@ -81,7 +83,7 @@ def get_next_data(
                 new_df_container = pd.concat([
                     new_df_container, node.reassign_node(value)])
                 if int(key) >= current_time + tick:
-                    end = True
+                    it.end = True
             if file:
                 it.s_entry = False
                 break
@@ -99,7 +101,7 @@ def get_next_data(
                 )
             else:
                 new_df_container.reset_index(drop=True, inplace=True)
-                end = True
+                it.end = True
     return new_df_container
 
 
@@ -196,6 +198,7 @@ def get_consumer(config):
     :rtype: _type_
     """
     server1 = config['kafkaConf']['Consumer']['brokers'][0]
+    print(server1)
     group = config['kafkaConf']['Consumer']['group']
     conf = {'bootstrap.servers': server1,
             'max.poll.interval.ms': 1200000,
@@ -503,6 +506,7 @@ def process_kafka_msg(avro_deserializer):
                 'Topic unknown, creating %s topic\n' % (
                     it.kafka_topics['docker_topic']))
         elif msg.error():
+            print("error message here")
             raise KafkaException(msg.error())
 
     else:

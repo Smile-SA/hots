@@ -6,6 +6,7 @@ from pathlib import Path
 import pandas as pd
 
 from . import reader
+from .instance import Instance
 
 # Functions definitions #
 
@@ -188,6 +189,7 @@ def define_globals(p_path, config, kafka_var):
 
     global avro_deserializer
     global s_entry
+    global end
     global kafka_producer
     global kafka_consumer
     global kafka_topics
@@ -218,12 +220,15 @@ def define_globals(p_path, config, kafka_var):
     clustering_file = open(p_path / 'clustering_logs.log', 'w')
 
     s_entry = True
+    end = False
 
     if kafka_var:
         kafka_topics = config['kafkaConf']['topics']
         reader.kafka_availability(config)
+        Instance.clear_kafka_topics()
         kafka_producer = reader.get_producer(config)
         kafka_consumer = reader.get_consumer(config)
+        # input()
         kafka_schema = config['kafkaConf']['schema']
         kafka_schema_url = config['kafkaConf']['schema_url']
     dict_agg_metrics = {}

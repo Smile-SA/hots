@@ -19,6 +19,7 @@ import math
 import os
 import signal
 import time
+import sys
 
 import click
 
@@ -110,16 +111,27 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     print('Ready for new data')
     try:
         while it.s_entry:
+            my_instance.get_node_information()
+            # start stream
+            Instance.start_stream()
             if current_time < my_instance.sep_time:
                 current_data = reader.get_next_data(
                     current_time, my_instance.sep_time, my_instance.sep_time + 1, use_kafka
                 )
+                print("The current data is: ",current_data)
+                if current_data.empty and it.end:
+                    # df_host_evo = pd.DataFrame()
+                    sys.exit(0)
+                    # continue
+                
                 current_time += my_instance.sep_time
                 my_instance.df_indiv = current_data
                 my_instance.df_host = current_data.groupby(
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
-                my_instance.set_host_meta(config['host_meta_path'])
+                
+                
+                # my_instance.set_host_meta(config['host_meta_path'])
                 my_instance.set_meta_info()
 
                 # Analysis period
@@ -369,6 +381,7 @@ def preprocess(
         reader.consume_all_data(config)
         reader.delete_kafka_topic(config)
         reader.csv_to_stream(parent_path, config)
+    
     reader.init_reader(parent_path, use_kafka)
     instance = Instance(parent_path, config)
     instance.print_times()
@@ -576,8 +589,10 @@ def run_period(
 
 def signal_handler_sigint(signal_number, frame):
     """Handle for exiting application via signal."""
+    Instance.stop_stream()
     print('Exit application')
     it.s_entry = False
+    it.end = True
 
 
 def streaming_eval(
@@ -1659,7 +1674,7 @@ def eval_placement(
             logging.info('No container to move : we do nothing ...\n')
         
     # TEST : we force moving containers message here
-    move_containers_info(my_instance)
+    # move_containers_info(my_instance)
     print('# End of placement evaluation #')
 
     return (nb_place_changes_loop, placement_dual_values, place_model,

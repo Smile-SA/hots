@@ -109,17 +109,20 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     nb_overloads = 0
 
     print('Ready for new data')
+    if use_kafka and not config['csv']:
+        my_instance.get_node_information()
+        # start stream
+        Instance.start_stream()
+    
     try:
         while it.s_entry:
-            my_instance.get_node_information()
-            # start stream
-            Instance.start_stream()
+            
             if current_time < my_instance.sep_time:
                 current_data = reader.get_next_data(
                     current_time, my_instance.sep_time, my_instance.sep_time + 1, use_kafka
                 )
                 print("The current data is: ",current_data)
-                if current_data.empty and it.end:
+                if use_kafka and current_data.empty and it.end:
                     # df_host_evo = pd.DataFrame()
                     sys.exit(0)
                     # continue
@@ -130,8 +133,8 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
                 
-                
-                # my_instance.set_host_meta(config['host_meta_path'])
+                if not use_kafka:
+                    my_instance.set_host_meta(config['host_meta_path'])
                 my_instance.set_meta_info()
 
                 # Analysis period
@@ -168,7 +171,9 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 tmin = tmax - (my_instance.window_duration - 1)
 
             else:
-                last_index = my_instance.df_indiv.index.levels[0][-1]
+                # last_index = my_instance.df_indiv.index.levels[0][-1]
+                last_index = my_instance.df_indiv.index.get_level_values(0).unique()[-1]
+
                 current_data = reader.get_next_data(
                     current_time, config['loop']['tick'],
                     config['loop']['tick'] - current_time + 1, use_kafka
@@ -720,7 +725,9 @@ def streaming_eval(
                     key = list(dval.values())[0]
                     value = list(dval.values())[1]
                     file = list(dval.values())[2]
-                    last_index = my_instance.df_indiv.index.levels[0][-1]
+                    # last_index = my_instance.df_indiv.index.levels[0][-1]
+                    last_index = my_instance.df_indiv.index.get_level_values(0).unique()[-1]
+
                     # print('last_index: ',last_index)
                     subset = my_instance.df_indiv[
                         my_instance.df_indiv.timestamp == last_index

@@ -19,6 +19,7 @@ import math
 import os
 import signal
 import time
+import sys
 
 import click
 
@@ -108,18 +109,32 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     nb_overloads = 0
 
     print('Ready for new data')
+    if use_kafka and not config['csv']:
+        my_instance.get_node_information()
+        # start stream
+        Instance.start_stream()
+    
     try:
         while it.s_entry:
+            
             if current_time < my_instance.sep_time:
                 current_data = reader.get_next_data(
                     current_time, my_instance.sep_time, my_instance.sep_time + 1, use_kafka
                 )
+                print("The current data is: ",current_data)
+                if use_kafka and current_data.empty and it.end:
+                    # df_host_evo = pd.DataFrame()
+                    sys.exit(0)
+                    # continue
+                
                 current_time += my_instance.sep_time
                 my_instance.df_indiv = current_data
                 my_instance.df_host = current_data.groupby(
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
-                my_instance.set_host_meta(config['host_meta_path'])
+                
+                if not use_kafka:
+                    my_instance.set_host_meta(config['host_meta_path'])
                 my_instance.set_meta_info()
 
                 # Analysis period
@@ -156,7 +171,8 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 tmin = tmax - (my_instance.window_duration - 1)
 
             else:
-                last_index = my_instance.df_indiv.index.levels[0][-1]
+                previous_timestamp = my_instance.df_indiv[it.tick_field].max()
+                # last_index = my_instance.df_indiv.index.levels[0][-1]
                 current_data = reader.get_next_data(
                     current_time, config['loop']['tick'],
                     config['loop']['tick'] - current_time + 1, use_kafka
@@ -171,7 +187,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                     it.host_field: str,
                     it.tick_field: int}
                 )
-                previous_timestamp = last_index
                 existing_machine_ids = my_instance.df_host[
                     my_instance.df_host[it.tick_field] == previous_timestamp
                 ][it.host_field].unique()
@@ -369,6 +384,7 @@ def preprocess(
         reader.consume_all_data(config)
         reader.delete_kafka_topic(config)
         reader.csv_to_stream(parent_path, config)
+    
     reader.init_reader(parent_path, use_kafka)
     instance = Instance(parent_path, config)
     instance.print_times()
@@ -575,8 +591,10 @@ def run_period(
 
 def signal_handler_sigint(signal_number, frame):
     """Handle for exiting application via signal."""
+    Instance.stop_stream()
     print('Exit application')
     it.s_entry = False
+    it.end = True
 
 
 def streaming_eval(
@@ -704,7 +722,9 @@ def streaming_eval(
                     key = list(dval.values())[0]
                     value = list(dval.values())[1]
                     file = list(dval.values())[2]
-                    last_index = my_instance.df_indiv.index.levels[0][-1]
+                    # last_index = my_instance.df_indiv.index.levels[0][-1]
+                    last_index = my_instance.df_indiv.index.get_level_values(0).unique()[-1]
+
                     # print('last_index: ',last_index)
                     subset = my_instance.df_indiv[
                         my_instance.df_indiv.timestamp == last_index
@@ -1509,6 +1529,8 @@ def eval_clustering(
     clust_model.solve(solver)
     add_time(loop_nb, 'solve_clustering', (time.time() - start))
     # print('Init clustering lp solution : ', clust_model.relax_mdl.objective_value)
+    cluster_profiles = clt.get_cluster_mean_profile(
+        df_clust)
 
     logging.info('Checking for changes in clustering dual values ...')
     start = time.time()
@@ -1658,7 +1680,8 @@ def eval_placement(
             logging.info('No container to move : we do nothing ...\n')
         
     # TEST : we force moving containers message here
-    move_containers_info(my_instance)
+    if it.use_kafka:
+        move_containers_info(my_instance)
     print('# End of placement evaluation #')
 
     return (nb_place_changes_loop, placement_dual_values, place_model,

@@ -482,6 +482,10 @@ def get_far_container(c1, c2, df_clust, profiles):
     :return: _description_
     :rtype: str
     """
+    # print("df_clust : ",df_clust)
+    # print("profiles : ",profiles)
+    # print("df_clust : ",df_clust.loc[c1].drop('cluster').values)
+    # print("profiles : ",profiles[int(df_clust.loc[c1]['cluster'])])
     if norm(
         df_clust.loc[c1].drop('cluster').values
         - profiles[int(df_clust.loc[c1]['cluster'])]) >= norm(

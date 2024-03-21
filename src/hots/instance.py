@@ -10,6 +10,7 @@ import pandas as pd
 
 from . import init as it
 from . import node as nd
+import requests
 
 
 class Instance:
@@ -165,3 +166,48 @@ class Instance:
         return (self.df_indiv.loc[
             self.df_indiv[it.indiv_field] == container_id
         ][it.host_field].to_numpy()[0])
+    
+    def get_node_information(self):
+        url = 'http://10.3.73.162:5000/vm/data'
+        response = requests.get(url)
+        node_data = {}
+        if response.status_code == 200:
+            node_data = response.json()
+            # print(node_data)
+            self.df_host_meta = pd.DataFrame(node_data)
+            print(self.df_host_meta)
+            self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
+            self.nb_nodes = self.df_host_meta[it.host_field].nunique()
+        else:
+            # If the request was not successful, print the error status code
+            print(f"Error: {response.status_code}")
+        return node_data
+    
+    def start_stream():
+        url = 'http://10.3.73.162:5000/start_stream'
+        response = requests.get(url)
+        if response.status_code == 200:
+            print(response)
+        else:
+            # If the request was not successful, print the error status code
+            print(f"Error: {response.status_code}")
+
+
+    def stop_stream():
+        url = 'http://10.3.73.162:5000/stop_stream'
+        response = requests.get(url)
+        if response.status_code == 200:
+            print(response)
+        else:
+            # If the request was not successful, print the error status code
+            print(f"Error: {response.status_code}")
+
+    def clear_kafka_topics():
+        url = 'http://10.3.73.162:5000/clear_topics'
+        response = requests.get(url)
+        if response.status_code == 200:
+            print(response)
+        else:
+            # If the request was not successful, print the error status code
+            print(f"Error: {response.status_code}")
+        

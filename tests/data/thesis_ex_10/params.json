@@ -1,5 +1,5 @@
 {
-  "csv": 1,
+  "csv": 0,
   "host_meta_path": "tests/data/thesis_ex_10/node_meta.csv",
   "analysis": {
     "window_duration": "3",
@@ -59,11 +59,11 @@
       "mock_topic": "MockPlacement"
     },
     "Producer":{
-      "brokers":["0.0.0.0:9092"]
+      "brokers":["10.3.73.162:9092"]
     },
     "Consumer":{
       "group": "DockerPlacerConsumer",
-      "brokers":["0.0.0.0:9092"]
+      "brokers":["10.3.73.162:9092"]
 
     },
     "schema":{

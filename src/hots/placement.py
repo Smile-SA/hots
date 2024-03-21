@@ -873,8 +873,11 @@ def move_list_containers(mvg_conts, instance, tmin, tmax, order='max'):
     :type tmax: int
     :param order: _description_, defaults to 'max'
     :type order: str, optional
+    :return: _description_
+    :rtype: List
     """
     # Remove all moving containers from nodes first
+    moves_list = []
     old_ids = {}
     for mvg_cont in mvg_conts:
         old_ids[mvg_cont] = instance.df_indiv.loc[
@@ -894,11 +897,13 @@ def move_list_containers(mvg_conts, instance, tmin, tmax, order='max'):
     elif order == 'mean':
         order_indivs = ((sum(cons) / len(cons), c) for c, cons in mvg_conts_cons.items())
     for val, c in sorted(order_indivs, reverse=True):
-        move_container(c, instance, tmin, tmax, old_ids[mvg_cont])
+        move_container(c, instance, tmin, tmax, old_ids[mvg_cont], moves_list)
+    
+    return moves_list
 
 
 # TODO what to do if can't open another node
-def move_container(mvg_cont, instance, tmin, tmax, old_id):
+def move_container(mvg_cont, instance, tmin, tmax, old_id, moves_list):
     """Move `mvg_cont` to another node.
 
     :param mvg_cont: _description_
@@ -911,6 +916,8 @@ def move_container(mvg_cont, instance, tmin, tmax, old_id):
     :type tmax: int
     :param old_id: _description_
     :type old_id: str
+    :param moves_list: _description_
+    :type moves_list: List
     """
     print('Moving container :', instance.dict_id_c[mvg_cont])
     working_df_indiv = instance.df_indiv[
@@ -997,7 +1004,13 @@ def move_container(mvg_cont, instance, tmin, tmax, old_id):
     #             instance.
     #             df_host_meta[it.host_field] == instance.dict_id_n[n_int]
     #         ][it.metrics[0]].to_numpy()[0]
-    print('He can go on %s' % new_n)
+    print('He can go on %s (old is %s)' % (new_n, old_id))
+    if new_n != old_id:
+        moves_list.append({
+            'container_name': instance.dict_id_c[mvg_cont],
+            'old_host': old_id,
+            'new_host': new_n
+        })
 
 
 def build_placement_adj_matrix(df_indiv, dict_id_c):

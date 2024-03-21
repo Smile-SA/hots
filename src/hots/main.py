@@ -1643,6 +1643,7 @@ def eval_placement(
     add_time(loop_nb, 'solve_placement', (time.time() - start))
     # print('Init placement lp solution : ', place_model.relax_mdl.objective_value)
     moving_containers = []
+    moves_list = {}
     nb_place_changes_loop = 0
     place_conf_nodes = 0
     place_conf_edges = 0
@@ -1663,7 +1664,7 @@ def eval_placement(
         if len(moving_containers) > 0:
             nb_place_changes_loop = len(moving_containers)
             start = time.time()
-            place.move_list_containers(moving_containers, my_instance,
+            moves_list = place.move_list_containers(moving_containers, my_instance,
                                        working_df_indiv[it.tick_field].min(),
                                        working_df_indiv[it.tick_field].max())
             add_time(loop_nb, 'move_placement', (time.time() - start))
@@ -1678,10 +1679,11 @@ def eval_placement(
             add_time(loop_nb, 'solve_new_placement', (time.time() - start))
         else:
             logging.info('No container to move : we do nothing ...\n')
-        
-    # TEST : we force moving containers message here
-    if it.use_kafka:
-        move_containers_info(my_instance)
+
+    if it.use_kafka and moves_list:
+        move_containers_info(
+            moves_list, working_df_indiv[it.tick_field].max()
+        )
     print('# End of placement evaluation #')
 
     return (nb_place_changes_loop, placement_dual_values, place_model,
@@ -1689,26 +1691,17 @@ def eval_placement(
             place_max_deg, place_mean_deg)
 
 
-def move_containers_info(my_instance):
-    """Create the list of containers to move and send it."""
-    # moving_containers = []
-    # moves = 2
-    # print('here is the current data : ')
-    # print(my_instance.df_indiv)
-    # print(my_instance.working_df_indiv)
-    # for i in range(moves):
-    #     c_id = input('Enter container name : ')
-    #     old_node = input('Enter old host : ')
-    #     new_node = input('Enter new host : ')
-    #     moving_containers.append({
-    #         'container_name': c_id,
-    #         'old_host_name': old_node,
-    #         'new_host_name': new_node
-    #     })
-    # print('Sending these moving containers :')
-    # print(moving_containers)
-    with open('tests/moving_containers_test.json', "r") as json_file:
-        data = json.load(json_file)
+def move_containers_info(moves_list, current_time):
+    """Create the list of containers to move and send it.
+
+    :param moves_list: List of moves to send
+    :type moves_list: List
+    :param current_time: Current last timestamp to apply moves
+    :type moves_list: int
+    """
+    data = {}
+    data['moves'] = moves_list
+    data[it.tick_field] = current_time
     print('Sending these moving containers :')
     print(data)
     it.kafka_producer.produce(

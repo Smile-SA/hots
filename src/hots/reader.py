@@ -2,6 +2,7 @@
 
 import csv
 import json
+import queue
 import socket
 import sys
 import time
@@ -47,6 +48,7 @@ def init_reader(path, use_kafka):
     else:
         f = open(p_data / 'container_usage.csv', 'r')
         it.csv_reader = csv.reader(f)
+        it.csv_queue = queue.Queue()
         it.avro_deserializer = None
         header = next(it.csv_reader, None)
         print('Headers : ', header)
@@ -86,8 +88,11 @@ def get_next_data(
                 it.s_entry = False
                 break
         else:
-            row = next(it.csv_reader, None)
-            if int(row[0]) <= current_time + tick:
+            if it.csv_queue.empty():
+                row = next(it.csv_reader, None)
+                it.csv_queue.put(row)
+            if int(it.csv_queue.queue[0][0]) <= current_time + tick:
+                row = it.csv_queue.get()
                 new_df_container = pd.concat([
                     new_df_container,
                     pd.DataFrame.from_records([{

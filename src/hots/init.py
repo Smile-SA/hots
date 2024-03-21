@@ -185,6 +185,7 @@ def define_globals(p_path, config, kafka_var):
     global streamkm_model
 
     global csv_reader
+    global csv_queue
 
     global avro_deserializer
     global s_entry

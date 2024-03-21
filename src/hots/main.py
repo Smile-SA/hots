@@ -1510,6 +1510,8 @@ def eval_clustering(
     clust_model.solve(solver)
     add_time(loop_nb, 'solve_clustering', (time.time() - start))
     # print('Init clustering lp solution : ', clust_model.relax_mdl.objective_value)
+    cluster_profiles = clt.get_cluster_mean_profile(
+        df_clust)
 
     logging.info('Checking for changes in clustering dual values ...')
     start = time.time()

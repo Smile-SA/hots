@@ -156,7 +156,8 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 tmin = tmax - (my_instance.window_duration - 1)
 
             else:
-                last_index = my_instance.df_indiv.index.levels[0][-1]
+                previous_timestamp = my_instance.df_indiv[it.tick_field].max()
+                # last_index = my_instance.df_indiv.index.levels[0][-1]
                 current_data = reader.get_next_data(
                     current_time, config['loop']['tick'],
                     config['loop']['tick'] - current_time + 1, use_kafka
@@ -171,7 +172,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                     it.host_field: str,
                     it.tick_field: int}
                 )
-                previous_timestamp = last_index
                 existing_machine_ids = my_instance.df_host[
                     my_instance.df_host[it.tick_field] == previous_timestamp
                 ][it.host_field].unique()

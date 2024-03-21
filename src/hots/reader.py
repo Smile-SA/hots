@@ -90,6 +90,10 @@ def get_next_data(
         else:
             if it.csv_queue.empty():
                 row = next(it.csv_reader, None)
+                if row is None:
+                    end = True
+                    it.s_entry = False
+                    break
                 it.csv_queue.put(row)
             if int(it.csv_queue.queue[0][0]) <= current_time + tick:
                 row = it.csv_queue.get()

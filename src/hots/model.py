@@ -362,8 +362,11 @@ class Model:
         :param u: _description_
         :type u: _type_
         """
+        # self.instance_model.pprint()
+        # self.instance_model.must_link_c.pprint()
+        # print(self.instance_model.must_link_c.is_indexed())
         self.instance_model.del_component(self.instance_model.must_link_c)
-        self.instance_model.del_component(self.instance_model.must_link_c_index)
+        # self.instance_model.del_component(self.instance_model.must_link_c_index)
         self.update_sol_u(u)
         self.add_mustlink_instance()
 

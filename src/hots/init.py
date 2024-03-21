@@ -187,6 +187,8 @@ def define_globals(p_path, config, kafka_var):
     global csv_reader
     global csv_queue
 
+    global use_kafka
+
     global avro_deserializer
     global s_entry
     global kafka_producer
@@ -220,6 +222,7 @@ def define_globals(p_path, config, kafka_var):
 
     s_entry = True
 
+    use_kafka = kafka_var
     if kafka_var:
         kafka_topics = config['kafkaConf']['topics']
         reader.kafka_availability(config)

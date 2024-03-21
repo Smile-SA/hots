@@ -1661,7 +1661,8 @@ def eval_placement(
             logging.info('No container to move : we do nothing ...\n')
         
     # TEST : we force moving containers message here
-    move_containers_info(my_instance)
+    if it.use_kafka:
+        move_containers_info(my_instance)
     print('# End of placement evaluation #')
 
     return (nb_place_changes_loop, placement_dual_values, place_model,

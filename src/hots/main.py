@@ -480,8 +480,7 @@ def analysis_period(my_instance, config, method):
         # n_iter = n_iter - 1
 
         # First placement part
-        if config['placement']['enable']:
-            #TODO possibility to use initial placement even after clustering solution
+        if config['placement']['enable'] and config['analysis']['placement_recompute']:
             logging.info('Performing placement ... \n')
             start = time.time()
             place.allocation_distant_pairwise(

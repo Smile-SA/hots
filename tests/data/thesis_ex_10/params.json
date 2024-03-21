@@ -3,7 +3,8 @@
   "host_meta_path": "tests/data/thesis_ex_10/node_meta.csv",
   "analysis": {
     "window_duration": "3",
-    "sep_time": "3"
+    "sep_time": "3",
+    "placement_recompute": 0
   },
   "clustering": {
     "algo": "kmeans",

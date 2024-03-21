@@ -387,7 +387,7 @@ class Model:
         :type v: _type_
         """
         self.instance_model.del_component(self.instance_model.must_link_n)
-        self.instance_model.del_component(self.instance_model.must_link_n_index)
+        # self.instance_model.del_component(self.instance_model.must_link_n_index)
         self.update_sol_v(v)
         self.add_mustlink_instance()
 

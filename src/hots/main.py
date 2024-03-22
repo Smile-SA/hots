@@ -1700,8 +1700,8 @@ def move_containers_info(moves_list, current_time):
     :type moves_list: int
     """
     data = {}
-    data['moves'] = moves_list
-    data[it.tick_field] = current_time
+    data['move'] = moves_list
+    data[it.tick_field] = str(current_time)
     print('Sending these moving containers :')
     print(data)
     it.kafka_producer.produce(

@@ -61,7 +61,7 @@ from .instance import Instance
 @click.option('-K', '--use_kafka', required=False, type=bool, default=False,
               help='Use Kafka streaming platform for data processing')
 @click.option('-T', '--time_limit', required=False, type=int,
-              help='Provide a time limit for data processing')
+              help='Provide a time limit for data processing (in seconds)')
 def main(config_path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka, time_limit):
     """Use method to propose a placement solution for micro-services adjusted in time.
 

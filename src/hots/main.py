@@ -60,7 +60,9 @@ from .instance import Instance
               help='Use specific value for epsilonA (placement conflict threshold)')
 @click.option('-K', '--use_kafka', required=False, type=bool, default=False,
               help='Use Kafka streaming platform for data processing')
-def main(config_path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka):
+@click.option('-T', '--time_limit', required=False, type=int,
+              help='Provide a time limit for data processing')
+def main(config_path, k, tau, method, cluster_method, param, output, tolclust, tolplace, use_kafka, time_limit):
     """Use method to propose a placement solution for micro-services adjusted in time.
 
     :param config_path: path to config file with all information
@@ -86,6 +88,9 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     """
     # Initialization part
     main_time = time.time()
+    end_time = 0
+    if time_limit is not None:
+        end_time = main_time + time_limit * 60
     # tot_mem_before = process_memory()
 
     signal.signal(signal.SIGINT, signal_handler_sigint)
@@ -116,7 +121,12 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     
     try:
         while it.s_entry:
-            
+            # print("current_time: ", end_time)
+            if time_limit is not None and time.time() >= end_time:
+                # Instance.stop_stream()
+                it.end = True
+                it.s_entry = False
+                break
             if current_time < my_instance.sep_time:
                 current_data = reader.get_next_data(
                     current_time, my_instance.sep_time, my_instance.sep_time + 1, use_kafka
@@ -125,13 +135,16 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 if use_kafka and current_data.empty and it.end:
                     # df_host_evo = pd.DataFrame()
                     sys.exit(0)
-                    # continue
+                    # it.s_entry = False
+                    # break
                 
                 current_time += my_instance.sep_time
                 my_instance.df_indiv = current_data
                 my_instance.df_host = current_data.groupby(
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
+                
+                # print(my_instance.df_indiv)
                 
                 if not use_kafka:
                     my_instance.set_host_meta(config['host_meta_path'])
@@ -144,8 +157,9 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                     my_instance, config, method
                 )
                 add_time(-1, 'total_t_obs', (time.time() - start))
-
+                # print("df_indiv_clust: ",df_indiv_clust)
                 cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
+                # print("cluster_profiles: ",cluster_profiles)
                 # tmin = my_instance.sep_time - (my_instance.window_duration - 1)
                 # tmax = my_instance.sep_time
                 tmin = my_instance.df_indiv[it.tick_field].min()
@@ -157,7 +171,8 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 (working_df_indiv, df_clust, w, u, v) = build_matrices(
                     my_instance, tmin, tmax, labels_
                 )
-
+                # print("working_df_indiv: ",working_df_indiv)
+                # print("df_clust: ",df_clust)
                 # build initial optimisation model in pre loop using offline data
                 start = time.time()
                 (clust_model, place_model,
@@ -207,6 +222,11 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 (working_df_indiv, df_clust, w, u, v) = build_matrices(
                     my_instance, tmin, tmax, labels_
                 )
+                # print("working_df_indiv: ",working_df_indiv)
+                # print("df_clust: ",df_clust)
+                cluster_profiles = clt.get_cluster_mean_profile(df_clust)
+                # print("cluster_profiles: ",cluster_profiles)
+                # input()
                 nb_clust_changes_loop = 0
                 nb_place_changes_loop = 0
                 (nb_clust_changes_loop, nb_place_changes_loop,
@@ -241,6 +261,7 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 # my_instance.time += 1
                 loop_nb += 1
     finally:
+        Instance.stop_stream()
         # Close down consumer to commit final offsets.
         reader.close_reader(use_kafka)
 
@@ -426,7 +447,7 @@ def analysis_period(my_instance, config, method):
     df_host_evo = pd.DataFrame(columns=my_instance.df_host.columns)
     df_indiv_clust = pd.DataFrame()
     labels_ = []
-
+    
     if method == 'init':
         return (my_instance, my_instance.df_host,
                 df_indiv_clust, labels_)
@@ -448,7 +469,8 @@ def analysis_period(my_instance, config, method):
         #         my_instance.df_indiv[it.tick_field] <= end_point)
         # ]
         my_instance.working_df_indiv = my_instance.df_indiv
-
+        # print(my_instance.working_df_indiv)
+        # input()
         # First clustering part
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')

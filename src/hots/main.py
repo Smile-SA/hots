@@ -261,7 +261,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 # my_instance.time += 1
                 loop_nb += 1
     finally:
-        Instance.stop_stream()
         # Close down consumer to commit final offsets.
         reader.close_reader(use_kafka)
 

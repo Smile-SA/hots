@@ -46,8 +46,8 @@ def init_reader(path, use_kafka):
             it.avro_deserializer = connect_schema(use_schema, it.kafka_schema_url)
             it.csv_reader = None
     else:
-        f = open(p_data / 'container_usage.csv', 'r')
-        it.csv_reader = csv.reader(f)
+        it.csv_file = open(p_data / 'container_usage.csv', 'r')
+        it.csv_reader = csv.reader(it.csv_file)
         it.csv_queue = queue.Queue()
         it.avro_deserializer = None
         header = next(it.csv_reader, None)
@@ -117,10 +117,12 @@ def get_next_data(
 def close_reader(use_kafka):
     """Close the CSV reader or Kafka consumer."""
     if use_kafka:
-        print('close kafka consumer')
+        print('Closing the stream and Kafka consumer')
+        Instance.stop_stream()
         it.kafka_consumer.close()
     else:
-        print('close csv reader or f ?')
+        print('Closing the CSV file')
+        it.csv_file.close()
 
 
 def acked(err, msg):

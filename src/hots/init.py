@@ -161,6 +161,8 @@ def define_globals(p_path, config, kafka_var):
     :param kafka_var: streaming platform
     :type kafka_var: bool
     """
+    global my_instance
+
     global indiv_field
     global host_field
     global tick_field

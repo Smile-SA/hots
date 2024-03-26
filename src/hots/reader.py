@@ -159,11 +159,9 @@ def msg_process(msg, avro_deserializer):
     return (time_start, val)
 
 
-def produce_data(my_instance, timestamp, history):
+def produce_data(timestamp, history):
     """Summary.
 
-    :param my_instance: _description_
-    :type my_instance: Instance
     :param timestamp: _description_
     :type timestamp: _type_
     :param history: _description_
@@ -171,11 +169,11 @@ def produce_data(my_instance, timestamp, history):
     """
     z = {}
     if history:
-        df_container = my_instance.df_indiv[
-            my_instance.df_indiv.timestamp == timestamp].copy()
+        df_container = it.my_insance.df_indiv[
+            it.my_insance.df_indiv.timestamp == timestamp].copy()
     else:
-        df_container = my_instance.df_indiv[
-            my_instance.df_indiv.timestamp == (timestamp - 1)].copy()
+        df_container = it.my_insance.df_indiv[
+            it.my_insance.df_indiv.timestamp == (timestamp - 1)].copy()
         df_container.loc[:, 'timestamp'] = timestamp
 
     df_con_dict = df_container.to_dict('records')

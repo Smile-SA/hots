@@ -477,7 +477,7 @@ def run_period(
                 it.my_instance.df_indiv,
                 current_data[~current_data[it.tick_field].isin(
                     it.my_instance.df_indiv[it.tick_field].unique())]
-            ])
+            ], ignore_index=True)
             new_df_host = current_data.groupby(
                 [current_data[it.tick_field], it.host_field], as_index=False
             ).agg(it.dict_agg_metrics)
@@ -496,18 +496,18 @@ def run_period(
                 'machine_id': list(missing_machine_ids),
                 'cpu': 0.0
             })
-            new_df_host = pd.concat([new_df_host, missing_rows])
-            new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
+            new_df_host = pd.concat([new_df_host, missing_rows], ignore_index=True)
+            # new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
             it.my_instance.df_host = pd.concat([
                 it.my_instance.df_host,
                 new_df_host[~new_df_host[it.tick_field].isin(
                     it.my_instance.df_host[it.tick_field].unique())]
-            ])
+            ], ignore_index=True)
             it.my_instance.df_host_evo = pd.concat([
-                it.my_instance.df_host,
+                it.my_instance.df_host_evo,
                 new_df_host[~new_df_host[it.tick_field].isin(
                     it.my_instance.df_host_evo[it.tick_field].unique())]
-            ])
+            ], ignore_index=True)
             (working_df_indiv, df_clust, w, u, v) = build_matrices(
                 tmin, tmax, labels_
             )
@@ -567,7 +567,7 @@ def run_period(
                         it.my_instance.df_host_evo,
                         working_df_host[~working_df_host[it.tick_field].isin(
                             it.my_instance.df_host_evo[it.tick_field].unique())]
-                    ]
+                    ], ignore_index=True
                 )
 
             loop_time = (time.time() - loop_time)
@@ -675,7 +675,7 @@ def progress_time_noloop(
 
     it.my_instance.df_host_evo = pd.concat([
         it.my_instance.df_host_evo, df_host_tick
-    ])
+    ], ignore_index=True)
 
     # print('TICK INFO',df_host_tick)  # timestamp machine_id cpu of node usage for window duration
 
@@ -1332,7 +1332,7 @@ def end_loop(
                 it.my_instance.df_host_evo,
                 working_df_host[~working_df_host[it.tick_field].isin(
                     it.my_instance.df_host_evo[it.tick_field].unique())]
-            ]
+            ], ignore_index=True
         )
 
 

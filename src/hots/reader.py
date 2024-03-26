@@ -86,7 +86,7 @@ def get_next_data(
                 value = list(dval.values())[1]
                 file = list(dval.values())[2]
                 new_df_container = pd.concat([
-                    new_df_container, node.reassign_node(value)])
+                    new_df_container, node.reassign_node(value)], ignore_index=True)
                 if int(key) >= current_time + tick:
                     it.end = True
             if file:
@@ -108,7 +108,7 @@ def get_next_data(
                         it.indiv_field: row[1],
                         it.host_field: row[2],
                         it.metrics[0]: float(row[3])
-                    }])]
+                    }])], ignore_index=True
                 )
             else:
                 new_df_container.reset_index(drop=True, inplace=True)

@@ -15,7 +15,7 @@ allocation, evaluation, access to optimization model...).
 
 import json
 import logging
-import os
+import math
 import signal
 import sys
 import time
@@ -29,8 +29,6 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 import pandas as pd
-
-import psutil
 
 from . import clustering as clt
 from . import container as ctnr
@@ -90,7 +88,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     end_time = 0
     if time_limit is not None:
         end_time = main_time + time_limit * 60
-    # tot_mem_before = process_memory()
 
     signal.signal(signal.SIGINT, signal_handler_sigint)
 
@@ -106,25 +103,9 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
         config, time_limit, end_time,
         method, cluster_method
     )
-
-    # # Analysis period
-    # start = time.time()
-    # (it.my_instance.df_host_evo,
-    #  df_indiv_clust, labels_) = analysis_period(
-    #     config, method
-    # )
-    # add_time(-1, 'total_t_obs', (time.time() - start))
-
-    # # Run period
-    # start = time.time()
-    # (it.my_instance.df_host_evo, nb_overloads) = run_period(
-    #     it.my_instance.df_host_evo,
-    #     df_indiv_clust, labels_,
-    #     config, output_path, method, cluster_method, use_kafka
-    # )
     add_time(-1, 'total_t_run', (time.time() - start))
     total_method_time = time.time() - total_method_time
-    # print("final df_host_evo: ",it.my_instance.df_host_evo)
+
     # Print objectives of evaluation part
     (obj_nodes, obj_delta) = mdl.get_obj_value_host()
     it.results_file.write('Number of nodes : %d, Ampli max : %f\n' % (
@@ -134,7 +115,7 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
 
     it.clustering_file.write('\nFinal k : %d' % it.my_instance.nb_clusters)
 
-    # # Save evaluation results in files
+    # Save evaluation results in files
     node_results = node.get_nodes_load_info(
         it.my_instance.df_host_meta)
     it.global_results = pd.DataFrame([{
@@ -182,8 +163,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     # else:
     #     logging.info('We do not perform allocation \n')
 
-    # tot_mem_after = process_memory()
-    # print('memory use: ', tot_mem_after - tot_mem_before)
     main_time = time.time() - main_time
     print('\nTotal computing time : %f s' % (main_time))
     add_time(-1, 'total_time', main_time)
@@ -301,30 +280,25 @@ def global_process(
 
     try:
         while it.s_entry:
-            # print("current_time: ", end_time)
             if time_limit is not None and time.time() >= end_time:
-                # Instance.stop_stream()
                 it.end = True
                 it.s_entry = False
                 break
+            # TODO maybe put analyis period outside global loop
             if current_time < it.my_instance.sep_time:
+                # We have to perform the analysis period
                 current_data = reader.get_next_data(
                     current_time, it.my_instance.sep_time, it.my_instance.sep_time + 1
                 )
-                print('The current data is: ', current_data)
                 if it.use_kafka and current_data.empty and it.end:
                     sys.exit(0)
-                    # it.s_entry = False
-                    # break
 
                 current_time += it.my_instance.sep_time
                 it.my_instance.df_indiv = current_data
                 it.my_instance.df_host = current_data.groupby(
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
-                
-                # print(it.my_instance.df_indiv)
-                
+
                 if not it.use_kafka:
                     it.my_instance.set_host_meta(config['host_meta_path'])
                 it.my_instance.set_meta_info()
@@ -333,23 +307,19 @@ def global_process(
                 start = time.time()
                 (df_indiv_clust, labels_) = analysis_period(config, method)
                 add_time(-1, 'total_t_obs', (time.time() - start))
-                # print("df_indiv_clust: ",df_indiv_clust)
                 cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
-                # print("cluster_profiles: ",cluster_profiles)
-                # tmin = it.my_instance.sep_time - (it.my_instance.window_duration - 1)
-                # tmax = it.my_instance.sep_time
                 tmin = it.my_instance.df_indiv[it.tick_field].min()
                 tmax = it.my_instance.df_indiv[it.tick_field].max()
 
+                # Prepare the loop
                 # it.results_file.write('Loop mode : %s\n' % mode)
                 logging.info('Beginning the loop process ...\n')
 
                 (working_df_indiv, df_clust, w, u, v) = build_matrices(
                     tmin, tmax, labels_
                 )
-                # print("working_df_indiv: ",working_df_indiv)
-                # print("df_clust: ",df_clust)
-                # build initial optimisation model in pre loop using offline data
+
+                # Build initial optimization model in pre loop using analysis data
                 start = time.time()
                 (clust_model, place_model,
                  clustering_dual_values, placement_dual_values) = pre_loop(
@@ -362,8 +332,8 @@ def global_process(
                 tmin = tmax - (it.my_instance.window_duration - 1)
 
             else:
+                # We have to perform a loop
                 previous_timestamp = it.my_instance.df_indiv[it.tick_field].max()
-                # last_index = it.my_instance.df_indiv.index.levels[0][-1]
                 current_data = reader.get_next_data(
                     current_time, config['loop']['tick'],
                     config['loop']['tick'] - current_time + 1
@@ -389,7 +359,6 @@ def global_process(
                     'machine_id': list(missing_machine_ids),
                     'cpu': 0.0
                 })
-                # new_df_host.sort_values(it.tick_field, inplace=True)
                 new_df_host = pd.concat([new_df_host, missing_rows])
                 new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
                 it.my_instance.df_host = pd.concat([
@@ -398,11 +367,7 @@ def global_process(
                 (working_df_indiv, df_clust, w, u, v) = build_matrices(
                     tmin, tmax, labels_
                 )
-                # print("working_df_indiv: ",working_df_indiv)
-                # print("df_clust: ",df_clust)
                 cluster_profiles = clt.get_cluster_mean_profile(df_clust)
-                # print("cluster_profiles: ",cluster_profiles)
-                # input()
                 nb_clust_changes_loop = 0
                 nb_place_changes_loop = 0
                 (nb_clust_changes_loop, nb_place_changes_loop,
@@ -434,7 +399,6 @@ def global_process(
                 nb_place_changes += nb_place_changes_loop
                 tmax += config['loop']['tick']
                 tmin = tmax - (it.my_instance.window_duration - 1)
-                # it.my_instance.time += 1
                 loop_nb += 1
     finally:
         # Close data reader before exit application
@@ -463,23 +427,10 @@ def analysis_period(config, method):
     elif method in ['heur', 'loop']:
 
         # Compute starting point
-        # n_iter = math.floor((
-        #     it.my_instance.sep_time + 1 - it.my_instance.df_host[it.tick_field].min()
-        # ) / it.my_instance.window_duration)
-        # start_point = (
-        #     it.my_instance.sep_time - n_iter * it.my_instance.window_duration
-        # ) + 1
-        # end_point = (
-        #     start_point + it.my_instance.window_duration - 1
-        # )
-        # working_df_indiv = it.my_instance.df_indiv[
-        #     (it.my_instance.
-        #         df_indiv[it.tick_field] >= start_point) & (
-        #         it.my_instance.df_indiv[it.tick_field] <= end_point)
-        # ]
+        # (n_iter, start_point, end_point) = compute_analysis_points()
+
         it.my_instance.working_df_indiv = it.my_instance.df_indiv
-        # print(it.my_instance.working_df_indiv)
-        # input()
+
         # First clustering part
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')
@@ -502,29 +453,6 @@ def analysis_period(config, method):
         it.results_file.write('\nClustering computing time : %f s\n\n' %
                               (time.time() - start))
         add_time(-1, 'clustering_0', (time.time() - start))
-        # n_iter = n_iter - 1
-
-        # Loop for incrementing clustering (during analysis)
-        # TODO finish
-        # while n_iter > 0:
-        #     start_point = end_point + 1
-        #     end_point = (
-        #         start_point + it.my_instance.window_duration - 1
-        #     )
-        #     working_df_indiv = it.my_instance.df_indiv[
-        #         (it.my_instance.
-        #             df_indiv[it.tick_field] >= start_point) & (
-        #             it.my_instance.df_indiv[it.tick_field] <= end_point)]
-
-        # evaluate clustering
-        # (dv, nb_clust_changes_loop,
-        #     clustering_dual_values) = eval_clustering(
-        #     it.my_instance, working_df_indiv,
-        #     w, u, clustering_dual_values, constraints_dual,
-        #     tol_clust, tol_move_clust,
-        #     df_clust, cluster_profiles, labels_)
-
-        # n_iter = n_iter - 1
 
         # First placement part
         if config['placement']['enable'] and config['analysis']['placement_recompute']:
@@ -532,8 +460,9 @@ def analysis_period(config, method):
             start = time.time()
             place.allocation_distant_pairwise(
                 cluster_var_matrix, labels_)
-            it.results_file.write('\Placement heuristic time : %f s\n\n' %
-                (time.time() - start))
+            it.results_file.write(
+                '\nPlacement heuristic time : %f s\n\n' % (time.time() - start)
+            )
             add_time(-1, 'placement_0', (time.time() - start))
         else:
             logging.info('We do not perform placement \n')
@@ -545,6 +474,24 @@ def analysis_period(config, method):
         it.my_instance.df_host[it.tick_field] <= it.my_instance.sep_time
     ]
     return (df_indiv_clust, labels_)
+
+
+def compute_analysis_points():
+    """Compute number of iterations, starting and ending point for analyis."""
+    n_iter = math.floor((
+        it.my_instance.sep_time + 1 - it.my_instance.df_host[it.tick_field].min()
+    ) / it.my_instance.window_duration)
+    start_point = (
+        it.my_instance.sep_time - n_iter * it.my_instance.window_duration
+    ) + 1
+    end_point = (
+        start_point + it.my_instance.window_duration - 1
+    )
+    it.my_instance.working_df_indiv = it.my_instance.df_indiv[
+        (it.my_instance.
+            df_indiv[it.tick_field] >= start_point) & (
+            it.my_instance.df_indiv[it.tick_field] <= end_point)
+    ]
 
 
 def run_period(
@@ -1669,9 +1616,11 @@ def eval_placement(
         if len(moving_containers) > 0:
             nb_place_changes_loop = len(moving_containers)
             start = time.time()
-            moves_list = place.move_list_containers(moving_containers,
-                                       working_df_indiv[it.tick_field].min(),
-                                       working_df_indiv[it.tick_field].max())
+            moves_list = place.move_list_containers(
+                moving_containers,
+                working_df_indiv[it.tick_field].min(),
+                working_df_indiv[it.tick_field].max()
+            )
             add_time(loop_nb, 'move_placement', (time.time() - start))
             v = place.build_placement_adj_matrix(
                 working_df_indiv, it.my_instance.dict_id_c)
@@ -1872,14 +1821,6 @@ def add_time(loop_nb, action, time):
 def close_files():
     """Write the final files and close all open files."""
     it.results_file.close()
-
-
-def process_memory():
-    """Get memory information."""
-    process = psutil.Process(os.getpid())
-    mem_info = process.memory_info()
-    mem_usage_mb = mem_info.rss / 1024 / 1024
-    return mem_usage_mb
 
 
 def reassign_node(c_info):

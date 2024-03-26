@@ -341,16 +341,16 @@ def plot_nodes_wout_containers():
     fig, ax = plt.subplots()
     fig.suptitle('Nodes usage without containers')
 
-    print(it.my_insance.df_host)
+    print(it.my_instance.df_host)
     np_nodes = pd.pivot_table(
-        it.my_insance.df_host,
-        columns=it.my_insance.df_host[it.host_field],
-        index=it.my_insance.df_host[it.tick_field],
+        it.my_instance.df_host,
+        columns=it.my_instance.df_host[it.host_field],
+        index=it.my_instance.df_host[it.tick_field],
         aggfunc='sum', values='cpu')
     np_nodes_containers = pd.pivot_table(
-        it.my_insance.df_indiv,
-        columns=it.my_insance.df_indiv[it.host_field],
-        index=it.my_insance.df_indiv[it.tick_field],
+        it.my_instance.df_indiv,
+        columns=it.my_instance.df_indiv[it.host_field],
+        index=it.my_instance.df_indiv[it.tick_field],
         aggfunc='sum',
         values='cpu')
 

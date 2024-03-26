@@ -171,11 +171,11 @@ def produce_data(timestamp, history):
     """
     z = {}
     if history:
-        df_container = it.my_insance.df_indiv[
-            it.my_insance.df_indiv.timestamp == timestamp].copy()
+        df_container = it.my_instance.df_indiv[
+            it.my_instance.df_indiv.timestamp == timestamp].copy()
     else:
-        df_container = it.my_insance.df_indiv[
-            it.my_insance.df_indiv.timestamp == (timestamp - 1)].copy()
+        df_container = it.my_instance.df_indiv[
+            it.my_instance.df_indiv.timestamp == (timestamp - 1)].copy()
         df_container.loc[:, 'timestamp'] = timestamp
 
     df_con_dict = df_container.to_dict('records')

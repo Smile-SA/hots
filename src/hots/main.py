@@ -102,7 +102,10 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
 
     total_method_time = time.time()
 
-    global_process()
+    global_process(
+        config, time_limit, end_time,
+        method, cluster_method
+    )
 
     # # Analysis period
     # start = time.time()
@@ -129,11 +132,11 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     it.results_file.write('Number of overloads : %d\n' % nb_overloads)
     it.results_file.write('Total execution time : %f s\n\n' % (total_method_time))
 
-    it.clustering_file.write('\nFinal k : %d' % it.my_insance.nb_clusters)
+    it.clustering_file.write('\nFinal k : %d' % it.my_instance.nb_clusters)
 
     # # Save evaluation results in files
     node_results = node.get_nodes_load_info(
-        df_host_evo, it.my_insance.df_host_meta)
+        df_host_evo, it.my_instance.df_host_meta)
     it.global_results = pd.DataFrame([{
         'c1': obj_nodes,
         'c2': obj_delta,
@@ -144,9 +147,9 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     # Plot nodes consumption
     # TODO plot from df_host_evo
     # node_evo_fig = plot.plot_containers_groupby_nodes(
-    #     it.my_insance.df_indiv,
-    #     it.my_insance.df_host_meta[it.metrics[0]].max(),
-    #     it.my_insance.sep_time,
+    #     it.my_instance.df_indiv,
+    #     it.my_instance.df_host_meta[it.metrics[0]].max(),
+    #     it.my_instance.sep_time,
     #     title='Initial Node consumption')
     # node_evo_fig.savefig(output_path + '/init_node_plot.svg')
 
@@ -159,14 +162,14 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     #                                       labels_)
     #     show_clustering = True
     #     if show_clustering:
-    #         working_df_indiv = it.my_insance.df_indiv.loc[
-    #             it.my_insance.df_indiv[it.tick_field] <= it.my_insance.sep_time
+    #         working_df_indiv = it.my_instance.df_indiv.loc[
+    #             it.my_instance.df_indiv[it.tick_field] <= it.my_instance.sep_time
     #         ]
     #         clust_node_fig = plot.plot_clustering_containers_by_node(
-    #             working_df_indiv, it.my_insance.dict_id_c,
+    #             working_df_indiv, it.my_instance.dict_id_c,
     #             labels_, filter_big=True)
     #         clust_node_fig.savefig(output_path + '/clust_node_plot.svg')
-    #         first_clust_fig = plot.plot_clustering(df_indiv_clust, it.my_insance.dict_id_c,
+    #         first_clust_fig = plot.plot_clustering(df_indiv_clust, it.my_instance.dict_id_c,
     #                                                title='Clustering on first half part')
     #         first_clust_fig.savefig(output_path + '/first_clust_plot.svg')
 
@@ -186,8 +189,8 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     add_time(-1, 'total_time', main_time)
     node.plot_data_all_nodes(
         df_host_evo, it.metrics[0],
-        it.my_insance.df_host_meta[it.metrics[0]].max(),
-        it.my_insance.sep_time).savefig(
+        it.my_instance.df_host_meta[it.metrics[0]].max(),
+        it.my_instance.sep_time).savefig(
         output_path + '/node_usage_evo.svg')
     df_host_evo.to_csv(output_path + '/node_usage_evo.csv', index=False)
     it.global_results.to_csv(output_path + '/global_results.csv', index=False)
@@ -246,7 +249,7 @@ def preprocess(
         reader.csv_to_stream(parent_path, config)
 
     reader.init_reader(parent_path)
-    it.my_insance = Instance(parent_path, config)
+    it.my_instance = Instance(parent_path, config)
     it.my_instance.print_times()
 
     return (config, output_path)
@@ -270,7 +273,9 @@ def spec_params(config, list_params):
     return config
 
 
-def global_process():
+def global_process(
+        config, time_limit, end_time, method, cluster_method
+):
     """Perform the global process, from analysis to loops, and retrieve results.
 
     :return: _description_
@@ -285,11 +290,11 @@ def global_process():
     nb_clust_changes = 0
     nb_place_changes = 0
     # total_nb_overload = 0
-    nb_overloads = 0
+    # nb_overloads = 0
 
     print('Ready for new data')
     if it.use_kafka and not config['csv']:
-        it.my_insance.get_node_information()
+        it.my_instance.get_node_information()
         # start stream
         Instance.start_stream()
 
@@ -301,9 +306,9 @@ def global_process():
                 it.end = True
                 it.s_entry = False
                 break
-            if current_time < it.my_insance.sep_time:
+            if current_time < it.my_instance.sep_time:
                 current_data = reader.get_next_data(
-                    current_time, it.my_insance.sep_time, it.my_insance.sep_time + 1
+                    current_time, it.my_instance.sep_time, it.my_instance.sep_time + 1
                 )
                 print('The current data is: ', current_data)
                 if it.use_kafka and current_data.empty and it.end:
@@ -312,17 +317,17 @@ def global_process():
                     # it.s_entry = False
                     # break
 
-                current_time += it.my_insance.sep_time
-                it.my_insance.df_indiv = current_data
-                it.my_insance.df_host = current_data.groupby(
+                current_time += it.my_instance.sep_time
+                it.my_instance.df_indiv = current_data
+                it.my_instance.df_host = current_data.groupby(
                     [current_data[it.tick_field], current_data[it.host_field]],
                     as_index=False).agg(it.dict_agg_metrics)
                 
-                # print(it.my_insance.df_indiv)
+                # print(it.my_instance.df_indiv)
                 
                 if not it.use_kafka:
-                    it.my_insance.set_host_meta(config['host_meta_path'])
-                it.my_insance.set_meta_info()
+                    it.my_instance.set_host_meta(config['host_meta_path'])
+                it.my_instance.set_meta_info()
 
                 # Analysis period
                 start = time.time()
@@ -333,10 +338,10 @@ def global_process():
                 # print("df_indiv_clust: ",df_indiv_clust)
                 cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
                 # print("cluster_profiles: ",cluster_profiles)
-                # tmin = it.my_insance.sep_time - (it.my_insance.window_duration - 1)
-                # tmax = it.my_insance.sep_time
-                tmin = it.my_insance.df_indiv[it.tick_field].min()
-                tmax = it.my_insance.df_indiv[it.tick_field].max()
+                # tmin = it.my_instance.sep_time - (it.my_instance.window_duration - 1)
+                # tmax = it.my_instance.sep_time
+                tmin = it.my_instance.df_indiv[it.tick_field].min()
+                tmax = it.my_instance.df_indiv[it.tick_field].max()
 
                 # it.results_file.write('Loop mode : %s\n' % mode)
                 logging.info('Beginning the loop process ...\n')
@@ -356,18 +361,18 @@ def global_process():
                 )
                 add_time(0, 'total_loop', (time.time() - start))
                 tmax += config['loop']['tick']
-                tmin = tmax - (it.my_insance.window_duration - 1)
+                tmin = tmax - (it.my_instance.window_duration - 1)
 
             else:
-                previous_timestamp = it.my_insance.df_indiv[it.tick_field].max()
-                # last_index = it.my_insance.df_indiv.index.levels[0][-1]
+                previous_timestamp = it.my_instance.df_indiv[it.tick_field].max()
+                # last_index = it.my_instance.df_indiv.index.levels[0][-1]
                 current_data = reader.get_next_data(
                     current_time, config['loop']['tick'],
                     config['loop']['tick'] - current_time + 1
                 )
                 current_time += config['loop']['tick']
-                it.my_insance.df_indiv = pd.concat(
-                    [it.my_insance.df_indiv, current_data])
+                it.my_instance.df_indiv = pd.concat(
+                    [it.my_instance.df_indiv, current_data])
                 new_df_host = current_data.groupby(
                     [current_data[it.tick_field], it.host_field], as_index=False
                 ).agg(it.dict_agg_metrics)
@@ -375,8 +380,8 @@ def global_process():
                     it.host_field: str,
                     it.tick_field: int}
                 )
-                existing_machine_ids = it.my_insance.df_host[
-                    it.my_insance.df_host[it.tick_field] == previous_timestamp
+                existing_machine_ids = it.my_instance.df_host[
+                    it.my_instance.df_host[it.tick_field] == previous_timestamp
                 ][it.host_field].unique()
                 missing_machine_ids = set(existing_machine_ids) - set(
                     new_df_host[it.host_field])
@@ -389,8 +394,8 @@ def global_process():
                 # new_df_host.sort_values(it.tick_field, inplace=True)
                 new_df_host = pd.concat([new_df_host, missing_rows])
                 new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
-                it.my_insance.df_host = pd.concat([
-                    it.my_insance.df_host, new_df_host
+                it.my_instance.df_host = pd.concat([
+                    it.my_instance.df_host, new_df_host
                 ])
                 (working_df_indiv, df_clust, w, u, v) = build_matrices(
                     tmin, tmax, labels_
@@ -430,8 +435,8 @@ def global_process():
                 nb_clust_changes += nb_clust_changes_loop
                 nb_place_changes += nb_place_changes_loop
                 tmax += config['loop']['tick']
-                tmin = tmax - (it.my_insance.window_duration - 1)
-                # it.my_insance.time += 1
+                tmin = tmax - (it.my_instance.window_duration - 1)
+                # it.my_instance.time += 1
                 loop_nb += 1
     finally:
         # Close data reader before exit application
@@ -450,44 +455,44 @@ def analysis_period(config, method):
     :return: tuple with Nodes data with new placement, clustering data and clustering labels
     :rtype: Tuple
     """
-    df_host_evo = pd.DataFrame(columns=it.my_insance.df_host.columns)
+    df_host_evo = pd.DataFrame(columns=it.my_instance.df_host.columns)
     df_indiv_clust = pd.DataFrame()
     labels_ = []
     
     if method == 'init':
-        return (it.my_insance.df_host,
+        return (it.my_instance.df_host,
                 df_indiv_clust, labels_)
     elif method in ['heur', 'loop']:
 
         # Compute starting point
         # n_iter = math.floor((
-        #     it.my_insance.sep_time + 1 - it.my_insance.df_host[it.tick_field].min()
-        # ) / it.my_insance.window_duration)
+        #     it.my_instance.sep_time + 1 - it.my_instance.df_host[it.tick_field].min()
+        # ) / it.my_instance.window_duration)
         # start_point = (
-        #     it.my_insance.sep_time - n_iter * it.my_insance.window_duration
+        #     it.my_instance.sep_time - n_iter * it.my_instance.window_duration
         # ) + 1
         # end_point = (
-        #     start_point + it.my_insance.window_duration - 1
+        #     start_point + it.my_instance.window_duration - 1
         # )
-        # working_df_indiv = it.my_insance.df_indiv[
-        #     (it.my_insance.
+        # working_df_indiv = it.my_instance.df_indiv[
+        #     (it.my_instance.
         #         df_indiv[it.tick_field] >= start_point) & (
-        #         it.my_insance.df_indiv[it.tick_field] <= end_point)
+        #         it.my_instance.df_indiv[it.tick_field] <= end_point)
         # ]
-        it.my_insance.working_df_indiv = it.my_insance.df_indiv
-        # print(it.my_insance.working_df_indiv)
+        it.my_instance.working_df_indiv = it.my_instance.df_indiv
+        # print(it.my_instance.working_df_indiv)
         # input()
         # First clustering part
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')
         start = time.time()
-        (df_indiv_clust, it.my_insance.dict_id_c) = clt.build_matrix_indiv_attr(
-            it.my_insance.working_df_indiv)
+        (df_indiv_clust, it.my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
+            it.my_instance.working_df_indiv)
 
         labels_ = clt.perform_clustering(
-            df_indiv_clust, config['clustering']['algo'], it.my_insance.nb_clusters)
+            df_indiv_clust, config['clustering']['algo'], it.my_instance.nb_clusters)
         df_indiv_clust['cluster'] = labels_
-        it.my_insance.nb_clusters = labels_.max() + 1
+        it.my_instance.nb_clusters = labels_.max() + 1
 
         # TODO improve this part (distance...)
         cluster_profiles = clt.get_cluster_mean_profile(
@@ -506,17 +511,17 @@ def analysis_period(config, method):
         # while n_iter > 0:
         #     start_point = end_point + 1
         #     end_point = (
-        #         start_point + it.my_insance.window_duration - 1
+        #         start_point + it.my_instance.window_duration - 1
         #     )
-        #     working_df_indiv = it.my_insance.df_indiv[
-        #         (it.my_insance.
+        #     working_df_indiv = it.my_instance.df_indiv[
+        #         (it.my_instance.
         #             df_indiv[it.tick_field] >= start_point) & (
-        #             it.my_insance.df_indiv[it.tick_field] <= end_point)]
+        #             it.my_instance.df_indiv[it.tick_field] <= end_point)]
 
         # evaluate clustering
         # (dv, nb_clust_changes_loop,
         #     clustering_dual_values) = eval_clustering(
-        #     it.my_insance, working_df_indiv,
+        #     it.my_instance, working_df_indiv,
         #     w, u, clustering_dual_values, constraints_dual,
         #     tol_clust, tol_move_clust,
         #     df_clust, cluster_profiles, labels_)
@@ -535,11 +540,11 @@ def analysis_period(config, method):
         else:
             logging.info('We do not perform placement \n')
     elif method == 'spread':
-        place.allocation_spread(it.my_insance.nb_nodes)
+        place.allocation_spread(it.my_instance.nb_nodes)
     elif method == 'iter-consol':
         place.allocation_spread()
-    df_host_evo = it.my_insance.df_host.loc[
-        it.my_insance.df_host[it.tick_field] <= it.my_insance.sep_time
+    df_host_evo = it.my_instance.df_host.loc[
+        it.my_instance.df_host[it.tick_field] <= it.my_instance.sep_time
     ]
     return (df_host_evo, df_indiv_clust, labels_)
 
@@ -595,7 +600,7 @@ def run_period(
         # TODO adapt after 'progress_time_noloop' changed
         (temp_df_host, nb_overloads, _, _, _) = progress_time_noloop(
             'local',
-            it.my_insance.sep_time, it.my_insance.df_indiv[it.tick_field].max(),
+            it.my_instance.sep_time, it.my_instance.df_indiv[it.tick_field].max(),
             labels_,
             0, config['loop']['constraints_dual'], {}, {},
             config['loop']['tol_dual_clust'],
@@ -660,19 +665,19 @@ def streaming_eval(
     :rtype: Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]
     """
     fig_node, ax_node = plot.init_nodes_plot(
-        it.my_insance.df_indiv, it.my_insance.dict_id_n, it.my_insance.sep_time,
-        it.my_insance.df_host_meta[it.metrics[0]].max()
+        it.my_instance.df_indiv, it.my_instance.dict_id_n, it.my_instance.sep_time,
+        it.my_instance.df_host_meta[it.metrics[0]].max()
     )
     fig_clust, ax_clust = plot.init_plot_clustering(
-        df_indiv_clust, it.my_insance.dict_id_c)
+        df_indiv_clust, it.my_instance.dict_id_c)
 
     cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
     fig_mean_clust, ax_mean_clust = plot.init_plot_cluster_profiles(
         cluster_profiles
     )
 
-    tmin = it.my_insance.sep_time - (it.my_insance.window_duration - 1)
-    tmax = it.my_insance.sep_time
+    tmin = it.my_instance.sep_time - (it.my_instance.window_duration - 1)
+    tmax = it.my_instance.sep_time
 
     total_loop_time = 0.0
     loop_nb = 1
@@ -697,18 +702,18 @@ def streaming_eval(
     add_time(0, 'total_loop', (time.time() - start))
 
     if mode == 'event':
-        tmin = it.my_insance.sep_time
-        tmin = it.my_insance.sep_time
-        tmax = it.my_insance.df_indiv[it.tick_field].max()
+        tmin = it.my_instance.sep_time
+        tmin = it.my_instance.sep_time
+        tmax = it.my_instance.df_indiv[it.tick_field].max()
     else:
         tmax += tick
-        tmin = tmax - (it.my_insance.window_duration - 1)
+        tmin = tmax - (it.my_instance.window_duration - 1)
 
     if it.use_kafka:
         use_schema = False
         avro_deserializer = reader.connect_schema(
             use_schema, it.kafka_schema_url)
-        # time_to_send = it.my_insance.df_indiv['timestamp'].iloc[-1]
+        # time_to_send = it.my_instance.df_indiv['timestamp'].iloc[-1]
         # history = True # consider historical data
         # send last historical data to kafka
         # reader.produce_data(time_to_send, history)
@@ -718,15 +723,15 @@ def streaming_eval(
         it.memory_usage = []
         it.tick_time = []
         it.total_mem_use = []
-        # mem_before = it.my_insance.df_indiv.memory_usage(index=True).sum()
-        # hist_time = list(set(it.my_insance.df_indiv['timestamp']))
+        # mem_before = it.my_instance.df_indiv.memory_usage(index=True).sum()
+        # hist_time = list(set(it.my_instance.df_indiv['timestamp']))
 
         # for x in hist_time:
         #     it.time_at.append(x)
         #     it.memory_usage.append(mem_before)
         #     it.total_mem_use.append(tot_mem_after)
         it.s_entry = True
-        # print('df_indiv1: ',it.my_insance.df_indiv)
+        # print('df_indiv1: ',it.my_instance.df_indiv)
         print('Ready for new data...')
         try:
             while it.s_entry:
@@ -741,12 +746,12 @@ def streaming_eval(
                     key = list(dval.values())[0]
                     value = list(dval.values())[1]
                     file = list(dval.values())[2]
-                    # last_index = it.my_insance.df_indiv.index.levels[0][-1]
-                    last_index = it.my_insance.df_indiv.index.get_level_values(0).unique()[-1]
+                    # last_index = it.my_instance.df_indiv.index.levels[0][-1]
+                    last_index = it.my_instance.df_indiv.index.get_level_values(0).unique()[-1]
 
                     # print('last_index: ',last_index)
-                    subset = it.my_insance.df_indiv[
-                        it.my_insance.df_indiv.timestamp == last_index
+                    subset = it.my_instance.df_indiv[
+                        it.my_instance.df_indiv.timestamp == last_index
                     ].copy()
                     subset.reset_index(drop=True, inplace=True)
                     subset.loc[:, 'timestamp'] = int(key)
@@ -775,8 +780,8 @@ def streaming_eval(
                     # new_df_host.sort_values(it.tick_field, inplace=True)
                     # Set remaining machine_ids from df_host to 0.0
                     previous_timestamp = last_index
-                    existing_machine_ids = it.my_insance.df_host[
-                        it.my_insance.df_host[it.tick_field] == previous_timestamp
+                    existing_machine_ids = it.my_instance.df_host[
+                        it.my_instance.df_host[it.tick_field] == previous_timestamp
                     ][it.host_field].unique()
                     missing_machine_ids = set(existing_machine_ids) - set(
                         new_df_host[it.host_field])
@@ -791,11 +796,11 @@ def streaming_eval(
                     new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
 
                     # update df_indiv on every loop!
-                    it.my_insance.df_indiv = pd.concat([
-                        it.my_insance.df_indiv, new_df_container
+                    it.my_instance.df_indiv = pd.concat([
+                        it.my_instance.df_indiv, new_df_container
                     ])
-                    it.my_insance.df_host = pd.concat([
-                        it.my_insance.df_host, new_df_host
+                    it.my_instance.df_host = pd.concat([
+                        it.my_instance.df_host, new_df_host
                     ])
 
                     # print('\n # Step 1: Check Progress time no loop%d #\n' % loop_nb)
@@ -848,7 +853,7 @@ def streaming_eval(
 
                         # TODO not very practical
                         # plot.plot_clustering_containers_by_node(
-                        #     working_df_indiv, it.my_insance.dict_id_c, labels_)
+                        #     working_df_indiv, it.my_instance.dict_id_c, labels_)
 
                         (nb_clust_changes_loop, nb_place_changes_loop,
                             init_loop_silhouette, end_loop_silhouette,
@@ -875,7 +880,7 @@ def streaming_eval(
 
                         # update clustering & node consumption plot
                         plot.update_clustering_plot(
-                            fig_clust, ax_clust, df_clust, it.my_insance.dict_id_c)
+                            fig_clust, ax_clust, df_clust, it.my_instance.dict_id_c)
 
                         plot.update_cluster_profiles(
                             fig_mean_clust, ax_mean_clust, cluster_profiles,
@@ -883,12 +888,12 @@ def streaming_eval(
                         )
 
                         plot.update_nodes_plot(
-                            fig_node, ax_node, working_df_indiv, it.my_insance.dict_id_n)
+                            fig_node, ax_node, working_df_indiv, it.my_instance.dict_id_n)
 
-                        working_df_indiv = it.my_insance.df_indiv[
-                            (it.my_insance.
+                        working_df_indiv = it.my_instance.df_indiv[
+                            (it.my_instance.
                                 df_indiv[it.tick_field] >= tmin) & (
-                                it.my_insance.df_indiv[it.tick_field] <= tmax)]
+                                it.my_instance.df_indiv[it.tick_field] <= tmax)]
                         working_df_host = working_df_indiv.groupby(
                             [working_df_indiv[it.tick_field], it.host_field],
                             as_index=False).agg(it.dict_agg_metrics)
@@ -940,22 +945,22 @@ def streaming_eval(
 
                 # input('\nPress any key to progress in time ...\n')
                 tmax += tick
-                tmin = tmax - (it.my_insance.window_duration - 1)
+                tmin = tmax - (it.my_instance.window_duration - 1)
                 # if tol_clust < 1.0:
                 #     tol_clust += tol_step
                 # if tol_place < 1.0:
                 #     tol_place += tol_step
 
-                # if tmax >= it.my_insance.time:
+                # if tmax >= it.my_instance.time:
 
                 #     it.s_entry = True  # change to False to end loop according to mock data
                 # else:
                 #     loop_nb += 1
-                it.my_insance.time += 1
+                it.my_instance.time += 1
                 loop_nb += 1
                 # mem_after = process_memory()
                 # memory_usage.append(mem_after - mem_before)
-                mem_after = it.my_insance.df_indiv.memory_usage(index=True).sum()
+                mem_after = it.my_instance.df_indiv.memory_usage(index=True).sum()
                 it.memory_usage.append(mem_after)
                 it.time_at.append(key)
                 if file:
@@ -1017,7 +1022,7 @@ def streaming_eval(
 
             # TODO not very practical
             # plot.plot_clustering_containers_by_node(
-            #     working_df_indiv, it.my_insance.dict_id_c, labels_)
+            #     working_df_indiv, it.my_instance.dict_id_c, labels_)
 
             (nb_clust_changes_loop, nb_place_changes_loop,
                 init_loop_silhouette, end_loop_silhouette,
@@ -1040,17 +1045,17 @@ def streaming_eval(
 
             # update clustering & node consumption plot
             plot.update_clustering_plot(
-                fig_clust, ax_clust, df_clust, it.my_insance.dict_id_c)
+                fig_clust, ax_clust, df_clust, it.my_instance.dict_id_c)
             plot.update_cluster_profiles(
                 fig_mean_clust, ax_mean_clust, cluster_profiles,
                 sorted(working_df_indiv[it.tick_field].unique()))
             plot.update_nodes_plot(
-                fig_node, ax_node, working_df_indiv, it.my_insance.dict_id_n)
+                fig_node, ax_node, working_df_indiv, it.my_instance.dict_id_n)
 
-            working_df_indiv = it.my_insance.df_indiv[
-                (it.my_insance.
+            working_df_indiv = it.my_instance.df_indiv[
+                (it.my_instance.
                     df_indiv[it.tick_field] >= tmin) & (
-                    it.my_insance.df_indiv[it.tick_field] <= tmax)]
+                    it.my_instance.df_indiv[it.tick_field] <= tmax)]
             working_df_host = working_df_indiv.groupby(
                 [working_df_indiv[it.tick_field], it.host_field],
                 as_index=False).agg(it.dict_agg_metrics)
@@ -1100,20 +1105,20 @@ def streaming_eval(
 
             # input('\nPress any key to progress in time ...\n')
             tmax += tick
-            tmin = tmax - (it.my_insance.window_duration - 1)
+            tmin = tmax - (it.my_instance.window_duration - 1)
             if tol_clust < 1.0:
                 tol_clust += tol_step
             if tol_place < 1.0:
                 tol_place += tol_step
 
-            if tmax >= it.my_insance.time:
+            if tmax >= it.my_instance.time:
                 end = True
             else:
                 loop_nb += 1
 
     # plot.plot_memory_usage(it.time_at, it.total_mem_use, it.tick_time)
-    working_df_indiv = it.my_insance.df_indiv[
-        (it.my_insance.
+    working_df_indiv = it.my_instance.df_indiv[
+        (it.my_instance.
          df_indiv[it.tick_field] >= tmin)]
 
     if tmin < working_df_indiv[it.tick_field].max():
@@ -1121,11 +1126,11 @@ def streaming_eval(
         # TODO not same size issue with clustering
         # print(cluster_profiles)
         # plot.update_clustering_plot(
-        #     fig_clust, ax_clust, df_clust, it.my_insance.dict_id_c)
+        #     fig_clust, ax_clust, df_clust, it.my_instance.dict_id_c)
         # plot.update_cluster_profiles(fig_mean_clust, ax_mean_clust, cluster_profiles,
         #                              sorted(working_df_indiv[it.tick_field].unique()))
         plot.update_nodes_plot(fig_node, ax_node,
-                               working_df_indiv, it.my_insance.dict_id_n)
+                               working_df_indiv, it.my_instance.dict_id_n)
 
     df_host_evo = end_loop(working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
                            total_nb_overload, total_loop_time, loop_nb, df_host_evo)
@@ -1268,8 +1273,8 @@ def pre_loop(
     clust_model = mdl.Model(
         1,
         working_df_indiv, it.metrics[0],
-        it.my_insance.dict_id_c,
-        nb_clusters=it.my_insance.nb_clusters,
+        it.my_instance.dict_id_c,
+        nb_clusters=it.my_instance.nb_clusters,
         w=w, sol_u=u
     )
     add_time(0, 'build_clustering_model', (time.time() - start))
@@ -1284,13 +1289,13 @@ def pre_loop(
 
     if cluster_method == 'stream-km':
         it.streamkm_model = Streamkm(
-            coresetsize=it.my_insance.nb_containers,
-            length=it.my_insance.time * it.my_insance.nb_containers,
-            seed=it.my_insance.nb_clusters,
+            coresetsize=it.my_instance.nb_containers,
+            length=it.my_instance.time * it.my_instance.nb_containers,
+            seed=it.my_instance.nb_clusters,
         )
         it.streamkm_model.partial_fit(df_clust.drop('cluster', axis=1))
         _, labels_ = it.streamkm_model.get_final_clusters(
-            it.my_insance.nb_clusters, seed=it.my_insance.nb_clusters)
+            it.my_instance.nb_clusters, seed=it.my_instance.nb_clusters)
         df_clust['cluster'] = labels_
 
     # TODO improve this part (distance...)
@@ -1301,7 +1306,7 @@ def pre_loop(
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
     dv = ctnr.build_var_delta_matrix_cluster(
-        df_clust, cluster_var_matrix, it.my_insance.dict_id_c)
+        df_clust, cluster_var_matrix, it.my_instance.dict_id_c)
 
     # evaluate placement
     logging.info('# Placement evaluation #')
@@ -1310,9 +1315,9 @@ def pre_loop(
     place_model = mdl.Model(
         2,
         working_df_indiv, it.metrics[0],
-        it.my_insance.dict_id_c,
-        it.my_insance.dict_id_n,
-        it.my_insance.df_host_meta,
+        it.my_instance.dict_id_c,
+        it.my_instance.dict_id_n,
+        it.my_instance.df_host_meta,
         dv=dv, sol_u=u, sol_v=v
     )
     add_time(0, 'build_placement_model', (time.time() - start))
@@ -1339,17 +1344,17 @@ def build_matrices(tmin, tmax, labels_):
     :return: current loop data, clustering data, dissimilarity matrix and adjacency matrices
     :rtype: Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array]
     """
-    working_df_indiv = it.my_insance.df_indiv[
-        (it.my_insance.
+    working_df_indiv = it.my_instance.df_indiv[
+        (it.my_instance.
          df_indiv[it.tick_field] >= tmin) & (
-            it.my_insance.df_indiv[it.tick_field] <= tmax)]
-    (df_clust, it.my_insance.dict_id_c) = clt.build_matrix_indiv_attr(
+            it.my_instance.df_indiv[it.tick_field] <= tmax)]
+    (df_clust, it.my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
         working_df_indiv)
     w = clt.build_similarity_matrix(df_clust)
     df_clust['cluster'] = labels_
     u = clt.build_adjacency_matrix(labels_)
     v = place.build_placement_adj_matrix(
-        working_df_indiv, it.my_insance.dict_id_c)
+        working_df_indiv, it.my_instance.dict_id_c)
 
     return (working_df_indiv, df_clust, w, u, v)
 
@@ -1551,7 +1556,7 @@ def eval_clustering(
      clust_max_deg, clust_mean_deg) = mdl.get_moving_containers_clust(
         clust_model, clustering_dual_values,
         tol_clust, tol_move_clust,
-        it.my_insance.nb_containers, it.my_insance.dict_id_c,
+        it.my_instance.nb_containers, it.my_instance.dict_id_c,
         df_clust, cluster_profiles)
     add_time(loop_nb, 'get_moves_clustering', (time.time() - start))
     if len(moving_containers) > 0:
@@ -1560,7 +1565,7 @@ def eval_clustering(
         ics = 0.0
         (df_clust, labels_, nb_clust_changes_loop) = clt.change_clustering(
             moving_containers, df_clust, labels_,
-            it.my_insance.dict_id_c, tol_open_clust * ics)
+            it.my_instance.dict_id_c, tol_open_clust * ics)
         u = clt.build_adjacency_matrix(labels_)
         add_time(loop_nb, 'move_clustering', (time.time() - start))
 
@@ -1583,7 +1588,7 @@ def eval_clustering(
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
     dv = ctnr.build_var_delta_matrix_cluster(
-        df_clust, cluster_var_matrix, it.my_insance.dict_id_c)
+        df_clust, cluster_var_matrix, it.my_instance.dict_id_c)
 
     end_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 
@@ -1640,9 +1645,9 @@ def eval_placement(
     place_model = mdl.Model(
         2,
         working_df_indiv, it.metrics[0],
-        it.my_insance.dict_id_c,
-        it.my_insance.dict_id_n,
-        it.my_insance.df_host_meta,
+        it.my_instance.dict_id_c,
+        it.my_instance.dict_id_n,
+        it.my_instance.df_host_meta,
         dv=dv, sol_u=u, sol_v=v
     )
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
@@ -1667,8 +1672,8 @@ def eval_placement(
          place_conf_edges,
          place_max_deg, place_mean_deg) = mdl.get_moving_containers_place(
             place_model, placement_dual_values,
-            tol_place, tol_move_place, it.my_insance.nb_containers,
-            working_df_indiv, it.my_insance.dict_id_c)
+            tol_place, tol_move_place, it.my_instance.nb_containers,
+            working_df_indiv, it.my_instance.dict_id_c)
         add_time(loop_nb, 'get_moves_placement', (time.time() - start))
         if len(moving_containers) > 0:
             nb_place_changes_loop = len(moving_containers)
@@ -1678,7 +1683,7 @@ def eval_placement(
                                        working_df_indiv[it.tick_field].max())
             add_time(loop_nb, 'move_placement', (time.time() - start))
             v = place.build_placement_adj_matrix(
-                working_df_indiv, it.my_insance.dict_id_c)
+                working_df_indiv, it.my_instance.dict_id_c)
             start = time.time()
             place_model.update_adjacency_place_constraints(v)
             place_model.update_obj_place(dv)
@@ -1737,7 +1742,7 @@ def loop_kmeans(df_clust, labels_):
     init_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 
     new_labels_ = clt.perform_clustering(
-        df_clust.drop('cluster', axis=1), 'kmeans', it.my_insance.nb_clusters)
+        df_clust.drop('cluster', axis=1), 'kmeans', it.my_instance.nb_clusters)
     nb_clust_changes_loop = len(
         [i for i, j in zip(labels_, new_labels_) if i != j])
     labels_ = new_labels_
@@ -1751,7 +1756,7 @@ def loop_kmeans(df_clust, labels_):
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
     dv = ctnr.build_var_delta_matrix_cluster(
-        df_clust, cluster_var_matrix, it.my_insance.dict_id_c)
+        df_clust, cluster_var_matrix, it.my_instance.dict_id_c)
 
     end_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 
@@ -1778,7 +1783,7 @@ def stream_km(df_clust, labels_):
 
     it.streamkm_model.partial_fit(df_clust.drop('cluster', axis=1))
     _, new_labels_ = it.streamkm_model.get_final_clusters(
-        it.my_insance.nb_clusters, seed=it.my_insance.nb_clusters)
+        it.my_instance.nb_clusters, seed=it.my_instance.nb_clusters)
 
     nb_clust_changes_loop = len(
         [i for i, j in zip(labels_, new_labels_) if i != j])
@@ -1793,7 +1798,7 @@ def stream_km(df_clust, labels_):
     cluster_var_matrix = clt.get_sum_cluster_variance(
         cluster_profiles, cluster_vars)
     dv = ctnr.build_var_delta_matrix_cluster(
-        df_clust, cluster_var_matrix, it.my_insance.dict_id_c)
+        df_clust, cluster_var_matrix, it.my_instance.dict_id_c)
 
     end_loop_silhouette = clt.get_silhouette(df_clust, labels_)
 

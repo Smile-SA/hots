@@ -199,10 +199,10 @@ def show_specific_containers(
     containers_input = input()
     containers_toshow = [int(s) for s in containers_input.split(',')]
     plot.plot_clustering_containers_by_node_spec_cont(
-        working_df_indiv, it.my_insance.dict_id_c,
+        working_df_indiv, it.my_instance.dict_id_c,
         labels_, containers_toshow
     )
     plot.plot_clustering_spec_cont(df_indiv_clust,
-                                   it.my_insance.dict_id_c,
+                                   it.my_instance.dict_id_c,
                                    containers_toshow,
                                    title='Clustering on first half part')

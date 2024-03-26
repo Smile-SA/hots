@@ -392,11 +392,11 @@ def get_distance_cluster(cluster_centers_):
     """
     print('Compute distance between each cluster ...')
     cluster_distance = np.zeros(
-        (it.my_insance.nb_clusters, it.my_insance.nb_clusters), dtype=float)
+        (it.my_instance.nb_clusters, it.my_instance.nb_clusters), dtype=float)
 
-    pbar = tqdm(range(it.my_insance.nb_clusters))
+    pbar = tqdm(range(it.my_instance.nb_clusters))
     for row1 in pbar:
-        for row2 in range(row1 + 1, it.my_insance.nb_clusters):
+        for row2 in range(row1 + 1, it.my_instance.nb_clusters):
             cluster_distance[row1][row2] = np.linalg.norm(
                 cluster_centers_[row1] - cluster_centers_[row2])
             cluster_distance[row2][row1] = cluster_distance[row1][row2]

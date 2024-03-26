@@ -898,7 +898,7 @@ def move_list_containers(mvg_conts, instance, tmin, tmax, order='max'):
         order_indivs = ((sum(cons) / len(cons), c) for c, cons in mvg_conts_cons.items())
     for val, c in sorted(order_indivs, reverse=True):
         move_container(c, instance, tmin, tmax, old_ids[mvg_cont], moves_list)
-    
+
     return moves_list
 
 

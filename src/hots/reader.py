@@ -7,7 +7,7 @@ import socket
 import sys
 import time
 from pathlib import Path
-from .instance import Instance
+
 import pandas as pd
 
 try:
@@ -27,6 +27,7 @@ else:
 
 from . import init as it
 from . import node
+from .instance import Instance
 
 
 def init_reader(path, use_kafka):
@@ -52,7 +53,7 @@ def init_reader(path, use_kafka):
         it.avro_deserializer = None
         header = next(it.csv_reader, None)
         print('Headers : ', header)
-        #TODO and then ?
+        # TODO and then ?
 
 
 # TODO window_size useless ?
@@ -69,11 +70,11 @@ def get_next_data(
         current_time, tick
     ))
     new_df_container = pd.DataFrame()
-    
+
     it.end = False
     while not it.end:
         if use_kafka:
-            
+
             it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
             dval = process_kafka_msg(it.avro_deserializer)
             if dval is None:
@@ -93,7 +94,6 @@ def get_next_data(
             if it.csv_queue.empty():
                 row = next(it.csv_reader, None)
                 if row is None:
-                    end = True
                     it.s_entry = False
                     break
                 it.csv_queue.put(row)
@@ -517,7 +517,7 @@ def process_kafka_msg(avro_deserializer):
                 'Topic unknown, creating %s topic\n' % (
                     it.kafka_topics['docker_topic']))
         elif msg.error():
-            print("error message here")
+            print('error message here')
             raise KafkaException(msg.error())
 
     else:

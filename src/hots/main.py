@@ -15,11 +15,10 @@ allocation, evaluation, access to optimization model...).
 
 import json
 import logging
-import math
 import os
 import signal
-import time
 import sys
+import time
 
 import click
 
@@ -118,7 +117,7 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
         my_instance.get_node_information()
         # start stream
         Instance.start_stream()
-    
+
     try:
         while it.s_entry:
             # print("current_time: ", end_time)
@@ -131,13 +130,13 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
                 current_data = reader.get_next_data(
                     current_time, my_instance.sep_time, my_instance.sep_time + 1, use_kafka
                 )
-                print("The current data is: ",current_data)
+                print('The current data is: ', current_data)
                 if use_kafka and current_data.empty and it.end:
                     # df_host_evo = pd.DataFrame()
                     sys.exit(0)
                     # it.s_entry = False
                     # break
-                
+
                 current_time += my_instance.sep_time
                 my_instance.df_indiv = current_data
                 my_instance.df_host = current_data.groupby(
@@ -1730,6 +1729,7 @@ def move_containers_info(moves_list, current_time):
         json.dumps(data))
     it.kafka_producer.flush()
     time.sleep(1)
+
 
 def loop_kmeans(my_instance, df_clust, labels_):
     """Update clustering via kmeans from scratch.

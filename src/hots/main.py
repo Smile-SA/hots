@@ -261,148 +261,44 @@ def global_process(
     :rtype: Dict
     """
     results = {}
-    # Global loop for getting data
-    current_time = 0
-    # TODO check these stats retrieving
-    # total_loop_time = 0.0
-    loop_nb = 1
-    nb_clust_changes = 0
-    nb_place_changes = 0
-    # total_nb_overload = 0
-    # nb_overloads = 0
     results['nb_overloads'] = 0
 
     print('Ready for new data')
     if it.use_kafka and not config['csv']:
         it.my_instance.get_node_information()
-        # start stream
         Instance.start_stream()
 
-    try:
-        while it.s_entry:
-            if time_limit is not None and time.time() >= end_time:
-                it.end = True
-                it.s_entry = False
-                break
-            # TODO maybe put analyis period outside global loop
-            if current_time < it.my_instance.sep_time:
-                # We have to perform the analysis period
-                current_data = reader.get_next_data(
-                    current_time, it.my_instance.sep_time, it.my_instance.sep_time + 1
-                )
-                if it.use_kafka and current_data.empty and it.end:
-                    sys.exit(0)
+    # Analysis period
+    start = time.time()
+    labels_ = analysis_period(config, method)
+    add_time(-1, 'total_t_obs', (time.time() - start))
+    tmin = it.my_instance.df_indiv[it.tick_field].min()
+    tmax = it.my_instance.df_indiv[it.tick_field].max()
 
-                current_time += it.my_instance.sep_time
-                it.my_instance.df_indiv = current_data
-                it.my_instance.df_host = current_data.groupby(
-                    [current_data[it.tick_field], current_data[it.host_field]],
-                    as_index=False).agg(it.dict_agg_metrics)
+    # Prepare the loop
+    # it.results_file.write('Loop mode : %s\n' % mode)
+    logging.info('Beginning the loop process ...\n')
 
-                if not it.use_kafka:
-                    it.my_instance.set_host_meta(config['host_meta_path'])
-                it.my_instance.set_meta_info()
+    (working_df_indiv, df_clust, w, u, v) = build_matrices(
+        tmin, tmax, labels_
+    )
 
-                # Analysis period
-                start = time.time()
-                (df_indiv_clust, labels_) = analysis_period(config, method)
-                add_time(-1, 'total_t_obs', (time.time() - start))
-                cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
-                tmin = it.my_instance.df_indiv[it.tick_field].min()
-                tmax = it.my_instance.df_indiv[it.tick_field].max()
+    # Build initial optimization model in pre loop using analysis data
+    start = time.time()
+    (clust_model, place_model,
+        clustering_dual_values, placement_dual_values) = pre_loop(
+        working_df_indiv, df_clust,
+        w, u, config['loop']['constraints_dual'], v,
+        cluster_method, config['optimization']['solver']
+    )
+    add_time(0, 'total_loop', (time.time() - start))
+    tmax += config['loop']['tick']
+    tmin = tmax - (it.my_instance.window_duration - 1)
 
-                # Prepare the loop
-                # it.results_file.write('Loop mode : %s\n' % mode)
-                logging.info('Beginning the loop process ...\n')
-
-                (working_df_indiv, df_clust, w, u, v) = build_matrices(
-                    tmin, tmax, labels_
-                )
-
-                # Build initial optimization model in pre loop using analysis data
-                start = time.time()
-                (clust_model, place_model,
-                 clustering_dual_values, placement_dual_values) = pre_loop(
-                    working_df_indiv, df_clust,
-                    w, u, config['loop']['constraints_dual'], v,
-                    cluster_method, config['optimization']['solver']
-                )
-                add_time(0, 'total_loop', (time.time() - start))
-                tmax += config['loop']['tick']
-                tmin = tmax - (it.my_instance.window_duration - 1)
-
-            else:
-                # We have to perform a loop
-                previous_timestamp = it.my_instance.df_indiv[it.tick_field].max()
-                current_data = reader.get_next_data(
-                    current_time, config['loop']['tick'],
-                    config['loop']['tick'] - current_time + 1
-                )
-                current_time += config['loop']['tick']
-                it.my_instance.df_indiv = pd.concat(
-                    [it.my_instance.df_indiv, current_data])
-                new_df_host = current_data.groupby(
-                    [current_data[it.tick_field], it.host_field], as_index=False
-                ).agg(it.dict_agg_metrics)
-                new_df_host = new_df_host.astype({
-                    it.host_field: str,
-                    it.tick_field: int}
-                )
-                existing_machine_ids = it.my_instance.df_host[
-                    it.my_instance.df_host[it.tick_field] == previous_timestamp
-                ][it.host_field].unique()
-                missing_machine_ids = set(existing_machine_ids) - set(
-                    new_df_host[it.host_field])
-
-                missing_rows = pd.DataFrame({
-                    'timestamp': int(current_time),
-                    'machine_id': list(missing_machine_ids),
-                    'cpu': 0.0
-                })
-                new_df_host = pd.concat([new_df_host, missing_rows])
-                new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
-                it.my_instance.df_host = pd.concat([
-                    it.my_instance.df_host, new_df_host
-                ])
-                (working_df_indiv, df_clust, w, u, v) = build_matrices(
-                    tmin, tmax, labels_
-                )
-                cluster_profiles = clt.get_cluster_mean_profile(df_clust)
-                nb_clust_changes_loop = 0
-                nb_place_changes_loop = 0
-                (nb_clust_changes_loop, nb_place_changes_loop,
-                    init_loop_silhouette, end_loop_silhouette,
-                    clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
-                    place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
-                    clust_model, place_model,
-                    clustering_dual_values, placement_dual_values,
-                    df_clust, cluster_profiles, labels_) = eval_sols(
-                    working_df_indiv, cluster_method,
-                    w, u, v, clust_model, place_model,
-                    config['loop']['constraints_dual'],
-                    clustering_dual_values, placement_dual_values,
-                    config['loop']['tol_dual_clust'],
-                    config['loop']['tol_move_clust'],
-                    config['loop']['tol_open_clust'],
-                    config['loop']['tol_dual_place'],
-                    config['loop']['tol_move_place'],
-                    df_clust, cluster_profiles, labels_, loop_nb,
-                    config['optimization']['solver']
-                )
-                it.results_file.write(
-                    'Number of changes in clustering : %d\n' % nb_clust_changes_loop
-                )
-                it.results_file.write(
-                    'Number of changes in placement : %d\n' % nb_place_changes_loop
-                )
-                nb_clust_changes += nb_clust_changes_loop
-                nb_place_changes += nb_place_changes_loop
-                tmax += config['loop']['tick']
-                tmin = tmax - (it.my_instance.window_duration - 1)
-                loop_nb += 1
-    finally:
-        # Close data reader before exit application
-        reader.close_reader()
+    run_period(
+        tmin, tmax, time_limit, end_time, config, cluster_method, labels_,
+        clust_model, place_model, clustering_dual_values, placement_dual_values
+    )
 
     return results
 
@@ -414,9 +310,23 @@ def analysis_period(config, method):
     :type config: Dict
     :param method: method used to solve initial problem
     :type method: str
-    :return: tuple with Clustering data and clustering labels
-    :rtype: Tuple
+    :return: Clustering labels
+    :rtype: List
     """
+    current_data = reader.get_next_data(
+        0, it.my_instance.sep_time, it.my_instance.sep_time + 1
+    )
+    if it.use_kafka and current_data.empty and it.end:
+        sys.exit(0)
+
+    it.my_instance.df_indiv = current_data
+    it.my_instance.df_host = current_data.groupby(
+        [current_data[it.tick_field], current_data[it.host_field]],
+        as_index=False).agg(it.dict_agg_metrics)
+
+    if not it.use_kafka:
+        it.my_instance.set_host_meta(config['host_meta_path'])
+    it.my_instance.set_meta_info()
     it.my_instance.init_host_evo()
     df_indiv_clust = pd.DataFrame()
     labels_ = []
@@ -473,7 +383,7 @@ def analysis_period(config, method):
     it.my_instance.df_host_evo = it.my_instance.df_host.loc[
         it.my_instance.df_host[it.tick_field] <= it.my_instance.sep_time
     ]
-    return (df_indiv_clust, labels_)
+    return labels_
 
 
 def compute_analysis_points():
@@ -495,69 +405,117 @@ def compute_analysis_points():
 
 
 def run_period(
-    df_indiv_clust, labels_, config, output_path,
-    method, cluster_method
+    tmin, tmax, time_limit, end_time, config, cluster_method, labels_,
+    clust_model, place_model, clustering_dual_values, placement_dual_values
 ):
-    """Perform all needed process during evaluation period.
+    """Perform loop process, getting new data and evaluating (updating) solutions.
 
-    :param df_indiv_clust: clustering individuals data
-    :type df_indiv_clust: pd.DataFrame
-    :param labels_: clustering labels
-    :type labels_: List
-    :param config: set parameters
-    :type config: Dict
-    :param output_path: output folder path
-    :type output_path: str
-    :param method: method to use to solve problem
-    :type method: str
-    :param cluster_method: method to use for clustering
-    :type cluster_method: str
-    :return: evolving node data and number of nodes overloads
-    :rtype: Tuple[pd.DataFrame, int]
+    :param tmin: _description_
+    :type tmin: _type_
+    :param tmax: _description_
+    :type tmax: _type_
+    :param time_limit: _description_
+    :type time_limit: _type_
+    :param end_time: _description_
+    :type end_time: _type_
+    :param config: _description_
+    :type config: _type_
+    :param cluster_method: _description_
+    :type cluster_method: _type_
+    :param labels_: _description_
+    :type labels_: _type_
+    :param clust_model: _description_
+    :type clust_model: _type_
+    :param place_model: _description_
+    :type place_model: _type_
+    :param clustering_dual_values: _description_
+    :type clustering_dual_values: _type_
+    :param placement_dual_values: _description_
+    :type placement_dual_values: _type_
     """
-    nb_overloads = 0
-    # Loops for evaluation
-    if method in ['loop']:
-        # loop 'streaming' progress
-        it.results_file.write('\n### Loop process ###\n')
-        (fig_node, fig_clust, fig_mean_clust,
-         nb_overloads) = streaming_eval(
-            df_indiv_clust, labels_,
-            config['loop']['mode'],
-            config['loop']['tick'],
-            config['loop']['constraints_dual'],
-            config['loop']['tol_dual_clust'],
-            config['loop']['tol_move_clust'],
-            config['loop']['tol_open_clust'],
-            config['loop']['tol_dual_place'],
-            config['loop']['tol_move_place'],
-            config['loop']['tol_step'],
-            cluster_method,
-            config['optimization']['solver'],
-        )
-        fig_node.savefig(output_path + '/node_evo_plot.svg')
-        fig_clust.savefig(output_path + '/clust_evo_plot.svg')
-        fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
+    loop_nb = 1
+    nb_clust_changes = 0
+    nb_place_changes = 0
+    current_time = it.my_instance.sep_time
 
-    elif method in ['heur', 'spread', 'iter-consol']:
-        # TODO adapt after 'progress_time_noloop' changed
-        (temp_df_host, nb_overloads, _, _, _) = progress_time_noloop(
-            'local',
-            it.my_instance.sep_time, it.my_instance.df_indiv[it.tick_field].max(),
-            labels_,
-            0, config['loop']['constraints_dual'], {}, {},
-            config['loop']['tol_dual_clust'],
-            config['loop']['tol_move_clust'],
-            config['loop']['tol_dual_place'],
-            config['loop']['tol_move_place']
-        )
-        it.my_instance.df_host_evo = pd.concat([
-            it.my_instance.df_host_evo,
-            temp_df_host[~temp_df_host[it.tick_field].isin(
-                it.my_instance.df_host_evo[it.tick_field].unique())]
-        ])
+    try:
+        while it.s_entry:
+            if time_limit is not None and time.time() >= end_time:
+                it.end = True
+                it.s_entry = False
+                break
 
-    return (nb_overloads)
+            # We have to perform a loop
+            previous_timestamp = it.my_instance.df_indiv[it.tick_field].max()
+            current_data = reader.get_next_data(
+                current_time, config['loop']['tick'],
+                config['loop']['tick'] - current_time + 1
+            )
+            current_time += config['loop']['tick']
+            it.my_instance.df_indiv = pd.concat(
+                [it.my_instance.df_indiv, current_data])
+            new_df_host = current_data.groupby(
+                [current_data[it.tick_field], it.host_field], as_index=False
+            ).agg(it.dict_agg_metrics)
+            new_df_host = new_df_host.astype({
+                it.host_field: str,
+                it.tick_field: int}
+            )
+            existing_machine_ids = it.my_instance.df_host[
+                it.my_instance.df_host[it.tick_field] == previous_timestamp
+            ][it.host_field].unique()
+            missing_machine_ids = set(existing_machine_ids) - set(
+                new_df_host[it.host_field])
+
+            missing_rows = pd.DataFrame({
+                'timestamp': int(current_time),
+                'machine_id': list(missing_machine_ids),
+                'cpu': 0.0
+            })
+            new_df_host = pd.concat([new_df_host, missing_rows])
+            new_df_host.set_index([it.tick_field, it.host_field], inplace=True, drop=False)
+            it.my_instance.df_host = pd.concat([
+                it.my_instance.df_host, new_df_host
+            ])
+            (working_df_indiv, df_clust, w, u, v) = build_matrices(
+                tmin, tmax, labels_
+            )
+            cluster_profiles = clt.get_cluster_mean_profile(df_clust)
+            nb_clust_changes_loop = 0
+            nb_place_changes_loop = 0
+            (nb_clust_changes_loop, nb_place_changes_loop,
+                init_loop_silhouette, end_loop_silhouette,
+                clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
+                place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
+                clust_model, place_model,
+                clustering_dual_values, placement_dual_values,
+                df_clust, cluster_profiles, labels_) = eval_sols(
+                working_df_indiv, cluster_method,
+                w, u, v, clust_model, place_model,
+                config['loop']['constraints_dual'],
+                clustering_dual_values, placement_dual_values,
+                config['loop']['tol_dual_clust'],
+                config['loop']['tol_move_clust'],
+                config['loop']['tol_open_clust'],
+                config['loop']['tol_dual_place'],
+                config['loop']['tol_move_place'],
+                df_clust, cluster_profiles, labels_, loop_nb,
+                config['optimization']['solver']
+            )
+            it.results_file.write(
+                'Number of changes in clustering : %d\n' % nb_clust_changes_loop
+            )
+            it.results_file.write(
+                'Number of changes in placement : %d\n' % nb_place_changes_loop
+            )
+            nb_clust_changes += nb_clust_changes_loop
+            nb_place_changes += nb_place_changes_loop
+            tmax += config['loop']['tick']
+            tmin = tmax - (it.my_instance.window_duration - 1)
+            loop_nb += 1
+    finally:
+        # Close data reader before exit application
+        reader.close_reader()
 
 
 def signal_handler_sigint(signal_number, frame):

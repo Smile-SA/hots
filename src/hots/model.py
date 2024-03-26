@@ -945,11 +945,9 @@ def get_container_tomove(c1, c2, working_df):
         return c2
 
 
-def get_obj_value_host(df_host, t_min=None, t_max=None):
+def get_obj_value_host(t_min=None, t_max=None):
     """Get objectives value of current solution.
 
-    :param df_host: _description_
-    :type df_host: pd.DataFrame
     :param t_min: _description_, defaults to None
     :type t_min: int, optional
     :param t_max: _description_, defaults to None
@@ -957,11 +955,11 @@ def get_obj_value_host(df_host, t_min=None, t_max=None):
     :return: _description_
     :rtype: Tuple[int, float]
     """
-    t_min = t_min or df_host[it.tick_field].min()
-    t_max = t_max or df_host[it.tick_field].max()
-    df_host = df_host[
-        (df_host[it.tick_field] >= t_min)
-        & (df_host[it.tick_field] <= t_max)]
+    t_min = t_min or it.my_instance.df_host_evo[it.tick_field].min()
+    t_max = t_max or it.my_instance.df_host_evo[it.tick_field].max()
+    df_host = it.my_instance.df_host_evo[
+        (it.my_instance.df_host_evo[it.tick_field] >= t_min)
+        & (it.my_instance.df_host_evo[it.tick_field] <= t_max)]
     df_host.reset_index(drop=True, inplace=True)
     c2 = 0.0
     nb_nodes = 0

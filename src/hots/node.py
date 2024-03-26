@@ -16,11 +16,9 @@ from . import init as it
 # Definition of Node-related functions #
 
 
-def plot_data_all_nodes(df_host, metric, max_cap, sep_time):
+def plot_data_all_nodes(metric, max_cap, sep_time):
     """Plot specific metric consumption for all nodes.
 
-    :param df_host: _description_
-    :type df_host: pd.DataFrame
     :param metric: _description_
     :type metric: str
     :param max_cap: _description_
@@ -32,10 +30,11 @@ def plot_data_all_nodes(df_host, metric, max_cap, sep_time):
     """
     # TODO create temp df is bad...
     fig, ax = plt.subplots()
-    # temp_df = df_host.reset_index(drop=True)
     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
-    pvt = pd.pivot_table(df_host.reset_index(drop=True), columns=it.host_field,
-                         index=it.tick_field, aggfunc='sum', values=metric)
+    pvt = pd.pivot_table(
+        it.my_instance.df_host_evo.reset_index(drop=True), columns=it.host_field,
+        index=it.tick_field, aggfunc='sum', values=metric
+    )
     pvt.plot(ax=ax, legend=False)
     # fig.suptitle('%s use on all nodes' % metric)
     ax.axvline(x=sep_time, color='red', linestyle='--')
@@ -341,11 +340,9 @@ def get_mean_consumption_node(df_host, node_id):
     )
 
 
-def get_nodes_load_info(df_host, df_host_meta):
+def get_nodes_load_info(df_host_meta):
     """Get all wanted node information in a dataframe.
 
-    :param df_host: _description_
-    :type df_host: pd.DataFrame
     :param df_host_meta: _description_
     :type df_host_meta: pd.DataFrame
     :return: _description_
@@ -355,7 +352,9 @@ def get_nodes_load_info(df_host, df_host_meta):
         columns=[it.host_field, 'load_var', 'avg_load', 'min_load', 'max_load'])
     metric = it.metrics[0]
 
-    for node, data_n in df_host.groupby(df_host[it.host_field]):
+    for node, data_n in it.my_instance.df_host_evo.groupby(
+        it.my_instance.df_host_evo[it.host_field]
+    ):
         node_cap = df_host_meta.loc[
             df_host_meta[it.host_field] == node
         ][metric].to_numpy()[0]

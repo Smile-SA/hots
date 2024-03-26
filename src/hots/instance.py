@@ -148,13 +148,13 @@ class Instance:
 
     def set_host_meta(self, host_meta_path):
         """Create the dataframe for host meta data from first streaming data."""
-        # df_columns = [it.host_field]
-        # for metric in it.metrics:
-        #     df_columns.append(metric)
-        # self.df_host_meta = pd.DataFrame(columns=df_columns)
         self.df_host_meta = it.df_from_csv(host_meta_path)
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.nb_nodes = self.df_host_meta[it.host_field].nunique()
+
+    def init_host_evo(self):
+        """Initialize the data evolution in hosts DataFrame."""
+        self.df_host_evo = pd.DataFrame(columns=self.df_host.columns)
 
     def get_node_from_container(self, container_id):
         """Get node ID from container ID.

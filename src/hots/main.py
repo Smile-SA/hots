@@ -102,14 +102,14 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
 
     total_method_time = time.time()
 
-    global_process(
+    final_results = global_process(
         config, time_limit, end_time,
         method, cluster_method
     )
 
     # # Analysis period
     # start = time.time()
-    # (df_host_evo,
+    # (it.my_instance.df_host_evo,
     #  df_indiv_clust, labels_) = analysis_period(
     #     config, method
     # )
@@ -117,35 +117,35 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
 
     # # Run period
     # start = time.time()
-    # (df_host_evo, nb_overloads) = run_period(
-    #     df_host_evo,
+    # (it.my_instance.df_host_evo, nb_overloads) = run_period(
+    #     it.my_instance.df_host_evo,
     #     df_indiv_clust, labels_,
     #     config, output_path, method, cluster_method, use_kafka
     # )
     add_time(-1, 'total_t_run', (time.time() - start))
     total_method_time = time.time() - total_method_time
-    # print("final df_host_evo: ",df_host_evo)
+    # print("final df_host_evo: ",it.my_instance.df_host_evo)
     # Print objectives of evaluation part
-    (obj_nodes, obj_delta) = mdl.get_obj_value_host(df_host_evo)
+    (obj_nodes, obj_delta) = mdl.get_obj_value_host()
     it.results_file.write('Number of nodes : %d, Ampli max : %f\n' % (
         obj_nodes, obj_delta))
-    it.results_file.write('Number of overloads : %d\n' % nb_overloads)
+    it.results_file.write('Number of overloads : %d\n' % final_results['nb_overloads'])
     it.results_file.write('Total execution time : %f s\n\n' % (total_method_time))
 
     it.clustering_file.write('\nFinal k : %d' % it.my_instance.nb_clusters)
 
     # # Save evaluation results in files
     node_results = node.get_nodes_load_info(
-        df_host_evo, it.my_instance.df_host_meta)
+        it.my_instance.df_host_meta)
     it.global_results = pd.DataFrame([{
         'c1': obj_nodes,
         'c2': obj_delta,
         'c3': node_results['load_var'].mean(),
-        'c4': nb_overloads
+        'c4': final_results['nb_overloads']
     }])
 
     # Plot nodes consumption
-    # TODO plot from df_host_evo
+    # TODO plot from it.my_instance.df_host_evo
     # node_evo_fig = plot.plot_containers_groupby_nodes(
     #     it.my_instance.df_indiv,
     #     it.my_instance.df_host_meta[it.metrics[0]].max(),
@@ -181,18 +181,18 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
     #         working_df_indiv, config['allocation']))
     # else:
     #     logging.info('We do not perform allocation \n')
-    
+
     # tot_mem_after = process_memory()
     # print('memory use: ', tot_mem_after - tot_mem_before)
     main_time = time.time() - main_time
     print('\nTotal computing time : %f s' % (main_time))
     add_time(-1, 'total_time', main_time)
     node.plot_data_all_nodes(
-        df_host_evo, it.metrics[0],
+        it.metrics[0],
         it.my_instance.df_host_meta[it.metrics[0]].max(),
         it.my_instance.sep_time).savefig(
         output_path + '/node_usage_evo.svg')
-    df_host_evo.to_csv(output_path + '/node_usage_evo.csv', index=False)
+    it.my_instance.df_host_evo.to_csv(output_path + '/node_usage_evo.csv', index=False)
     it.global_results.to_csv(output_path + '/global_results.csv', index=False)
     node_results.to_csv(output_path + '/node_results.csv')
     it.loop_results.to_csv(output_path + '/loop_results.csv', index=False)
@@ -291,6 +291,7 @@ def global_process(
     nb_place_changes = 0
     # total_nb_overload = 0
     # nb_overloads = 0
+    results['nb_overloads'] = 0
 
     print('Ready for new data')
     if it.use_kafka and not config['csv']:
@@ -312,7 +313,6 @@ def global_process(
                 )
                 print('The current data is: ', current_data)
                 if it.use_kafka and current_data.empty and it.end:
-                    # df_host_evo = pd.DataFrame()
                     sys.exit(0)
                     # it.s_entry = False
                     # break
@@ -331,9 +331,7 @@ def global_process(
 
                 # Analysis period
                 start = time.time()
-                (df_host_evo, df_indiv_clust, labels_) = analysis_period(
-                    config, method
-                )
+                (df_indiv_clust, labels_) = analysis_period(config, method)
                 add_time(-1, 'total_t_obs', (time.time() - start))
                 # print("df_indiv_clust: ",df_indiv_clust)
                 cluster_profiles = clt.get_cluster_mean_profile(df_indiv_clust)
@@ -452,13 +450,13 @@ def analysis_period(config, method):
     :type config: Dict
     :param method: method used to solve initial problem
     :type method: str
-    :return: tuple with Nodes data with new placement, clustering data and clustering labels
+    :return: tuple with Clustering data and clustering labels
     :rtype: Tuple
     """
-    df_host_evo = pd.DataFrame(columns=it.my_instance.df_host.columns)
+    it.my_instance.init_host_evo()
     df_indiv_clust = pd.DataFrame()
     labels_ = []
-    
+
     if method == 'init':
         return (it.my_instance.df_host,
                 df_indiv_clust, labels_)
@@ -543,20 +541,18 @@ def analysis_period(config, method):
         place.allocation_spread(it.my_instance.nb_nodes)
     elif method == 'iter-consol':
         place.allocation_spread()
-    df_host_evo = it.my_instance.df_host.loc[
+    it.my_instance.df_host_evo = it.my_instance.df_host.loc[
         it.my_instance.df_host[it.tick_field] <= it.my_instance.sep_time
     ]
-    return (df_host_evo, df_indiv_clust, labels_)
+    return (df_indiv_clust, labels_)
 
 
 def run_period(
-    df_host_evo, df_indiv_clust, labels_, config, output_path,
+    df_indiv_clust, labels_, config, output_path,
     method, cluster_method
 ):
     """Perform all needed process during evaluation period.
 
-    :param df_host_evo: evolving node data
-    :type df_host_evo: pd.DataFrame
     :param df_indiv_clust: clustering individuals data
     :type df_indiv_clust: pd.DataFrame
     :param labels_: clustering labels
@@ -578,7 +574,7 @@ def run_period(
         # loop 'streaming' progress
         it.results_file.write('\n### Loop process ###\n')
         (fig_node, fig_clust, fig_mean_clust,
-         df_host_evo, nb_overloads) = streaming_eval(
+         nb_overloads) = streaming_eval(
             df_indiv_clust, labels_,
             config['loop']['mode'],
             config['loop']['tick'],
@@ -591,7 +587,7 @@ def run_period(
             config['loop']['tol_step'],
             cluster_method,
             config['optimization']['solver'],
-            df_host_evo)
+        )
         fig_node.savefig(output_path + '/node_evo_plot.svg')
         fig_clust.savefig(output_path + '/clust_evo_plot.svg')
         fig_mean_clust.savefig(output_path + '/mean_clust_evo_plot.svg')
@@ -608,13 +604,13 @@ def run_period(
             config['loop']['tol_dual_place'],
             config['loop']['tol_move_place']
         )
-        df_host_evo = pd.concat([
-            df_host_evo,
+        it.my_instance.df_host_evo = pd.concat([
+            it.my_instance.df_host_evo,
             temp_df_host[~temp_df_host[it.tick_field].isin(
-                df_host_evo[it.tick_field].unique())]
+                it.my_instance.df_host_evo[it.tick_field].unique())]
         ])
 
-    return (df_host_evo, nb_overloads)
+    return (nb_overloads)
 
 
 def signal_handler_sigint(signal_number, frame):
@@ -628,7 +624,7 @@ def signal_handler_sigint(signal_number, frame):
 def streaming_eval(
     df_indiv_clust, labels_, mode, tick, constraints_dual,
     tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place, tol_step,
-    cluster_method, solver, df_host_evo
+    cluster_method, solver
 ):
     """Define the streaming process for evaluation.
 
@@ -658,11 +654,9 @@ def streaming_eval(
     :type cluster_method: str
     :param solver: solver used for pyomo
     :type solver: str
-    :param df_host_evo: evolving node data
-    :type df_host_evo: pd.DataFrame
-    :return: figures to plot to see clustering and nodes evolution + evolving node data + number
+    :return: figures to plot to see clustering and nodes evolution + number
         of node overloads
-    :rtype: Tuple[plt.Figure, plt.Figure, plt.Figure, List, pd.DataFrame, int]
+    :rtype: Tuple[plt.Figure, plt.Figure, plt.Figure, List, int]
     """
     fig_node, ax_node = plot.init_nodes_plot(
         it.my_instance.df_indiv, it.my_instance.dict_id_n, it.my_instance.sep_time,
@@ -809,10 +803,10 @@ def streaming_eval(
                         'local', tmin, tmax, labels_, loop_nb,
                         constraints_dual, clustering_dual_values, placement_dual_values,
                         tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
-                    df_host_evo = pd.concat([
-                        df_host_evo,
+                    it.my_instance.df_host_evo = pd.concat([
+                        it.my_instance.df_host_evo,
                         temp_df_host[~temp_df_host[it.tick_field].isin(
-                            df_host_evo[it.tick_field].unique())]
+                            it.my_instance.df_host_evo[it.tick_field].unique())]
                     ])
 
                     total_nb_overload += nb_overload
@@ -825,10 +819,10 @@ def streaming_eval(
                             'loop', tmin, tmax, labels_, loop_nb,
                             constraints_dual, clustering_dual_values, placement_dual_values,
                             tol_clust, tol_move_clust, tol_place, tol_move_place, int(key))
-                        df_host_evo = pd.concat([
-                            df_host_evo,
+                        it.my_instance.df_host_evo = pd.concat([
+                            it.my_instance.df_host_evo,
                             temp_df_host[~temp_df_host[it.tick_field].isin(
-                                df_host_evo[it.tick_field].unique())]
+                                it.my_instance.df_host_evo[it.tick_field].unique())]
                         ])
                         total_nb_overload += nb_overload
 
@@ -899,11 +893,11 @@ def streaming_eval(
                             as_index=False).agg(it.dict_agg_metrics)
 
                         if loop_nb > 1:
-                            df_host_evo = pd.concat(
+                            it.my_instance.df_host_evo = pd.concat(
                                 [
-                                    df_host_evo,
+                                    it.my_instance.df_host_evo,
                                     working_df_host[~working_df_host[it.tick_field].isin(
-                                        df_host_evo[it.tick_field].unique())]
+                                        it.my_instance.df_host_evo[it.tick_field].unique())]
                                 ]
                             )
 
@@ -987,10 +981,10 @@ def streaming_eval(
                 'local', tmin, tmax, labels_, loop_nb,
                 constraints_dual, clustering_dual_values, placement_dual_values,
                 tol_clust, tol_move_clust, tol_place, tol_move_place, tick)
-            df_host_evo = pd.concat([
-                df_host_evo,
+            it.my_instance.df_host_evo = pd.concat([
+                it.my_instance.df_host_evo,
                 temp_df_host[~temp_df_host[it.tick_field].isin(
-                    df_host_evo[it.tick_field].unique())]
+                    it.my_instance.df_host_evo[it.tick_field].unique())]
             ])
             total_nb_overload += nb_overload
             nb_clust_changes += nb_clust_changes_loop
@@ -1002,10 +996,10 @@ def streaming_eval(
                     'loop', tmin, tmax, labels_, loop_nb,
                     constraints_dual, clustering_dual_values, placement_dual_values,
                     tol_clust, tol_move_clust, tol_place, tol_move_place)
-                df_host_evo = pd.concat([
-                    df_host_evo,
+                it.my_instance.df_host_evo = pd.concat([
+                    it.my_instance.df_host_evo,
                     temp_df_host[~temp_df_host[it.tick_field].isin(
-                        df_host_evo[it.tick_field].unique())]
+                        it.my_instance.df_host_evo[it.tick_field].unique())]
                 ])
                 total_nb_overload += nb_overload
 
@@ -1061,11 +1055,11 @@ def streaming_eval(
                 as_index=False).agg(it.dict_agg_metrics)
 
             if loop_nb > 1:
-                df_host_evo = pd.concat(
+                it.my_instance.df_host_evo = pd.concat(
                     [
-                        df_host_evo,
+                        it.my_instance.df_host_evo,
                         working_df_host[~working_df_host[it.tick_field].isin(
-                            df_host_evo[it.tick_field].unique())]
+                            it.my_instance.df_host_evo[it.tick_field].unique())]
                     ]
                 )
 
@@ -1132,14 +1126,12 @@ def streaming_eval(
         plot.update_nodes_plot(fig_node, ax_node,
                                working_df_indiv, it.my_instance.dict_id_n)
 
-    df_host_evo = end_loop(working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
-                           total_nb_overload, total_loop_time, loop_nb, df_host_evo)
+    end_loop(
+        working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
+        total_nb_overload, total_loop_time, loop_nb
+    )
 
-    return (fig_node, fig_clust, fig_mean_clust,
-            df_host_evo, total_nb_overload)
-    # return (fig_node, fig_clust, fig_mean_clust,
-    #         [nb_clust_changes, nb_place_changes, total_loop_time, total_loop_time / loop_nb],
-    #         df_host_evo, total_nb_overload)
+    return (fig_node, fig_clust, fig_mean_clust, total_nb_overload)
 
 
 def progress_time_noloop(
@@ -1181,7 +1173,6 @@ def progress_time_noloop(
         changes
     :rtype: Tuple[pd.DataFrame, int, int, int, int]
     """
-    df_host_evo = pd.DataFrame(columns=instance.df_host.columns)
     nb_overload = 0
     nb_clust_changes = 0
     nb_place_changes = 0
@@ -1194,8 +1185,8 @@ def progress_time_noloop(
 
     host_overload = node.check_capacities(df_host_tick, instance.df_host_meta)
 
-    df_host_evo = pd.concat([
-        df_host_evo, df_host_tick
+    it.my_instance.df_host_evo = pd.concat([
+        it.my_instance.df_host_evo, df_host_tick
     ])
 
     # print('TICK INFO',df_host_tick)  # timestamp machine_id cpu of node usage for window duration
@@ -1240,7 +1231,7 @@ def progress_time_noloop(
             loop_nb += 1
             nb_clust_changes += nb_clust_changes_loop
             nb_place_changes += nb_place_changes_loop
-    return (df_host_evo, nb_overload, loop_nb, nb_clust_changes, nb_place_changes)
+    return (nb_overload, loop_nb, nb_clust_changes, nb_place_changes)
 
 
 def pre_loop(
@@ -1809,7 +1800,7 @@ def stream_km(df_clust, labels_):
 
 def end_loop(
     working_df_indiv, tmin, nb_clust_changes, nb_place_changes, nb_overload,
-    total_loop_time, loop_nb, df_host_evo
+    total_loop_time, loop_nb
 ):
     """Perform all stuffs after last loop.
 
@@ -1827,10 +1818,6 @@ def end_loop(
     :type total_loop_time: float
     :param loop_nb: final loop number
     :type loop_nb: int
-    :param df_host_evo: evolving node data
-    :type df_host_evo: pd.DataFrame
-    :return: evolving node data
-    :rtype: pd.DataFrame
     """
     working_df_host = working_df_indiv.groupby(
         [working_df_indiv[it.tick_field], it.host_field],
@@ -1847,18 +1834,17 @@ def end_loop(
     it.results_file.write('Average loop time : %f s\n' % (total_loop_time / loop_nb))
 
     if loop_nb <= 1:
-        df_host_evo = working_df_indiv.groupby(
+        it.my_instance.df_host_evo = working_df_indiv.groupby(
             [working_df_indiv[it.tick_field], it.host_field],
             as_index=False).agg(it.dict_agg_metrics)
     else:
-        df_host_evo = pd.concat(
+        it.my_instance.df_host_evo = pd.concat(
             [
-                df_host_evo,
+                it.my_instance.df_host_evo,
                 working_df_host[~working_df_host[it.tick_field].isin(
-                    df_host_evo[it.tick_field].unique())]
+                    it.my_instance.df_host_evo[it.tick_field].unique())]
             ]
         )
-    return df_host_evo
 
 
 def add_time(loop_nb, action, time):

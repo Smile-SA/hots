@@ -30,16 +30,14 @@ from . import node
 from .instance import Instance
 
 
-def init_reader(path, use_kafka):
+def init_reader(path):
     """Initialize the reader for data, with or without Kafka.
 
     :param path: initial folder path
     :type path: str
-    :param use_kafka: streaming platform
-    :type use_kafka: bool
     """
     p_data = Path(path)
-    if use_kafka:
+    if it.use_kafka:
         if not _has_kafka:
             raise ImportError('Kafka is required to do it.')
         else:
@@ -59,12 +57,16 @@ def init_reader(path, use_kafka):
 # TODO window_size useless ?
 # TODO progress time no loop here
 def get_next_data(
-    current_time, tick, window_size, use_kafka
+    current_time, tick, window_size
 ):
     """Get next data (one timestamp ?).
 
-    :param use_kafka: streaming platform
-    :type use_kafka: bool
+    :param current_time: Current timestamp
+    :type current_time: int
+    :param tick: How many new datapoints to get
+    :type tick: int
+    :return: Dataframe with new data
+    :rtype: pd.DataFrame
     """
     print('We are in time %d and waiting for %d new datapoints ...' % (
         current_time, tick
@@ -73,7 +75,7 @@ def get_next_data(
 
     it.end = False
     while not it.end:
-        if use_kafka:
+        if it.use_kafka:
 
             it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
             dval = process_kafka_msg(it.avro_deserializer)
@@ -114,9 +116,9 @@ def get_next_data(
     return new_df_container
 
 
-def close_reader(use_kafka):
+def close_reader():
     """Close the CSV reader or Kafka consumer."""
-    if use_kafka:
+    if it.use_kafka:
         print('Closing the stream and Kafka consumer')
         Instance.stop_stream()
         it.kafka_consumer.close()

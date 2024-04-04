@@ -382,11 +382,9 @@ def get_sum_cluster_variance(profiles_, vars_):
     return sum_profiles_matrix
 
 
-def get_distance_cluster(instance, cluster_centers_):
+def get_distance_cluster(cluster_centers_):
     """Compute the distance between each cluster.
 
-    :param instance: _description_
-    :type instance: Instance
     :param cluster_centers_: _description_
     :type cluster_centers_: np.array
     :return: _description_
@@ -394,11 +392,11 @@ def get_distance_cluster(instance, cluster_centers_):
     """
     print('Compute distance between each cluster ...')
     cluster_distance = np.zeros(
-        (instance.nb_clusters, instance.nb_clusters), dtype=float)
+        (it.my_instance.nb_clusters, it.my_instance.nb_clusters), dtype=float)
 
-    pbar = tqdm(range(instance.nb_clusters))
+    pbar = tqdm(range(it.my_instance.nb_clusters))
     for row1 in pbar:
-        for row2 in range(row1 + 1, instance.nb_clusters):
+        for row2 in range(row1 + 1, it.my_instance.nb_clusters):
             cluster_distance[row1][row2] = np.linalg.norm(
                 cluster_centers_[row1] - cluster_centers_[row2])
             cluster_distance[row2][row1] = cluster_distance[row1][row2]

@@ -161,6 +161,8 @@ def define_globals(p_path, config, kafka_var):
     :param kafka_var: streaming platform
     :type kafka_var: bool
     """
+    global my_instance
+
     global indiv_field
     global host_field
     global tick_field
@@ -185,6 +187,7 @@ def define_globals(p_path, config, kafka_var):
 
     global streamkm_model
 
+    global csv_file
     global csv_reader
     global csv_queue
 
@@ -213,7 +216,7 @@ def define_globals(p_path, config, kafka_var):
                        'kmeans-scratch',
                        'stream-km']
 
-    #TODO possibility to disable results compute / building  
+    # TODO possibility to disable results compute / building
     loop_results = set_loop_results()
     times_df = set_times_df()
 

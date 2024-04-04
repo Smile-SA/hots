@@ -7,7 +7,7 @@ import socket
 import sys
 import time
 from pathlib import Path
-from .instance import Instance
+
 import pandas as pd
 
 try:
@@ -27,18 +27,17 @@ else:
 
 from . import init as it
 from . import node
+from .instance import Instance
 
 
-def init_reader(path, use_kafka):
+def init_reader(path):
     """Initialize the reader for data, with or without Kafka.
 
     :param path: initial folder path
     :type path: str
-    :param use_kafka: streaming platform
-    :type use_kafka: bool
     """
     p_data = Path(path)
-    if use_kafka:
+    if it.use_kafka:
         if not _has_kafka:
             raise ImportError('Kafka is required to do it.')
         else:
@@ -46,34 +45,38 @@ def init_reader(path, use_kafka):
             it.avro_deserializer = connect_schema(use_schema, it.kafka_schema_url)
             it.csv_reader = None
     else:
-        f = open(p_data / 'container_usage.csv', 'r')
-        it.csv_reader = csv.reader(f)
+        it.csv_file = open(p_data / 'container_usage.csv', 'r')
+        it.csv_reader = csv.reader(it.csv_file)
         it.csv_queue = queue.Queue()
         it.avro_deserializer = None
         header = next(it.csv_reader, None)
         print('Headers : ', header)
-        #TODO and then ?
+        # TODO and then ?
 
 
 # TODO window_size useless ?
 # TODO progress time no loop here
 def get_next_data(
-    current_time, tick, window_size, use_kafka
+    current_time, tick, window_size
 ):
     """Get next data (one timestamp ?).
 
-    :param use_kafka: streaming platform
-    :type use_kafka: bool
+    :param current_time: Current timestamp
+    :type current_time: int
+    :param tick: How many new datapoints to get
+    :type tick: int
+    :return: Dataframe with new data
+    :rtype: pd.DataFrame
     """
     print('We are in time %d and waiting for %d new datapoints ...' % (
         current_time, tick
     ))
     new_df_container = pd.DataFrame()
-    
+
     it.end = False
     while not it.end:
-        if use_kafka:
-            
+        if it.use_kafka:
+
             it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
             dval = process_kafka_msg(it.avro_deserializer)
             if dval is None:
@@ -83,7 +86,7 @@ def get_next_data(
                 value = list(dval.values())[1]
                 file = list(dval.values())[2]
                 new_df_container = pd.concat([
-                    new_df_container, node.reassign_node(value)])
+                    new_df_container, node.reassign_node(value)], ignore_index=True)
                 if int(key) >= current_time + tick:
                     it.end = True
             if file:
@@ -93,7 +96,6 @@ def get_next_data(
             if it.csv_queue.empty():
                 row = next(it.csv_reader, None)
                 if row is None:
-                    end = True
                     it.s_entry = False
                     break
                 it.csv_queue.put(row)
@@ -106,7 +108,7 @@ def get_next_data(
                         it.indiv_field: row[1],
                         it.host_field: row[2],
                         it.metrics[0]: float(row[3])
-                    }])]
+                    }])], ignore_index=True
                 )
             else:
                 new_df_container.reset_index(drop=True, inplace=True)
@@ -114,13 +116,15 @@ def get_next_data(
     return new_df_container
 
 
-def close_reader(use_kafka):
+def close_reader():
     """Close the CSV reader or Kafka consumer."""
-    if use_kafka:
-        print('close kafka consumer')
+    if it.use_kafka:
+        print('Closing the stream and Kafka consumer')
+        Instance.stop_stream()
         it.kafka_consumer.close()
     else:
-        print('close csv reader or f ?')
+        print('Closing the CSV file')
+        it.csv_file.close()
 
 
 def acked(err, msg):
@@ -157,11 +161,9 @@ def msg_process(msg, avro_deserializer):
     return (time_start, val)
 
 
-def produce_data(my_instance, timestamp, history):
+def produce_data(timestamp, history):
     """Summary.
 
-    :param my_instance: _description_
-    :type my_instance: Instance
     :param timestamp: _description_
     :type timestamp: _type_
     :param history: _description_
@@ -169,11 +171,11 @@ def produce_data(my_instance, timestamp, history):
     """
     z = {}
     if history:
-        df_container = my_instance.df_indiv[
-            my_instance.df_indiv.timestamp == timestamp].copy()
+        df_container = it.my_instance.df_indiv[
+            it.my_instance.df_indiv.timestamp == timestamp].copy()
     else:
-        df_container = my_instance.df_indiv[
-            my_instance.df_indiv.timestamp == (timestamp - 1)].copy()
+        df_container = it.my_instance.df_indiv[
+            it.my_instance.df_indiv.timestamp == (timestamp - 1)].copy()
         df_container.loc[:, 'timestamp'] = timestamp
 
     df_con_dict = df_container.to_dict('records')
@@ -515,7 +517,7 @@ def process_kafka_msg(avro_deserializer):
                 'Topic unknown, creating %s topic\n' % (
                     it.kafka_topics['docker_topic']))
         elif msg.error():
-            print("error message here")
+            print('error message here')
             raise KafkaException(msg.error())
 
     else:

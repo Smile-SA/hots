@@ -184,7 +184,7 @@ def build_vars_matrix_indivs(df_clust, vars_, dict_id_c):
 
 
 def show_specific_containers(
-    working_df_indiv, df_indiv_clust, my_instance, labels_
+    working_df_indiv, df_indiv_clust, labels_
 ):
     """Show specific (user input) containers.
 
@@ -192,8 +192,6 @@ def show_specific_containers(
     :type working_df_indiv: pd.DataFrame
     :param df_indiv_clust: _description_
     :type df_indiv_clust: pd.DataFrame
-    :param my_instance: _description_
-    :type my_instance: Instance
     :param labels_: _description_
     :type labels_: List
     """
@@ -201,10 +199,10 @@ def show_specific_containers(
     containers_input = input()
     containers_toshow = [int(s) for s in containers_input.split(',')]
     plot.plot_clustering_containers_by_node_spec_cont(
-        working_df_indiv, my_instance.dict_id_c,
+        working_df_indiv, it.my_instance.dict_id_c,
         labels_, containers_toshow
     )
     plot.plot_clustering_spec_cont(df_indiv_clust,
-                                   my_instance.dict_id_c,
+                                   it.my_instance.dict_id_c,
                                    containers_toshow,
                                    title='Clustering on first half part')

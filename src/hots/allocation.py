@@ -10,12 +10,10 @@ from .tools import change_max_dataset
 
 
 def check_constraints(
-    my_instance, working_df_indiv, config
+    working_df_indiv, config
 ):
     """Check if allocation constraints are satisfied or not.
 
-    :param my_instance: The Instance object of the current run
-    :type my_instance: Instance
     :param working_df_indiv: Dataframe with current window individual data
     :type working_df_indiv: pd.DataFrame
     :param config: Current HOTS run parameters
@@ -25,32 +23,32 @@ def check_constraints(
     """
     satisfied = False
     print(config)
-    print(my_instance.df_host)
+    print(it.my_instance.df_host)
 
     # while not satisfied:
-    current_max_by_node = get_max_by_node(my_instance.df_indiv)
-    if get_total_max(current_max_by_node) > get_abs_goal_load(my_instance, config):
+    current_max_by_node = get_max_by_node(it.my_instance.df_indiv)
+    if get_total_max(current_max_by_node) > get_abs_goal_load(config):
         print('Max resources used > wanted max ! (new)')
         satisfied = False
-        change_max_bound(my_instance, config, working_df_indiv[it.tick_field].max())
+        change_max_bound(config, working_df_indiv[it.tick_field].max())
     else:
         satisfied = True
 
-    if max(my_instance.df_host[it.metrics[0]]) > get_abs_goal_load(my_instance, config):
+    if max(it.my_instance.df_host[it.metrics[0]]) > get_abs_goal_load(config):
         print('Max resources used > wanted max !')
         satisfied = False
-        change_max_bound(my_instance, config, working_df_indiv[it.tick_field].max())
+        change_max_bound(config, working_df_indiv[it.tick_field].max())
     else:
         print('Max used resources ok.')
         satisfied = True
 
-    if my_instance.df_host[it.host_field].nunique() > config['objective']['open_nodes']:
+    if it.my_instance.df_host[it.host_field].nunique() > config['objective']['open_nodes']:
         print('Too many open nodes !')
         satisfied = False
         # TODO Test if we can do it
         # TODO Do not test with previous data, as it's not supposed to change
-        # move_containers(my_instance, config)
-    elif my_instance.df_host[it.host_field].nunique() < config['objective']['open_nodes']:
+        # move_containers(config)
+    elif it.my_instance.df_host[it.host_field].nunique() < config['objective']['open_nodes']:
         print('Less open nodes than the objective !')
         satisfied = True
     else:
@@ -62,19 +60,17 @@ def check_constraints(
 
 # TODO define max by container
 # TODO change alloc only for containers in node > max
-def change_max_bound(my_instance, config, min_time):
+def change_max_bound(config, min_time):
     """Change max possible resource usage by containers.
 
-    :param my_instance: The Instance object of the current run
-    :type my_instance: Instance
     :param config: Current HOTS run parameters
     :type config: Dict
     :param min_time: T0 of current time window
     :type min_time: int
     """
     # max_ok = False
-    max_goal = get_abs_goal_load(my_instance, config)
-    current_max_by_node = get_max_by_node(my_instance.df_indiv)
+    max_goal = get_abs_goal_load(config)
+    current_max_by_node = get_max_by_node(it.my_instance.df_indiv)
     total_max = get_total_max(current_max_by_node)
     print(current_max_by_node, total_max)
     print('total resources (max) : ', total_max)
@@ -83,29 +79,29 @@ def change_max_bound(my_instance, config, min_time):
 
     # If we want to remove same amount from all containers
     # decrease_cont = round_decimals_up(
-    #     total_to_remove / my_instance.df_indiv[
+    #     total_to_remove / it.my_instance.df_indiv[
     #         it.indiv_field].nunique())
     # print('resources to remove by container (average) : ', decrease_cont)
 
     # Remove resources at prorata of their initial max
     total_will_remove = 0.0
     print('Before change dataset : ')
-    print(my_instance.df_indiv)
-    for container in my_instance.df_indiv[it.indiv_field].unique():
+    print(it.my_instance.df_indiv)
+    for container in it.my_instance.df_indiv[it.indiv_field].unique():
         print('Doing container %s' % container)
-        node = my_instance.df_indiv.loc[my_instance.df_indiv[
+        node = it.my_instance.df_indiv.loc[it.my_instance.df_indiv[
             it.indiv_field] == container][it.host_field].to_numpy()[0]
         percent_total = current_max_by_node[node][container] / total_max
         to_remove_c = total_to_remove * percent_total
         total_will_remove += to_remove_c
         current_max_by_node[node][container] = current_max_by_node[
             node][container] - to_remove_c
-        change_max_dataset(my_instance.df_indiv,
+        change_max_dataset(it.my_instance.df_indiv,
                            container, it.indiv_field,
                            current_max_by_node[node][container], it.metrics[0],
                            it.tick_field, min_time)
     print('After change dataset :')
-    print(my_instance.df_indiv)
+    print(it.my_instance.df_indiv)
     # input()
     print('Will be remove : ', total_will_remove)
 
@@ -114,8 +110,8 @@ def change_max_bound(my_instance, config, min_time):
     #     print(current_max_by_node)
     #     input()
     #     decrease = 0.1
-    #     for container in my_instance.df_indiv[it.indiv_field]:
-    #         node = my_instance.df_indiv.loc[my_instance.df_indiv[
+    #     for container in it.my_instance.df_indiv[it.indiv_field]:
+    #         node = it.my_instance.df_indiv.loc[it.my_instance.df_indiv[
     #             it.indiv_field] == container][it.host_field].to_numpy()[0]
     #         current_max_by_node[node][container] = current_max_by_node[
     #             node][container] - (current_max_by_node[
@@ -128,24 +124,22 @@ def change_max_bound(my_instance, config, min_time):
     print('max goal satisfied ? ', is_max_goal_ok(current_max_by_node, max_goal))
 
 
-def change_df_max(my_instance, c_id, max_c):
+def change_df_max(c_id, max_c):
     """Change the DataFrame (resources values) after changing max.
 
-    :param my_instance: The Instance object of the current run
-    :type my_instance: Instance
     :param c_id: ID of container to change values
     :type c_id: str
     :param max_c: New bound value for c_id data
     :type max_c: float
     """
-    for time in my_instance.df_indiv[it.tick_field].unique():
-        if my_instance.df_indiv.loc[
-            (my_instance.df_indiv[it.tick_field] == time) & (
-                my_instance.df_indiv[it.indiv_field] == c_id), it.metrics[0]
+    for time in it.my_instance.df_indiv[it.tick_field].unique():
+        if it.my_instance.df_indiv.loc[
+            (it.my_instance.df_indiv[it.tick_field] == time) & (
+                it.my_instance.df_indiv[it.indiv_field] == c_id), it.metrics[0]
         ].to_numpy()[0] > max_c:
-            my_instance.df_indiv.loc[
-                (my_instance.df_indiv[it.tick_field] == time) & (
-                    my_instance.df_indiv[it.indiv_field] == c_id), it.metrics[0]
+            it.my_instance.df_indiv.loc[
+                (it.my_instance.df_indiv[it.tick_field] == time) & (
+                    it.my_instance.df_indiv[it.indiv_field] == c_id), it.metrics[0]
             ] = max_c
 
 
@@ -198,18 +192,16 @@ def is_max_goal_ok(current_max_by_node, max_goal):
 
 
 # TODO what if different goal on different nodes ? Dict of nodes goal ?
-def get_abs_goal_load(my_instance, config):
+def get_abs_goal_load(config):
     """Get the load goal in absolute value.
 
-    :param my_instance: The Instance object of the current run
-    :type my_instance: Instance
     :param config: Current HOTS run parameters
     :type config: Dict
     :return: Load value to achieve from parameters
     :rtype: float
     """
     return config['objective']['target_load_CPU'] * (
-        my_instance.df_host_meta[it.metrics[0]].to_numpy()[0]
+        it.my_instance.df_host_meta[it.metrics[0]].to_numpy()[0]
     )
 
 
@@ -250,17 +242,15 @@ def round_decimals_up(number, decimals=2):
     return math.ceil(number * factor) / factor
 
 
-def move_containers(my_instance, config):
+def move_containers(config):
     """Move containers in order to satisfy number open nodes target.
 
-    :param my_instance: The Instance object of the current run
-    :type my_instance: Instance
     :param config: Current HOTS run parameters
     :type config: Dict
     """
     conso_nodes = np.zeros((
-        config['objective']['open_nodes'], my_instance.window_duration))
+        config['objective']['open_nodes'], it.my_instance.window_duration))
     spread_containers(
-        my_instance.df_indiv[it.indiv_field].unique(),
-        my_instance, conso_nodes, my_instance.window_duration,
+        it.my_instance.df_indiv[it.indiv_field].unique(),
+        conso_nodes, it.my_instance.window_duration,
         config['objective']['open_nodes'])

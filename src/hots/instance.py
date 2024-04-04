@@ -8,9 +8,10 @@ import math
 
 import pandas as pd
 
+import requests
+
 from . import init as it
 from . import node as nd
-import requests
 
 
 class Instance:
@@ -147,13 +148,13 @@ class Instance:
 
     def set_host_meta(self, host_meta_path):
         """Create the dataframe for host meta data from first streaming data."""
-        # df_columns = [it.host_field]
-        # for metric in it.metrics:
-        #     df_columns.append(metric)
-        # self.df_host_meta = pd.DataFrame(columns=df_columns)
         self.df_host_meta = it.df_from_csv(host_meta_path)
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.nb_nodes = self.df_host_meta[it.host_field].nunique()
+
+    def init_host_evo(self):
+        """Initialize the data evolution in hosts DataFrame."""
+        self.df_host_evo = pd.DataFrame(columns=self.df_host.columns)
 
     def get_node_from_container(self, container_id):
         """Get node ID from container ID.
@@ -166,8 +167,13 @@ class Instance:
         return (self.df_indiv.loc[
             self.df_indiv[it.indiv_field] == container_id
         ][it.host_field].to_numpy()[0])
-    
+
     def get_node_information(self):
+        """Get node information from environment.
+
+        :return: Node information
+        :rtype: Dict
+        """
         url = 'http://10.3.73.162:5000/vm/data'
         response = requests.get(url)
         node_data = {}
@@ -175,39 +181,39 @@ class Instance:
             node_data = response.json()
             # print(node_data)
             self.df_host_meta = pd.DataFrame(node_data)
-            print(self.df_host_meta)
             self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
             self.nb_nodes = self.df_host_meta[it.host_field].nunique()
         else:
             # If the request was not successful, print the error status code
-            print(f"Error: {response.status_code}")
+            print(f'Error: {response.status_code}')
         return node_data
-    
+
     def start_stream():
+        """Start stream data in environment."""
         url = 'http://10.3.73.162:5000/start_stream'
         response = requests.get(url)
         if response.status_code == 200:
             print(response)
         else:
             # If the request was not successful, print the error status code
-            print(f"Error: {response.status_code}")
-
+            print(f'Error: {response.status_code}')
 
     def stop_stream():
+        """Stop stream data in environment."""
         url = 'http://10.3.73.162:5000/stop_stream'
         response = requests.get(url)
         if response.status_code == 200:
             print(response)
         else:
             # If the request was not successful, print the error status code
-            print(f"Error: {response.status_code}")
+            print(f'Error: {response.status_code}')
 
     def clear_kafka_topics():
+        """Clear Kafka topics in environment."""
         url = 'http://10.3.73.162:5000/clear_topics'
         response = requests.get(url)
         if response.status_code == 200:
             print(response)
         else:
             # If the request was not successful, print the error status code
-            print(f"Error: {response.status_code}")
-        
+            print(f'Error: {response.status_code}')

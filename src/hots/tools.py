@@ -1,9 +1,12 @@
 """Provide external tools usefull for the code."""
 
+import os
 import sys
 from pathlib import Path
 
 import pandas as pd
+
+import psutil
 
 
 def print_size_vars(list_vars):
@@ -88,3 +91,11 @@ def order_csv_timestamp(path, save=True):
     data.to_csv(
         p_data / 'container_usage.csv', index=False)
     print('New CSV file written.')
+
+
+def process_memory():
+    """Get memory information."""
+    process = psutil.Process(os.getpid())
+    mem_info = process.memory_info()
+    mem_usage_mb = mem_info.rss / 1024 / 1024
+    return mem_usage_mb

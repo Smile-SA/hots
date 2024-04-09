@@ -206,6 +206,8 @@ def define_globals(p_path, config, kafka_var):
     global memory_usage
     global total_mem_use
 
+    global pending_changes
+
     indiv_field = config['data']['individual_field']
     host_field = config['data']['host_field']
     tick_field = config['data']['tick_field']
@@ -241,5 +243,7 @@ def define_globals(p_path, config, kafka_var):
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'
+
+    pending_changes = {}
 
     renderer = config['plot']['renderer']

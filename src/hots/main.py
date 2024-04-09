@@ -90,7 +90,6 @@ def main(config_path, k, tau, method, cluster_method, param, output, tolclust, t
         end_time = main_time + time_limit * 60
 
     signal.signal(signal.SIGINT, signal_handler_sigint)
-    signal.signal(signal.SIGTSTP, signal_handler_sigtstp)
 
     start = time.time()
     (config, output_path) = preprocess(
@@ -515,37 +514,41 @@ def run_period(
                 tmin, tmax, labels_
             )
             cluster_profiles = clt.get_cluster_mean_profile(df_clust)
-            (init_loop_obj_nodes, init_loop_obj_delta) = mdl.get_obj_value_indivs(
-                working_df_indiv)
-            nb_clust_changes_loop = 0
-            nb_place_changes_loop = 0
-            (nb_clust_changes_loop, nb_place_changes_loop,
-                init_loop_silhouette, end_loop_silhouette,
-                clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
-                place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
-                clust_model, place_model,
-                clustering_dual_values, placement_dual_values,
-                df_clust, cluster_profiles, labels_) = eval_sols(
-                working_df_indiv, cluster_method,
-                w, u, v, clust_model, place_model,
-                config['loop']['constraints_dual'],
-                clustering_dual_values, placement_dual_values,
-                config['loop']['tol_dual_clust'],
-                config['loop']['tol_move_clust'],
-                config['loop']['tol_open_clust'],
-                config['loop']['tol_dual_place'],
-                config['loop']['tol_move_place'],
-                df_clust, cluster_profiles, labels_, loop_nb,
-                config['optimization']['solver']
-            )
-            it.results_file.write(
-                'Number of changes in clustering : %d\n' % nb_clust_changes_loop
-            )
-            it.results_file.write(
-                'Number of changes in placement : %d\n' % nb_place_changes_loop
-            )
-            nb_clust_changes += nb_clust_changes_loop
-            nb_place_changes += nb_place_changes_loop
+
+            if not it.pending_changes:
+                (init_loop_obj_nodes, init_loop_obj_delta) = mdl.get_obj_value_indivs(
+                    working_df_indiv)
+                nb_clust_changes_loop = 0
+                nb_place_changes_loop = 0
+                (nb_clust_changes_loop, nb_place_changes_loop,
+                    init_loop_silhouette, end_loop_silhouette,
+                    clust_conf_nodes, clust_conf_edges, clust_max_deg, clust_mean_deg,
+                    place_conf_nodes, place_conf_edges, place_max_deg, place_mean_deg,
+                    clust_model, place_model,
+                    clustering_dual_values, placement_dual_values,
+                    df_clust, cluster_profiles, labels_) = eval_sols(
+                    working_df_indiv, cluster_method,
+                    w, u, v, clust_model, place_model,
+                    config['loop']['constraints_dual'],
+                    clustering_dual_values, placement_dual_values,
+                    config['loop']['tol_dual_clust'],
+                    config['loop']['tol_move_clust'],
+                    config['loop']['tol_open_clust'],
+                    config['loop']['tol_dual_place'],
+                    config['loop']['tol_move_place'],
+                    df_clust, cluster_profiles, labels_, loop_nb,
+                    config['optimization']['solver']
+                )
+                it.results_file.write(
+                    'Number of changes in clustering : %d\n' % nb_clust_changes_loop
+                )
+                it.results_file.write(
+                    'Number of changes in placement : %d\n' % nb_place_changes_loop
+                )
+                nb_clust_changes += nb_clust_changes_loop
+                nb_place_changes += nb_place_changes_loop
+            else:
+                check_changes_applied(working_df_indiv)
 
             # update clustering & node consumption plot
             plot.update_clustering_plot(
@@ -618,14 +621,6 @@ def run_period(
 
 
 def signal_handler_sigint(signal_number, frame):
-    """Handle for exiting application via signal."""
-    Instance.stop_stream()
-    print('Exit application')
-    it.s_entry = False
-    it.end = True
-
-
-def signal_handler_sigtstp(signal_number, frame):
     """Handle for exiting application via signal."""
     Instance.stop_stream()
     print('Exit application')
@@ -1205,16 +1200,36 @@ def move_containers_info(moves_list, current_time):
     :param current_time: Current last timestamp to apply moves
     :type moves_list: int
     """
-    data = {}
-    data['move'] = moves_list
-    data[it.tick_field] = str(current_time)
+    it.pending_changes = {}
+    it.pending_changes['move'] = moves_list
+    it.pending_changes[it.tick_field] = str(current_time)
     print('Sending these moving containers :')
-    print(data)
+    print(it.pending_changes)
     it.kafka_producer.produce(
         it.kafka_topics['docker_replacer'],
-        json.dumps(data))
+        json.dumps(it.pending_changes))
     it.kafka_producer.flush()
     time.sleep(1)
+
+
+def check_changes_applied(working_df_indiv):
+    """Check if the pending changes have been applied in the environment."""
+    max_time = working_df_indiv[it.tick_field].max()
+    moves_applied = True
+    for move in it.pending_changes['move']:
+        if working_df_indiv[
+            (working_df_indiv[it.tick_field] == max_time) & (
+                working_df_indiv[it.indiv_field] == move['container_name'])
+            ].empty:
+            moves_applied = False
+            print('We miss a value')
+        elif working_df_indiv[
+            (working_df_indiv[it.tick_field] == max_time) & (
+                working_df_indiv[it.indiv_field] == move['container_name'])
+            ][it.host_field].iloc[0] != move['new_host']:
+            moves_applied = False
+    if moves_applied:
+        it.pending_changes = {}
 
 
 def loop_kmeans(df_clust, labels_):

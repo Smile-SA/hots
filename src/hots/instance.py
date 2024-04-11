@@ -1,6 +1,7 @@
 """Define the Instance class.
 
-This class represents the problem we are facing, with its data, information, parameters.
+This class represents the problem we are facing,
+with its data, information, parameters.
 This module provides also Instance-related methods.
 """
 
@@ -8,7 +9,12 @@ import math
 
 import pandas as pd
 
-import requests
+try:
+    import requests
+except ImportError:
+    _has_kafka = False
+else:
+    _has_kafka = True
 
 from . import init as it
 from . import node as nd
@@ -45,17 +51,6 @@ class Instance:
         :param config: Configuration dict from config file
         :type config: Dict
         """
-        # TODO update by empty df_indiv and df_host => how to init df_host_meta ?
-        # (self.df_indiv,  # container usage
-        #     self.df_host,  # node usage
-        #     self.df_host_meta) = it.init_dfs(path)  # node meta deta
-
-        # # count of unique time values from timestamp column = 6
-        # self.time: int = self.df_indiv[it.tick_field].nunique()
-        # # count of unique machine_id values from machine_id column
-        # self.nb_nodes = self.df_host_meta[it.host_field].nunique()
-        # # count of unique container_ids from column container_id
-        # self.nb_containers = self.df_indiv[it.indiv_field].nunique()
         self.nb_clusters = config['clustering']['nb_clusters']
 
         # self.df_indiv = self.df_indiv.astype({
@@ -147,7 +142,7 @@ class Instance:
         self.nb_containers = self.df_indiv[it.indiv_field].nunique()
 
     def set_host_meta(self, host_meta_path):
-        """Create the dataframe for host meta data from first streaming data."""
+        """Create the dataframe for host meta data from first data."""
         self.df_host_meta = it.df_from_csv(host_meta_path)
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.nb_nodes = self.df_host_meta[it.host_field].nunique()

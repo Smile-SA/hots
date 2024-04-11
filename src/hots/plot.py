@@ -447,7 +447,8 @@ def init_nodes_plot(
     for n, data_n in df.groupby(
             df[it.host_field]):
         n_int = [k for k, v in dict_id_n.items() if v == n][0] % len(colors)
-        ax.plot(data_n.groupby(data_n[it.tick_field])[metric].sum(), color=colors[n_int])
+        ax.plot(data_n.groupby(
+            data_n[it.tick_field])[metric].sum(), color=colors[n_int])
 
     # pvt = pd.pivot_table(
     #     df_indiv.loc[
@@ -511,7 +512,8 @@ def update_nodes_plot(fig, ax, df, dict_id_n, metric=None):
     for n, data_n in temp_df.groupby(
             temp_df[it.host_field]):
         n_int = [k for k, v in dict_id_n.items() if v == n][0] % len(colors)
-        ax.plot(data_n.groupby(data_n[it.tick_field])[metric].sum(), color=colors[n_int])
+        ax.plot(data_n.groupby(
+            data_n[it.tick_field])[metric].sum(), color=colors[n_int])
 
 
 # The following uses plotly : comment for the moment
@@ -722,7 +724,9 @@ def plot_memory_usage(x, y, tick):
     ax.plot(x, y, 'b-', label='total memory rss')
     for idx, t in enumerate(tick):
         if idx == 0:
-            ax.axvline(t, color='orange', alpha=0.5, label='run placement', linestyle='dashed')
+            ax.axvline(
+                t, color='orange', alpha=0.5,
+                label='run placement', linestyle='dashed')
         else:
             ax.axvline(t, color='orange', alpha=0.5, linestyle='dashed')
     ax.set(xlabel='time (s)', ylabel='memory of datarame (bytes)')

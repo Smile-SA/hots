@@ -1,4 +1,4 @@
-"""Provide actions specific to nodes (plot nodes data, compute stat measures ...)."""
+"""Provide actions specific to nodes."""
 
 import math
 
@@ -32,7 +32,8 @@ def plot_data_all_nodes(metric, max_cap, sep_time):
     fig, ax = plt.subplots()
     ax.set_ylim([0, max_cap + (max_cap * 0.2)])
     pvt = pd.pivot_table(
-        it.my_instance.df_host_evo.reset_index(drop=True), columns=it.host_field,
+        it.my_instance.df_host_evo.reset_index(drop=True),
+        columns=it.host_field,
         index=it.tick_field, aggfunc='sum', values=metric
     )
     pvt.plot(ax=ax, legend=False)
@@ -74,7 +75,7 @@ def plot_all_data_all_nodes_end(df_host, total_time):
 
 
 def plot_total_usage(df_host, title='Total conso on all nodes'):
-    """Plot the global resources consumption and return the global maximum usage for each metric.
+    """Plot the global resources consumption.
 
     :param df_host: _description_
     :type df_host: pd.DataFrame
@@ -166,7 +167,7 @@ def get_list_var(df_host, total_time):
 
 
 def get_variance_consumption(df_host):
-    """Compute the variance and std dev consumption for each metric in each node and globally.
+    """Compute the variance and std dev consumption.
 
     :param df_host: _description_
     :type df_host: pd.DataFrame
@@ -349,7 +350,8 @@ def get_nodes_load_info(df_host_meta):
     :rtype: pd.DataFrame
     """
     results_df = pd.DataFrame(
-        columns=[it.host_field, 'load_var', 'avg_load', 'min_load', 'max_load'])
+        columns=[it.host_field,
+                 'load_var', 'avg_load', 'min_load', 'max_load'])
     metric = it.metrics[0]
 
     for node, data_n in it.my_instance.df_host_evo.groupby(
@@ -406,6 +408,7 @@ def reassign_node(c_info):
         it.host_field: str,
         it.tick_field: int})
     new_df_container.sort_values(it.tick_field, inplace=True)
-    new_df_container.set_index([it.tick_field, it.indiv_field], inplace=True, drop=False)
+    new_df_container.set_index(
+        [it.tick_field, it.indiv_field], inplace=True, drop=False)
     new_df_container.sort_index(inplace=True)
     return new_df_container

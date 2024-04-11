@@ -1,10 +1,4 @@
-"""
-====
-hots
-====
-
-Package for testing containers resource allocation via clustering.
-"""
+"""Package for testing containers resource allocation via clustering."""
 import logging
 
 import pkg_resources

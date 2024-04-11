@@ -8,11 +8,9 @@ import numpy as np
 
 from . import init as it
 
-#####################################################################
-# Functions definitions
 
-
-# TODO factorize many functions (assign indiv, change node during assign indiv..)
+# TODO factorize many functions
+# (assign indiv, change node during assign indiv..)
 def assign_container_node(node_id, container_id, remove=True):
     """Assign container_id to node_id, and remove it from old node.
 
@@ -39,7 +37,8 @@ def assign_container_node(node_id, container_id, remove=True):
         remove_container_node(old_id, container_id)
 
     it.my_instance.df_indiv.loc[
-        it.my_instance.df_indiv[it.indiv_field] == container_id, [it.host_field]
+        it.my_instance.df_indiv[it.indiv_field] == container_id,
+        [it.host_field]
     ] = node_id
 
 
@@ -76,9 +75,11 @@ def free_full_nodes(full_nodes, tick):
                     it.my_instance.df_indiv[it.tick_field] == tick
                 )
             ]
-            if df_indiv_host[it.metrics[0]].sum() > it.my_instance.df_host_meta.loc[
-                it.my_instance.df_host_meta[it.host_field] == host
-            ][it.metrics[0]].to_numpy()[0]:
+            if df_indiv_host[it.metrics[0]].sum() > (
+                it.my_instance.df_host_meta.loc[
+                    it.my_instance.df_host_meta[it.host_field] == host
+                ][it.metrics[0]].to_numpy()[0]
+            ):
                 moving_indiv = random.choice(
                     df_indiv_host[it.indiv_field].unique())
                 assign_indiv_available_host(
@@ -119,7 +120,8 @@ def assign_indiv_available_host(indiv_id, tmin, tmax, nb_open_nodes):
             df_host_meta[it.host_field] == it.my_instance.dict_id_n[n]
         ][it.metrics[0]].to_numpy()[0]
         conso_node = it.my_instance.df_indiv.loc[
-            (it.my_instance.df_indiv[it.host_field] == it.my_instance.dict_id_n[n]) & (
+            (it.my_instance.df_indiv[it.host_field] == (
+                it.my_instance.dict_id_n[n])) & (
                 it.my_instance.df_indiv[it.tick_field] >= tmin) & (
                 it.my_instance.df_indiv[it.tick_field] <= tmax
             )
@@ -133,11 +135,13 @@ def assign_indiv_available_host(indiv_id, tmin, tmax, nb_open_nodes):
             checked_nodes += 1
             n = (n + 1) % nb_open_nodes
             if checked_nodes > nb_open_nodes:
-                print('Impossible to move %s on another existing node.' % indiv_id)
+                print('Impossible to move %s on another existing node.' %
+                      indiv_id)
                 if (it.my_instance.dict_id_n[checked_nodes] in
                     it.my_instance.df_host_meta[it.host_field].unique()) & (
                         np.all(np.less(cons_c, cap_node))):
-                    print('We can open node %s' % (it.my_instance.dict_id_n[checked_nodes]))
+                    print('We can open node %s' %
+                          (it.my_instance.dict_id_n[checked_nodes]))
                     assign_container_node(
                         it.my_instance.dict_id_n[checked_nodes], indiv_id)
                     done = True
@@ -190,11 +194,13 @@ def assign_indiv_initial_placement(
         else:
             checked_nodes += 1
             if checked_nodes >= min_nodes:
-                print('Impossible to move %s on another existing node.' % indiv_id)
+                print('Impossible to move %s on another existing node.' %
+                      indiv_id)
                 if (it.my_instance.dict_id_n[checked_nodes] in
                     it.my_instance.df_host_meta[it.host_field].unique()) & (
                         np.all(np.less(cons_c, cap_node))):
-                    print('We can open node %s' % (it.my_instance.dict_id_n[checked_nodes]))
+                    print('We can open node %s' %
+                          (it.my_instance.dict_id_n[checked_nodes]))
                     min_nodes += 1
                     assign_container_node(
                         it.my_instance.dict_id_n[checked_nodes],
@@ -234,10 +240,10 @@ def find_substitution(indiv_id, tmin, tmax):
     done = False
     while not done:
         conso_node = it.my_instance.df_indiv.loc[
-            (it.my_instance.df_indiv[it.host_field] == it.my_instance.dict_id_n[n]) & (
-                it.my_instance.df_indiv[it.tick_field] >= tmin) & (
-                it.my_instance.df_indiv[it.tick_field] <= tmax
-            )
+            (it.my_instance.df_indiv[it.host_field] == (
+                it.my_instance.dict_id_n[n]) & (
+                    it.my_instance.df_indiv[it.tick_field] >= tmin) & (
+                    it.my_instance.df_indiv[it.tick_field] <= tmax))
         ][it.metrics[0]].sum()
         cap_node = it.my_instance.df_host_meta.loc[
             it.my_instance.
@@ -245,7 +251,8 @@ def find_substitution(indiv_id, tmin, tmax):
         ][it.metrics[0]].to_numpy()[0]
         moving_indiv = random.choice(
             it.my_instance.df_indiv.loc[
-                (it.my_instance.df_indiv[it.host_field] == it.my_instance.dict_id_n[n])
+                (it.my_instance.df_indiv[it.host_field] == (
+                    it.my_instance.dict_id_n[n]))
             ][it.indiv_field].unique())
         conso_indiv = it.my_instance.df_indiv.loc[
             (it.my_instance.df_indiv[it.indiv_field] == moving_indiv) & (
@@ -279,8 +286,10 @@ def spread_containers_new(list_containers, conso_nodes, total_time, min_nodes):
 
     for c in list_containers:
         indiv_c = c
-        cons_c = df_indiv[df_indiv[indiv_field] == indiv_c][metrics_0].to_numpy()[:total_time]
-        cap_node = df_host_meta[df_host_meta[host_field] == dict_id_n[n]][metrics_0].to_numpy()[0]
+        cons_c = df_indiv[df_indiv[indiv_field] == indiv_c
+                          ][metrics_0].to_numpy()[:total_time]
+        cap_node = df_host_meta[df_host_meta[host_field] == dict_id_n[n]
+                                ][metrics_0].to_numpy()[0]
         done = False
 
         while not done:
@@ -295,7 +304,8 @@ def spread_containers_new(list_containers, conso_nodes, total_time, min_nodes):
                     checked_nodes = 1
                 n = (n + 1) % min_nodes
                 cap_node = df_host_meta[
-                    df_host_meta[host_field] == dict_id_n[n]][metrics_0].to_numpy()[0]
+                    df_host_meta[host_field] == dict_id_n[n]
+                ][metrics_0].to_numpy()[0]
 
         n = (n + 1) % min_nodes
 
@@ -348,8 +358,8 @@ def spread_containers(
 
 
 def colocalize_clusters(
-    list_containers_i, list_containers_j, containers_grouped, total_time, min_nodes,
-    conso_nodes, n=0
+    list_containers_i, list_containers_j, containers_grouped,
+    total_time, min_nodes, conso_nodes, n=0
 ):
     """Allocate containers of 2 clusters grouping by pairs.
 
@@ -383,17 +393,6 @@ def colocalize_clusters(
             it.my_instance.
             df_indiv[it.indiv_field] == list_containers_j[c]
         ][it.metrics[0]].to_numpy()[:total_time]
-        # new_cons_i = it.my_instance.working_df_indiv.loc[
-        #     it.my_instance.working_df_indiv[it.indiv_field] == list_containers_i[c]
-        # ][it.metrics[0]].to_numpy()
-        # new_cons_j = it.my_instance.working_df_indiv.loc[
-        #     it.my_instance.working_df_indiv[it.indiv_field] == list_containers_j[c]
-        # ][it.metrics[0]].to_numpy()
-        # print(cons_i)
-        # print(cons_j)
-        # print('from working df :')
-        # print(new_cons_i)
-        # print(new_cons_j)
 
         cap_node = it.my_instance.df_host_meta.loc[
             it.my_instance.
@@ -405,15 +404,19 @@ def colocalize_clusters(
             # If indivs i & j can't fit together : split them
             if not assign_indiv_initial_placement(
                     list_containers_i[c],
-                    it.my_instance.df_indiv[it.tick_field].min(), total_time - 1,
+                    it.my_instance.df_indiv[it.tick_field].min(),
+                    total_time - 1,
                     conso_nodes, min_nodes, n):
-                raise RuntimeError('No node to welcome %s' % list_containers_i[c])
+                raise RuntimeError('No node to welcome %s' %
+                                   list_containers_i[c])
             n = (n + 1) % min_nodes
             if not assign_indiv_initial_placement(
                     list_containers_j[c],
-                    it.my_instance.df_indiv[it.tick_field].min(), total_time - 1,
+                    it.my_instance.df_indiv[it.tick_field].min(),
+                    total_time - 1,
                     conso_nodes, min_nodes, n):
-                raise RuntimeError('No node to welcome %s' % list_containers_j[c])
+                raise RuntimeError('No node to welcome %s' %
+                                   list_containers_j[c])
 
         else:
             # Indivs i & j could fit together
@@ -442,15 +445,16 @@ def colocalize_clusters(
                         n = (n + 1) % min_nodes
                     cap_node = it.my_instance.df_host_meta.loc[
                         it.my_instance.
-                        df_host_meta[it.host_field] == it.my_instance.dict_id_n[n]
+                        df_host_meta[it.host_field] == (
+                            it.my_instance.dict_id_n[n])
                     ][it.metrics[0]].to_numpy()[0]
             n = (n + 1) % min_nodes
     return c
 
 
 def colocalize_clusters_new(
-    list_containers_i, list_containers_j, containers_grouped, total_time, min_nodes,
-    conso_nodes, n=0
+    list_containers_i, list_containers_j, containers_grouped,
+    total_time, min_nodes, conso_nodes, n=0
 ):
     """Allocate containers of 2 clusters grouping by pairs.
 
@@ -571,8 +575,10 @@ def allocation_distant_pairwise(
         # 1 cluster remaining -> spread it TODO
         elif (c_it == 1):
             c = np.where(clusters_done_ == 0)[0][0]
-            list_containers = [it.my_instance.dict_id_c[u] for u, value in enumerate(
-                labels_) if value == c]
+            list_containers = [
+                it.my_instance.dict_id_c[u] for u, value in enumerate(
+                    labels_) if value == c
+            ]
             spread_containers(list_containers, conso_nodes,
                               total_time, min_nodes)
             stop = True
@@ -661,8 +667,10 @@ def allocation_ffd(
     for i in range(it.my_instance.nb_clusters):
         # check if cluster i has not be placed in init
         if not cluster_done[idx_cluster_vars[i]]:
-            list_containers = [it.my_instance.dict_id_c[j] for j, value in enumerate(
-                labels_) if value == idx_cluster_vars[i]]
+            list_containers = [
+                it.my_instance.dict_id_c[j] for j, value in enumerate(
+                    labels_) if value == idx_cluster_vars[i]
+            ]
 
             # We browse containers in cluster i
             for container in list_containers:
@@ -679,7 +687,8 @@ def allocation_ffd(
                 for idx_node in idx_nodes_vars:
                     cap_node = it.my_instance.df_host_meta.loc[
                         it.my_instance.
-                        df_host_meta[it.host_field] == it.my_instance.dict_id_n[idx_node]
+                        df_host_meta[it.host_field] == (
+                            it.my_instance.dict_id_n[idx_node])
                     ][it.metrics[0]].to_numpy()[0]
                     new_var = (
                         conso_nodes[idx_node] + consu_cont).var()
@@ -770,7 +779,8 @@ def nb_min_nodes(total_time):
     max_metric = 0.0
     for t in it.my_instance.working_df_indiv[it.tick_field].unique():
         max_t_metric = it.my_instance.working_df_indiv[
-            it.my_instance.working_df_indiv[it.tick_field] == t][it.metrics[0]].sum()
+            it.my_instance.working_df_indiv[it.tick_field] == t
+        ][it.metrics[0]].sum()
         if max_t_metric > max_metric:
             max_metric = max_t_metric
 
@@ -851,21 +861,26 @@ def move_list_containers(mvg_conts, tmin, tmax, order='max'):
     old_ids = {}
     for mvg_cont in mvg_conts:
         old_ids[mvg_cont] = it.my_instance.df_indiv.loc[
-            it.my_instance.df_indiv[it.indiv_field] == it.my_instance.dict_id_c[mvg_cont]
+            it.my_instance.df_indiv[it.indiv_field] == (
+                it.my_instance.dict_id_c[mvg_cont])
         ][it.host_field].to_numpy()[0]
-        remove_container_node(old_ids[mvg_cont], it.my_instance.dict_id_c[mvg_cont])
+        remove_container_node(
+            old_ids[mvg_cont], it.my_instance.dict_id_c[mvg_cont])
     # TODO developp smart method for replace containers (based on clustering)
     # Assign them to a new node
     mvg_conts_cons = {}
     for mvg_cont in mvg_conts:
         mvg_conts_cons[mvg_cont] = it.my_instance.df_indiv.loc[
-            it.my_instance.df_indiv[it.indiv_field] == it.my_instance.dict_id_c[mvg_cont]
+            it.my_instance.df_indiv[it.indiv_field] == (
+                it.my_instance.dict_id_c[mvg_cont])
         ][it.metrics[0]].to_numpy()
     order_indivs = ()
     if order == 'max':
         order_indivs = ((max(cons), c) for c, cons in mvg_conts_cons.items())
     elif order == 'mean':
-        order_indivs = ((sum(cons) / len(cons), c) for c, cons in mvg_conts_cons.items())
+        order_indivs = (
+            (sum(cons) / len(cons), c) for c, cons in mvg_conts_cons.items()
+        )
     for val, mvg_cont in sorted(order_indivs, reverse=True):
         move_container(mvg_cont, tmin, tmax, old_ids[mvg_cont], moves_list)
 
@@ -904,7 +919,6 @@ def move_container(mvg_cont, tmin, tmax, old_id, moves_list):
     cap_node = it.my_instance.df_host_meta.loc[
         it.my_instance.df_host_meta[it.host_field] == n
     ][it.metrics[0]].to_numpy()[0]
-    # conso_nodes = np.zeros((working_df_indiv[it.host_field].nunique(), duration))
     nodes = working_df_indiv[it.host_field].unique()
     n_int = 0
     new_n = None
@@ -924,7 +938,8 @@ def move_container(mvg_cont, tmin, tmax, old_id, moves_list):
             min_var = (node_data + cons_c).var()
         n_int += 1
     if new_n is None:
-        print('Impossible to move %s on another existing node.' % it.my_instance.dict_id_c[mvg_cont])
+        print('Impossible to move %s on another existing node.' %
+              it.my_instance.dict_id_c[mvg_cont])
         print('We need to open a new node')
         nb_open_nodes += 1
         n_int += 1
@@ -969,7 +984,8 @@ def move_container(mvg_cont, tmin, tmax, old_id, moves_list):
     #             n_int = (n_int + 1) % nb_open_nodes
     #         cap_node = it.my_instance.df_host_meta.loc[
     #             it.my_instance.
-    #             df_host_meta[it.host_field] == it.my_instance.dict_id_n[n_int]
+    #             df_host_meta[it.host_field] ==
+    #               it.my_instance.dict_id_n[n_int]
     #         ][it.metrics[0]].to_numpy()[0]
     print('He can go on %s (old is %s)' % (new_n, old_id))
     if new_n != old_id:

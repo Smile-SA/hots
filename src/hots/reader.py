@@ -1,4 +1,4 @@
-"""Describe needed resources for reading data, either with or without Kafka streaming platform."""
+"""Describe needed resources for reading data."""
 
 import csv
 import json
@@ -11,13 +11,15 @@ from pathlib import Path
 import pandas as pd
 
 try:
-    from confluent_kafka import Consumer, KafkaError, KafkaException, Producer, TopicPartition
+    from confluent_kafka import (
+        Consumer, KafkaError, KafkaException, Producer, TopicPartition)
     from confluent_kafka.admin import AdminClient
     from confluent_kafka.schema_registry import SchemaRegistryClient
-    from confluent_kafka.schema_registry.avro import AvroDeserializer, AvroSerializer
+    from confluent_kafka.schema_registry.avro import (
+        AvroDeserializer, AvroSerializer)
     from confluent_kafka.schema_registry.error import SchemaRegistryError
-    from confluent_kafka.serialization import (MessageField, SerializationContext,
-                                               StringSerializer)
+    from confluent_kafka.serialization import (
+        MessageField, SerializationContext, StringSerializer)
 
     import requests
 except ImportError:
@@ -42,7 +44,8 @@ def init_reader(path):
             raise ImportError('Kafka is required to do it.')
         else:
             use_schema = False
-            it.avro_deserializer = connect_schema(use_schema, it.kafka_schema_url)
+            it.avro_deserializer = connect_schema(
+                use_schema, it.kafka_schema_url)
             it.csv_reader = None
     else:
         it.csv_file = open(p_data / 'container_usage.csv', 'r')
@@ -86,7 +89,8 @@ def get_next_data(
                 value = list(dval.values())[1]
                 file = list(dval.values())[2]
                 new_df_container = pd.concat([
-                    new_df_container, node.reassign_node(value)], ignore_index=True)
+                    new_df_container, node.reassign_node(value)],
+                    ignore_index=True)
                 if int(key) >= current_time + tick:
                     it.end = True
             if file:
@@ -136,7 +140,8 @@ def acked(err, msg):
     :type msg: _type_
     """
     if err is not None:
-        print('Failed to deliver message: %s: %s' % (str(msg.value()), str(err)))
+        print('Failed to deliver message: %s: %s' %
+              (str(msg.value()), str(err)))
     else:
         print('Message produced: %s' % (str(msg.value())))
 
@@ -157,7 +162,9 @@ def msg_process(msg, avro_deserializer):
         dval = msg.value()
         val = json.loads(dval)
     else:
-        val = avro_deserializer(msg.value(), SerializationContext(msg.topic(), MessageField.VALUE))
+        val = avro_deserializer(
+            msg.value(),
+            SerializationContext(msg.topic(), MessageField.VALUE))
     return (time_start, val)
 
 
@@ -279,12 +286,16 @@ def publish_stream(producer, msg, topic, avro_serializer, file_complete):
         }
         if avro_serializer is None:
             jresult = json.dumps(message)
-            producer.produce(topic=topic, key=key, value=jresult, on_delivery=delivery_report)
+            producer.produce(
+                topic=topic, key=key, value=jresult,
+                on_delivery=delivery_report)
         else:
             string_serializer = StringSerializer('utf_8')
             producer.produce(
                 topic=topic, key=string_serializer(key),
-                value=avro_serializer(message, SerializationContext(topic, MessageField.VALUE)),
+                value=avro_serializer(
+                    message,
+                    SerializationContext(topic, MessageField.VALUE)),
                 on_delivery=delivery_report)
         producer.flush()
     except KafkaException as e:
@@ -302,8 +313,8 @@ def delivery_report(err, msg):
     if err is not None:
         print('Delivery failed for User record {}: {}'.format(msg.key(), err))
         return
-    print('User record {} successfully produced to {} [{}] at offset {}'.format(
-        msg.key(), msg.topic(), msg.partition(), msg.offset()))
+    print('User record {} successfully produced to {} [{}] at offset {}'.
+          format(msg.key(), msg.topic(), msg.partition(), msg.offset()))
     global last_offset
     last_offset = msg.offset()
 
@@ -317,10 +328,9 @@ def balance_offset(consumer, tp):
     :type tp: _type_
     """
     while True:
-        # Retrieve the latest committed offset for the topic partition being consumed
         committed = consumer.committed([tp])
-        # offset is position of the next message that the consumer will read, we substract by 1
-        print('Last offset: {}, committed offset: {}.'.format(last_offset, committed[0].offset))
+        print('Last offset: {}, committed offset: {}.'.format(
+            last_offset, committed[0].offset))
         if (last_offset - (committed[0].offset - 1)) < 10:
             # The consumer has processed all messages up to this offset
             break
@@ -339,7 +349,6 @@ def connect_schema_registry(schema_str, producer_topic):
     :return: _description_
     :rtype: _type_
     """
-    # schema_registry_conf = {'url': 'http://localhost:8081'}
     schema_registry_conf = {'url': 'http://localhost:8081'}
 
     schema_registry_url = schema_registry_conf['url']
@@ -351,7 +360,8 @@ def connect_schema_registry(schema_str, producer_topic):
         else:
             print('Schema registry is not connected.')
     except Exception:
-        print('Check if Schema Registry is running or disable by setting use_schema to False ')
+        print('Check if Schema Registry is running or disable \
+              by setting use_schema to False ')
         sys.exit()
 
     schema_registry_client = SchemaRegistryClient(schema_registry_conf)
@@ -387,7 +397,7 @@ def csv_to_stream(data, config, use_schema=False):
 
     producer_topic = it.kafka_topics['docker_topic']
 
-    kafka_availability(config)  # Wait for 10 seconds to see if kafka broker is up!
+    kafka_availability(config)
 
     avro_serializer = None
     if use_schema:  # If you want to use avro schema (More CPU)
@@ -478,16 +488,19 @@ def connect_schema(use_schema, schema_url):
     """
     if use_schema:
         schema_registry_client_conf = {'url': schema_url}
-        schema_registry_client = SchemaRegistryClient(schema_registry_client_conf)
+        schema_registry_client = SchemaRegistryClient(
+            schema_registry_client_conf)
 
         try:
             it.kafka_schema = schema_registry_client.get_latest_version(
-                it.kafka_topics['docker_topic'] + '-value').schema.it.kafka_schema
+                it.kafka_topics['docker_topic'] + '-value'
+            ).schema.it.kafka_schema
         except SchemaRegistryError as e:
             # Handle schema registry error
             print(f'Error registering schema: {e}')
 
-        avro_deserializer = AvroDeserializer(schema_registry_client, it.kafka_schema)
+        avro_deserializer = AvroDeserializer(
+            schema_registry_client, it.kafka_schema)
     else:
         avro_deserializer = None
     return avro_deserializer

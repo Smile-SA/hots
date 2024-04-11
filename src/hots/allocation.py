@@ -42,13 +42,17 @@ def check_constraints(
         print('Max used resources ok.')
         satisfied = True
 
-    if it.my_instance.df_host[it.host_field].nunique() > config['objective']['open_nodes']:
+    if it.my_instance.df_host[it.host_field].nunique() > (
+        config['objective']['open_nodes']
+    ):
         print('Too many open nodes !')
         satisfied = False
         # TODO Test if we can do it
         # TODO Do not test with previous data, as it's not supposed to change
         # move_containers(config)
-    elif it.my_instance.df_host[it.host_field].nunique() < config['objective']['open_nodes']:
+    elif it.my_instance.df_host[it.host_field].nunique() < (
+        config['objective']['open_nodes']
+    ):
         print('Less open nodes than the objective !')
         satisfied = True
     else:
@@ -121,7 +125,8 @@ def change_max_bound(config, min_time):
     #             break
 
     print('New max list : ', current_max_by_node)
-    print('max goal satisfied ? ', is_max_goal_ok(current_max_by_node, max_goal))
+    print('max goal satisfied ? ',
+          is_max_goal_ok(current_max_by_node, max_goal))
 
 
 def change_df_max(c_id, max_c):
@@ -139,7 +144,8 @@ def change_df_max(c_id, max_c):
         ].to_numpy()[0] > max_c:
             it.my_instance.df_indiv.loc[
                 (it.my_instance.df_indiv[it.tick_field] == time) & (
-                    it.my_instance.df_indiv[it.indiv_field] == c_id), it.metrics[0]
+                    it.my_instance.df_indiv[it.indiv_field] == c_id),
+                it.metrics[0]
             ] = max_c
 
 
@@ -154,7 +160,9 @@ def get_max_by_node(df_indiv):
     max_by_node = {}
     for node, node_data in df_indiv.groupby(it.host_field):
         node_max = {}
-        for container, cont_data in node_data.groupby(node_data[it.indiv_field]):
+        for container, cont_data in node_data.groupby(
+            node_data[it.indiv_field]
+        ):
             node_max[container] = max(cont_data[it.metrics[0]])
         max_by_node[node] = node_max
     return max_by_node

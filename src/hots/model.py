@@ -1,7 +1,8 @@
 """
 Define the optimization models.
 
-Describing its objective, constraints, variables, and build it from the ``Instance``.
+Describing its objective, constraints, variables,
+and build it from the ``Instance``.
 Provide all optimization models related methods.
 The optimization model description is based on Pyomo.
 """
@@ -33,7 +34,8 @@ class Model:
     """
 
     def __init__(
-        self, pb_number, df_indiv, metric, dict_id_c, dict_id_n=None, df_host_meta=None,
+        self, pb_number, df_indiv, metric, dict_id_c,
+        dict_id_n=None, df_host_meta=None,
         nb_clusters=None, w=None, dv=None, sol_u=None, sol_v=None
     ):
         """Initialize Pyomo model with data in Instance.
@@ -130,7 +132,8 @@ class Model:
             self.mdl.K = pe.Set(dimen=1)
             # distances
             w_d = {
-                (j, i): w[i][j] for i, j in prod(range(len(w)), range(len(w[0])))
+                (j, i): w[i][j] for i, j in prod(
+                    range(len(w)), range(len(w[0])))
             }
             self.mdl.w = pe.Param(self.mdl.C, self.mdl.C,
                                   initialize=w_d, mutable=True)
@@ -152,13 +155,15 @@ class Model:
             self.mdl.cons = pe.Param(self.mdl.Ccons, self.mdl.T)
             # dv matrix for distance placement
             dv_d = {
-                (j, i): dv[i][j] for i, j in prod(range(len(dv)), range(len(dv[0])))
+                (j, i): dv[i][j] for i, j in prod(
+                    range(len(dv)), range(len(dv[0])))
             }
             self.mdl.dv = pe.Param(
                 self.mdl.C, self.mdl.C, initialize=dv_d, mutable=True)
             # current placement solution
             sol_v_d = {
-                (j, i): v[i][j] for i, j in prod(range(len(v)), range(len(v[0])))
+                (j, i): v[i][j] for i, j in prod(
+                    range(len(v)), range(len(v[0])))
             }
             self.mdl.sol_v = pe.Param(self.mdl.C, self.mdl.C,
                                       initialize=sol_v_d, mutable=True)
@@ -258,7 +263,8 @@ class Model:
             self.mdl.obj = pe.Objective(
                 rule=min_coloc_cluster_, sense=pe.minimize)
 
-    def create_data(self, df_indiv, metric, dict_id_c, df_host_meta, nb_clusters):
+    def create_data(self, df_indiv, metric, dict_id_c,
+                    df_host_meta, nb_clusters):
         """Create data from dataframe.
 
         :param df_indiv: _description_
@@ -285,7 +291,9 @@ class Model:
                 self.cap.update({n: n_data[metric].values[0]})
             self.cons = {}
             df_indiv.reset_index(drop=True, inplace=True)
-            for key, c_data in df_indiv.groupby([it.indiv_field, it.tick_field]):
+            for key, c_data in df_indiv.groupby(
+                [it.indiv_field, it.tick_field]
+            ):
                 self.cons.update({key: c_data[metric].values[0]})
 
             self.data = {None: {
@@ -334,11 +342,13 @@ class Model:
         """Write the problem in LP file."""
         if self.pb_number == 1:
             self.instance_model.write(
-                './py_clustering.lp', io_options={'symbolic_solver_labels': True}
+                './py_clustering.lp',
+                io_options={'symbolic_solver_labels': True}
             )
         elif self.pb_number == 2:
             self.instance_model.write(
-                './py_placement.lp', io_options={'symbolic_solver_labels': True}
+                './py_placement.lp',
+                io_options={'symbolic_solver_labels': True}
             )
 
     def solve(self, solver='glpk', verbose=False):
@@ -357,7 +367,7 @@ class Model:
 
     # TODO generalize with others constraints than mustlink
     def update_adjacency_clust_constraints(self, u):
-        """Update constraints fixing u variables from new adjacency matrix (clustering).
+        """Update constraints fixing u variables from new adjacency matrix.
 
         :param u: _description_
         :type u: _type_
@@ -381,7 +391,7 @@ class Model:
 
     # TODO generalize with others constraints than mustlink
     def update_adjacency_place_constraints(self, v):
-        """Update constraints fixing u variables from new adjacency matrix (placement).
+        """Update constraints fixing v variables from new adjacency matrix.
 
         :param v: _description_
         :type v: _type_
@@ -408,7 +418,8 @@ class Model:
         """
         self.update_w(w)
         self.instance_model.obj = sum([
-            self.instance_model.u[(i, j)] * self.instance_model.w[(i, j)] for i, j in prod(
+            self.instance_model.u[(i, j)] * (
+                self.instance_model.w[(i, j)]) for i, j in prod(
                 self.instance_model.C, self.instance_model.C
             ) if i < j
         ])
@@ -430,13 +441,15 @@ class Model:
         """
         self.update_dv(dv)
         self.instance_model.obj = sum([
-            self.instance_model.sol_u[(i, j)] * self.instance_model.v[(i, j)] for i, j in prod(
+            self.instance_model.sol_u[(i, j)] * (
+                self.instance_model.v[(i, j)]) for i, j in prod(
                 self.instance_model.C, self.instance_model.C
             ) if i < j
         ]) + sum([
             (1 - self.instance_model.sol_u[(i, j)]) * (
                 self.instance_model.v[(i, j)] * self.instance_model.dv[(i, j)]
-            ) for i, j in prod(self.instance_model.C, self.instance_model.C) if i < j
+            ) for i, j in prod(self.instance_model.C,
+                               self.instance_model.C) if i < j
         ])
 
     def update_dv(self, dv):
@@ -618,7 +631,8 @@ def min_coloc_cluster_(mdl):
     :rtype: _type_
     """
     return sum([
-        mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in prod(mdl.C, mdl.C) if i < j
+        mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in
+        prod(mdl.C, mdl.C) if i < j
     ]) + sum([(
             (1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)]
     ) for i, j in prod(mdl.C, mdl.C) if i < j])
@@ -727,11 +741,15 @@ def get_conflict_graph(my_mdl, constraints_dual_values, tol):
         edges = [
             (index_c[0], index_c[1])
             for index_c in must_link_c
-            if index_c in constraints_dual_values and constraints_dual_values[index_c] > 0.0
+            if index_c in constraints_dual_values and (
+                constraints_dual_values[index_c] > 0.0)
             and (
-                instance_model_dual[my_mdl.instance_model.must_link_c[index_c]] > (
-                    constraints_dual_values[index_c] + tol * constraints_dual_values[index_c])
-                or instance_model_dual[my_mdl.instance_model.must_link_c[index_c]] > tol_value
+                instance_model_dual[
+                    my_mdl.instance_model.must_link_c[index_c]] > (
+                    constraints_dual_values[index_c] + tol * (
+                        constraints_dual_values[index_c]))
+                or instance_model_dual[
+                    my_mdl.instance_model.must_link_c[index_c]] > tol_value
             )
         ]
 
@@ -747,11 +765,15 @@ def get_conflict_graph(my_mdl, constraints_dual_values, tol):
         edges = [
             (index_c[0], index_c[1])
             for index_c in must_link_n
-            if index_c in constraints_dual_values and constraints_dual_values[index_c] > 0.0
+            if index_c in constraints_dual_values and (
+                constraints_dual_values[index_c] > 0.0)
             and (
-                instance_model_dual[my_mdl.instance_model.must_link_n[index_c]] > (
-                    constraints_dual_values[index_c] + tol * constraints_dual_values[index_c])
-                or instance_model_dual[my_mdl.instance_model.must_link_n[index_c]] > tol_value
+                instance_model_dual[
+                    my_mdl.instance_model.must_link_n[index_c]] > (
+                    constraints_dual_values[index_c] + tol * (
+                        constraints_dual_values[index_c]))
+                or instance_model_dual[
+                    my_mdl.instance_model.must_link_n[index_c]] > tol_value
             )
         ]
 
@@ -761,7 +783,8 @@ def get_conflict_graph(my_mdl, constraints_dual_values, tol):
 
 
 def get_moving_containers_clust(
-    my_mdl, constraints_dual_values, tol, tol_move, nb_containers, dict_id_c, df_clust, profiles
+    my_mdl, constraints_dual_values, tol, tol_move, nb_containers, dict_id_c,
+    df_clust, profiles
 ):
     """Get the list of moving containers from constraints dual values.
 
@@ -789,7 +812,8 @@ def get_moving_containers_clust(
 
     graph_nodes = conflict_graph.number_of_nodes()
     graph_edges = conflict_graph.number_of_edges()
-    list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    list_indivs = sorted(
+        conflict_graph.degree, key=lambda x: x[1], reverse=True)
     if len(list_indivs) == 0:
         max_deg = 0
         mean_deg = 0
@@ -831,7 +855,8 @@ def get_moving_containers_clust(
         if len(mvg_containers) >= (nb_containers * tol_move):
             break
         conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph)))
-        list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+        list_indivs = sorted(
+            conflict_graph.degree, key=lambda x: x[1], reverse=True)
 
     return (mvg_containers, graph_nodes, graph_edges,
             max_deg, mean_deg)
@@ -840,7 +865,8 @@ def get_moving_containers_clust(
 # TODO to improve : very low dual values can change easily
 # TODO choose container by most changing profile ?
 def get_moving_containers_place(
-    my_mdl, constraints_dual_values, tol, tol_move, nb_containers, working_df, dict_id_c
+    my_mdl, constraints_dual_values, tol, tol_move,
+    nb_containers, working_df, dict_id_c
 ):
     """Get the list of moving containers from constraints dual values.
 
@@ -866,7 +892,8 @@ def get_moving_containers_place(
 
     graph_nodes = conflict_graph.number_of_nodes()
     graph_edges = conflict_graph.number_of_edges()
-    list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    list_indivs = sorted(
+        conflict_graph.degree, key=lambda x: x[1], reverse=True)
     if len(list_indivs) == 0:
         max_deg = 0
         mean_deg = 0
@@ -909,7 +936,8 @@ def get_moving_containers_place(
         if len(mvg_containers) >= (nb_containers * tol_move):
             break
         conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph)))
-        list_indivs = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+        list_indivs = sorted(
+            conflict_graph.degree, key=lambda x: x[1], reverse=True)
 
     return (mvg_containers, graph_nodes, graph_edges,
             max_deg, mean_deg)

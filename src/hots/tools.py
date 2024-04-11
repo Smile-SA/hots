@@ -16,8 +16,10 @@ def print_size_vars(list_vars):
     :type list_vars: List
     """
     print('List of variables with sizes:')
-    for name, size in sorted(((name, sys.getsizeof(value)) for name, value in list_vars),
-                             key=lambda x: -x[1])[:10]:
+    for name, size in sorted(
+        ((name, sys.getsizeof(value)) for name, value in list_vars),
+        key=lambda x: -x[1]
+    )[:10]:
         print('{:>30}: {:>8}'.format(name, sizeof_fmt(size)))
 
 

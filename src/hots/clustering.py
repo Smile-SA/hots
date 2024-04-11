@@ -8,8 +8,6 @@ spectral, custom spectral.
 import multiprocessing as mp
 from itertools import combinations
 
-import networkx as nx
-
 import numpy as np
 from numpy.linalg import multi_dot, norm
 
@@ -404,8 +402,7 @@ def get_distance_cluster(cluster_centers_):
 
 
 def get_distance_container_cluster(conso_cont, profile):
-    """
-    Compute the distance between the container profile and his cluster's mean profile.
+    """Distance between the container profile and his cluster's mean profile.
 
     :param conso_cont: _description_
     :type conso_cont: np.array
@@ -494,7 +491,8 @@ def get_far_container(c1, c2, df_clust, profiles):
         return c2
 
 
-def change_clustering(mvg_containers, df_clust, labels_, dict_id_c, tol_open_clust):
+def change_clustering(
+        mvg_containers, df_clust, labels_, dict_id_c, tol_open_clust):
     """Adjust the clustering with individuals to move to the closest cluster.
 
     :param mvg_containers: _description_
@@ -522,10 +520,11 @@ def change_clustering(mvg_containers, df_clust, labels_, dict_id_c, tol_open_clu
                 df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
             ) < min_dist:
                 min_dist = norm(
-                    df_clust.loc[indiv].drop('cluster').values - profiles[cluster]
+                    df_clust.loc[indiv].drop('cluster').values - (
+                        profiles[cluster])
                 )
                 new_cluster = cluster
-        # TODO not ideal for the moment : consider dynamic threshold for conflict graph
+        # TODO not ideal for the moment : dynamic threshold for conflict graph
         # if min_dist >= tol_open_clust:
         #     print('We open a new cluster')
         #     new_cluster = cluster + 1
@@ -542,7 +541,6 @@ def change_clustering(mvg_containers, df_clust, labels_, dict_id_c, tol_open_clu
             nb_changes += 1
             c_int = [k for k, v in dict_id_c.items() if v == indiv][0]
             labels_[c_int] = new_cluster
-    # print('New clustering : ', labels_)
     return (df_clust, labels_, nb_changes)
 
 
@@ -580,7 +578,8 @@ def change_clustering_maxkcut(conflict_graph, df_clust, labels_, dict_id_c):
     # get cluster of indiv and all neighbours
     # assign indiv to cluster that max overall obj
 
-    mvg_containers = sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True)
+    mvg_containers = sorted(
+        conflict_graph.degree, key=lambda x: x[1], reverse=True)
     df_clust_new = df_clust[~df_clust.index.isin(mvg_containers)]
     profiles = get_cluster_mean_profile(
         df_clust_new['cluster'].nunique(), df_clust_new
@@ -594,10 +593,12 @@ def change_clustering_maxkcut(conflict_graph, df_clust, labels_, dict_id_c):
         print(conflict_graph.edges.data())
         for cluster in range(len(profiles)):
             if norm(
-                df_clust_new.loc[indiv_s].drop('cluster').values - profiles[cluster]
+                df_clust_new.loc[indiv_s].drop('cluster').values - (
+                    profiles[cluster])
             ) < min_dist:
                 min_dist = norm(
-                    df_clust_new.loc[indiv_s].drop('cluster').values - profiles[cluster]
+                    df_clust_new.loc[indiv_s].drop('cluster').values - (
+                        profiles[cluster])
                 )
                 new_cluster = cluster
         if new_cluster != df_clust_new.loc[indiv_s, 'cluster']:
@@ -609,12 +610,6 @@ def change_clustering_maxkcut(conflict_graph, df_clust, labels_, dict_id_c):
         else:
             print('indiv did not change cluster')
         conflict_graph.remove_node(indiv)
-        print(conflict_graph.edges.data())
-        print(list(nx.isolates(conflict_graph)))
-        print(conflict_graph.remove_nodes_from(list(nx.isolates(conflict_graph))))
-        print(sorted(conflict_graph.degree, key=lambda x: x[1], reverse=True))
-
-        input()
 
     # return (df_clust_new, labels_new, nb_changes)
 

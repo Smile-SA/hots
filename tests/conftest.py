@@ -1,8 +1,4 @@
-"""
-===================
-Fixtures for pytest
-===================
-"""
+"""Fixtures for pytest."""
 
 import pathlib
 
@@ -17,7 +13,7 @@ def tests_directory():
 
 @pytest.fixture
 def package_directory(tests_directory):
-    """Get test parent dir"""
+    """Get test parent dir."""
     return tests_directory.parent
 
 

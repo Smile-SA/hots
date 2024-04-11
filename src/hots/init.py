@@ -1,4 +1,4 @@
-"""Provide stuff for initialization step (load DataFrames, global variables)."""
+"""Provide stuff for initialization step."""
 
 import json
 from pathlib import Path
@@ -118,7 +118,9 @@ def read_params(
     if method not in methods:
         raise ValueError('Method %s is not accepted' % method)
     if cluster_method not in cluster_methods:
-        raise ValueError('Updating clustering method %s is not accepted' % cluster_method)
+        raise ValueError(
+            'Updating clustering method %s is not accepted' % cluster_method
+        )
     return (config, str(output_path), str(p_path.parent))
 
 

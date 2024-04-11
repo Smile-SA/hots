@@ -39,6 +39,13 @@
   "plot": {
     "renderer": "chromium"
   },
+  "placement":{
+    "enable": true,
+    "allocation_support": true,
+    "allocation_objectives":{
+      "open_nodes": 1
+    }
+  },
   "allocation":{
     "enable": false,
     "constraints":{
@@ -49,9 +56,6 @@
       "open_nodes": 1,
       "target_load_CPU": 0.8 
     }
-  },
-  "placement":{
-    "enable": true
   },
   "kafkaConf":{
     "topics":{

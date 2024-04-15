@@ -1221,20 +1221,26 @@ def move_containers_info(moves_list, current_time):
 
 def check_changes_applied(working_df_indiv):
     """Check if the pending changes have been applied in the environment."""
-    max_time = working_df_indiv[it.tick_field].max()
+    # max_time = working_df_indiv[it.tick_field].max()
     moves_applied = True
     for move in it.pending_changes['move']:
-        if working_df_indiv[
-            (working_df_indiv[it.tick_field] == max_time) & (
-                working_df_indiv[it.indiv_field] == move['container_name'])
-        ].empty:
-            moves_applied = False
-            print('We miss a value')
-        elif working_df_indiv[
-            (working_df_indiv[it.tick_field] == max_time) & (
-                working_df_indiv[it.indiv_field] == move['container_name'])
-        ][it.host_field].iloc[0] != move['new_host']:
-            moves_applied = False
+        for t in working_df_indiv[it.tick_field].unique():
+            if working_df_indiv[
+                (working_df_indiv[it.tick_field] == t) & (
+                    working_df_indiv[it.indiv_field] == move['container_name'])
+            ].empty:
+                moves_applied = False
+                print('We miss a value for container %s.\n' % (
+                    move['container_name']
+                ))
+            elif working_df_indiv[
+                (working_df_indiv[it.tick_field] == t) & (
+                    working_df_indiv[it.indiv_field] == move['container_name'])
+            ][it.host_field].iloc[0] != move['new_host']:
+                moves_applied = False
+                print('Container %s did not changed host yet.\n' % (
+                    move['container_name']
+                ))
     if moves_applied:
         it.pending_changes = {}
 

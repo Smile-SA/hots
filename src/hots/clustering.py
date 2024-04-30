@@ -245,13 +245,11 @@ def compute_mu_r(w, d, labels_, r, u):
     return (mu_r * (1 / d_p))
 
 
-def compute_distance_cluster_r(p, r, mu_r, u, dp):
+def compute_distance_cluster_r(p, mu_r, u, dp):
     """Compute distance between individual p and cluster r.
 
     :param p: _description_
     :type p: int
-    :param r: _description_
-    :type r: int
     :param mu_r: _description_
     :type mu_r: float
     :param u: _description_
@@ -261,8 +259,6 @@ def compute_distance_cluster_r(p, r, mu_r, u, dp):
     :return: _description_
     :rtype: float
     """
-    # return math.sqrt(pow(
-    # (u[:, p] * pow(dp, -1/2)) - mu_r, 2))
     return norm((u[:, p] * pow(dp, -1 / 2)) - mu_r)
 
 
@@ -302,7 +298,7 @@ def weighted_kmeans(w, d, u, k):
             dist_r = 0
             r = 0
             for r in range(k):
-                dist_ar = compute_distance_cluster_r(p, r, mu_[r], u, d[p, p])
+                dist_ar = compute_distance_cluster_r(p, mu_[r], u, d[p, p])
                 if dist_ar < dist_min:
                     dist_min = dist_ar
                     dist_r = r
@@ -348,30 +344,16 @@ def get_cluster_mean_profile(df_clust):
     return profiles_
 
 
-def get_sum_cluster_variance(profiles_, vars_):
+def get_sum_cluster_variance(profiles_):
     """Compute a matrix of sum of variances of each pair of cluster.
 
     :param profiles_: _description_
     :type profiles_: np.array
-    :param vars_: _description_
-    :type vars_: np.array
     :return: _description_
     :rtype: np.array
     """
     k = len(profiles_)
     sum_profiles_matrix = np.full((k, k), -1, dtype=float)
-    # for i in range(k):
-    #     for j in range(i + 1, k):
-    #         if vars_[i] + vars_[j] == 0.0:
-    #             sum_profiles_matrix[i, j] = 1.0
-    #         else:
-    #             sum_profiles_matrix[i, j] = (
-    #                 (profiles_[i, :] + profiles_[j, :]).var(ddof=0)) / (
-    #                 vars_[i] + vars_[j])
-    #         sum_profiles_matrix[j, i] = sum_profiles_matrix[i, j]
-    #     sum_profiles_matrix[i, i] = -1.0
-    # print(sum_profiles_matrix)
-    # sum_profiles_matrix = np.zeros((k, k), dtype=float)
     for i in range(k):
         for j in range(i + 1, k):
             sum_profiles_matrix[i, j] = (

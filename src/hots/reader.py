@@ -57,10 +57,9 @@ def init_reader(path):
         # TODO and then ?
 
 
-# TODO window_size useless ?
 # TODO progress time no loop here
 def get_next_data(
-    current_time, tick, window_size
+    current_time, tick
 ):
     """Get next data (one timestamp ?).
 

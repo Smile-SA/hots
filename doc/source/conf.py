@@ -17,9 +17,9 @@
 
 # -- Project information -----------------------------------------------------
 
+from importlib import metadata
 import time
 
-import pkg_resources
 
 project = 'hots'
 copyright = '2022, Smile R&D team'
@@ -193,7 +193,7 @@ todo_include_todos = True
 project = 'hots'
 
 # The short X.Y version.
-version = pkg_resources.get_distribution(project).version
+__version__ = metadata.version(project)
 release = version
 
 html_title = '{0} v{1}'.format(project, release)

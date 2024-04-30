@@ -67,7 +67,7 @@ def init_dfs(data):
 
 
 def read_params(
-    path, k, tau, method, cluster_method, param, output_path, kafka_var
+    path, k, tau, method, cluster_method, output_path, kafka_var
 ):
     """Get parameters from file and build the Dict config object.
 
@@ -81,8 +81,6 @@ def read_params(
     :type method: str
     :param cluster_method: _description_
     :type cluster_method: str
-    :param param: _description_
-    :type param: str
     :param output_path: _description_
     :type output_path: str
     :param kafka_var: streaming platform
@@ -99,15 +97,15 @@ def read_params(
     if k is not None:
         config['clustering']['nb_clusters'] = k
     if tau is not None:
-        config['analysis']['window_duration'] = tau
+        config['loop']['window_duration'] = tau
         config['loop']['tick'] = tau
     else:
-        tau = config['analysis']['window_duration']
+        tau = config['loop']['window_duration']
     if output_path is not None:
         output_path = Path(output_path)
     else:
         output_path = Path(
-            '%sk%d_tau%d_%s_%s' % (
+            '%s/k%d_tau%d_%s_%s' % (
                 str(p_path.parent),
                 config['clustering']['nb_clusters'],
                 int(tau),
@@ -185,8 +183,6 @@ def define_globals(p_path, config, kafka_var):
 
     global dict_agg_metrics
 
-    global renderer
-
     global streamkm_model
 
     global csv_file
@@ -247,5 +243,3 @@ def define_globals(p_path, config, kafka_var):
         dict_agg_metrics[metric] = 'sum'
 
     pending_changes = {}
-
-    renderer = config['plot']['renderer']

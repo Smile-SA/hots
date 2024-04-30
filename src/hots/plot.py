@@ -300,7 +300,7 @@ def plot_containers_groupby_nodes(
 #     fig.show(it.renderer)
 
 
-def plot_dendrogram(z_all, k):
+def plot_dendrogram(z_all):
     """Plot dendrogram for the hierarchical clustering building.
 
     :param z_all: _description_
@@ -384,7 +384,7 @@ def init_containers_plot(df_indiv, sep_time, metric='cpu'):
     """
     fig, ax = plt.subplots()
     fig.suptitle('Containers consumption evolution')
-    ax.set_ylim([0, df_indiv['cpu'].max()])
+    ax.set_ylim([0, df_indiv[metric].max()])
     ax.set_xlim([0, df_indiv[it.tick_field].max()])
 
     pvt = pd.pivot_table(
@@ -392,24 +392,20 @@ def init_containers_plot(df_indiv, sep_time, metric='cpu'):
             df_indiv[it.tick_field] <= sep_time],
         columns=df_indiv[it.indiv_field],
         index=df_indiv[it.tick_field], aggfunc='sum',
-        values='cpu')
+        values=metric)
     ax.plot(pvt)
     ax.axvline(x=sep_time, color='red', linestyle='--')
 
     return (fig, ax)
 
 
-def update_containers_plot(fig, ax, df, t):
+def update_containers_plot(ax, df):
     """Update containers consumption plot with new data.
 
-    :param fig: _description_
-    :type fig: _type_
     :param ax: _description_
     :type ax: _type_
     :param df: _description_
     :type df: pd.DataFrame
-    :param t: _description_
-    :type t: int
     """
     pvt_cpu = pd.pivot_table(
         df, columns=df[it.indiv_field],
@@ -493,11 +489,9 @@ def init_nodes_plot(
 #     return fig
 
 
-def update_nodes_plot(fig, ax, df, dict_id_n, metric=None):
+def update_nodes_plot(ax, df, dict_id_n, metric=None):
     """Update nodes consumption plot with new data.
 
-    :param fig: _description_
-    :type fig: _type_
     :param ax: _description_
     :type ax: _type_
     :param df: _description_
@@ -638,17 +632,13 @@ def init_plot_clustering_axes(df_clust, dict_id_c, metric='cpu'):
 #     return fig
 
 
-def update_clustering_plot(fig, ax, df_clust, dict_id_c, metric=None):
+def update_clustering_plot(ax, df_clust, metric=None):
     """Update clustering plot with new data.
 
-    :param fig: _description_
-    :type fig: _type_
     :param ax: _description_
     :type ax: _type_
     :param df_clust: _description_
     :type df_clust: pd.DataFrame
-    :param dict_id_c: _description_
-    :type dict_id_c: Dict
     :param metric: _description_, defaults to None
     :type metric: str, optional
     """
@@ -661,11 +651,9 @@ def update_clustering_plot(fig, ax, df_clust, dict_id_c, metric=None):
     ax.axvline(x=df_clust.columns[-2], color='red', linestyle='--')
 
 
-def update_cluster_profiles(fig, ax, profiles, x, metric=None):
+def update_cluster_profiles(ax, profiles, x, metric=None):
     """Update the clusters profiles.
 
-    :param fig: _description_
-    :type fig: _type_
     :param ax: _description_
     :type ax: _type_
     :param profiles: _description_
@@ -680,19 +668,15 @@ def update_cluster_profiles(fig, ax, profiles, x, metric=None):
         ax.plot(x, profiles[i], colors[i])
 
 
-def update_clustering_plot_axes(fig, ax_, df_clust, dict_id_c, metric='cpu'):
+def update_clustering_plot_axes(ax_, df_clust, dict_id_c):
     """Update clustering plot with new data.
 
-    :param fig: _description_
-    :type fig: _type_
     :param ax_: _description_
     :type ax_: _type_
     :param df_clust: _description_
     :type df_clust: pd.DataFrame
     :param dict_id_c: _description_
     :type dict_id_c: Dict
-    :param metric: _description_, defaults to 'cpu'
-    :type metric: str, optional
     """
     for k, data in df_clust.groupby(['cluster']):
         for row in data.drop(labels='cluster', axis=1).iterrows():
@@ -732,14 +716,3 @@ def plot_memory_usage(x, y, tick):
     ax.set(xlabel='time (s)', ylabel='memory of datarame (bytes)')
     ax.legend()
     fig.savefig('mem_fig.png')
-
-# def plot_memory_usage_plotly(x, y, mock, tick):
-
-#     fig = px.line(x=x, y=y, title='total memory rss')
-#     for idx, t in enumerate(tick):
-#         if idx == 0:
-#             fig.add_vline(t)
-#         else:
-#             fig.add_vline(t)
-
-#     fig.write_html('mem_fig.html')

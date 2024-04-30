@@ -126,13 +126,11 @@ def get_mean_consumption(df_host):
             global_mean / df_host[it.tick_field].nunique()))
 
 
-def get_list_mean(df_host, total_time):
+def get_list_mean(df_host):
     """Return list of mean for each metric in each node.
 
     :param df_host: _description_
     :type df_host: pd.DataFrame
-    :param total_time: _description_
-    :type total_time: int
     :return: _description_
     :rtype: Tuple[Dict, Dict]
     """
@@ -146,13 +144,11 @@ def get_list_mean(df_host, total_time):
     return (dict_mean_cpu, dict_mean_mem)
 
 
-def get_list_var(df_host, total_time):
+def get_list_var(df_host):
     """Return list of variance for each metric in each node.
 
     :param df_host: _description_
     :type df_host: pd.DataFrame
-    :param total_time: _description_
-    :type total_time: int
     :return: _description_
     :rtype: Tuple[Dict, Dict]
     """
@@ -225,13 +221,11 @@ def print_vmr(df_host, total_time, part):
             global_vmr / df_host.machine_id.nunique()))
 
 
-def get_list_vmr(df_host, total_time):
+def get_list_vmr(df_host):
     """Compute VMR (Variance-to-mean ratio) for each metric in each node.
 
     :param df_host: _description_
     :type df_host: pd.DataFrame
-    :param total_time: _description_
-    :type total_time: int
     :return: _description_
     :rtype: Tuple[Dict, Dict]
     """

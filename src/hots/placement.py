@@ -556,7 +556,7 @@ def allocation_distant_pairwise(
     stop = False
 
     total_time = it.my_instance.sep_time
-    min_nodes = nb_nodes or nb_min_nodes(it.my_instance, total_time)
+    min_nodes = nb_nodes or nb_min_nodes()
     conso_nodes = np.zeros((it.my_instance.nb_nodes, total_time))
     n = 0
 
@@ -623,7 +623,7 @@ def allocation_distant_pairwise(
 
 
 def allocation_ffd(
-    cluster_vars, cluster_var_matrix, labels_, bound_new_node=50
+    cluster_vars, cluster_var_matrix, labels_
 ):
     """Second placement heuristic.
 
@@ -640,8 +640,6 @@ def allocation_ffd(
     :type cluster_var_matrix: np.array
     :param labels_: _description_
     :type labels_: List
-    :param bound_new_node: _description_, defaults to 50
-    :type bound_new_node: float, optional
     """
     # TODO add open-nodes system (to run through open nodes only, and open a
     # new one when needed / with criterion)
@@ -649,14 +647,13 @@ def allocation_ffd(
     total_time = it.my_instance.sep_time
 
     # find minimum number of nodes needed
-    min_nodes = nb_min_nodes(total_time)
+    min_nodes = nb_min_nodes()
 
     idx_cluster_vars = np.argsort(cluster_vars)[::-1]
     conso_nodes = np.zeros((min_nodes, total_time))
 
     # try to place "opposite clusters" first
     conso_nodes, cluster_done = place_opposite_clusters(
-        cluster_vars,
         cluster_var_matrix, labels_,
         min_nodes, conso_nodes)
 
@@ -738,7 +735,7 @@ def allocation_spread(min_nodes=None):
     :type min_nodes: int, optional
     """
     total_time = it.my_instance.sep_time
-    min_nodes = min_nodes or nb_min_nodes(total_time)
+    min_nodes = min_nodes or nb_min_nodes()
     conso_nodes = np.zeros((it.my_instance.nb_nodes, total_time))
     spread_containers(
         it.my_instance.df_indiv[it.indiv_field].unique(),
@@ -748,28 +745,13 @@ def allocation_spread(min_nodes=None):
 
 # TODO consider 85% usage now ? maybe add parameter
 # TODO make it generic with metrics
-def nb_min_nodes(total_time):
+def nb_min_nodes():
     """Compute the minimum number of nodes needed to support the load.
 
-    :param total_time: _description_
-    :type total_time: int
     :return: _description_
     :rtype: float
     """
-    # max_cpu = 0.0
-    # max_mem = 0.0
-    # for t in range(total_time):
-    #     max_t_cpu = it.my_instance.df_indiv[
-    #         it.my_instance.df_indiv[it.tick_field] == t][it.metrics[0]].sum()
-    #     max_t_mem = it.my_instance.df_indiv[
-    #         it.my_instance.df_indiv[it.tick_field] == t]['mem'].sum()
-
-    #     if max_t_cpu > max_cpu:
-    #         max_cpu = max_t_cpu
-    #     if max_t_mem > max_mem:
-    #         max_mem = max_t_mem
-
-    # # TODO consider nodes with different capacities
+    # TODO consider nodes with different capacities
     # cap_cpu = it.my_instance.df_host_meta[it.metrics[0]].to_numpy()[0]
     # cap_mem = it.my_instance.df_host_meta['mem'].to_numpy()[0]
     # min_nodes_cpu = math.ceil(max_cpu / cap_cpu)
@@ -790,12 +772,10 @@ def nb_min_nodes(total_time):
 
 # TODO integrate upper bound for considering all clusters sum variance < ub
 def place_opposite_clusters(
-    cluster_vars, cluster_var_matrix, labels_, min_nodes, conso_nodes
+    cluster_var_matrix, labels_, min_nodes, conso_nodes
 ):
     """Initialize allocation heuristic by co-localizing distant clusters.
 
-    :param cluster_vars: _description_
-    :type cluster_vars: np.array
     :param cluster_var_matrix: _description_
     :type cluster_var_matrix: np.array
     :param labels_: _description_

@@ -34,8 +34,7 @@ class Model:
     """
 
     def __init__(
-        self, pb_number, df_indiv, metric, dict_id_c,
-        dict_id_n=None, df_host_meta=None,
+        self, pb_number, df_indiv, metric, dict_id_c, df_host_meta=None,
         nb_clusters=None, w=None, dv=None, sol_u=None, sol_v=None
     ):
         """Initialize Pyomo model with data in Instance.
@@ -48,8 +47,6 @@ class Model:
         :type metric: str
         :param dict_id_c: _description_
         :type dict_id_c: Dict
-        :param dict_id_n: _description_, defaults to None
-        :type dict_id_n: Dict, optional
         :param df_host_meta: _description_, defaults to None
         :type df_host_meta: pd.DataFrame, optional
         :param nb_clusters: _description_, defaults to None
@@ -87,10 +84,6 @@ class Model:
         self.build_objective()
 
         # Put data in attribute
-        # self.create_data(df_indiv, dict_id_c,
-        #                  dict_id_n, df_host_meta,
-        #                  nb_clusters
-        #                  )
         self.create_data(df_indiv, metric, dict_id_c,
                          df_host_meta,
                          nb_clusters
@@ -460,20 +453,6 @@ class Model:
         """
         for i, j in prod(range(len(dv)), range(len(dv[0]))):
             self.instance_model.dv[(i, j)] = dv[i][j]
-
-    # TODO to finish
-    def update_instance(self, df_indiv):
-        """Update the model instance from new data.
-
-        :param df_indiv: _description_
-        :type df_indiv: _type_
-        """
-        # Clear data and constraints
-        for c in self.instance_model.component_objects(pe.Constraint):
-            self.instance_model.del_component(c)
-        # Re-create data
-
-        # Re-create constraints
 
 
 def clust_assign_(mdl, container):

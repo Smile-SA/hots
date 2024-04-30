@@ -75,13 +75,11 @@ def change_max_dataset(
             ] = new_max
 
 
-def order_csv_timestamp(path, save=True):
+def order_csv_timestamp(path):
     """Order the CSV file by timestamp.
 
     :param path: initial folder path
     :type path: str
-    :param save: save or not the new file
-    :type save: bool
     """
     p_data = Path(path)
     data = pd.read_csv(

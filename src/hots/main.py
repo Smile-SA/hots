@@ -50,8 +50,6 @@ from .instance import Instance
 @click.option('-c', '--cluster_method', required=False, type=str,
               default='loop-cluster',
               help='Method used for updating clustering')
-@click.option('-p', '--param', required=False, type=str,
-              help='Use a specific parameter file')
 @click.option('-o', '--output', required=False, type=str,
               help='Use a specific directory for output')
 @click.option('-C', '--tolclust', required=False, type=str,
@@ -65,7 +63,7 @@ from .instance import Instance
 @click.option('-T', '--time_limit', required=False, type=int,
               help='Provide a time limit for data processing (in seconds)')
 def main(
-    config_path, k, tau, method, cluster_method, param, output,
+    config_path, k, tau, method, cluster_method, output,
     tolclust, tolplace, use_kafka, time_limit
 ):
     """Entry point of the application.
@@ -80,8 +78,6 @@ def main(
     :type method: str
     :param cluster_method: method to use to update clustering
     :type cluster_method: str
-    :param param: parameter file to use
-    :type param: str
     :param output: output folder to use
     :type output: str
     :param tolclust: threshold to use for clustering conflict
@@ -95,13 +91,13 @@ def main(
     main_time = time.time()
     end_time = 0
     if time_limit is not None:
-        end_time = main_time + time_limit * 60
+        end_time = main_time + time_limit
 
     signal.signal(signal.SIGINT, signal_handler_sigint)
 
     start = time.time()
     (config, output_path) = preprocess(
-        config_path, k, tau, method, cluster_method, param, output,
+        config_path, k, tau, method, cluster_method, output,
         tolclust, tolplace, use_kafka
     )
     add_time(-1, 'preprocess', (time.time() - start))
@@ -166,7 +162,7 @@ def main(
 
 
 def preprocess(
-    path, k, tau, method, cluster_method, param,
+    path, k, tau, method, cluster_method,
     output, tolclust, tolplace, use_kafka
 ):
     """Load configuration, data and initialize needed objects.
@@ -181,8 +177,6 @@ def preprocess(
     :type method: str
     :param cluster_method: method to use to update clustering
     :type cluster_method: str
-    :param param: parameter file to use
-    :type param: str
     :param output: output folder to use
     :type output: str
     :param tolclust: threshold to use for clustering conflict
@@ -197,7 +191,7 @@ def preprocess(
     # TODO what if we want tick < tau ?
     print('Preprocessing ...')
     (config, output_path, parent_path) = it.read_params(
-        path, k, tau, method, cluster_method, param, output, use_kafka)
+        path, k, tau, method, cluster_method, output, use_kafka)
     config = spec_params(config, [tolclust, tolplace])
     logging.basicConfig(filename=output_path + '/logs.log', filemode='w',
                         format='%(message)s', level=logging.INFO)
@@ -216,7 +210,7 @@ def preprocess(
         reader.csv_to_stream(parent_path, config)
 
     reader.init_reader(parent_path)
-    it.my_instance = Instance(parent_path, config)
+    it.my_instance = Instance(config)
     it.my_instance.print_times()
 
     return (config, output_path)
@@ -275,7 +269,7 @@ def global_process(
     (clust_model, place_model,
         clustering_dual_values, placement_dual_values) = pre_loop(
         working_df_indiv, df_clust,
-        w, u, config['loop']['constraints_dual'], v,
+        w, u, v,
         cluster_method, config['optimization']['solver']
     )
     add_time(0, 'total_loop', (time.time() - start))
@@ -302,7 +296,7 @@ def analysis_period(config, method):
     :rtype: List
     """
     current_data = reader.get_next_data(
-        0, it.my_instance.sep_time, it.my_instance.sep_time + 1
+        0, it.my_instance.sep_time
     )
     if it.use_kafka and current_data.empty and it.end:
         sys.exit(0)
@@ -347,10 +341,9 @@ def analysis_period(config, method):
         # TODO improve this part (distance...)
         cluster_profiles = clt.get_cluster_mean_profile(
             df_indiv_clust)
-        cluster_vars = clt.get_cluster_variance(cluster_profiles)
 
         cluster_var_matrix = clt.get_sum_cluster_variance(
-            cluster_profiles, cluster_vars)
+            cluster_profiles)
         it.results_file.write('\nClustering computing time : %f s\n\n' %
                               (time.time() - start))
         add_time(-1, 'clustering_0', (time.time() - start))
@@ -467,8 +460,7 @@ def run_period(
             previous_timestamp = it.my_instance.df_indiv[it.tick_field].max()
             # TODO Integrate back progress no loop in here
             current_data = reader.get_next_data(
-                current_time, config['loop']['tick'],
-                config['loop']['tick'] - current_time + 1
+                current_time, config['loop']['tick']
             )
             current_time += config['loop']['tick']
             it.my_instance.df_indiv = pd.concat([
@@ -528,7 +520,6 @@ def run_period(
                     df_clust, cluster_profiles, labels_) = eval_sols(
                     working_df_indiv, cluster_method,
                     w, u, v, clust_model, place_model,
-                    config['loop']['constraints_dual'],
                     clustering_dual_values, placement_dual_values,
                     config['loop']['tol_dual_clust'],
                     config['loop']['tol_move_clust'],
@@ -553,12 +544,12 @@ def run_period(
 
             # update clustering & node consumption plot
             plot.update_clustering_plot(
-                fig_clust, ax_clust, df_clust, it.my_instance.dict_id_c)
+                ax_clust, df_clust)
             plot.update_cluster_profiles(
-                fig_mean_clust, ax_mean_clust, cluster_profiles,
+                ax_mean_clust, cluster_profiles,
                 sorted(working_df_indiv[it.tick_field].unique()))
             plot.update_nodes_plot(
-                fig_node, ax_node, working_df_indiv, it.my_instance.dict_id_n)
+                ax_node, working_df_indiv, it.my_instance.dict_id_n)
 
             working_df_indiv = it.my_instance.df_indiv[
                 (it.my_instance.
@@ -620,7 +611,7 @@ def run_period(
         # Close data reader before exit application
         reader.close_reader()
         end_loop(
-            working_df_indiv, tmin, nb_clust_changes, nb_place_changes,
+            working_df_indiv, nb_clust_changes, nb_place_changes,
             total_nb_overloads, total_loop_time, loop_nb
         )
 
@@ -708,17 +699,16 @@ def progress_time_noloop(
                 working_df_indiv, instance.dict_id_c)
             cluster_profiles = clt.get_cluster_mean_profile(
                 df_clust)
-            cluster_vars = clt.get_cluster_variance(cluster_profiles)
 
             cluster_var_matrix = clt.get_sum_cluster_variance(
-                cluster_profiles, cluster_vars)
+                cluster_profiles)
             dv = ctnr.build_var_delta_matrix_cluster(
                 df_clust, cluster_var_matrix, instance.dict_id_c)
             (nb_clust_changes_loop, nb_place_changes_loop,
                 clustering_dual_values, placement_dual_values,
                 df_clust, cluster_profiles, labels_) = eval_sols(
                 instance, working_df_indiv,
-                w, u, v, dv, constraints_dual,
+                w, u, v, dv,
                 clustering_dual_values, placement_dual_values,
                 tol_clust, tol_move_clust, tol_place, tol_move_place,
                 df_clust, cluster_profiles, labels_
@@ -733,7 +723,7 @@ def progress_time_noloop(
 
 def pre_loop(
     working_df_indiv, df_clust, w, u,
-    constraints_dual, v, cluster_method, solver
+    v, cluster_method, solver
 ):
     """Build optimization problems and solve them with T_init solutions.
 
@@ -745,8 +735,6 @@ def pre_loop(
     :type w: np.array
     :param u: clustering adjacency matrix
     :type u: np.array
-    :param constraints_dual: constraints type compared to trigger conflicts
-    :type constraints_dual: List
     :param v: placement adjacency matrix
     :type v: np.array
     :param cluster_method: method used to update clustering
@@ -790,10 +778,9 @@ def pre_loop(
     # TODO improve this part (distance...)
     cluster_profiles = clt.get_cluster_mean_profile(
         df_clust)
-    cluster_vars = clt.get_cluster_variance(cluster_profiles)
 
     cluster_var_matrix = clt.get_sum_cluster_variance(
-        cluster_profiles, cluster_vars)
+        cluster_profiles)
     dv = ctnr.build_var_delta_matrix_cluster(
         df_clust, cluster_var_matrix, it.my_instance.dict_id_c)
 
@@ -805,7 +792,6 @@ def pre_loop(
         2,
         working_df_indiv, it.metrics[0],
         it.my_instance.dict_id_c,
-        it.my_instance.dict_id_n,
         it.my_instance.df_host_meta,
         dv=dv, sol_u=u, sol_v=v
     )
@@ -852,7 +838,7 @@ def build_matrices(tmin, tmax, labels_):
 def eval_sols(
         working_df_indiv,
         cluster_method, w, u, v, clust_model, place_model,
-        constraints_dual, clustering_dual_values, placement_dual_values,
+        clustering_dual_values, placement_dual_values,
         tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
         df_clust, cluster_profiles, labels_, loop_nb, solver
 ):
@@ -872,8 +858,6 @@ def eval_sols(
     :type clust_model: mdl.Model
     :param place_model: placement optimization model
     :type place_model: mdl.Model
-    :param constraints_dual: constraints type compared to trigger conflicts
-    :type constraints_dual: List
     :param clustering_dual_values: previous loop dual values for clustering
     :type clustering_dual_values: Dict
     :param placement_dual_values: previous loop dual values for placement
@@ -924,7 +908,7 @@ def eval_sols(
             clust_conf_nodes, clust_conf_edges,
             clust_max_deg, clust_mean_deg) = eval_clustering(
             w, u,
-            clust_model, clustering_dual_values, constraints_dual,
+            clust_model, clustering_dual_values,
             tol_clust, tol_move_clust, tol_open_clust,
             df_clust, cluster_profiles, labels_, loop_nb, solver)
     elif cluster_method == 'kmeans-scratch':
@@ -962,7 +946,7 @@ def eval_sols(
         place_max_deg, place_mean_deg) = eval_placement(
         working_df_indiv,
         w, u, v, dv,
-        placement_dual_values, constraints_dual, place_model,
+        placement_dual_values, place_model,
         tol_place, tol_move_place, nb_clust_changes_loop, loop_nb, solver
     )
     add_time(loop_nb, 'loop_placement', (time.time() - start))
@@ -982,7 +966,7 @@ def eval_sols(
 
 # TODO update return type
 def eval_clustering(
-    w, u, clust_model, clustering_dual_values, constraints_dual,
+    w, u, clust_model, clustering_dual_values,
     tol_clust, tol_move_clust, tol_open_clust,
     df_clust, cluster_profiles, labels_, loop_nb, solver
 ):
@@ -996,8 +980,6 @@ def eval_clustering(
     :type clust_model: mdl.Model
     :param clustering_dual_values: previous loop dual values for clustering
     :type clustering_dual_values: Dict
-    :param constraints_dual: constraints type compared to trigger conflicts
-    :type constraints_dual: List
     :param tol_clust: threshold used for clustering conflicts
     :type tol_clust: float
     :param tol_move_clust: threshold used for number of clustering moves
@@ -1075,9 +1057,8 @@ def eval_clustering(
     # Compute new clusters profiles
     cluster_profiles = clt.get_cluster_mean_profile(
         df_clust)
-    cluster_vars = clt.get_cluster_variance(cluster_profiles)
     cluster_var_matrix = clt.get_sum_cluster_variance(
-        cluster_profiles, cluster_vars)
+        cluster_profiles)
     dv = ctnr.build_var_delta_matrix_cluster(
         df_clust, cluster_var_matrix, it.my_instance.dict_id_c)
 
@@ -1093,7 +1074,7 @@ def eval_clustering(
 
 def eval_placement(
     working_df_indiv, w, u, v, dv,
-    placement_dual_values, constraints_dual, place_model,
+    placement_dual_values, place_model,
     tol_place, tol_move_place,
     nb_clust_changes_loop, loop_nb, solver
 ):
@@ -1111,8 +1092,6 @@ def eval_placement(
     :type dv: np.array
     :param placement_dual_values: previous loop dual values for placement
     :type placement_dual_values: Dict
-    :param constraints_dual: constraints type compared to trigger conflicts
-    :type constraints_dual: List
     :param place_model: placement optimization model
     :type place_model: mdl.Model
     :param tol_place: threshold used for placement conflicts
@@ -1140,7 +1119,6 @@ def eval_placement(
         2,
         working_df_indiv, it.metrics[0],
         it.my_instance.dict_id_c,
-        it.my_instance.dict_id_n,
         it.my_instance.df_host_meta,
         dv=dv, sol_u=u, sol_v=v
     )
@@ -1273,9 +1251,8 @@ def loop_kmeans(df_clust, labels_):
     # Compute new clusters profiles
     cluster_profiles = clt.get_cluster_mean_profile(
         df_clust)
-    cluster_vars = clt.get_cluster_variance(cluster_profiles)
     cluster_var_matrix = clt.get_sum_cluster_variance(
-        cluster_profiles, cluster_vars)
+        cluster_profiles)
     dv = ctnr.build_var_delta_matrix_cluster(
         df_clust, cluster_var_matrix, it.my_instance.dict_id_c)
 
@@ -1316,9 +1293,8 @@ def stream_km(df_clust, labels_):
     # Compute new clusters profiles
     cluster_profiles = clt.get_cluster_mean_profile(
         df_clust)
-    cluster_vars = clt.get_cluster_variance(cluster_profiles)
     cluster_var_matrix = clt.get_sum_cluster_variance(
-        cluster_profiles, cluster_vars)
+        cluster_profiles)
     dv = ctnr.build_var_delta_matrix_cluster(
         df_clust, cluster_var_matrix, it.my_instance.dict_id_c)
 
@@ -1330,15 +1306,13 @@ def stream_km(df_clust, labels_):
 
 
 def end_loop(
-    working_df_indiv, tmin, nb_clust_changes, nb_place_changes, nb_overload,
+    working_df_indiv, nb_clust_changes, nb_place_changes, nb_overload,
     total_loop_time, loop_nb
 ):
     """Perform all stuffs after last loop.
 
     :param working_df_indiv: current loop data
     :type working_df_indiv: pd.DataFrame
-    :param tmin: starting time of current window
-    :type tmin: int
     :param nb_clust_changes: number of changes in clustering
     :type nb_clust_changes: int
     :param nb_place_changes: number of changes in placement

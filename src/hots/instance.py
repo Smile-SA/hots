@@ -43,11 +43,9 @@ class Instance:
     :type dict_id_c: Dict
     """
 
-    def __init__(self, path, config):
+    def __init__(self, config):
         """Instance constructor.
 
-        :param path: Filesystem path to the input files
-        :type path: str
         :param config: Configuration dict from config file
         :type config: Dict
         """
@@ -72,8 +70,8 @@ class Instance:
         # TODO remove as we are now in streaming => direct timestamp given
         # self.percentage_to_timestamp(config)
 
-        self.window_duration = int(config['analysis']['window_duration'])
         self.sep_time = int(config['analysis']['sep_time'])
+        self.window_duration = int(config['loop']['window_duration'])
         self.tick = int(config['loop']['tick'])
 
         # self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
@@ -113,7 +111,7 @@ class Instance:
         """
         # TODO consider 'tick' param as absolute, not percent ?
         self.window_duration = math.floor(
-            self.time * int(config['analysis']['window_duration']) / 100
+            self.time * int(config['loop']['window_duration']) / 100
         )
         sep_nb_data = math.floor(
             self.time * int(config['analysis']['sep_time']) / 100
@@ -126,7 +124,6 @@ class Instance:
             config['loop']['tick'] = math.floor(
                 self.time * int(config['loop']['tick']) / 100
             ) - 1
-        # self.window_duration = 3
         if self.window_duration <= 1:
             self.window_duration += 1
         if self.sep_time <= 0:

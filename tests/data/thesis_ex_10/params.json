@@ -1,15 +1,6 @@
 {
   "csv": 0,
   "host_meta_path": "tests/data/thesis_ex_10/node_meta.csv",
-  "analysis": {
-    "window_duration": "3",
-    "sep_time": "3",
-    "placement_recompute": 0
-  },
-  "clustering": {
-    "algo": "kmeans",
-    "nb_clusters": 3
-  },
   "data": {
     "individuals_file": "container_usage.csv",
     "hosts_meta_file": "node_meta.csv",
@@ -18,15 +9,23 @@
     "tick_field": "timestamp",
     "metrics": ["cpu"]
   },
+  "analysis": {
+    "sep_time": "3",
+    "placement_recompute": 0
+  },
+  "clustering": {
+    "algo": "kmeans",
+    "nb_clusters": 3
+  },
   "heuristic": {
     "algo": "distant_pairwise"
   },
   "optimization": {
-    "model": "src/hots/model_small_pyomo.py",
     "solver": "glpk"
   },
   "loop": {
     "mode": "default",
+    "window_duration": 3,
     "tick": 2,
     "constraints_dual": ["mustLink"],
     "tol_dual_clust": 0.5,
@@ -35,9 +34,6 @@
     "tol_dual_place": 0.5,
     "tol_move_place": 1,
     "tol_step": 0.0
-  },
-  "plot": {
-    "renderer": "chromium"
   },
   "placement":{
     "enable": true,

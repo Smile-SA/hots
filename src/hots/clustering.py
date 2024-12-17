@@ -7,6 +7,7 @@ spectral, custom spectral.
 
 import multiprocessing as mp
 from itertools import combinations
+import json
 
 import numpy as np
 from numpy.linalg import multi_dot, norm
@@ -73,6 +74,13 @@ def build_matrix_indiv_attr(df):
     df_return = pd.DataFrame(data=lines)
     df_return.fillna(0, inplace=True)
     df_return.set_index(it.indiv_field, inplace=True)
+    it.clustering_file.write(
+        'Containers Mapping Dict: \n'
+    )
+    it.clustering_file.write(
+        json.dumps(dict_id_c, indent=4)
+    )
+    it.clustering_file.write('\n\n')
     return (df_return, dict_id_c)
 
 

@@ -895,6 +895,9 @@ def eval_sols(
     # evaluate clustering
     start = time.time()
     it.clustering_file.write(
+        '--- Loop number n°%d ---\n' % loop_nb
+    )
+    it.clustering_file.write(
         'labels before change\n'
     )
     it.clustering_file.write(
@@ -934,9 +937,24 @@ def eval_sols(
         np.array2string(labels_, separator=',')
     )
     it.clustering_file.write('\n')
+
+    # Profiles details
+    it.clustering_file.write(
+        'Indivual profiles:\n'
+    )
+    it.clustering_file.write(
+        df_clust.to_string(index=False)
+    )
+    it.clustering_file.write(
+        '\nClusters mean profiles:\n'
+    )
+    it.clustering_file.write(
+        np.array2string(cluster_profiles, separator=', ')
+    )
+    it.clustering_file.write('\n')
     add_time(loop_nb, 'loop-clustering', (time.time() - start))
     it.clustering_file.write(
-        'Loop clustering time : %f s\n' % (time.time() - start))
+        'Loop clustering time : %f s\n\n' % (time.time() - start))
 
     # evaluate placement
     start = time.time()

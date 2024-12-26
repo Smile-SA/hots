@@ -18,6 +18,11 @@ else:
 
 from . import init as it
 from . import node as nd
+from dotenv import load_dotenv
+import os
+
+load_dotenv()
+connector_url = os.getenv('CONNECTOR_URL')
 
 
 class Instance:
@@ -166,7 +171,7 @@ class Instance:
         :return: Node information
         :rtype: Dict
         """
-        url = 'http://10.3.73.162:5000/vm/data'
+        url = f'{connector_url}/vm/data'
         response = requests.get(url)
         node_data = {}
         if response.status_code == 200:
@@ -182,7 +187,7 @@ class Instance:
 
     def start_stream():
         """Start stream data in environment."""
-        url = 'http://10.3.73.162:5000/start_stream'
+        url = f'{connector_url}/start_stream'
         response = requests.get(url)
         if response.status_code == 200:
             print(response)
@@ -192,7 +197,7 @@ class Instance:
 
     def stop_stream():
         """Stop stream data in environment."""
-        url = 'http://10.3.73.162:5000/stop_stream'
+        url = f'{connector_url}/stop_stream'
         response = requests.get(url)
         if response.status_code == 200:
             print(response)
@@ -202,7 +207,7 @@ class Instance:
 
     def clear_kafka_topics():
         """Clear Kafka topics in environment."""
-        url = 'http://10.3.73.162:5000/clear_topics'
+        url = f'{connector_url}/clear_topics'
         response = requests.get(url)
         if response.status_code == 200:
             print(response)

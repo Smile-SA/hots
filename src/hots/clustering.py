@@ -5,9 +5,9 @@ Here are the available clustering algorithms : k-means, hierarchical,
 spectral, custom spectral.
 """
 
+import json
 import multiprocessing as mp
 from itertools import combinations
-import json
 
 import numpy as np
 from numpy.linalg import multi_dot, norm

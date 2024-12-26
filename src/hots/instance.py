@@ -6,6 +6,9 @@ This module provides also Instance-related methods.
 """
 
 import math
+import os
+
+from dotenv import load_dotenv
 
 import pandas as pd
 
@@ -18,8 +21,6 @@ else:
 
 from . import init as it
 from . import node as nd
-from dotenv import load_dotenv
-import os
 
 load_dotenv()
 connector_url = os.getenv('CONNECTOR_URL')

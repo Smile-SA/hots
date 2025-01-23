@@ -281,7 +281,7 @@ def global_process(
 
     run_period(
         tmin, tmax, time_limit, end_time, config,
-        cluster_method, df_clust, labels_,
+        method, cluster_method, df_clust, labels_,
         clust_model, place_model, clustering_dual_values, placement_dual_values
     )
 
@@ -309,17 +309,14 @@ def analysis_period(config, method):
         [current_data[it.tick_field], current_data[it.host_field]],
         as_index=False).agg(it.dict_agg_metrics)
 
-    if not it.use_kafka:
+    if config['csv']:
         it.my_instance.set_host_meta(config['host_meta_path'])
     it.my_instance.set_meta_info()
     it.my_instance.init_host_evo()
     df_indiv_clust = pd.DataFrame()
-    labels_ = []
+    labels_ = [0] * it.my_instance.df_indiv[it.indiv_field].nunique()
 
-    if method == 'init':
-        return (it.my_instance.df_host,
-                df_indiv_clust, labels_)
-    elif method in ['heur', 'loop']:
+    if method in ['heur', 'loop']:
 
         # Compute starting point
         # (n_iter, start_point, end_point) = compute_analysis_points()
@@ -395,7 +392,7 @@ def compute_analysis_points():
 
 def run_period(
     tmin, tmax, time_limit, end_time, config,
-    cluster_method, df_clust, labels_,
+    method, cluster_method, df_clust, labels_,
     clust_model, place_model, clustering_dual_values, placement_dual_values
 ):
     """Perform loop process, getting new data and evaluating solutions.
@@ -510,7 +507,9 @@ def run_period(
             )
             cluster_profiles = clt.get_cluster_mean_profile(df_clust)
 
-            if not it.pending_changes:
+            if it.pending_changes:
+                check_changes_applied(working_df_indiv)
+            else:
                 (init_loop_obj_nodes,
                  init_loop_obj_delta) = mdl.get_obj_value_indivs(
                     working_df_indiv)
@@ -547,8 +546,6 @@ def run_period(
                 )
                 nb_clust_changes += nb_clust_changes_loop
                 nb_place_changes += nb_place_changes_loop
-            else:
-                check_changes_applied(working_df_indiv)
 
             # update clustering & node consumption plot
             plot.update_clustering_plot(
@@ -588,30 +585,31 @@ def run_period(
             add_time(loop_nb, 'total_loop', loop_time)
             total_loop_time += loop_time
 
-            # Save loop indicators in df
-            it.loop_results = pd.concat(
-                [
-                    it.loop_results if not it.loop_results.empty else None,
-                    pd.DataFrame.from_records([{
-                        'num_loop': int(loop_nb),
-                        'init_silhouette': init_loop_silhouette,
-                        'init_delta': init_loop_obj_delta,
-                        'clust_conf_nodes': clust_conf_nodes,
-                        'clust_conf_edges': clust_conf_edges,
-                        'clust_max_deg': clust_max_deg,
-                        'clust_mean_deg': clust_mean_deg,
-                        'clust_changes': int(nb_clust_changes_loop),
-                        'place_conf_nodes': place_conf_nodes,
-                        'place_conf_edges': place_conf_edges,
-                        'place_max_deg': place_max_deg,
-                        'place_mean_deg': place_mean_deg,
-                        'place_changes': int(nb_place_changes_loop),
-                        'end_silhouette': end_loop_silhouette,
-                        'end_delta': end_loop_obj_delta,
-                        'loop_time': loop_time
-                    }])
-                ]
-            )
+            if method != 'init':
+                # Save loop indicators in df
+                it.loop_results = pd.concat(
+                    [
+                        it.loop_results if not it.loop_results.empty else None,
+                        pd.DataFrame.from_records([{
+                            'num_loop': int(loop_nb),
+                            'init_silhouette': init_loop_silhouette,
+                            'init_delta': init_loop_obj_delta,
+                            'clust_conf_nodes': clust_conf_nodes,
+                            'clust_conf_edges': clust_conf_edges,
+                            'clust_max_deg': clust_max_deg,
+                            'clust_mean_deg': clust_mean_deg,
+                            'clust_changes': int(nb_clust_changes_loop),
+                            'place_conf_nodes': place_conf_nodes,
+                            'place_conf_edges': place_conf_edges,
+                            'place_max_deg': place_max_deg,
+                            'place_mean_deg': place_mean_deg,
+                            'place_changes': int(nb_place_changes_loop),
+                            'end_silhouette': end_loop_silhouette,
+                            'end_delta': end_loop_obj_delta,
+                            'loop_time': loop_time
+                        }])
+                    ]
+                )
             tmax += config['loop']['tick']
             tmin = tmax - (it.my_instance.window_duration - 1)
             loop_nb += 1

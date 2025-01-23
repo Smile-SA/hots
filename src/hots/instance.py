@@ -57,30 +57,10 @@ class Instance:
         """
         self.nb_clusters = config['clustering']['nb_clusters']
 
-        # self.df_indiv = self.df_indiv.astype({
-        #     it.indiv_field: str,
-        #     it.host_field: str,
-        #     it.tick_field: int})
-        # self.df_host = self.df_host.astype({
-        #     it.host_field: str,
-        #     it.tick_field: int})
-        # self.df_host_meta = self.df_host_meta.astype({it.host_field: str})
-
-        # self.df_host.sort_values(it.tick_field, inplace=True)
-        # self.df_indiv.sort_values(it.tick_field, inplace=True)
-        # self.df_host.set_index(
-        #     [it.tick_field, it.host_field], inplace=True, drop=False)
-        # self.df_indiv.set_index(
-        #     [it.tick_field, it.indiv_field], inplace=True, drop=False)
-
-        # TODO remove as we are now in streaming => direct timestamp given
-        # self.percentage_to_timestamp(config)
-
         self.sep_time = int(config['analysis']['sep_time'])
         self.window_duration = int(config['loop']['window_duration'])
         self.tick = int(config['loop']['tick'])
 
-        # self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.dict_id_c = {}
         self.container_to_id = {}
         self.last_assigned_id = 0
@@ -205,7 +185,7 @@ class Instance:
         url = f'{connector_url}/start_stream'
         response = requests.get(url)
         if response.status_code == 200:
-            print(response)
+            print('Stream started successfully')
         else:
             # If the request was not successful, print the error status code
             print(f'Error: {response.status_code}')
@@ -215,7 +195,7 @@ class Instance:
         url = f'{connector_url}/stop_stream'
         response = requests.get(url)
         if response.status_code == 200:
-            print(response)
+            print('Stream stopped successfully')
         else:
             # If the request was not successful, print the error status code
             print(f'Error: {response.status_code}')
@@ -225,7 +205,7 @@ class Instance:
         url = f'{connector_url}/clear_topics'
         response = requests.get(url)
         if response.status_code == 200:
-            print(response)
+            print('Kafka topics cleaned')
         else:
             # If the request was not successful, print the error status code
             print(f'Error: {response.status_code}')

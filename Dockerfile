@@ -1,7 +1,7 @@
 FROM python:3.10-buster
 
-ENV LC_ALL C.UTF-8
-ENV LANG C.UTF-8
+ENV LC_ALL=C.UTF-8
+ENV LANG=C.UTF-8
 
 RUN apt-get -qq update \
         && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends \

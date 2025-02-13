@@ -21,7 +21,8 @@
     "algo": "distant_pairwise"
   },
   "optimization": {
-    "solver": "glpk"
+    "solver": "glpk",
+    "verbose": false
   },
   "loop": {
     "mode": "default",

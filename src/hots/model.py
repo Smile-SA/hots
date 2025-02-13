@@ -355,7 +355,7 @@ class Model:
         :type verbose: bool
         """
         opt = pe.SolverFactory(solver)
-        results = opt.solve(self.instance_model, tee=True, options={"nopresol": ""})
+        results = opt.solve(self.instance_model, tee=verbose)
         
         if verbose:
             for c in self.instance_model.component_objects(Constraint, active=True):

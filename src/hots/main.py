@@ -270,7 +270,9 @@ def global_process(
         clustering_dual_values, placement_dual_values) = pre_loop(
         working_df_indiv, df_clust,
         w, u, v,
-        cluster_method, config['optimization']['solver']
+        cluster_method,
+        config['optimization']['solver'],
+        config['optimization']['verbose']
     )
     add_time(0, 'total_loop', (time.time() - start))
     tmax += config['loop']['tick']
@@ -527,7 +529,8 @@ def run_period(
                     config['loop']['tol_dual_place'],
                     config['loop']['tol_move_place'],
                     df_clust, cluster_profiles, labels_, loop_nb,
-                    config['optimization']['solver']
+                    config['optimization']['solver'],
+                    config['optimization']['verbose']
                 )
                 it.results_file.write(
                     'Number of changes in clustering : %d\n' %
@@ -723,7 +726,7 @@ def progress_time_noloop(
 
 def pre_loop(
     working_df_indiv, df_clust, w, u,
-    v, cluster_method, solver
+    v, cluster_method, solver, solve_verbose
 ):
     """Build optimization problems and solve them with T_init solutions.
 
@@ -761,7 +764,7 @@ def pre_loop(
     logging.info('Solving linear relaxation ...')
     add_time(0, 'solve_clustering_model', (time.time() - start))
     logging.info('Clustering problem not evaluated yet\n')
-    clust_model.solve(solver)
+    clust_model.solve(solver, solve_verbose)
     clustering_dual_values = mdl.fill_dual_values(clust_model)
 
     if cluster_method == 'stream-km':
@@ -800,7 +803,7 @@ def pre_loop(
     print('Solving first placement ...')
     logging.info('Placement problem not evaluated yet\n')
     add_time(0, 'solve_placement_model', (time.time() - start))
-    place_model.solve(solver, True)
+    place_model.solve(solver, solve_verbose)
     placement_dual_values = mdl.fill_dual_values(place_model)
 
     return (clust_model, place_model,
@@ -840,7 +843,7 @@ def eval_sols(
         cluster_method, w, u, v, clust_model, place_model,
         clustering_dual_values, placement_dual_values,
         tol_clust, tol_move_clust, tol_open_clust, tol_place, tol_move_place,
-        df_clust, cluster_profiles, labels_, loop_nb, solver
+        df_clust, cluster_profiles, labels_, loop_nb, solver, solve_verbose
 ):
     """Evaluate clustering and placement solutions.
 
@@ -913,7 +916,7 @@ def eval_sols(
             w, u,
             clust_model, clustering_dual_values,
             tol_clust, tol_move_clust, tol_open_clust,
-            df_clust, cluster_profiles, labels_, loop_nb, solver)
+            df_clust, cluster_profiles, labels_, loop_nb, solver, solve_verbose)
     elif cluster_method == 'kmeans-scratch':
         (dv, nb_clust_changes_loop,
             init_loop_silhouette, end_loop_silhouette,
@@ -965,7 +968,8 @@ def eval_sols(
         working_df_indiv,
         w, u, v, dv,
         placement_dual_values, place_model,
-        tol_place, tol_move_place, nb_clust_changes_loop, loop_nb, solver
+        tol_place, tol_move_place, nb_clust_changes_loop, loop_nb,
+        solver, solve_verbose
     )
     add_time(loop_nb, 'loop_placement', (time.time() - start))
 
@@ -986,7 +990,7 @@ def eval_sols(
 def eval_clustering(
     w, u, clust_model, clustering_dual_values,
     tol_clust, tol_move_clust, tol_open_clust,
-    df_clust, cluster_profiles, labels_, loop_nb, solver
+    df_clust, cluster_profiles, labels_, loop_nb, solver, solve_verbose
 ):
     """Evaluate current clustering solution and update it if needed.
 
@@ -1034,7 +1038,7 @@ def eval_clustering(
     add_time(loop_nb, 'update_clustering_model', (time.time() - start))
     logging.info('Solving clustering linear relaxation ...')
     start = time.time()
-    clust_model.solve(solver)
+    clust_model.solve(solver, solve_verbose)
     add_time(loop_nb, 'solve_clustering', (time.time() - start))
     cluster_profiles = clt.get_cluster_mean_profile(
         df_clust)
@@ -1063,7 +1067,7 @@ def eval_clustering(
         clust_model.update_adjacency_clust_constraints(u)
         logging.info('Solving linear relaxation after changes ...')
         start = time.time()
-        clust_model.solve(solver)
+        clust_model.solve(solver, solve_verbose)
         clustering_dual_values = mdl.fill_dual_values(clust_model)
         add_time(loop_nb, 'solve_new_clustering', (time.time() - start))
     else:
@@ -1094,7 +1098,7 @@ def eval_placement(
     working_df_indiv, w, u, v, dv,
     placement_dual_values, place_model,
     tol_place, tol_move_place,
-    nb_clust_changes_loop, loop_nb, solver
+    nb_clust_changes_loop, loop_nb, solver, solve_verbose
 ):
     """Evaluate current clustering solution and update it if needed.
 
@@ -1143,7 +1147,7 @@ def eval_placement(
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
     it.optim_file.write('solve without any change\n')
     start = time.time()
-    place_model.solve(solver, True)
+    place_model.solve(solver, solve_verbose)
     add_time(loop_nb, 'solve_placement', (time.time() - start))
     moving_containers = []
     moves_list = {}
@@ -1178,7 +1182,7 @@ def eval_placement(
             start = time.time()
             place_model.update_adjacency_place_constraints(v)
             place_model.update_obj_place(dv)
-            place_model.solve(solver, True)
+            place_model.solve(solver, solve_verbose)
             placement_dual_values = mdl.fill_dual_values(place_model)
             add_time(loop_nb, 'solve_new_placement', (time.time() - start))
         else:

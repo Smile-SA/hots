@@ -800,7 +800,7 @@ def pre_loop(
     print('Solving first placement ...')
     logging.info('Placement problem not evaluated yet\n')
     add_time(0, 'solve_placement_model', (time.time() - start))
-    place_model.solve(solver)
+    place_model.solve(solver, True)
     placement_dual_values = mdl.fill_dual_values(place_model)
 
     return (clust_model, place_model,
@@ -1143,7 +1143,7 @@ def eval_placement(
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
     it.optim_file.write('solve without any change\n')
     start = time.time()
-    place_model.solve(solver)
+    place_model.solve(solver, True)
     add_time(loop_nb, 'solve_placement', (time.time() - start))
     moving_containers = []
     moves_list = {}
@@ -1178,7 +1178,7 @@ def eval_placement(
             start = time.time()
             place_model.update_adjacency_place_constraints(v)
             place_model.update_obj_place(dv)
-            place_model.solve(solver)
+            place_model.solve(solver, True)
             placement_dual_values = mdl.fill_dual_values(place_model)
             add_time(loop_nb, 'solve_new_placement', (time.time() - start))
         else:

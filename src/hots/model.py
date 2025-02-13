@@ -15,6 +15,8 @@ from pyomo import environ as pe
 
 from . import init as it
 from .clustering import get_far_container
+from pyomo.opt import TerminationCondition
+from pyomo.environ import Constraint
 
 
 class Model:
@@ -353,10 +355,44 @@ class Model:
         :type verbose: bool
         """
         opt = pe.SolverFactory(solver)
-        opt.solve(self.instance_model, tee=verbose)
+        results = opt.solve(self.instance_model, tee=True, options={"nopresol": ""})
+        
+        if verbose:
+            for c in self.instance_model.component_objects(Constraint, active=True):
+                print(f"\n🔍 Checking Constraint: {c.name}")
+
+                for index in c:
+                    lhs = c[index].body()
+                    upper = c[index].upper
+                    lower = c[index].lower
+
+                    if upper is not None and lhs > upper:
+                        print(f"  ❌ Constraint {c.name}[{index}] is violated!")
+                        print(f"     Expected: LHS ≤ {upper}")
+                        print(f"     Got: LHS = {lhs} (TOO HIGH!)")
+
+                    if lower is not None and lhs < lower:
+                        print(f"  ❌ Constraint {c.name}[{index}] is violated!")
+                        print(f"     Expected: LHS ≥ {lower}")
+                        print(f"     Got: LHS = {lhs} (TOO LOW!)")
+
+                    if (upper is None or lhs <= upper) and (lower is None or lhs >= lower):
+                        print(f"  ✅ Constraint {c.name}[{index}] holds. (LHS = {lhs})")
+
+            print("---------------------------------------------------------------------")
+            
+            if results.solver.termination_condition == TerminationCondition.infeasible:
+                print("Problem is infeasible!")
+            elif results.solver.termination_condition == TerminationCondition.unbounded:
+                print("Problem is unbounded!")
+            elif results.solver.termination_condition == TerminationCondition.optimal:
+                print("Solution found.")
+            else:
+                print(f"Solver status: {results.solver.termination_condition}")
+        
+            print('---------------------------------------------------------------------')
+            print(f'Objective function value: {pe.value(self.instance_model.obj)}')
         # self.instance_model.display()
-        # TODO verbose option ?
-        # print(pe.value(self.instance_model.obj))
 
     # TODO generalize with others constraints than mustlink
     def update_adjacency_clust_constraints(self, u):

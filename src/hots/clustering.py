@@ -23,8 +23,6 @@ from sklearn import metrics
 from sklearn.cluster import KMeans, SpectralClustering
 from sklearn.metrics.pairwise import pairwise_distances
 
-from tqdm import tqdm
-
 from . import init as it
 
 
@@ -63,8 +61,7 @@ def build_matrix_indiv_attr(df):
         pool = mp.Pool(processes=(mp.cpu_count() - 1))
     else:
         pool = mp.Pool(processes=(mp.cpu_count()))
-    for (key, line) in tqdm(
-            pool.imap(matrix_line, list_args), total=len(list_args)):
+    for (key, line) in pool.imap(matrix_line, list_args):
         lines.append(line)
         dict_id_c[int_id] = key
         int_id += 1
@@ -382,8 +379,7 @@ def get_distance_cluster(cluster_centers_):
     cluster_distance = np.zeros(
         (it.my_instance.nb_clusters, it.my_instance.nb_clusters), dtype=float)
 
-    pbar = tqdm(range(it.my_instance.nb_clusters))
-    for row1 in pbar:
+    for row1 in range(it.my_instance.nb_clusters):
         for row2 in range(row1 + 1, it.my_instance.nb_clusters):
             cluster_distance[row1][row2] = np.linalg.norm(
                 cluster_centers_[row1] - cluster_centers_[row2])

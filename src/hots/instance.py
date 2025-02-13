@@ -177,7 +177,6 @@ class Instance:
         node_data = {}
         if response.status_code == 200:
             node_data = response.json()
-            # print(node_data)
             self.df_host_meta = pd.DataFrame(node_data)
             self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
             self.nb_nodes = self.df_host_meta[it.host_field].nunique()

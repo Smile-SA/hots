@@ -27,23 +27,6 @@ from . import init as it
 
 
 # Functions definitions #
-# TODO add mem cols
-def matrix_line(args):
-    """Build one line for clustering matrix.
-
-    :param args: _description_
-    :type args: Tuple[str, pd.DataFrame]
-    :return: _description_
-    :rtype: Tuple[int, Dict]
-    """
-    key, data = args
-    line = {}
-    for row in data.iterrows():
-        line[int(row[1][it.tick_field])] = row[1][it.metrics[0]]
-        line[it.indiv_field] = key
-    return (key, line)
-
-
 def build_matrix_indiv_attr(df):
     """Build entire clustering matrix.
 
@@ -55,30 +38,22 @@ def build_matrix_indiv_attr(df):
     print('Building matrices ...')
     list_args = list(df.groupby(df[it.indiv_field]))
     lines = []
-    dict_id_c = {}
-    int_id = 0
-    if mp.cpu_count() > 0:
-        pool = mp.Pool(processes=(mp.cpu_count() - 1))
-    else:
-        pool = mp.Pool(processes=(mp.cpu_count()))
-    for (key, line) in pool.imap(matrix_line, list_args):
-        lines.append(line)
-        dict_id_c[int_id] = key
-        int_id += 1
 
-    pool.close()
-    pool.join()
-    df_return = pd.DataFrame(data=lines)
-    df_return.fillna(0, inplace=True)
-    df_return.set_index(it.indiv_field, inplace=True)
-    it.clustering_file.write(
-        'Containers Mapping Dict: \n'
-    )
-    it.clustering_file.write(
-        json.dumps(dict_id_c, indent=4)
-    )
-    it.clustering_file.write('\n\n')
-    return (df_return, dict_id_c)
+    for key, data in df.groupby(df[it.indiv_field]):
+        line = {}
+        numeric_id = it.my_instance.get_or_create_container_id(key)
+        for row in data.iterrows():
+            # TODO add mem cols
+            line[int(row[1][it.tick_field])] = row[1][it.metrics[0]]
+        line[it.indiv_field] = key
+        lines.append(line)
+    df_temp = pd.DataFrame(data=lines)
+    df_temp.fillna(0, inplace=True)
+    df_temp.set_index(it.indiv_field, inplace=True)
+    df_return = df_temp.loc[
+        sorted(df_temp.index, key=lambda x: it.my_instance.container_to_id[x])
+    ]
+    return df_return
 
 
 def build_similarity_matrix(df):

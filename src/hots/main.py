@@ -260,7 +260,7 @@ def global_process(
     # it.results_file.write('Loop mode : %s\n' % mode)
     logging.info('Beginning the loop process ...\n')
 
-    (working_df_indiv, df_clust, w, u, v) = build_matrices(
+    (working_df_indiv, df_clust, w, u, v, labels_) = build_matrices(
         tmin, tmax, labels_
     )
 
@@ -329,9 +329,10 @@ def analysis_period(config, method):
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')
         start = time.time()
-        (df_indiv_clust,
-         it.my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-            it.my_instance.working_df_indiv)
+        # (df_indiv_clust,
+        #  it.my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
+        #     it.my_instance.working_df_indiv)
+        df_indiv_clust = clt.build_matrix_indiv_attr(it.my_instance.working_df_indiv)
 
         labels_ = clt.perform_clustering(
             df_indiv_clust, config['clustering']['algo'],
@@ -464,6 +465,11 @@ def run_period(
             current_data = reader.get_next_data(
                 current_time, config['loop']['tick']
             )
+
+            print('--- Current data ---')
+            print(current_data)
+            print('--- ---')
+
             current_time += config['loop']['tick']
             it.my_instance.df_indiv = pd.concat([
                 it.my_instance.df_indiv,
@@ -500,7 +506,7 @@ def run_period(
                 new_df_host[~new_df_host[it.tick_field].isin(
                     it.my_instance.df_host_evo[it.tick_field].unique())]
             ], ignore_index=True)
-            (working_df_indiv, df_clust, w, u, v) = build_matrices(
+            (working_df_indiv, df_clust, w, u, v, labels_) = build_matrices(
                 tmin, tmax, labels_
             )
             cluster_profiles = clt.get_cluster_mean_profile(df_clust)
@@ -693,8 +699,9 @@ def progress_time_noloop(
                     tick - instance.window_duration)) & (
                         instance.df_indiv[it.tick_field] <= tick)]
 
-            (df_clust, instance.dict_id_c) = clt.build_matrix_indiv_attr(
-                working_df_indiv)
+            # (df_clust, instance.dict_id_c) = clt.build_matrix_indiv_attr(
+            #     working_df_indiv)
+            df_clust = clt.build_matrix_indiv_attr(working_df_indiv)
             w = clt.build_similarity_matrix(df_clust)
             df_clust['cluster'] = labels_
             u = clt.build_adjacency_matrix(labels_)
@@ -827,15 +834,19 @@ def build_matrices(tmin, tmax, labels_):
         (it.my_instance.
          df_indiv[it.tick_field] >= tmin) & (
             it.my_instance.df_indiv[it.tick_field] <= tmax)]
-    (df_clust, it.my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-        working_df_indiv)
+
+    # (df_clust, it.my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
+    #     working_df_indiv)
+    df_clust = clt.build_matrix_indiv_attr(working_df_indiv)
+    if len(labels_) < len(df_clust):
+        labels_ = np.pad(labels_, (0, len(df_clust) - len(labels_)), constant_values=0)
     w = clt.build_similarity_matrix(df_clust)
     df_clust['cluster'] = labels_
     u = clt.build_adjacency_matrix(labels_)
     v = place.build_placement_adj_matrix(
         working_df_indiv, it.my_instance.dict_id_c)
 
-    return (working_df_indiv, df_clust, w, u, v)
+    return (working_df_indiv, df_clust, w, u, v, labels_)
 
 
 def eval_sols(
@@ -1045,6 +1056,9 @@ def eval_clustering(
 
     logging.info('Checking for changes in clustering dual values ...')
     start = time.time()
+    print('--- df clust before get moving ---')
+    print(df_clust)
+    print('--- ---')
     (moving_containers,
      clust_conflict_nodes,
      clust_conflict_edges,

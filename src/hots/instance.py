@@ -82,6 +82,8 @@ class Instance:
 
         # self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.dict_id_c = {}
+        self.container_to_id = {}
+        self.last_assigned_id = 0
 
     # TODO rewrite with __str__
     # TODO not relevant with streaming
@@ -153,6 +155,20 @@ class Instance:
     def init_host_evo(self):
         """Initialize the data evolution in hosts DataFrame."""
         self.df_host_evo = pd.DataFrame(columns=self.df_host.columns)
+
+    def get_or_create_container_id(self, container_id):
+        """Get app ID or create it in global matching dict.
+
+        :param container_id: ID from external data
+        :type container_id: str
+        :return: numeric app ID
+        :rtype: int
+        """
+        if container_id not in self.container_to_id:
+            self.dict_id_c[self.last_assigned_id] = container_id
+            self.container_to_id[container_id] = self.last_assigned_id
+            self.last_assigned_id += 1
+        return self.container_to_id[container_id]
 
     def get_node_from_container(self, container_id):
         """Get node ID from container ID.

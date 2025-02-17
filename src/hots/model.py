@@ -15,6 +15,7 @@ from pyomo import environ as pe
 
 from . import init as it
 from .clustering import get_far_container
+from pyomo.common.errors import ApplicationError
 from pyomo.opt import TerminationCondition
 from pyomo.environ import Constraint
 
@@ -109,7 +110,7 @@ class Model:
         :type v: np.array
         """
         # number of containers
-        self.mdl.c = pe.Param(within=pe.NonNegativeIntegers)
+        self.mdl.c = pe.Param(within=pe.NonNegativeIntegers, mutable=True)
         # set of containers
         self.mdl.C = pe.Set(dimen=1)
         # current clustering solution
@@ -355,7 +356,11 @@ class Model:
         :type verbose: bool
         """
         opt = pe.SolverFactory(solver)
-        results = opt.solve(self.instance_model, tee=verbose)
+        results = None
+        try:
+            results = opt.solve(self.instance_model, tee=verbose)
+        except ApplicationError as e:
+            print(f"Solver error: {e}")
         
         if verbose:
             for c in self.instance_model.component_objects(Constraint, active=True):
@@ -489,6 +494,41 @@ class Model:
         """
         for i, j in prod(range(len(dv)), range(len(dv[0]))):
             self.instance_model.dv[(i, j)] = dv[i][j]
+
+    def update_size_model(self):
+        """Update the model instance based on new number of containers."""
+        new_containers = list(it.my_instance.dict_id_c.keys())
+        print('--- new containers ---')
+        print(new_containers)
+        print('--- ---')
+
+        # Update the container set
+        self.instance_model.C.clear()
+        self.instance_model.C.update(new_containers)
+        
+        # Update parameters dynamically
+        self.instance_model.c = len(new_containers)
+        
+        # print('--- sol_u before change ---')
+        # for i in new_containers:
+        #     for j in new_containers:
+        #         if i < len(self.instance_model.sol_u) and j < len(self.instance_model.sol_u):
+        #             print(i, j)
+        #             print(self.instance_model.sol_u[i][j])
+        #         else:
+        #             print('No valid index')
+        # print('--- ---')
+        # Recompute and update solution variables
+        sol_u_d = {(j, i): self.instance_model.sol_u[i][j] for i, j in prod(
+            range(len(self.instance_model.sol_u)), range(len(self.instance_model.sol_u[0]))
+        )}
+        self.instance_model.sol_u.store_values(sol_u_d)
+        print('--- sol_u before change ---')
+        for i, j in prod(
+            range(len(self.instance_model.sol_u)), range(len(self.instance_model.sol_u[0]))
+        ):
+            print(self.instance_model.sol_u[i][j])
+        print('--- ---')
 
 
 def clust_assign_(mdl, container):

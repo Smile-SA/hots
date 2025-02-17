@@ -261,7 +261,7 @@ def global_process(
     logging.info('Beginning the loop process ...\n')
 
     (working_df_indiv, df_clust, w, u, v, labels_) = build_matrices(
-        tmin, tmax, labels_
+        tmin, tmax, labels_, None, None
     )
 
     # Build initial optimization model in pre loop using analysis data
@@ -507,7 +507,7 @@ def run_period(
                     it.my_instance.df_host_evo[it.tick_field].unique())]
             ], ignore_index=True)
             (working_df_indiv, df_clust, w, u, v, labels_) = build_matrices(
-                tmin, tmax, labels_
+                tmin, tmax, labels_, clust_model, place_model
             )
             cluster_profiles = clt.get_cluster_mean_profile(df_clust)
 
@@ -817,7 +817,7 @@ def pre_loop(
             clustering_dual_values, placement_dual_values)
 
 
-def build_matrices(tmin, tmax, labels_):
+def build_matrices(tmin, tmax, labels_, clust_model, place_model):
     """Build period dataframe and matrices to be used.
 
     :param tmin: starting time of current window
@@ -840,6 +840,8 @@ def build_matrices(tmin, tmax, labels_):
     df_clust = clt.build_matrix_indiv_attr(working_df_indiv)
     if len(labels_) < len(df_clust):
         labels_ = np.pad(labels_, (0, len(df_clust) - len(labels_)), constant_values=0)
+        clust_model.update_size_model()
+        place_model.update_size_model()
     w = clt.build_similarity_matrix(df_clust)
     df_clust['cluster'] = labels_
     u = clt.build_adjacency_matrix(labels_)

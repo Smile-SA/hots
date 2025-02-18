@@ -38,7 +38,7 @@ class Model:
 
     def __init__(
         self, pb_number, df_indiv, metric, dict_id_c, df_host_meta=None,
-        nb_clusters=None, w=None, dv=None, sol_u=None, sol_v=None
+        nb_clusters=None, w=None, dv=None, sol_u=None, sol_v=None, verbose=False
     ):
         """Initialize Pyomo model with data in Instance.
 
@@ -94,7 +94,8 @@ class Model:
 
         # Create the instance by feeding the model with the data
         self.instance_model = self.mdl.create_instance(self.data)
-        # self.write_infile()
+        if verbose:
+            self.write_infile()
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
 
     def build_parameters(self, w, dv, u, v):
@@ -148,7 +149,7 @@ class Model:
             # set of containers applied to container usage problem
             self.mdl.Ccons = pe.Set(dimen=1)
             # containers usage
-            self.mdl.cons = pe.Param(self.mdl.Ccons, self.mdl.T)
+            self.mdl.cons = pe.Param(self.mdl.Ccons, self.mdl.T, mutable=True)
             # dv matrix for distance placement
             dv_d = {
                 (j, i): dv[i][j] for i, j in prod(
@@ -291,7 +292,6 @@ class Model:
                 [it.indiv_field, it.tick_field]
             ):
                 self.cons.update({key: c_data[metric].values[0]})
-
             self.data = {None: {
                 'n': {None: df_host_meta[it.host_field].nunique()},
                 'c': {None: df_indiv[it.indiv_field].nunique()},
@@ -361,7 +361,7 @@ class Model:
             results = opt.solve(self.instance_model, tee=verbose)
         except ApplicationError as e:
             print(f"Solver error: {e}")
-        
+
         if verbose:
             for c in self.instance_model.component_objects(Constraint, active=True):
                 print(f"\n🔍 Checking Constraint: {c.name}")
@@ -495,40 +495,134 @@ class Model:
         for i, j in prod(range(len(dv)), range(len(dv[0]))):
             self.instance_model.dv[(i, j)] = dv[i][j]
 
-    def update_size_model(self):
+    def update_size_model(self, df_indiv=None, w=None, u=None, dv=None, v=None, verbose=False):
         """Update the model instance based on new number of containers."""
-        new_containers = list(it.my_instance.dict_id_c.keys())
-        print('--- new containers ---')
-        print(new_containers)
-        print('--- ---')
+        print('Updating model for ', self.pb_number)
+        # new_containers = list(it.my_instance.dict_id_c.keys())
+        # new_containers_names = list(it.my_instance.container_to_id.keys())
 
+        del self.mdl
+        self.mdl = pe.AbstractModel()
+
+        # Prepare the sets and parameters
+        self.build_parameters(w, dv, u, v)
+
+        # Build decision variables
+        self.build_variables()
+
+        # Build constraints of the problem
+        self.build_constraints()
+        self.add_mustlink()
+
+        # Build the objective function
+        self.build_objective()
+
+        # Put data in attribute
+        self.create_data(
+            df_indiv, it.metrics[0], it.my_instance.dict_id_c,
+            it.my_instance.df_host_meta, it.my_instance.nb_clusters
+        )
+
+        self.instance_model = self.mdl.create_instance(self.data)
+        if verbose:
+            self.write_infile()
+        self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
         # Update the container set
-        self.instance_model.C.clear()
-        self.instance_model.C.update(new_containers)
-        
+        # self.instance_model.C.clear()
+        # self.instance_model.C.update(new_containers)
+
         # Update parameters dynamically
-        self.instance_model.c = len(new_containers)
-        
-        # print('--- sol_u before change ---')
-        # for i in new_containers:
-        #     for j in new_containers:
-        #         if i < len(self.instance_model.sol_u) and j < len(self.instance_model.sol_u):
-        #             print(i, j)
-        #             print(self.instance_model.sol_u[i][j])
-        #         else:
-        #             print('No valid index')
-        # print('--- ---')
-        # Recompute and update solution variables
-        sol_u_d = {(j, i): self.instance_model.sol_u[i][j] for i, j in prod(
-            range(len(self.instance_model.sol_u)), range(len(self.instance_model.sol_u[0]))
-        )}
-        self.instance_model.sol_u.store_values(sol_u_d)
-        print('--- sol_u before change ---')
-        for i, j in prod(
-            range(len(self.instance_model.sol_u)), range(len(self.instance_model.sol_u[0]))
-        ):
-            print(self.instance_model.sol_u[i][j])
-        print('--- ---')
+        # self.instance_model.c = len(new_containers)
+
+        # clustering case
+        # if self.pb_number == 1:
+        #     # Recompute the w dictionary with updated indices
+        #     new_w_d = {
+        #         (j, i): w[i][j]
+        #         for i in range(len(w))
+        #         for j in range(len(w[0]))
+        #         if i in new_containers and j in new_containers
+        #     }
+        #     self.instance_model.w.store_values(new_w_d)
+
+        #     # Recompute sol_u using the updated `u` matrix
+        #     new_sol_u = {
+        #         (j, i): u[i][j]
+        #         for i in range(len(u))
+        #         for j in range(len(u[0]))
+        #         if i in new_containers and j in new_containers
+        #     }
+        #     self.instance_model.sol_u.store_values(new_sol_u)
+
+        #     self.data = {None: {
+        #         'c': {None: len(new_containers)},
+        #         'C': {None: new_containers},
+        #         'k': {None: it.my_instance.nb_clusters},
+        #         'K': {None: range(it.my_instance.nb_clusters)},
+        #     }}
+
+        #     # Reconstruct variable to apply dependancies with parameters changes
+        #     # self.instance_model.u.clear()
+        #     # self.instance_model.u._constructed = False
+        #     # self.instance_model.u.construct()
+        #     # self.instance_model.y.clear()
+        #     # self.instance_model.y._constructed = False
+        #     # self.instance_model.y.construct()
+
+        #     # self.instance_model.clust_assign.clear()
+        #     # self.instance_model.clust_assign.construct()
+        #     # self.instance_model.open_cluster.clear()
+        #     # self.instance_model.open_cluster.construct()
+        #     # self.instance_model.max_clusters.clear()
+        #     # self.instance_model.max_clusters.construct()
+        #     # self.instance_model.must_link_c.clear()
+        #     # self.instance_model.must_link_c.construct()
+
+        #     # self.instance_model.obj.clear()
+        #     # self.instance_model.obj.construct()
+        #     # TODO check other dependancies
+
+        # # placement case
+        # if self.pb_number == 2:
+        #     self.instance_model.Ccons.clear()
+        #     self.instance_model.Ccons.update(new_containers_names)
+        #     self.instance_model.T.clear()
+        #     self.instance_model.T.update(df_indiv[it.tick_field].unique().tolist())
+
+        #     self.cons = {}
+        #     df_indiv.reset_index(drop=True, inplace=True)
+        #     for key, c_data in df_indiv.groupby(
+        #         [it.indiv_field, it.tick_field]
+        #     ):
+        #         self.cons.update({key: c_data[it.metrics[0]].values[0]})
+        #     self.instance_model.cons.clear()
+        #     self.instance_model.cons.store_values(self.cons)
+
+        #     new_dv_d = {
+        #         (j, i): dv[i][j]
+        #         for i in range(len(dv))
+        #         for j in range(len(dv[0]))
+        #         if i in new_containers and j in new_containers
+        #     }
+        #     self.instance_model.dv.store_values(new_dv_d)
+
+        #     # Recompute sol_u using the updated `u` matrix
+        #     new_sol_v = {
+        #         (j, i): v[i][j]
+        #         for i in range(len(v))
+        #         for j in range(len(v[0]))
+        #         if i in new_containers and j in new_containers
+        #     }
+        #     self.instance_model.sol_v.store_values(new_sol_v)
+
+        #     # Reconstruct variable to apply dependancies with parameters changes
+        #     self.instance_model.v.clear()
+        #     self.instance_model.v._constructed = False
+        #     self.instance_model.v.construct()
+        #     self.instance_model.x.clear()
+        #     self.instance_model.x._constructed = False
+        #     self.instance_model.x.construct()
+            # TODO check other dependancies
 
 
 def clust_assign_(mdl, container):

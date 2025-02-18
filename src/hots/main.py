@@ -507,7 +507,7 @@ def run_period(
                     it.my_instance.df_host_evo[it.tick_field].unique())]
             ], ignore_index=True)
             (working_df_indiv, df_clust, w, u, v, labels_) = build_matrices(
-                tmin, tmax, labels_, clust_model, place_model
+                tmin, tmax, labels_, clust_model, place_model, config['optimization']['verbose']
             )
             cluster_profiles = clt.get_cluster_mean_profile(df_clust)
 
@@ -762,7 +762,7 @@ def pre_loop(
         working_df_indiv, it.metrics[0],
         it.my_instance.dict_id_c,
         nb_clusters=it.my_instance.nb_clusters,
-        w=w, sol_u=u
+        w=w, sol_u=u, verbose=solve_verbose
     )
     add_time(0, 'build_clustering_model', (time.time() - start))
     start = time.time()
@@ -803,7 +803,7 @@ def pre_loop(
         working_df_indiv, it.metrics[0],
         it.my_instance.dict_id_c,
         it.my_instance.df_host_meta,
-        dv=dv, sol_u=u, sol_v=v
+        dv=dv, sol_u=u, sol_v=v, verbose=solve_verbose
     )
     add_time(0, 'build_placement_model', (time.time() - start))
     start = time.time()
@@ -817,7 +817,7 @@ def pre_loop(
             clustering_dual_values, placement_dual_values)
 
 
-def build_matrices(tmin, tmax, labels_, clust_model, place_model):
+def build_matrices(tmin, tmax, labels_, clust_model, place_model, verbose=False):
     """Build period dataframe and matrices to be used.
 
     :param tmin: starting time of current window
@@ -830,6 +830,7 @@ def build_matrices(tmin, tmax, labels_, clust_model, place_model):
         adjacency matrices
     :rtype: Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array]
     """
+    containers_changed = False
     working_df_indiv = it.my_instance.df_indiv[
         (it.my_instance.
          df_indiv[it.tick_field] >= tmin) & (
@@ -840,13 +841,26 @@ def build_matrices(tmin, tmax, labels_, clust_model, place_model):
     df_clust = clt.build_matrix_indiv_attr(working_df_indiv)
     if len(labels_) < len(df_clust):
         labels_ = np.pad(labels_, (0, len(df_clust) - len(labels_)), constant_values=0)
-        clust_model.update_size_model()
-        place_model.update_size_model()
+        containers_changed = True
     w = clt.build_similarity_matrix(df_clust)
     df_clust['cluster'] = labels_
     u = clt.build_adjacency_matrix(labels_)
     v = place.build_placement_adj_matrix(
         working_df_indiv, it.my_instance.dict_id_c)
+    if containers_changed:
+        clust_model.update_size_model(
+            df_indiv=working_df_indiv,
+            w=w, u=u, verbose=verbose
+        )
+        cluster_profiles = clt.get_cluster_mean_profile(df_clust)
+        cluster_var_matrix = clt.get_sum_cluster_variance(
+            cluster_profiles)
+        dv = ctnr.build_var_delta_matrix_cluster(
+            df_clust, cluster_var_matrix, it.my_instance.dict_id_c)
+        place_model.update_size_model(
+            df_indiv=working_df_indiv,
+            u=u, dv=dv, v=v, verbose=verbose
+        )
 
     return (working_df_indiv, df_clust, w, u, v, labels_)
 
@@ -1158,7 +1172,7 @@ def eval_placement(
         working_df_indiv, it.metrics[0],
         it.my_instance.dict_id_c,
         it.my_instance.df_host_meta,
-        dv=dv, sol_u=u, sol_v=v
+        dv=dv, sol_u=u, sol_v=v, verbose=solve_verbose
     )
     add_time(loop_nb, 'update_placement_model', (time.time() - start))
     it.optim_file.write('solve without any change\n')

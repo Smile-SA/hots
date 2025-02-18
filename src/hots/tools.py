@@ -8,6 +8,8 @@ import pandas as pd
 
 import psutil
 
+from . import init as it
+
 
 def print_size_vars(list_vars):
     """Display size (memory) of variables.
@@ -99,3 +101,25 @@ def process_memory():
     mem_info = process.memory_info()
     mem_usage_mb = mem_info.rss / 1024 / 1024
     return mem_usage_mb
+
+
+def check_missing_entries_df(df):
+    """Check if containers have missing entry in df."""
+    # Find all unique timestamps and container IDs
+    all_timestamps = df[it.tick_field].unique()
+    all_containers = df[it.indiv_field].unique()
+
+    # Create a complete MultiIndex of (timestamp, container_id)
+    full_index = pd.MultiIndex.from_product([all_timestamps, all_containers], names=[it.tick_field, it.indiv_field])
+
+    # Set index for the existing dataframe
+    df.set_index([it.tick_field, it.indiv_field], inplace=True)
+
+    # Reindex with the full index, filling missing rows
+    df = df.reindex(full_index).reset_index()
+    df[it.host_field] = df.groupby(it.indiv_field)[it.host_field].ffill()
+
+    # Fill missing metrics values with 0.0
+    df.fillna({it.metrics[0]: 0.0}, inplace=True)
+
+    return df

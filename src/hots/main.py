@@ -38,6 +38,7 @@ from . import node
 from . import placement as place
 from . import plot
 from . import reader
+from . import tools
 from .instance import Instance
 
 
@@ -841,6 +842,9 @@ def build_matrices(tmin, tmax, labels_, clust_model, place_model, verbose=False)
     df_clust = clt.build_matrix_indiv_attr(working_df_indiv)
     if len(labels_) < len(df_clust):
         labels_ = np.pad(labels_, (0, len(df_clust) - len(labels_)), constant_values=0)
+        print(working_df_indiv)
+        working_df_indiv = tools.check_missing_entries_df(working_df_indiv)
+        print(working_df_indiv)
         containers_changed = True
     w = clt.build_similarity_matrix(df_clust)
     df_clust['cluster'] = labels_

@@ -330,9 +330,6 @@ def analysis_period(config, method):
         logging.info('Starting first clustering ...')
         print('Starting first clustering ...')
         start = time.time()
-        # (df_indiv_clust,
-        #  it.my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-        #     it.my_instance.working_df_indiv)
         df_indiv_clust = clt.build_matrix_indiv_attr(it.my_instance.working_df_indiv)
 
         labels_ = clt.perform_clustering(
@@ -467,9 +464,9 @@ def run_period(
                 current_time, config['loop']['tick']
             )
 
-            print('--- Current data ---')
-            print(current_data)
-            print('--- ---')
+            # Fill missing metrics values with 0.0
+            for metric in it.metrics:
+                current_data.fillna({metric: 0.0}, inplace=True)
 
             current_time += config['loop']['tick']
             it.my_instance.df_indiv = pd.concat([
@@ -490,10 +487,11 @@ def run_period(
             missing_machine_ids = set(existing_machine_ids) - set(
                 new_df_host[it.host_field])
 
+            temp_metrics = {metric: 0.0 for metric in it.metrics}
             missing_rows = pd.DataFrame({
                 'timestamp': int(current_time),
                 'machine_id': list(missing_machine_ids),
-                'cpu': 0.0
+                **temp_metrics
             })
             new_df_host = pd.concat(
                 [new_df_host, missing_rows], ignore_index=True)
@@ -700,8 +698,6 @@ def progress_time_noloop(
                     tick - instance.window_duration)) & (
                         instance.df_indiv[it.tick_field] <= tick)]
 
-            # (df_clust, instance.dict_id_c) = clt.build_matrix_indiv_attr(
-            #     working_df_indiv)
             df_clust = clt.build_matrix_indiv_attr(working_df_indiv)
             w = clt.build_similarity_matrix(df_clust)
             df_clust['cluster'] = labels_
@@ -837,14 +833,10 @@ def build_matrices(tmin, tmax, labels_, clust_model, place_model, verbose=False)
          df_indiv[it.tick_field] >= tmin) & (
             it.my_instance.df_indiv[it.tick_field] <= tmax)]
 
-    # (df_clust, it.my_instance.dict_id_c) = clt.build_matrix_indiv_attr(
-    #     working_df_indiv)
     df_clust = clt.build_matrix_indiv_attr(working_df_indiv)
     if len(labels_) < len(df_clust):
         labels_ = np.pad(labels_, (0, len(df_clust) - len(labels_)), constant_values=0)
-        print(working_df_indiv)
         working_df_indiv = tools.check_missing_entries_df(working_df_indiv)
-        print(working_df_indiv)
         containers_changed = True
     w = clt.build_similarity_matrix(df_clust)
     df_clust['cluster'] = labels_
@@ -852,6 +844,7 @@ def build_matrices(tmin, tmax, labels_, clust_model, place_model, verbose=False)
     v = place.build_placement_adj_matrix(
         working_df_indiv, it.my_instance.dict_id_c)
     if containers_changed:
+        print('\n* New containers detected: updating optimization models *\n')
         clust_model.update_size_model(
             df_indiv=working_df_indiv,
             w=w, u=u, verbose=verbose
@@ -1076,9 +1069,6 @@ def eval_clustering(
 
     logging.info('Checking for changes in clustering dual values ...')
     start = time.time()
-    print('--- df clust before get moving ---')
-    print(df_clust)
-    print('--- ---')
     (moving_containers,
      clust_conflict_nodes,
      clust_conflict_edges,

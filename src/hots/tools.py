@@ -120,6 +120,7 @@ def check_missing_entries_df(df):
     df[it.host_field] = df.groupby(it.indiv_field)[it.host_field].ffill()
 
     # Fill missing metrics values with 0.0
-    df.fillna({it.metrics[0]: 0.0}, inplace=True)
+    for metric in it.metrics:
+        df.fillna({metric: 0.0}, inplace=True)
 
     return df

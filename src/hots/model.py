@@ -497,10 +497,6 @@ class Model:
 
     def update_size_model(self, df_indiv=None, w=None, u=None, dv=None, v=None, verbose=False):
         """Update the model instance based on new number of containers."""
-        print('Updating model for ', self.pb_number)
-        # new_containers = list(it.my_instance.dict_id_c.keys())
-        # new_containers_names = list(it.my_instance.container_to_id.keys())
-
         del self.mdl
         self.mdl = pe.AbstractModel()
 

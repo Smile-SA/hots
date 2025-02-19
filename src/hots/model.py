@@ -12,12 +12,11 @@ from itertools import product as prod
 import networkx as nx
 
 from pyomo import environ as pe
+from pyomo.common.errors import ApplicationError
+from pyomo.opt import TerminationCondition
 
 from . import init as it
 from .clustering import get_far_container
-from pyomo.common.errors import ApplicationError
-from pyomo.opt import TerminationCondition
-from pyomo.environ import Constraint
 
 
 class Model:
@@ -356,48 +355,58 @@ class Model:
         :type verbose: bool
         """
         opt = pe.SolverFactory(solver)
-        results = None
-        try:
-            results = opt.solve(self.instance_model, tee=verbose)
-        except ApplicationError as e:
-            print(f"Solver error: {e}")
+        results = self._attempt_solve(opt, verbose)
 
         if verbose:
-            for c in self.instance_model.component_objects(Constraint, active=True):
-                print(f"\n🔍 Checking Constraint: {c.name}")
+            self._check_constraints()
+            self._print_solver_status(results)
+            self._print_objective_value()
 
-                for index in c:
-                    lhs = c[index].body()
-                    upper = c[index].upper
-                    lower = c[index].lower
+    def _attempt_solve(self, opt, verbose):
+        """Attempt to solve the model and handles solver errors."""
+        try:
+            return opt.solve(self.instance_model, tee=verbose)
+        except ApplicationError as e:
+            print(f'Solver error: {e}')
+            return None
 
-                    if upper is not None and lhs > upper:
-                        print(f"  ❌ Constraint {c.name}[{index}] is violated!")
-                        print(f"     Expected: LHS ≤ {upper}")
-                        print(f"     Got: LHS = {lhs} (TOO HIGH!)")
+    def _check_constraints(self):
+        """Check constraint violations in the model."""
+        for c in self.instance_model.component_objects(pe.Constraint, active=True):
+            print(f'\n🔍 Checking Constraint: {c.name}')
+            for index in c:
+                self._check_constraint_violation(c, index)
 
-                    if lower is not None and lhs < lower:
-                        print(f"  ❌ Constraint {c.name}[{index}] is violated!")
-                        print(f"     Expected: LHS ≥ {lower}")
-                        print(f"     Got: LHS = {lhs} (TOO LOW!)")
+    def _check_constraint_violation(self, constraint, index):
+        """Check if a specific constraint is violated."""
+        lhs = constraint[index].body()
+        upper, lower = constraint[index].upper, constraint[index].lower
 
-                    if (upper is None or lhs <= upper) and (lower is None or lhs >= lower):
-                        print(f"  ✅ Constraint {c.name}[{index}] holds. (LHS = {lhs})")
+        if upper is not None and lhs > upper:
+            print(f'  ❌ Constraint {constraint.name}[{index}] is violated!')
+            print(f'     Expected: LHS ≤ {upper}, Got: LHS = {lhs} (TOO HIGH!)')
+        elif lower is not None and lhs < lower:
+            print(f'  ❌ Constraint {constraint.name}[{index}] is violated!')
+            print(f'     Expected: LHS ≥ {lower}, Got: LHS = {lhs} (TOO LOW!)')
+        else:
+            print(f'  ✅ Constraint {constraint.name}[{index}] holds. (LHS = {lhs})')
 
-            print("---------------------------------------------------------------------")
-            
-            if results.solver.termination_condition == TerminationCondition.infeasible:
-                print("Problem is infeasible!")
-            elif results.solver.termination_condition == TerminationCondition.unbounded:
-                print("Problem is unbounded!")
-            elif results.solver.termination_condition == TerminationCondition.optimal:
-                print("Solution found.")
-            else:
-                print(f"Solver status: {results.solver.termination_condition}")
-        
-            print('---------------------------------------------------------------------')
-            print(f'Objective function value: {pe.value(self.instance_model.obj)}')
-        # self.instance_model.display()
+    def _print_solver_status(self, results):
+        """Print solver termination condition."""
+        print('--------------------------------------------------')
+        condition = results.solver.termination_condition if results else None
+
+        status_messages = {
+            TerminationCondition.infeasible: 'Problem is infeasible!',
+            TerminationCondition.unbounded: 'Problem is unbounded!',
+            TerminationCondition.optimal: 'Solution found.',
+        }
+        print(status_messages.get(condition, f'Solver status: {condition}'))
+        print('--------------------------------------------------')
+
+    def _print_objective_value(self):
+        """Print the objective function value."""
+        print(f'Objective function value: {pe.value(self.instance_model.obj)}')
 
     # TODO generalize with others constraints than mustlink
     def update_adjacency_clust_constraints(self, u):
@@ -406,11 +415,7 @@ class Model:
         :param u: _description_
         :type u: _type_
         """
-        # self.instance_model.pprint()
-        # self.instance_model.must_link_c.pprint()
-        # print(self.instance_model.must_link_c.is_indexed())
         self.instance_model.del_component(self.instance_model.must_link_c)
-        # self.instance_model.del_component(self.instance_model.must_link_c_index)
         self.update_sol_u(u)
         self.add_mustlink_instance()
 
@@ -495,8 +500,11 @@ class Model:
         for i, j in prod(range(len(dv)), range(len(dv[0]))):
             self.instance_model.dv[(i, j)] = dv[i][j]
 
-    def update_size_model(self, df_indiv=None, w=None, u=None, dv=None, v=None, verbose=False):
+    def update_size_model(
+            self, df_indiv=None, w=None, u=None, dv=None, v=None, verbose=False
+    ):
         """Update the model instance based on new number of containers."""
+        # TODO try update model dynamically
         del self.mdl
         self.mdl = pe.AbstractModel()
 
@@ -523,102 +531,6 @@ class Model:
         if verbose:
             self.write_infile()
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
-        # Update the container set
-        # self.instance_model.C.clear()
-        # self.instance_model.C.update(new_containers)
-
-        # Update parameters dynamically
-        # self.instance_model.c = len(new_containers)
-
-        # clustering case
-        # if self.pb_number == 1:
-        #     # Recompute the w dictionary with updated indices
-        #     new_w_d = {
-        #         (j, i): w[i][j]
-        #         for i in range(len(w))
-        #         for j in range(len(w[0]))
-        #         if i in new_containers and j in new_containers
-        #     }
-        #     self.instance_model.w.store_values(new_w_d)
-
-        #     # Recompute sol_u using the updated `u` matrix
-        #     new_sol_u = {
-        #         (j, i): u[i][j]
-        #         for i in range(len(u))
-        #         for j in range(len(u[0]))
-        #         if i in new_containers and j in new_containers
-        #     }
-        #     self.instance_model.sol_u.store_values(new_sol_u)
-
-        #     self.data = {None: {
-        #         'c': {None: len(new_containers)},
-        #         'C': {None: new_containers},
-        #         'k': {None: it.my_instance.nb_clusters},
-        #         'K': {None: range(it.my_instance.nb_clusters)},
-        #     }}
-
-        #     # Reconstruct variable to apply dependancies with parameters changes
-        #     # self.instance_model.u.clear()
-        #     # self.instance_model.u._constructed = False
-        #     # self.instance_model.u.construct()
-        #     # self.instance_model.y.clear()
-        #     # self.instance_model.y._constructed = False
-        #     # self.instance_model.y.construct()
-
-        #     # self.instance_model.clust_assign.clear()
-        #     # self.instance_model.clust_assign.construct()
-        #     # self.instance_model.open_cluster.clear()
-        #     # self.instance_model.open_cluster.construct()
-        #     # self.instance_model.max_clusters.clear()
-        #     # self.instance_model.max_clusters.construct()
-        #     # self.instance_model.must_link_c.clear()
-        #     # self.instance_model.must_link_c.construct()
-
-        #     # self.instance_model.obj.clear()
-        #     # self.instance_model.obj.construct()
-        #     # TODO check other dependancies
-
-        # # placement case
-        # if self.pb_number == 2:
-        #     self.instance_model.Ccons.clear()
-        #     self.instance_model.Ccons.update(new_containers_names)
-        #     self.instance_model.T.clear()
-        #     self.instance_model.T.update(df_indiv[it.tick_field].unique().tolist())
-
-        #     self.cons = {}
-        #     df_indiv.reset_index(drop=True, inplace=True)
-        #     for key, c_data in df_indiv.groupby(
-        #         [it.indiv_field, it.tick_field]
-        #     ):
-        #         self.cons.update({key: c_data[it.metrics[0]].values[0]})
-        #     self.instance_model.cons.clear()
-        #     self.instance_model.cons.store_values(self.cons)
-
-        #     new_dv_d = {
-        #         (j, i): dv[i][j]
-        #         for i in range(len(dv))
-        #         for j in range(len(dv[0]))
-        #         if i in new_containers and j in new_containers
-        #     }
-        #     self.instance_model.dv.store_values(new_dv_d)
-
-        #     # Recompute sol_u using the updated `u` matrix
-        #     new_sol_v = {
-        #         (j, i): v[i][j]
-        #         for i in range(len(v))
-        #         for j in range(len(v[0]))
-        #         if i in new_containers and j in new_containers
-        #     }
-        #     self.instance_model.sol_v.store_values(new_sol_v)
-
-        #     # Reconstruct variable to apply dependancies with parameters changes
-        #     self.instance_model.v.clear()
-        #     self.instance_model.v._constructed = False
-        #     self.instance_model.v.construct()
-        #     self.instance_model.x.clear()
-        #     self.instance_model.x._constructed = False
-        #     self.instance_model.x.construct()
-            # TODO check other dependancies
 
 
 def clust_assign_(mdl, container):

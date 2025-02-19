@@ -487,7 +487,7 @@ def run_period(
             missing_machine_ids = set(existing_machine_ids) - set(
                 new_df_host[it.host_field])
 
-            temp_metrics = {metric: 0.0 for metric in it.metrics}
+            temp_metrics = dict.fromkeys(it.metrics, 0.0)
             missing_rows = pd.DataFrame({
                 'timestamp': int(current_time),
                 'machine_id': list(missing_machine_ids),

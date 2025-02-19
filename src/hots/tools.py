@@ -110,7 +110,9 @@ def check_missing_entries_df(df):
     all_containers = df[it.indiv_field].unique()
 
     # Create a complete MultiIndex of (timestamp, container_id)
-    full_index = pd.MultiIndex.from_product([all_timestamps, all_containers], names=[it.tick_field, it.indiv_field])
+    full_index = pd.MultiIndex.from_product(
+        [all_timestamps, all_containers], names=[it.tick_field, it.indiv_field]
+    )
 
     # Set index for the existing dataframe
     df.set_index([it.tick_field, it.indiv_field], inplace=True)

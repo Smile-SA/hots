@@ -5,8 +5,6 @@ Here are the available clustering algorithms : k-means, hierarchical,
 spectral, custom spectral.
 """
 
-import json
-import multiprocessing as mp
 from itertools import combinations
 
 import numpy as np
@@ -36,12 +34,10 @@ def build_matrix_indiv_attr(df):
     :rtype: Tuple[pd.DataFrame, Dict]
     """
     print('Building matrices ...')
-    list_args = list(df.groupby(df[it.indiv_field]))
     lines = []
 
     for key, data in df.groupby(df[it.indiv_field]):
         line = {}
-        numeric_id = it.my_instance.get_or_create_container_id(key)
         for row in data.iterrows():
             # TODO add mem cols
             line[int(row[1][it.tick_field])] = row[1][it.metrics[0]]

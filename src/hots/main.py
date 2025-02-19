@@ -844,7 +844,7 @@ def build_matrices(tmin, tmax, labels_, clust_model, place_model, verbose=False)
     v = place.build_placement_adj_matrix(
         working_df_indiv, it.my_instance.dict_id_c)
     if containers_changed:
-        print('\n* New containers detected: updating optimization models *\n')
+        print('\n🔍 New containers detected: updating optimization models 🔍\n')
         clust_model.update_size_model(
             df_indiv=working_df_indiv,
             w=w, u=u, verbose=verbose

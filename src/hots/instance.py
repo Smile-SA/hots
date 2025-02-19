@@ -168,7 +168,6 @@ class Instance:
             self.dict_id_c[self.last_assigned_id] = container_id
             self.container_to_id[container_id] = self.last_assigned_id
             self.last_assigned_id += 1
-        return self.container_to_id[container_id]
 
     def get_node_from_container(self, container_id):
         """Get node ID from container ID.

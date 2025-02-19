@@ -38,6 +38,7 @@ def build_matrix_indiv_attr(df):
 
     for key, data in df.groupby(df[it.indiv_field]):
         line = {}
+        it.my_instance.get_or_create_container_id(key)
         for row in data.iterrows():
             # TODO add mem cols
             line[int(row[1][it.tick_field])] = row[1][it.metrics[0]]

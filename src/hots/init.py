@@ -199,6 +199,7 @@ def define_globals(p_path, config, kafka_var):
     global kafka_topics
     global kafka_schema
     global kafka_schema_url
+    global connector_url
     global tick_time
     global time_at
     global memory_usage
@@ -235,9 +236,9 @@ def define_globals(p_path, config, kafka_var):
         Instance.clear_kafka_topics()
         kafka_producer = reader.get_producer(config)
         kafka_consumer = reader.get_consumer(config)
-        # input()
         kafka_schema = config['kafkaConf']['schema']
         kafka_schema_url = config['kafkaConf']['schema_url']
+        connector_url = config['kafkaConf']['connector_url']
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'

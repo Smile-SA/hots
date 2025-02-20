@@ -61,13 +61,14 @@
       "mock_topic": "MockPlacement"
     },
     "Producer":{
-      "brokers":["10.3.73.162:9092"]
+      "brokers":null
     },
     "Consumer":{
       "group": "DockerPlacerConsumer",
-      "brokers":["10.3.73.162:9092"]
+      "brokers":null
 
     },
+    "connector_url": null,
     "schema":{
       "type": "record",
       "name": "ContainerData",

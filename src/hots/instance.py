@@ -6,9 +6,6 @@ This module provides also Instance-related methods.
 """
 
 import math
-import os
-
-from dotenv import load_dotenv
 
 import pandas as pd
 
@@ -21,9 +18,6 @@ else:
 
 from . import init as it
 from . import node as nd
-
-load_dotenv()
-connector_url = os.getenv('CONNECTOR_URL')
 
 
 class Instance:
@@ -160,7 +154,7 @@ class Instance:
         :return: Node information
         :rtype: Dict
         """
-        url = f'{connector_url}/vm/data'
+        url = f'{it.connector_url}/vm/data'
         response = requests.get(url)
         node_data = {}
         if response.status_code == 200:
@@ -175,7 +169,7 @@ class Instance:
 
     def start_stream():
         """Start stream data in environment."""
-        url = f'{connector_url}/start_stream'
+        url = f'{it.connector_url}/start_stream'
         response = requests.get(url)
         if response.status_code == 200:
             print('Stream started successfully')
@@ -185,7 +179,7 @@ class Instance:
 
     def stop_stream():
         """Stop stream data in environment."""
-        url = f'{connector_url}/stop_stream'
+        url = f'{it.connector_url}/stop_stream'
         response = requests.get(url)
         if response.status_code == 200:
             print('Stream stopped successfully')
@@ -195,7 +189,7 @@ class Instance:
 
     def clear_kafka_topics():
         """Clear Kafka topics in environment."""
-        url = f'{connector_url}/clear_topics'
+        url = f'{it.connector_url}/clear_topics'
         response = requests.get(url)
         if response.status_code == 200:
             print('Kafka topics cleaned')

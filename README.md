@@ -18,12 +18,33 @@ user needs to install the following packages before using HOTS :
  * libglpk-dev
  * glpk-utils
 
+In order to run HOTS with the streaming platform Kafka, you need to install the
+Python package confluent_kafka, and to have a running kafka broker.
+
 ## Installing HOTS
 
 A Makefile is provided, which creates a virtual environment and install HOTS. You can do :
 
 ```bash
 make
+```
+
+## Configuring Kafka
+
+Before running the application, you need to configure the Kafka broker information and the topic name in the `params.json` file. Open the file and make the following changes:
+```json
+"kafkaConf":{
+ "topics":{
+  "docker_topic": "xxxxx"
+ },
+ "Producer":{
+  "brokers":["<IP>:9092"]
+ },
+ "Consumer":{
+  "group": "xxxx",
+  "brokers":["<IP>:9092"]
+ }
+}
 ```
 
 ## Running HOTS

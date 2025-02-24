@@ -50,7 +50,7 @@ The whole dataset (historical or real-time) has two period, based on time:
 
 - the first part is used to have the first timeseries, on which we perform the clustering
 - the second part is used for the *streaming* process, in which we retrieve data,
-incremente timestamp, and perform the evaluation described above.
+  incremente timestamp, and perform the evaluation described above.
 
 A precise run description is given in section :ref:`process`.
 

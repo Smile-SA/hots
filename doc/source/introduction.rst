@@ -40,13 +40,17 @@ on the clustering evolution.
 Usage example
 =============
 
-For the moment, :term:`hots` is an evaluation of a methodology, then it does
-not work with a *real* environment, but with a dataset of historical resource
-usage data. In order to simulate the method, we split the dataset in two,
-based on the time :
+:term:`hots` has been developped using historical data (`.CSV` files) and can be
+run alone in this case.
+A streaming platform (`Kafka`) has been added to have streaming data incoming
+(from historical data or from real environment). But in order to be used with a
+rela environment, it has to be linked to a connector, that can send the data to
+Kafka, and retrieve the moving container messages (and apply these moves).
+The whole dataset (historical or real-time) has two period, based on time:
 
 - the first part is used to have the first timeseries, on which we perform the clustering
-- the second part is used to *simulate* the *streaming* process, in which we retrieve data, incrementing timestamp, and perform the evaluation described above.
+- the second part is used for the *streaming* process, in which we retrieve data,
+incremente timestamp, and perform the evaluation described above.
 
 A precise run description is given in section :ref:`process`.
 

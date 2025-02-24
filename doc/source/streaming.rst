@@ -4,12 +4,6 @@
 Streaming Data
 ==============
 
-.. _kafka_integration:
-
-=========================================
-Kafka Integration in the Application
-=========================================
-
 This document describes how the Kafka streaming platform is integrated into the application, detailing the steps involved in producing and consuming messages.
 
 Overview

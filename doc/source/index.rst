@@ -17,6 +17,7 @@ Contents
    process
    business
    pyomo
+   streaming
    api/index
    legal
    glossary

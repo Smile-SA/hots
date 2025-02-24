@@ -18,7 +18,6 @@ Contents
    business
    pyomo
    streaming
-   outputs
    api/index
    legal
    glossary

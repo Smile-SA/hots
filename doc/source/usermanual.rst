@@ -157,19 +157,19 @@ The :code:`hots` can be used with the following options :
 Note that some parameters can be redundant with the parameter file (e.g. :code:`k` and :code:`tau`)
 : in this case the value from CLI is used. 
 
-Reading the results
+Output explanation
 ===================
 
-When the application is launched, the whole initial data is displayed :
+With the execution of HOTS, the global process is displayed in the terminal and
+the following output and logs files are created:
 
-- the container resource usage
-- the node resource usage (based on initial allocation)
-
-The separation time (between the two phases) is plotted by a red line.
-
-Then the first part of the methodology is performed (clustering on first time
-period), and the allocation resulting from heuristic applied. The clustering
-results and new nodes resource usage (based on new allocation) are displayed.
-
-Finally, clustering results, containers and nodes consumptions are plotted and
-updated in time, for the second phase.
+* :file:`logs.log`: logs on main process (which loop, which step in the loop...)
+* :file:`clustering_logs.log`: logs on clustering computes at each loop
+* :file:`optim_logs.log`: information on optimization models solving
+* :file:`results.log`: temporary results at each loop (number of changes, objective value...)
+* :file:`global_results.csv`: final results for identified business criteria 
+* :file:`loop_results.csv`: multiple indicators at each loop (clustering criteria, conflict graph information...)
+* :file:`node_results.csv`: final nodes related results (average / minimum / maximum loads)
+* :file:`times.csv`: intermediate times for each step (preprocess + all steps for each loop)
+* :file:`node_usage_evo.csv`: numerical nodes consumption evolution, since HOTS launch until HOTS stop
+* :file:`node_usage_evo.svg`: graphical nodes consumption evolution, since HOTS launch until HOTS stop

@@ -81,12 +81,7 @@ class Instance:
                                     '\n'])
 
     def print_times(self):
-        """Print time informations.
-
-        :param tick: _description_
-        :type tick: int
-        """
-        # print('Total time : ', self.time)
+        """Print time informations."""
         print('Window duration : ', self.window_duration)
         print('Separation time : ', self.sep_time)
         print('Ticks : ', self.tick)
@@ -141,8 +136,6 @@ class Instance:
 
         :param container_id: ID from external data
         :type container_id: str
-        :return: numeric app ID
-        :rtype: int
         """
         if container_id not in self.container_to_id:
             self.dict_id_c[self.last_assigned_id] = container_id

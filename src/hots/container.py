@@ -93,23 +93,6 @@ def plot_all_data_all_containers(df_indiv, sep_time, metrics=None):
     return fig
 
 
-def build_dict_id_containers(df_indiv):
-    """Build dictionnary for corresponding IDs and indexes.
-
-    :param df_indiv: _description_
-    :type df_indiv: pd.DataFrame
-    :return: _description_
-    :rtype: Dict
-    """
-    dict_id_c = {}
-    i = 0
-    for key in df_indiv.container_id.unique():
-        dict_id_c[i] = key
-        i += 1
-
-    return dict_id_c
-
-
 def build_var_delta_matrix(df_indiv, dict_id_c):
     """Build variance of deltas matrix.
 

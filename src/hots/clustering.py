@@ -195,11 +195,9 @@ def perso_spectral_clustering(data, k):
     return (np.asarray(weighted_kmeans(w, d, u, k)))
 
 
-def compute_mu_r(w, d, labels_, r, u):
+def compute_mu_r(d, labels_, r, u):
     """Compute center of cluster r.
 
-    :param w: _description_
-    :type w: np.array
     :param d: _description_
     :type d: np.array
     :param labels_: _description_
@@ -269,7 +267,7 @@ def weighted_kmeans(w, d, u, k):
         r = 0
         mu_ = [0] * k
         for r in range(k):
-            mu_[r] = compute_mu_r(w, d, labels_, r, u)
+            mu_[r] = compute_mu_r(d, labels_, r, u)
         for p in range(len(labels_)):
             dist_min = 1
             dist_r = 0
@@ -435,10 +433,6 @@ def get_far_container(c1, c2, df_clust, profiles):
     :return: _description_
     :rtype: str
     """
-    # print("df_clust : ",df_clust)
-    # print("profiles : ",profiles)
-    # print("df_clust : ",df_clust.loc[c1].drop('cluster').values)
-    # print("profiles : ",profiles[int(df_clust.loc[c1]['cluster'])])
     if norm(
         df_clust.loc[c1].drop('cluster').values
         - profiles[int(df_clust.loc[c1]['cluster'])]) >= norm(

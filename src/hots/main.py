@@ -87,6 +87,8 @@ def main(
     :type tolplace: str
     :param use_kafka: streaming platform
     :type use_kafka: bool
+    :param time_limit: running time limit
+    :type time_limit: int
     """
     # Initialization part
     main_time = time.time()
@@ -240,6 +242,16 @@ def global_process(
 ):
     """Perform the full process, from analysis to loops, and retrieve results.
 
+    :param config: _description_
+    :type config: Dict
+    :param time_limit: _description_
+    :type time_limit: int
+    :param end_time: _description_
+    :type end_time: int
+    :param method: _description_
+    :type method: str
+    :param cluster_method: _description_
+    :type cluster_method: str
     :return: _description_
     :rtype: Dict
     """
@@ -398,17 +410,19 @@ def run_period(
     """Perform loop process, getting new data and evaluating solutions.
 
     :param tmin: _description_
-    :type tmin: _type_
+    :type tmin: int
     :param tmax: _description_
-    :type tmax: _type_
+    :type tmax: int
     :param time_limit: _description_
-    :type time_limit: _type_
+    :type time_limit: int
     :param end_time: _description_
-    :type end_time: _type_
+    :type end_time: int
     :param config: _description_
-    :type config: _type_
+    :type config: Dict
+    :param method: _description_
+    :type method: str
     :param cluster_method: _description_
-    :type cluster_method: _type_
+    :type cluster_method: str
     :param df_clust: _description_
     :type df_clust: _type_
     :param labels_: _description_
@@ -746,6 +760,8 @@ def pre_loop(
     :type cluster_method: str
     :param solver: solver used for pyomo
     :type solver: str
+    :param solve_verbose: display solving info
+    :type solve_verbose: bool
     :return: optimization models and associated dual values
     :rtype: Tuple[mdl.Model, mdl.Model, Dict, Dict]
     """
@@ -821,6 +837,12 @@ def build_matrices(tmin, tmax, labels_, clust_model, place_model, verbose=False)
     :type tmax: int
     :param labels_: clustering labels
     :type labels_: List
+    :param clust_model: _description_
+    :type clust_model: _type_
+    :param place_model: _description_
+    :type place_model: _type_
+    :param verbose: display solving info
+    :type verbose: bool
     :return: current loop data, clustering data, dissimilarity matrix and
         adjacency matrices
     :rtype: Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array]
@@ -907,6 +929,8 @@ def eval_sols(
     :type loop_nb: int
     :param solver: solver used for pyomo
     :type solver: str
+    :param solve_verbose: display solving info
+    :type solve_verbose: bool
     :return: number of changes in clustering and placement, silhouette score
         before and after loop, number of nodes and edges in conflict graph +
         max and mean degree (clustering and placement), optimization models
@@ -1040,6 +1064,8 @@ def eval_clustering(
     :type loop_nb: int
     :param solver: solver used for pyomo
     :type solver: str
+    :param solve_verbose: display solving info
+    :type solve_verbose: bool
     :return: clustering variance matrix, number of changes in clustering,
         silhouette score before and after the loop, clustering dual values,
         clustering optimization model, number of nodes
@@ -1149,6 +1175,8 @@ def eval_placement(
     :type loop_nb: int
     :param solver: solver used for pyomo
     :type solver: str
+    :param solve_verbose: display solving info
+    :type solve_verbose: bool
     :return: number of placement changes, dual values related to current
         placement, placement optimization model, number of nodes and edges
         in conflict graph + max and mean degree

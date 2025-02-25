@@ -18,7 +18,7 @@ doc:
 .PHONY: done
 done:
 	@ echo "Installation finished succesfully. \
-	Run 'hots path/to/data_folder' to start the application or \
+	Run 'hots path/to/config/file' to start the application or \
 	'hots --help' for command description"
 
 

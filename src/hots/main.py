@@ -1,12 +1,7 @@
 """
-Entry point of hots module through ``hots path [OPTIONS]``.
+Entry point of hots module through ``hots config_path [OPTIONS]``.
 
-    - path is the folder where we find the files
-
-        * container_usage.csv : describes container resource consumption
-        * node_meta.csv : describes nodes capacities
-        * (node_usage.csv : describes nodes resource consumption)
-
+    - config_path is the configuration file
     - type ``hots --help`` for options description
 
 The entire methodology is called from here (initialization, clustering,

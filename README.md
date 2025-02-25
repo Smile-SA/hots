@@ -54,7 +54,7 @@ Before running the application, you need to configure the Kafka broker informati
 The application can be used simply by running :
 
 ```bash
-hots /path/to/data/folder
+hots /path/to/config/file
 ```
 
 Make sure to activate the virtual environment before running HOTS with :
@@ -66,7 +66,7 @@ source venv/bin/activate
 Some parameters can be defined with the `hots` command, such as :
  * `k` : the number of clusters used in clustering ;
  * `tau` : the window size during the loop process ;
- * `param` : a specific parameter file to use.
+ * `time_limit` : the maximum time to run the application.
 
 All the CLI options are found running the `help` option :
 ```bash
@@ -77,7 +77,7 @@ More parameters can be defined through a `.JSON` file, for which an example is p
 
 Note that a test data is provided within the package, so you can easily test the installation with :
 ```bash
-hots /tests/data/generated_7
+hots /tests/data/thesis_ex_10/params.json
 ```
 
 ### Via Docker

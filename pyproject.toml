@@ -68,7 +68,7 @@ dev = [
     "pep8-naming",
 ]
 doc = [
-    "Sphinx",
+    "sphinx",
 ]
 kafka = [
     "confluent-kafka",

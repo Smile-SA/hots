@@ -13,7 +13,7 @@ install: venv
 doc:
 	./venv/bin/pip install -e .[doc]
 	./venv/bin/pip install sphinx-rtd-theme
-	./venv/bin/python setup.py build_sphinx
+	./venv/bin/sphinx-build -b html doc/source doc/build
 	
 .PHONY: done
 done:

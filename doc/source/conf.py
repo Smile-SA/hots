@@ -17,8 +17,8 @@
 
 # -- Project information -----------------------------------------------------
 
-from importlib import metadata
 import time
+from importlib import metadata
 
 
 project = 'hots'

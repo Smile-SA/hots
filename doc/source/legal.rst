@@ -16,6 +16,7 @@ Authors:
 
 - Etienne Leclercq - Software design, lead developer
 - Jonathan Rivalan - Product owner, Lead designer 
+- Mufaddal Enayath Hussain
 - Marco Mariani
 - Gilles Lenfant
 - Soobash Daiboo

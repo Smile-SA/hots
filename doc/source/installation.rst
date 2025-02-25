@@ -19,8 +19,13 @@ install the package `python3.10-dev`.
 uses `GLPK`, an open-source solver which is installed with :term:`hots`. But to use `GLPK`, the 
 user needs to install the following packages (through `apt` for example) :
 
-* libglpk-dev
-* glpk-utils
+* `libglpk-dev`
+* `glpk-utils`
+
+In clustering computes, we use the library `clusopt_core`, which needs the following `apt` package
+in order to be installed through `pip`:
+
+* `libboost-thread-dev`
 
 Production
 ==========

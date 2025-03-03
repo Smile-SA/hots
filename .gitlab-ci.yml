@@ -10,6 +10,7 @@ services:
 stages:
   - test
   - build
+  - publish
 
 run-tests-py310:
   stage: test
@@ -28,7 +29,7 @@ build-master:
     - docker push "$CI_REGISTRY_IMAGE"
   only:
     refs:
-      - master
+      - main
 
 build:
   stage: build
@@ -38,4 +39,15 @@ build:
     - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME"
   except:
     refs:
-      - master
+      - main
+
+publish:
+  stage: publish
+  image: python:3.10
+  only:
+    refs:
+      - main
+  script:
+    - pip install --upgrade build twine
+    - python -m build
+    - python -m twine upload --non-interactive --username __token__ --password $PYPI_API_TOKEN dist/*

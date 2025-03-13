@@ -23,23 +23,23 @@ from . import node as nd
 class Instance:
     """Description of a problem instance.
 
-    :param df_indiv: _description_
+    :param df_indiv: Individual consumption data
     :type df_indiv: pd.DataFrame
-    :param df_host: _description_
+    :param df_host: Node consumption data
     :type df_host: pd.DataFrame
-    :param df_host_meta: _description_
+    :param df_host_meta: Nodes capacity
     :type df_host_meta: pd.DataFrame
-    :param time: _description_
+    :param time: Total Instance time
     :type time: int
-    :param nb_nodes: _description_
+    :param nb_nodes: Number of nodes
     :type nb_nodes: int
-    :param nb_containers: _description_
+    :param nb_containers: Number of containers
     :type nb_containers: int
-    :param nb_clusters: _description_
+    :param nb_clusters: Number of clusters
     :type nb_clusters: int
-    :param dict_id_n: _description_
+    :param dict_id_n: Mapping dict node ID / numerical ID
     :type dict_id_n: Dict
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
     """
 
@@ -83,7 +83,7 @@ class Instance:
     def percentage_to_timestamp(self, config):
         """Transform percentage config time to timestamp.
 
-        :param config: _description_
+        :param config: Configuration dict
         :type config: Dict
         """
         # TODO consider 'tick' param as absolute, not percent ?
@@ -116,7 +116,11 @@ class Instance:
         self.nb_containers = self.df_indiv[it.indiv_field].nunique()
 
     def set_host_meta(self, host_meta_path):
-        """Create the dataframe for host meta data from first data."""
+        """Create the dataframe for host meta data from first data.
+
+        :param host_meta_path: Path to node capacity
+        :type host_meta_path: str
+        """
         self.df_host_meta = it.df_from_csv(host_meta_path)
         self.dict_id_n = nd.build_dict_id_nodes(self.df_host_meta)
         self.nb_nodes = self.df_host_meta[it.host_field].nunique()
@@ -139,9 +143,9 @@ class Instance:
     def get_node_from_container(self, container_id):
         """Get node ID from container ID.
 
-        :param container_id: _description_
+        :param container_id: Individual ID
         :type container_id: str
-        :return: _description_
+        :return: Assigned node ID
         :rtype: str
         """
         return (self.df_indiv.loc[

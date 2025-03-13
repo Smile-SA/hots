@@ -225,7 +225,7 @@ def compute_distance_cluster_r(p, mu_r, u, dp):
 
     :param p: Individual index
     :type p: int
-    :param mu_r: Center of cluster r 
+    :param mu_r: Center of cluster r
     :type mu_r: float
     :param u: _description_
     :type u: np.array
@@ -381,7 +381,7 @@ def check_container_deviation(
     :type labels_: List
     :param profiles_: Clusters mean profiles
     :type profiles_: np.array
-    :param dict_id_c: Mapping dict container ID / numerical ID 
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
     """
     for c in range(len(labels_)):

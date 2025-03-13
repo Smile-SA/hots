@@ -156,7 +156,7 @@ def perso_spectral_clustering(data, k):
     :type data: pd.DataFrame
     :param k: Number of clusters
     :type k: int
-    :return: _description_
+    :return: Result matrix
     :rtype: np.array
     """
     w = build_similarity_matrix(data)
@@ -240,7 +240,7 @@ def compute_distance_cluster_r(p, mu_r, u, dp):
 def weighted_kmeans(w, d, u, k):
     """Perform K-means algo for custom spectral clustering.
 
-    :param w: _description_
+    :param w: Similarity matrix
     :type w: np.array
     :param d: _description_
     :type d: np.array
@@ -248,7 +248,7 @@ def weighted_kmeans(w, d, u, k):
     :type u: np.array
     :param k: Number of clusters
     :type k: int
-    :return: _description_
+    :return: Result clustering
     :rtype: List
     """
     labels_ = [0] * len(w)

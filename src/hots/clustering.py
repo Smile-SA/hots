@@ -28,10 +28,10 @@ from . import init as it
 def build_matrix_indiv_attr(df):
     """Build entire clustering matrix.
 
-    :param df: _description_
+    :param df: Input dataframe with consumption data
     :type df: pd.DataFrame
-    :return: _description_
-    :rtype: Tuple[pd.DataFrame, Dict]
+    :return: Formated dataframe for clustering
+    :rtype: pd.DataFrame
     """
     print('Building matrices ...')
     lines = []
@@ -56,9 +56,9 @@ def build_matrix_indiv_attr(df):
 def build_similarity_matrix(df):
     """Build a similarity matrix for the clustering.
 
-    :param df: _description_
+    :param df: Formated dataframe for clustering
     :type df: pd.DataFrame
-    :return: _description_
+    :return: Similarity matrix
     :rtype: np.array
     """
     dists = pdist(df, 'euclidean')
@@ -76,13 +76,13 @@ def build_similarity_matrix(df):
 def perform_clustering(data, algo, k):
     """Call the specified method to perform clustering.
 
-    :param data: _description_
+    :param data: Formated dataframe for clustering
     :type data: pd.DataFrame
-    :param algo: _description_
+    :param algo: Algorithm to use for clustering
     :type algo: str
-    :param k: _description_
+    :param k: Number of clusters to compute
     :type k: int
-    :return: _description_
+    :return: Result of given clustering method
     :rtype: Callable[[pd.DataFrame, int], List]
     """
     switcher = {'hierarchical': hierarchical_clustering,
@@ -96,11 +96,11 @@ def perform_clustering(data, algo, k):
 def k_means(data, k):
     """Perform the K-means clustering.
 
-    :param data: _description_
+    :param data: Input data
     :type data: pd.DataFrame
-    :param k: _description_
+    :param k: Numbers of clusters
     :type k: int
-    :return: _description_
+    :return: List of clusters assigned to each individual
     :rtype: List
     """
     return KMeans(n_clusters=k, n_init='auto').fit(data).labels_
@@ -109,11 +109,11 @@ def k_means(data, k):
 def p_dist(data, metric='euclidean'):
     """Compute distances between each data point pair.
 
-    :param data: _description_
+    :param data: Input data
     :type data: pd.DataFrame
-    :param metric: _description_, defaults to 'euclidean'
+    :param metric: Distance metric to use, defaults to 'euclidean'
     :type metric: str, optional
-    :return: _description_
+    :return: Distance matrix
     :rtype: np.array
     """
     return pairwise_distances(data, metric=metric)
@@ -122,11 +122,11 @@ def p_dist(data, metric='euclidean'):
 def spectral_clustering(data, k):
     """Perform the spectral clustering.
 
-    :param data: _description_
+    :param data: Input data
     :type data: pd.DataFrame
-    :param k: _description_
+    :param k: Number of clusters
     :type k: int
-    :return: _description_
+    :return: List of clusters assigned to each individual
     :rtype: List
     """
     return SpectralClustering(n_clusters=k).fit(data).labels_
@@ -135,11 +135,11 @@ def spectral_clustering(data, k):
 def hierarchical_clustering(data, k):
     """Perform the hierarchical ascendant clustering.
 
-    :param data: _description_
+    :param data: Input data
     :type data: pd.DataFrame
-    :param k: _description_
+    :param k: Number of clusters
     :type k: int
-    :return: _description_
+    :return: List of clusters assigned to each individual
     :rtype: List
     """
     z_all = hac.linkage(data, method='ward', metric='euclidean')
@@ -152,9 +152,9 @@ def hierarchical_clustering(data, k):
 def perso_spectral_clustering(data, k):
     """Perform a customized version of spectral clustering.
 
-    :param data: _description_
+    :param data: Input data
     :type data: pd.DataFrame
-    :param k: _description_
+    :param k: Number of clusters
     :type k: int
     :return: _description_
     :rtype: np.array
@@ -200,13 +200,13 @@ def compute_mu_r(d, labels_, r, u):
 
     :param d: _description_
     :type d: np.array
-    :param labels_: _description_
+    :param labels_: List of assigned cluster to individuals
     :type labels_: List
-    :param r: _description_
+    :param r: Cluster index
     :type r: int
     :param u: _description_
     :type u: np.array
-    :return: _description_
+    :return: Result center of cluster r
     :rtype: float
     """
     p = 0
@@ -223,15 +223,15 @@ def compute_mu_r(d, labels_, r, u):
 def compute_distance_cluster_r(p, mu_r, u, dp):
     """Compute distance between individual p and cluster r.
 
-    :param p: _description_
+    :param p: Individual index
     :type p: int
-    :param mu_r: _description_
+    :param mu_r: Center of cluster r 
     :type mu_r: float
     :param u: _description_
     :type u: np.array
     :param dp: _description_
     :type dp: float
-    :return: _description_
+    :return: Result distance between p and r
     :rtype: float
     """
     return norm((u[:, p] * pow(dp, -1 / 2)) - mu_r)
@@ -246,7 +246,7 @@ def weighted_kmeans(w, d, u, k):
     :type d: np.array
     :param u: _description_
     :type u: np.array
-    :param k: _description_
+    :param k: Number of clusters
     :type k: int
     :return: _description_
     :rtype: List
@@ -288,9 +288,9 @@ def weighted_kmeans(w, d, u, k):
 def get_cluster_variance(profiles_):
     """Compute the variance of each cluster.
 
-    :param profiles_: _description_
+    :param profiles_: Clusters mean profiles
     :type profiles_: np.array
-    :return: _description_
+    :return: Clusters variances
     :rtype: np.array
     """
     k = len(profiles_)
@@ -303,9 +303,9 @@ def get_cluster_variance(profiles_):
 def get_cluster_mean_profile(df_clust):
     """Compute the mean profile of each cluster.
 
-    :param df_clust: _description_
+    :param df_clust: Consumption usage data
     :type df_clust: pd.DataFrame
-    :return: _description_
+    :return: Clusters mean profiles
     :rtype: np.array
     """
     profiles_ = np.zeros((
@@ -322,9 +322,9 @@ def get_cluster_mean_profile(df_clust):
 def get_sum_cluster_variance(profiles_):
     """Compute a matrix of sum of variances of each pair of cluster.
 
-    :param profiles_: _description_
+    :param profiles_: Clusters mean profiles
     :type profiles_: np.array
-    :return: _description_
+    :return: Matrix sum of variances
     :rtype: np.array
     """
     k = len(profiles_)
@@ -340,9 +340,9 @@ def get_sum_cluster_variance(profiles_):
 def get_distance_cluster(cluster_centers_):
     """Compute the distance between each cluster.
 
-    :param cluster_centers_: _description_
+    :param cluster_centers_: Clusters centers
     :type cluster_centers_: np.array
-    :return: _description_
+    :return: Distance matrix between clusters
     :rtype: np.array
     """
     print('Compute distance between each cluster ...')
@@ -360,11 +360,11 @@ def get_distance_cluster(cluster_centers_):
 def get_distance_container_cluster(conso_cont, profile):
     """Distance between the container profile and his cluster's mean profile.
 
-    :param conso_cont: _description_
+    :param conso_cont: Container consumption
     :type conso_cont: np.array
-    :param profile: _description_
+    :param profile: Cluster mean profile
     :type profile: np.array
-    :return: _description_
+    :return: Result distance
     :rtype: float
     """
     return np.absolute(profile - conso_cont).mean() / profile.mean()
@@ -375,13 +375,13 @@ def check_container_deviation(
 ):
     """Check the deviation of container from its cluster.
 
-    :param working_df: _description_
+    :param working_df: Container consumption usage
     :type working_df: pd.DataFrame
-    :param labels_: _description_
+    :param labels_: List of clusters assigned to individuals
     :type labels_: List
-    :param profiles_: _description_
+    :param profiles_: Clusters mean profiles
     :type profiles_: np.array
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID 
     :type dict_id_c: Dict
     """
     for c in range(len(labels_)):
@@ -396,9 +396,9 @@ def check_container_deviation(
 def build_adjacency_matrix(labels_):
     """Build the adjacency matrix of clustering.
 
-    :param labels_: _description_
-    :type labels_: _type_
-    :return: _description_
+    :param labels_: List of clusters assigned to individuals
+    :type labels_: List
+    :return: Adjacency matrix
     :rtype: np.array
     """
     u = np.zeros((len(labels_), len(labels_)))
@@ -412,7 +412,7 @@ def build_adjacency_matrix(labels_):
 def get_cluster_balance(df_clust):
     """Display size of each cluster.
 
-    :param df_clust: _description_
+    :param df_clust: Formated consumption data
     :type df_clust: pd.DataFrame
     """
     print('Clustering balance : ',
@@ -422,15 +422,15 @@ def get_cluster_balance(df_clust):
 def get_far_container(c1, c2, df_clust, profiles):
     """Get the farthest container between c1 and c2 compared to profile.
 
-    :param c1: _description_
+    :param c1: First individual ID
     :type c1: str
-    :param c2: _description_
+    :param c2: Second individual ID
     :type c2: str
-    :param df_clust: _description_
+    :param df_clust: Formated consumption data
     :type df_clust: pd.DataFrame
-    :param profiles: _description_
+    :param profiles: Clusters mean profiles
     :type profiles: np.array
-    :return: _description_
+    :return: Individual ID of furthest
     :rtype: str
     """
     if norm(
@@ -447,17 +447,18 @@ def change_clustering(
         mvg_containers, df_clust, labels_, dict_id_c, tol_open_clust):
     """Adjust the clustering with individuals to move to the closest cluster.
 
-    :param mvg_containers: _description_
+    :param mvg_containers: List of to move individuals
     :type mvg_containers: List
-    :param df_clust: _description_
+    :param df_clust: Formated consumption data
     :type df_clust: pd.DataFrame
-    :param labels_: _description_
+    :param labels_: List of assigned clusters to individuals
     :type labels_: List
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :param tol_open_clust: _description_
+    :param tol_open_clust: Threshold to open a new cluster
     :type tol_open_clust: float
-    :return: _description_
+    :return: Formated consumption data, List of assigned clusters to individuals,
+    Number of changes in clustering
     :rtype: Tuple[pd.DataFrame, List, int]
     """
     nb_changes = 0
@@ -499,13 +500,13 @@ def change_clustering(
 def change_clustering_maxkcut(conflict_graph, df_clust, labels_, dict_id_c):
     """Change current clustering with max-k-cut on moving containers.
 
-    :param conflict_graph: _description_
+    :param conflict_graph: Conflict graph
     :type conflict_graph: nx.Graph
-    :param df_clust: _description_
+    :param df_clust: Formated consumption data
     :type df_clust: pd.DataFrame
-    :param labels_: _description_
+    :param labels_: List of assigned clusters to individuals
     :type labels_: List
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
     :return: _description_
     :rtype: Tuple[pd.DataFrame, List, int]
@@ -569,13 +570,13 @@ def change_clustering_maxkcut(conflict_graph, df_clust, labels_, dict_id_c):
 def eval_clustering(df_clust, w, dict_id_c):
     """Evaluate the clustering with ICS and ICD.
 
-    :param df_clust: _description_
+    :param df_clust: Formated consumption data
     :type df_clust: pd.DataFrame
-    :param w: _description_
+    :param w: Similarity matrix
     :type w: np.array
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :return: _description_
+    :return: Intra-cluster similarity, Inter-cluster dissimilarity
     :rtype: Tuple[float, float]
     """
     ics = 0.0
@@ -593,11 +594,11 @@ def eval_clustering(df_clust, w, dict_id_c):
 def get_silhouette(df_clust, labels_):
     """Get the Silhouette score from clustering.
 
-    :param df_clust: _description_
+    :param df_clust: Formated consumption data
     :type df_clust: pd.DataFrame
-    :param labels_: _description_
+    :param labels_: List of assigned clusters to individuals
     :type labels_: List
-    :return: _description_
+    :return: Silhouette score
     :rtype: float
     """
     return metrics.silhouette_score(

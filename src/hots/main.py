@@ -237,17 +237,17 @@ def global_process(
 ):
     """Perform the full process, from analysis to loops, and retrieve results.
 
-    :param config: _description_
+    :param config: Parameters set
     :type config: Dict
-    :param time_limit: _description_
+    :param time_limit: Running time limit
     :type time_limit: int
-    :param end_time: _description_
+    :param end_time: Ending running time
     :type end_time: int
-    :param method: _description_
+    :param method: Method for global process
     :type method: str
-    :param cluster_method: _description_
+    :param cluster_method: Clustering method
     :type cluster_method: str
-    :return: _description_
+    :return: Multiple KPIs results
     :rtype: Dict
     """
     results = {}
@@ -404,32 +404,32 @@ def run_period(
 ):
     """Perform loop process, getting new data and evaluating solutions.
 
-    :param tmin: _description_
+    :param tmin: Window beginning time
     :type tmin: int
-    :param tmax: _description_
+    :param tmax: Window ending time
     :type tmax: int
-    :param time_limit: _description_
+    :param time_limit: Running time limit
     :type time_limit: int
-    :param end_time: _description_
+    :param end_time: Running ending time
     :type end_time: int
-    :param config: _description_
+    :param config: Parameters set
     :type config: Dict
-    :param method: _description_
+    :param method: Global process method
     :type method: str
-    :param cluster_method: _description_
+    :param cluster_method: Clustering method
     :type cluster_method: str
-    :param df_clust: _description_
-    :type df_clust: _type_
-    :param labels_: _description_
-    :type labels_: _type_
-    :param clust_model: _description_
-    :type clust_model: _type_
-    :param place_model: _description_
-    :type place_model: _type_
-    :param clustering_dual_values: _description_
-    :type clustering_dual_values: _type_
-    :param placement_dual_values: _description_
-    :type placement_dual_values: _type_
+    :param df_clust: Clustering dataframe
+    :type df_clust: pd.DataFrame
+    :param labels_: Clustering results
+    :type labels_: np.array
+    :param clust_model: Clustering optimization model
+    :type clust_model: mdl.Model
+    :param place_model: Placement optimization model
+    :type place_model: mdl.Model
+    :param clustering_dual_values: Previous dual values for clustering
+    :type clustering_dual_values: Dict
+    :param placement_dual_values: Previous dual values for placement
+    :type placement_dual_values: Dict
     """
     fig_node, ax_node = plot.init_nodes_plot(
         it.my_instance.df_indiv, it.my_instance.dict_id_n,
@@ -838,9 +838,9 @@ def build_matrices(tmin, tmax, labels_, clust_model, place_model, verbose=False)
     :type place_model: _type_
     :param verbose: display solving info
     :type verbose: bool
-    :return: current loop data, clustering data, dissimilarity matrix and
-        adjacency matrices
-    :rtype: Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array]
+    :return: current loop data, clustering data, dissimilarity matrix,
+        adjacency matrices, clustering results
+    :rtype: Tuple[pd.DataFrame, pd.DataFrame, np.array, np.array, np.array, np.array]
     """
     containers_changed = False
     working_df_indiv = it.my_instance.df_indiv[
@@ -1007,7 +1007,7 @@ def eval_sols(
         place_conf_nodes, place_conf_edges,
         place_max_deg, place_mean_deg) = eval_placement(
         working_df_indiv,
-        w, u, v, dv,
+        u, v, dv,
         placement_dual_values, place_model,
         tol_place, tol_move_place, nb_clust_changes_loop, loop_nb,
         solver, solve_verbose
@@ -1138,7 +1138,7 @@ def eval_clustering(
 
 
 def eval_placement(
-    working_df_indiv, w, u, v, dv,
+    working_df_indiv, u, v, dv,
     placement_dual_values, place_model,
     tol_place, tol_move_place,
     nb_clust_changes_loop, loop_nb, solver, solve_verbose
@@ -1147,8 +1147,6 @@ def eval_placement(
 
     :param working_df_indiv: current loop data
     :type working_df_indiv: pd.DataFrame
-    :param w: dissimilarity matrix
-    :type w: np.array
     :param u: clustering adjacency matrix
     :type u: np.array
     :param v: placement adjacency matrix
@@ -1265,7 +1263,11 @@ def move_containers_info(moves_list, current_time):
 
 
 def check_changes_applied(working_df_indiv):
-    """Check if the pending changes have been applied in the environment."""
+    """Check if the pending changes have been applied in the environment.
+
+    :param working_df_indiv: Current window data
+    :type working_df_indiv: pd.DataFrame
+    """
     # max_time = working_df_indiv[it.tick_field].max()
     moves_applied = True
     for move in it.pending_changes['move']:
@@ -1448,21 +1450,6 @@ def add_time(loop_nb, action, time):
 def close_files():
     """Write the final files and close all open files."""
     it.results_file.close()
-
-
-def reassign_node(c_info):
-    """Reassign node in containers df."""
-    # c_info = value['containers']
-    new_df_container = pd.DataFrame(c_info)
-    new_df_container = new_df_container.astype({
-        it.indiv_field: str,
-        it.host_field: str,
-        it.tick_field: int})
-    new_df_container.sort_values(it.tick_field, inplace=True)
-    new_df_container.set_index(
-        [it.tick_field, it.indiv_field], inplace=True, drop=False)
-    new_df_container.sort_index(inplace=True)
-    return new_df_container
 
 
 if __name__ == '__main__':

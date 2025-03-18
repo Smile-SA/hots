@@ -19,13 +19,13 @@ from . import init as it
 def plot_data_all_nodes(metric, max_cap, sep_time):
     """Plot specific metric consumption for all nodes.
 
-    :param metric: _description_
+    :param metric: Metric to display
     :type metric: str
-    :param max_cap: _description_
+    :param max_cap: Node capacity
     :type max_cap: float
-    :param sep_time: _description_
+    :param sep_time: Separation time
     :type sep_time: int
-    :return: _description_
+    :return: Figure object
     :rtype: plt.Figure
     """
     # TODO create temp df is bad...
@@ -47,9 +47,9 @@ def plot_data_all_nodes(metric, max_cap, sep_time):
 def plot_all_data_all_nodes_end(df_host, total_time):
     """Plot all metrics consumption for all nodes.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
-    :param total_time: _description_
+    :param total_time: Total duration
     :type total_time: int
     """
     fig = plt.figure()
@@ -77,11 +77,11 @@ def plot_all_data_all_nodes_end(df_host, total_time):
 def plot_total_usage(df_host, title='Total conso on all nodes'):
     """Plot the global resources consumption.
 
-    :param df_host: _description_
+    :param df_host: Nodes
     :type df_host: pd.DataFrame
-    :param title: _description_, defaults to 'Total conso on all nodes'
+    :param title: Figure title, defaults to 'Total conso on all nodes'
     :type title: str, optional
-    :return: _description_
+    :return: Metrics max consumption
     :rtype: Tuple[float, float]
     """
     temp_df = df_host.reset_index(level=it.host_field, drop=True)
@@ -114,7 +114,7 @@ def plot_total_usage(df_host, title='Total conso on all nodes'):
 def get_mean_consumption(df_host):
     """Compute mean consumption for each metric in each node and globally.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
     """
     for metric in it.metrics:
@@ -129,9 +129,9 @@ def get_mean_consumption(df_host):
 def get_list_mean(df_host):
     """Return list of mean for each metric in each node.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
-    :return: _description_
+    :return: Metrics mean consumption
     :rtype: Tuple[Dict, Dict]
     """
     dict_mean_cpu = {}
@@ -147,9 +147,9 @@ def get_list_mean(df_host):
 def get_list_var(df_host):
     """Return list of variance for each metric in each node.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
-    :return: _description_
+    :return: Metrics variance of consumption
     :rtype: Tuple[Dict, Dict]
     """
     dict_var_cpu = {}
@@ -165,7 +165,7 @@ def get_list_var(df_host):
 def get_variance_consumption(df_host):
     """Compute the variance and std dev consumption.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
     """
     for metric in it.metrics:
@@ -185,11 +185,11 @@ def get_variance_consumption(df_host):
 def print_vmr(df_host, total_time, part):
     """Compute VMR (Variance-to-mean ratio) for each metric in each node.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
-    :param total_time: _description_
+    :param total_time: Total duration
     :type total_time: int
-    :param part: _description_
+    :param part: Phase (analysis / run)
     :type part: int
     """
     for metric in it.metrics:
@@ -224,9 +224,9 @@ def print_vmr(df_host, total_time, part):
 def get_list_vmr(df_host):
     """Compute VMR (Variance-to-mean ratio) for each metric in each node.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
-    :return: _description_
+    :return: Varaince-to-mean ratios for metrics
     :rtype: Tuple[Dict, Dict]
     """
     dict_vmr_cpu = {}
@@ -246,13 +246,13 @@ def get_list_vmr(df_host):
 def get_nodes_variance(df_host, total_time, part):
     """Compute the Variance for each metric in each node.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
-    :param total_time: _description_
+    :param total_time: Total duration
     :type total_time: int
-    :param part: _description_
+    :param part: Phase
     :type part: int
-    :return: _description_
+    :return: Metrics variances
     :rtype: Tuple[np.array, np.array]
     """
     var = np.zeros(
@@ -278,9 +278,9 @@ def get_nodes_variance(df_host, total_time, part):
 def build_dict_id_nodes(df_host):
     """Build dictionnary for corresponding IDs and indexes.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
-    :return: _description_
+    :return: Mapping dict node ID / numerical ID
     :rtype: Dict
     """
     dict_id_n = {}
@@ -295,7 +295,7 @@ def build_dict_id_nodes(df_host):
 def plot_all_data_all_nodes(df_host):
     """Plot all metrics node consumption.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
     """
     print('Build nodes usage plot ...')
@@ -322,11 +322,11 @@ def plot_all_data_all_nodes(df_host):
 def get_mean_consumption_node(df_host, node_id):
     """Get mean consumption of node_id.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
-    :param node_id: _description_
+    :param node_id: Node name
     :type node_id: str
-    :return: _description_
+    :return: Mean consumption for the node
     :rtype: float
     """
     return np.mean(
@@ -338,9 +338,9 @@ def get_mean_consumption_node(df_host, node_id):
 def get_nodes_load_info(df_host_meta):
     """Get all wanted node information in a dataframe.
 
-    :param df_host_meta: _description_
+    :param df_host_meta: Nodes capacity
     :type df_host_meta: pd.DataFrame
-    :return: _description_
+    :return: Dataframe with load information
     :rtype: pd.DataFrame
     """
     results_df = pd.DataFrame(
@@ -375,11 +375,11 @@ def get_nodes_load_info(df_host_meta):
 def check_capacities(df_host, df_host_meta):
     """Check if node capacities are satisfied at a given time.
 
-    :param df_host: _description_
+    :param df_host: Nodes data
     :type df_host: pd.DataFrame
-    :param df_host_meta: _description_
+    :param df_host_meta: Node capacity
     :type df_host_meta: pd.DataFrame
-    :return: _description_
+    :return: List of overloads on nodes
     :rtype: List
     """
     host_overload = []
@@ -398,6 +398,8 @@ def reassign_node(c_info):
 
     :param c_info: Container name
     :type c_info: str
+    :return: New container data
+    :rtype: pd.DataFrame
     """
     new_df_container = pd.DataFrame(c_info)
     new_df_container = new_df_container.astype({

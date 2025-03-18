@@ -131,12 +131,12 @@ def close_reader():
 
 
 def acked(err, msg):
-    """Summary.
+    """Use Callback function for message delivery reports.
 
-    :param err: _description_
-    :type err: _type_
-    :param msg: _description_
-    :type msg: _type_
+    :param err: Error object if the message delivery failed, otherwise None
+    :type err: confluent_kafka.KafkaError or None
+    :param msg: The message that was delivered or failed
+    :type msg: confluent_kafka.Message
     """
     if err is not None:
         print('Failed to deliver message: %s: %s' %
@@ -146,14 +146,14 @@ def acked(err, msg):
 
 
 def msg_process(msg, avro_deserializer):
-    """Summary.
+    """Process a Kafka message and deserialize its value.
 
-    :param msg: _description_
-    :type msg: _type_
-    :param avro_deserializer: _description_
-    :type avro_deserializer: _type_
-    :return: _description_
-    :rtype: _type_
+    :param msg: Kafka message to process
+    :type msg: confluent_kafka.Message
+    :param avro_deserializer: Function to deserialize Avro-encoded messages
+    :type avro_deserializer: callable or None
+    :return: A tuple containing the timestamp and the deserialized message value
+    :rtype: tuple[str, Any]
     """
     # Print the current time and the message.
     time_start = time.strftime('%Y-%m-%d %H:%M:%S')
@@ -168,12 +168,12 @@ def msg_process(msg, avro_deserializer):
 
 
 def produce_data(timestamp, history):
-    """Summary.
+    """Produce data to Kafka based on the given timestamp and history flag.
 
-    :param timestamp: _description_
-    :type timestamp: _type_
-    :param history: _description_
-    :type history: _type_
+    :param timestamp: The current timestamp for the data
+    :type timestamp: int
+    :param history: Flag indicating whether to use historical data
+    :type history: bool
     """
     z = {}
     if history:
@@ -192,12 +192,12 @@ def produce_data(timestamp, history):
 
 
 def get_producer(config):
-    """Summary.
+    """Create and return a Kafka producer.
 
-    :param config: _description_
-    :type config: _type_
-    :return: _description_
-    :rtype: _type_
+    :param config: Configuration dictionary containing Kafka producer settings
+    :type config: dict
+    :return: Configured Kafka producer
+    :rtype: confluent_kafka.Producer
     """
     server1 = config['kafkaConf']['Producer']['brokers'][0]
     conf = {'bootstrap.servers': server1,
@@ -207,12 +207,12 @@ def get_producer(config):
 
 
 def get_consumer(config):
-    """Summary.
+    """Create and return a Kafka consumer.
 
-    :param config: _description_
-    :type config: _type_
-    :return: _description_
-    :rtype: _type_
+    :param config: Configuration dictionary containing Kafka consumer settings
+    :type config: dict
+    :return: Configured Kafka consumer
+    :rtype: confluent_kafka.Consumer
     """
     server1 = config['kafkaConf']['Consumer']['brokers'][0]
     print(server1)
@@ -226,14 +226,14 @@ def get_consumer(config):
 
 
 def publish(producer, msg, topic):
-    """Summary.
+    """Publish a message to a Kafka topic.
 
-    :param producer: _description_
-    :type producer: _type_
-    :param msg: _description_
-    :type msg: _type_
-    :param topic: _description_
-    :type topic: _type_
+    :param producer: Kafka producer instance
+    :type producer: confluent_kafka.Producer
+    :param msg: Message to publish
+    :type msg: dict
+    :param topic: Kafka topic to publish the message to
+    :type topic: str
     """
     jresult = json.dumps(msg)
     producer.produce(topic, key='mock_node', value=jresult, callback=acked)
@@ -241,10 +241,10 @@ def publish(producer, msg, topic):
 
 
 def kafka_availability(config):
-    """Summary.
+    """Check the availability of the Kafka cluster.
 
-    :param config: _description_
-    :type config: _type_
+    :param config: Configuration dictionary containing Kafka settings
+    :type config: dict
     """
     server1 = config['kafkaConf']['Consumer']['brokers'][0]
     admin_client = AdminClient({'bootstrap.servers': server1})
@@ -261,18 +261,18 @@ def kafka_availability(config):
 
 # Producing data stream part
 def publish_stream(producer, msg, topic, avro_serializer, file_complete):
-    """Summary.
+    """Publish a stream of messages to a Kafka topic.
 
-    :param producer: _description_
-    :type producer: _type_
-    :param msg: _description_
-    :type msg: _type_
-    :param topic: _description_
-    :type topic: _type_
-    :param avro_serializer: _description_
-    :type avro_serializer: _type_
-    :param file_complete: _description_
-    :type file_complete: _type_
+    :param producer: Kafka producer instance
+    :type producer: confluent_kafka.Producer
+    :param msg: Message to publish, typically a dictionary
+    :type msg: dict
+    :param topic: Kafka topic to publish the message to
+    :type topic: str
+    :param avro_serializer: Serializer for Avro-encoded messages, or None
+    :type avro_serializer: callable or None
+    :param file_complete: Flag indicating whether the file is completely processed
+    :type file_complete: bool
     """
     try:
 
@@ -302,12 +302,12 @@ def publish_stream(producer, msg, topic, avro_serializer, file_complete):
 
 
 def delivery_report(err, msg):
-    """Summary.
+    """Use Callback function for delivery reports of Kafka messages.
 
-    :param err: _description_
-    :type err: _type_
-    :param msg: _description_
-    :type msg: _type_
+    :param err: Error object if the message delivery failed, otherwise None
+    :type err: confluent_kafka.KafkaError or None
+    :param msg: The message that was delivered or failed
+    :type msg: confluent_kafka.Message
     """
     if err is not None:
         print('Delivery failed for User record {}: {}'.format(msg.key(), err))
@@ -319,12 +319,12 @@ def delivery_report(err, msg):
 
 
 def balance_offset(consumer, tp):
-    """Summary.
+    """Ensure the consumer has processed all messages up to the last offset.
 
-    :param consumer: _description_
-    :type consumer: _type_
-    :param tp: _description_
-    :type tp: _type_
+    :param consumer: Kafka consumer instance
+    :type consumer: confluent_kafka.Consumer
+    :param tp: TopicPartition object representing the topic and partition
+    :type tp: confluent_kafka.TopicPartition
     """
     while True:
         committed = consumer.committed([tp])
@@ -339,14 +339,14 @@ def balance_offset(consumer, tp):
 
 
 def connect_schema_registry(schema_str, producer_topic):
-    """Summary.
+    """Connect to the schema registry and retrieve the schema.
 
-    :param schema_str: _description_
-    :type schema_str: _type_
-    :param producer_topic: _description_
-    :type producer_topic: _type_
-    :return: _description_
-    :rtype: _type_
+    :param schema_str: Schema string to use for serialization
+    :type schema_str: str
+    :param producer_topic: Kafka topic for which the schema is retrieved
+    :type producer_topic: str
+    :return: AvroSerializer instance for the schema
+    :rtype: confluent_kafka.schema_registry.avro.AvroSerializer
     """
     schema_registry_conf = {'url': 'http://localhost:8081'}
 
@@ -476,14 +476,14 @@ def csv_to_stream(data, config, use_schema=False):
 
 
 def connect_schema(use_schema, schema_url):
-    """Summary.
+    """Connect to the schema registry and retrieve the deserializer.
 
-    :param use_schema: _description_
-    :type use_schema: _type_
-    :param use_schema_url: _description_
-    :type use_schema_url: _type_
-    :return: _description_
-    :rtype: _type_
+    :param use_schema: Flag indicating whether to use a schema registry
+    :type use_schema: bool
+    :param schema_url: URL of the schema registry
+    :type schema_url: str
+    :return: AvroDeserializer instance or None if schema is not used
+    :rtype: confluent_kafka.schema_registry.avro.AvroDeserializer or None
     """
     if use_schema:
         schema_registry_client_conf = {'url': schema_url}
@@ -493,7 +493,7 @@ def connect_schema(use_schema, schema_url):
         try:
             it.kafka_schema = schema_registry_client.get_latest_version(
                 it.kafka_topics['docker_topic'] + '-value'
-            ).schema.it.kafka_schema
+            ).schema.schema_str
         except SchemaRegistryError as e:
             # Handle schema registry error
             print(f'Error registering schema: {e}')
@@ -506,13 +506,13 @@ def connect_schema(use_schema, schema_url):
 
 
 def process_kafka_msg(avro_deserializer):
-    """Summary.
+    """Process a Kafka message and deserialize its value.
 
-    :param avro_deserializer: _description_
-    :type avro_deserializer: _type_
-    :raises KafkaException: _description_
-    :return: _description_
-    :rtype: _type_
+    :param avro_deserializer: Function to deserialize Avro-encoded messages
+    :type avro_deserializer: callable or None
+    :raises KafkaException: If there is an error in the Kafka message
+    :return: Deserialized message value or None if no message is available
+    :rtype: Any or None
     """
     msg = it.kafka_consumer.poll(timeout=1.0)
 
@@ -529,7 +529,7 @@ def process_kafka_msg(avro_deserializer):
                 'Topic unknown, creating %s topic\n' % (
                     it.kafka_topics['docker_topic']))
         elif msg.error():
-            print('error message here')
+            print('Error in Kafka message')
             raise KafkaException(msg.error())
 
     else:
@@ -538,10 +538,10 @@ def process_kafka_msg(avro_deserializer):
 
 
 def consume_all_data(config):
-    """Consume all data in queue.
+    """Consume all data in the Kafka queue.
 
-    :param config: _description_
-    :type config: _type_
+    :param config: Configuration dictionary containing Kafka settings
+    :type config: dict
     """
     consumer_conf = {
         'bootstrap.servers': config['kafkaConf']['Consumer']['brokers'][0],
@@ -556,7 +556,7 @@ def consume_all_data(config):
 
             msg = consumer.poll(timeout=5.0)
             if msg is None:
-                print('Look like there is no data left.')
+                print('Looks like there is no data left.')
                 break
 
             if msg.error():
@@ -586,11 +586,11 @@ def consume_all_data(config):
 def delete_kafka_topic(config):
     """Delete all topics in Kafka.
 
-    :param config: _description_
-    :type config: _type_
+    :param config: Configuration dictionary containing Kafka settings
+    :type config: dict
     """
     admin_client = AdminClient({
-        'bootstrap.servers': [config['kafkaConf']['Producer']['brokers'][0]]
+        'bootstrap.servers': config['kafkaConf']['Producer']['brokers'][0]
     })
     print(it.kafka_topics.values())
     admin_client.delete_topics(topics=list(it.kafka_topics.values()))

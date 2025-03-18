@@ -32,15 +32,15 @@ other_colors = ['violet', 'lightcoral', 'navy', 'chocolate', 'turquoise']
 def plot_clustering(df_clust, dict_id_c, metric=None, title=None):
     """Plot metric containers consumption, grouped by cluster.
 
-    :param df_clust: _description_
+    :param df_clust: Clustering data
     :type df_clust: pd.DataFrame
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :param metric: _description_, defaults to None
+    :param metric: Metric to display, defaults to None
     :type metric: str, optional
-    :param title: _description_, defaults to None
+    :param title: Figure title, defaults to None
     :type title: str, optional
-    :return: _description_
+    :return: Figure object
     :rtype: plt.Figure
     """
     metric = metric or it.metrics[0]
@@ -73,15 +73,15 @@ def plot_clustering_spec_cont(
 ):
     """Plot metric containers consumption, grouped by cluster.
 
-    :param df_clust: _description_
+    :param df_clust: Clustering data
     :type df_clust: pd.DataFrame
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
     :param containers_toshow: _description_
     :type containers_toshow: List
-    :param metric: _description_, defaults to 'cpu'
+    :param metric: Metric to display, defaults to 'cpu'
     :type metric: str, optional
-    :param title: _description_, defaults to None
+    :param title: Figure title, defaults to None
     :type title: str, optional
     """
     fig = plt.figure()
@@ -111,9 +111,9 @@ def plot_clustering_spec_cont(
 def plot_containers_clustering_together(df_clust, metric='cpu'):
     """Plot all containers consumption with their cluster color.
 
-    :param df_clust: _description_
+    :param df_clust: Clustering data
     :type df_clust: pd.DataFrame
-    :param metric: _description_, defaults to 'cpu'
+    :param metric: Metric to display, defaults to 'cpu'
     :type metric: str, optional
     """
     fig, ax = plt.subplots()
@@ -132,17 +132,17 @@ def plot_clustering_containers_by_node(
 
     One container is added above another, with their cluster color.
 
-    :param df_indiv: _description_
+    :param df_indiv: Containers data
     :type df_indiv: pd.DataFrame
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :param labels_: _description_
+    :param labels_: Clustering result
     :type labels_: List
-    :param filter_big: _description_, defaults to False
+    :param filter_big: Filtering big data, defaults to False
     :type filter_big: bool, optional
-    :param metric: _description_, defaults to None
+    :param metric: Metric to display, defaults to None
     :type metric: str, optional
-    :return: _description_
+    :return: Figure object
     :rtype: plt.Figure
     """
     metric = metric or it.metrics[0]
@@ -192,15 +192,15 @@ def plot_clustering_containers_by_node_spec_cont(
 
     One container is added above another, with their cluster color.
 
-    :param df_indiv: _description_
+    :param df_indiv: Containers data
     :type df_indiv: pd.DataFrame
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :param labels_: _description_
+    :param labels_: Clustering result
     :type labels_: List
-    :param containers_toshow: _description_
+    :param containers_toshow: List of containers to display
     :type containers_toshow: List
-    :param metric: _description_, defaults to 'cpu'
+    :param metric: Metric to display, defaults to 'cpu'
     :type metric: str, optional
     """
     fig_node_usage = plt.figure()
@@ -242,17 +242,17 @@ def plot_containers_groupby_nodes(
 ):
     """Plot containers consumption grouped by node.
 
-    :param df_indiv: _description_
+    :param df_indiv: Containers data
     :type df_indiv: pd.DataFrame
-    :param max_cap: _description_
+    :param max_cap: Maximum capacity
     :type max_cap: int
-    :param sep_time: _description_
+    :param sep_time: Separation time
     :type sep_time: int
-    :param title: _description_, defaults to None
+    :param title: Figure title, defaults to None
     :type title: str, optional
-    :param metrics: _description_, defaults to None
+    :param metrics: Metrics considered, defaults to None
     :type metrics: List[str], optional
-    :return: _description_
+    :return: Figure object
     :rtype: plt.Figure
     """
     metrics = metrics or it.metrics
@@ -303,10 +303,8 @@ def plot_containers_groupby_nodes(
 def plot_dendrogram(z_all):
     """Plot dendrogram for the hierarchical clustering building.
 
-    :param z_all: _description_
+    :param z_all: Clustering data
     :type z_all: np.array
-    :param k: _description_
-    :type k: int
     """
     plt.figure()
     plt.title('Hierarchical Clustering Dendrogram -- ALL')
@@ -323,7 +321,7 @@ def plot_dendrogram(z_all):
 def plot_cluster_profiles(profiles_):
     """Plot mean profiles of clusters.
 
-    :param profiles_: _description_
+    :param profiles_: Clusters profile
     :type profiles_: List
     """
     fig, ax = plt.subplots()
@@ -373,14 +371,14 @@ def plot_nodes_wout_containers():
 def init_containers_plot(df_indiv, sep_time, metric='cpu'):
     """Initialize containers consumption plot.
 
-    :param df_indiv: _description_
+    :param df_indiv: Containers data
     :type df_indiv: pd.DataFrame
-    :param sep_time: _description_
+    :param sep_time: Separation time
     :type sep_time: int
-    :param metric: _description_, defaults to 'cpu'
+    :param metric: Metric to display, defaults to 'cpu'
     :type metric: str, optional
-    :return: _description_
-    :rtype: Tuple
+    :return: Figure objects
+    :rtype: tuple[plt.Figure, plt.Axes]
     """
     fig, ax = plt.subplots()
     fig.suptitle('Containers consumption evolution')
@@ -402,9 +400,9 @@ def init_containers_plot(df_indiv, sep_time, metric='cpu'):
 def update_containers_plot(ax, df):
     """Update containers consumption plot with new data.
 
-    :param ax: _description_
-    :type ax: _type_
-    :param df: _description_
+    :param ax: Figure object
+    :type ax: plt.Axes
+    :param df: Containers data
     :type df: pd.DataFrame
     """
     pvt_cpu = pd.pivot_table(
@@ -419,18 +417,18 @@ def init_nodes_plot(
 ):
     """Initialize nodes consumption plot.
 
-    :param df_indiv: _description_
+    :param df_indiv: Containers data
     :type df_indiv: pd.DataFrame
-    :param dict_id_n: _description_
+    :param dict_id_n: Mapping dict node ID / numerical ID
     :type dict_id_n: Dict
-    :param sep_time: _description_
+    :param sep_time: Separation time
     :type sep_time: int
-    :param max_cap: _description_
+    :param max_cap: Maximum capacity
     :type max_cap: int
-    :param metric: _description_, defaults to None
+    :param metric: Metric to display, defaults to None
     :type metric: str, optional
-    :return: _description_
-    :rtype: Tuple
+    :return: Figure objects
+    :rtype: tuple[plt.Figure, plt.Axes]
     """
     metric = metric or it.metrics[0]
     fig, ax = plt.subplots()
@@ -492,13 +490,13 @@ def init_nodes_plot(
 def update_nodes_plot(ax, df, dict_id_n, metric=None):
     """Update nodes consumption plot with new data.
 
-    :param ax: _description_
-    :type ax: _type_
-    :param df: _description_
+    :param ax: Figure object
+    :type ax: plt.Axes
+    :param df: Containers data
     :type df: pd.DataFrame
-    :param dict_id_n: _description_
+    :param dict_id_n: Mapping dict node ID / numerical ID
     :type dict_id_n: Dict
-    :param metric: _description_, defaults to None
+    :param metric: Metric to display, defaults to None
     :type metric: str, optional
     """
     metric = metric or it.metrics[0]
@@ -535,12 +533,12 @@ def update_nodes_plot(ax, df, dict_id_n, metric=None):
 def init_plot_clustering(df_clust, metric=None):
     """Initialize clustering plot.
 
-    :param df_clust: _description_
+    :param df_clust: Clustering data
     :type df_clust: pd.DataFrame
-    :param metric: _description_, defaults to None
+    :param metric: Metric to display, defaults to None
     :type metric: str, optional
-    :return: _description_
-    :rtype: Tuple
+    :return: Figure objects
+    :rtype: tuple[plt.Figure, plt.Axes]
     """
     # TODO add title, same scale, smooth curves..
     metric = metric or it.metrics[0]
@@ -559,12 +557,12 @@ def init_plot_clustering(df_clust, metric=None):
 def init_plot_cluster_profiles(profiles, metric=None):
     """Initialize clusters mean profiles plot.
 
-    :param profiles: _description_
+    :param profiles: Clusters profile
     :type profiles: np.array
-    :param metric: _description_, defaults to None
+    :param metric: Metric to display, defaults to None
     :type metric: str, optional
-    :return: _description_
-    :rtype: Tuple
+    :return: Figure objects
+    :rtype: tuple[plt.Figure, plt.Axes]
     """
     # TODO add title, same scale, smooth curves..
     metric = metric or it.metrics[0]
@@ -578,14 +576,14 @@ def init_plot_cluster_profiles(profiles, metric=None):
 def init_plot_clustering_axes(df_clust, dict_id_c, metric='cpu'):
     """Initialize clustering plot.
 
-    :param df_clust: _description_
+    :param df_clust: Clustering data
     :type df_clust: pd.DataFrame
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :param metric: _description_, defaults to 'cpu'
+    :param metric: Metric to display, defaults to 'cpu'
     :type metric: str, optional
-    :return: _description_
-    :rtype: Tuple
+    :return: Figure objects
+    :rtype: tuple[plt.Figure, plt.Axes]
     """
     # TODO add title, same scale, smooth curves..
     fig = plt.figure()
@@ -635,11 +633,11 @@ def init_plot_clustering_axes(df_clust, dict_id_c, metric='cpu'):
 def update_clustering_plot(ax, df_clust, metric=None):
     """Update clustering plot with new data.
 
-    :param ax: _description_
-    :type ax: _type_
-    :param df_clust: _description_
+    :param ax: Figure object
+    :type ax: plt.Axes
+    :param df_clust: Clustering data
     :type df_clust: pd.DataFrame
-    :param metric: _description_, defaults to None
+    :param metric: Metric to display, defaults to None
     :type metric: str, optional
     """
     metric = metric or it.metrics[0]
@@ -654,13 +652,13 @@ def update_clustering_plot(ax, df_clust, metric=None):
 def update_cluster_profiles(ax, profiles, x, metric=None):
     """Update the clusters profiles.
 
-    :param ax: _description_
-    :type ax: _type_
-    :param profiles: _description_
+    :param ax: Figure object
+    :type ax: plt.Axes
+    :param profiles: Clusters profiles
     :type profiles: np.array
-    :param x: _description_
+    :param x: List of times
     :type x: np.array
-    :param metric: _description_, defaults to None
+    :param metric: Metric to display, defaults to None
     :type metric: str, optional
     """
     metric = metric or it.metrics[0]
@@ -671,11 +669,11 @@ def update_cluster_profiles(ax, profiles, x, metric=None):
 def update_clustering_plot_axes(ax_, df_clust, dict_id_c):
     """Update clustering plot with new data.
 
-    :param ax_: _description_
-    :type ax_: _type_
-    :param df_clust: _description_
+    :param ax: Figure object
+    :type ax: plt.Axes
+    :param df_clust: Clustering data
     :type df_clust: pd.DataFrame
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
     """
     for k, data in df_clust.groupby(['cluster']):
@@ -687,7 +685,7 @@ def update_clustering_plot_axes(ax_, df_clust, dict_id_c):
 def plot_conflict_graph(graph):
     """Plot the conflict graph from dual values.
 
-    :param graph: _description_
+    :param graph: Conflict graph
     :type graph: nx.Graph
     """
     fig, ax = plt.subplots()
@@ -699,20 +697,3 @@ def plot_conflict_graph(graph):
 
     fig.savefig('graph.svg')
     # plt.draw()
-
-
-def plot_memory_usage(x, y, tick):
-    """Plot memory usage from application."""
-    fig = plt.figure()
-    ax = fig.add_subplot(111)
-    ax.plot(x, y, 'b-', label='total memory rss')
-    for idx, t in enumerate(tick):
-        if idx == 0:
-            ax.axvline(
-                t, color='orange', alpha=0.5,
-                label='run placement', linestyle='dashed')
-        else:
-            ax.axvline(t, color='orange', alpha=0.5, linestyle='dashed')
-    ax.set(xlabel='time (s)', ylabel='memory of datarame (bytes)')
-    ax.legend()
-    fig.savefig('mem_fig.png')

@@ -18,9 +18,9 @@ from . import plot
 def plot_data_all_containers(df_indiv, metric):
     """Plot a specific metric containers consumption.
 
-    :param df_indiv: _description_
+    :param df_indiv: Individual consumption data
     :type df_indiv: pd.DataFrame
-    :param metric: _description_
+    :param metric: Metric to display
     :type metric: str
     """
     fig, ax = plt.subplots()
@@ -58,13 +58,13 @@ def plot_data_all_containers(df_indiv, metric):
 def plot_all_data_all_containers(df_indiv, sep_time, metrics=None):
     """Plot all metrics containers consumption.
 
-    :param df_indiv: _description_
+    :param df_indiv: Individual consumption data
     :type df_indiv: pd.DataFrame
-    :param sep_time: _description_
+    :param sep_time: Separation time (Analysis / Running)
     :type sep_time: int
-    :param metrics: _description_, defaults to None
+    :param metrics: Metrics to display, defaults to None
     :type metrics: List[str], optional
-    :return: _description_
+    :return: Figure object
     :rtype: plt.Figure
     """
     # TODO several metrics ?
@@ -96,11 +96,11 @@ def plot_all_data_all_containers(df_indiv, sep_time, metrics=None):
 def build_var_delta_matrix(df_indiv, dict_id_c):
     """Build variance of deltas matrix.
 
-    :param df_indiv: _description_
+    :param df_indiv: Individual consumption data
     :type df_indiv: pd.DataFrame
-    :param dict_id_c: _description_
-    :type dict_id_c: _type_
-    :return: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
+    :type dict_id_c: Dict
+    :return: Result matrix
     :rtype: np.array
     """
     c = df_indiv[it.indiv_field].nunique()
@@ -121,13 +121,13 @@ def build_var_delta_matrix(df_indiv, dict_id_c):
 def build_var_delta_matrix_cluster(df_clust, cluster_var_matrix, dict_id_c):
     """Build variance of deltas matrix from cluster.
 
-    :param df_clust: _description_
+    :param df_clust: Formated consumption data
     :type df_clust: pd.DataFrame
-    :param cluster_var_matrix: _description_
+    :param cluster_var_matrix: Clusters variance
     :type cluster_var_matrix: np.array
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :return: _description_
+    :return: Individuals variances from cluster variances
     :rtype: np.array
     """
     c = len(df_clust)
@@ -145,13 +145,13 @@ def build_var_delta_matrix_cluster(df_clust, cluster_var_matrix, dict_id_c):
 def build_vars_matrix_indivs(df_clust, vars_, dict_id_c):
     """Build containers matrix with clusters variance.
 
-    :param df_clust: _description_
+    :param df_clust: Formated consumption data
     :type df_clust: pd.DataFrame
-    :param vars_: _description_
+    :param vars_: Clusters variance
     :type vars_: np.array
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :return: _description_
+    :return: Cluster sum variance matrix
     :rtype: np.array
     """
     c = len(df_clust)
@@ -171,11 +171,11 @@ def show_specific_containers(
 ):
     """Show specific (user input) containers.
 
-    :param working_df_indiv: _description_
+    :param working_df_indiv: Individual consumption data
     :type working_df_indiv: pd.DataFrame
-    :param df_indiv_clust: _description_
+    :param df_indiv_clust: Formated consumption data
     :type df_indiv_clust: pd.DataFrame
-    :param labels_: _description_
+    :param labels_: List of assigned clusters to individuals
     :type labels_: List
     """
     print('Enter list of containers to show separated by a comma :')

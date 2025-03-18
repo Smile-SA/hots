@@ -12,10 +12,10 @@ from . import init as it
 
 
 def print_size_vars(list_vars):
-    """Display size (memory) of variables.
+    """Display the size (in memory) of variables.
 
-    :param list_vars: _description_
-    :type list_vars: List
+    :param list_vars: List of tuples containing variable names and their values
+    :type list_vars: List[Tuple[str, Any]]
     """
     print('List of variables with sizes:')
     for name, size in sorted(
@@ -26,13 +26,13 @@ def print_size_vars(list_vars):
 
 
 def sizeof_fmt(num, suffix='B'):
-    """Ease display of memory sizes.
+    """Format a number as a human-readable memory size.
 
-    :param num: _description_
+    :param num: The size in bytes
     :type num: float
-    :param suffix: _description_, defaults to 'B'
+    :param suffix: The suffix to append to the size (e.g., 'B' for bytes), defaults to 'B'
     :type suffix: str, optional
-    :return: _description_
+    :return: The formatted memory size as a string
     :rtype: str
     """
     for unit in ['', 'Ki', 'Mi', 'Gi', 'Ti', 'Pi', 'Ei', 'Zi']:
@@ -45,23 +45,23 @@ def sizeof_fmt(num, suffix='B'):
 def change_max_dataset(
     df_indiv, container, col_indiv, new_max, col_val, col_time, min_time
 ):
-    """Change dataset after max bound change.
+    """Update a dataset by capping values at a maximum threshold.
 
-    :param df_indiv: _description_
+    :param df_indiv: The input DataFrame containing individual data
     :type df_indiv: pd.DataFrame
-    :param container: _description_
+    :param container: The container identifier to filter the data
     :type container: str
-    :param col_indiv: _description_
+    :param col_indiv: The column name representing individual identifiers
     :type col_indiv: str
-    :param new_max: _description_
+    :param new_max: The new maximum value to cap the data
     :type new_max: float
-    :param col_val: _description_
+    :param col_val: The column name containing the values to be capped
     :type col_val: str
-    :param col_time: _description_
+    :param col_time: The column name representing timestamps
     :type col_time: str
-    :param min_time: _description_
+    :param min_time: The minimum timestamp to filter the data
     :type min_time: int
-    :return: _description_
+    :return: The updated DataFrame with capped values
     :rtype: pd.DataFrame
     """
     working_df = df_indiv.loc[
@@ -78,9 +78,9 @@ def change_max_dataset(
 
 
 def order_csv_timestamp(path):
-    """Order the CSV file by timestamp.
+    """Sort a CSV file by its timestamp column.
 
-    :param path: initial folder path
+    :param path: Path to the folder containing the CSV file
     :type path: str
     """
     p_data = Path(path)
@@ -96,7 +96,11 @@ def order_csv_timestamp(path):
 
 
 def process_memory():
-    """Get memory information."""
+    """Get the memory usage of the current process.
+
+    :return: Memory usage in megabytes
+    :rtype: float
+    """
     process = psutil.Process(os.getpid())
     mem_info = process.memory_info()
     mem_usage_mb = mem_info.rss / 1024 / 1024
@@ -104,7 +108,13 @@ def process_memory():
 
 
 def check_missing_entries_df(df):
-    """Check if containers have missing entry in df."""
+    """Check and fill missing entries in a DataFrame for all containers and timestamps.
+
+    :param df: The input DataFrame containing container data
+    :type df: pd.DataFrame
+    :return: The updated DataFrame with missing entries filled
+    :rtype: pd.DataFrame
+    """
     # Find all unique timestamps and container IDs
     all_timestamps = df[it.tick_field].unique()
     all_containers = df[it.indiv_field].unique()

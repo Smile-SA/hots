@@ -14,9 +14,9 @@ from .instance import Instance
 def build_df_from_containers(df_indiv):
     """Build the `df_host` from containers df.
 
-    :param df_indiv: _description_
+    :param df_indiv: Individual consumption data
     :type df_indiv: pd.DataFrame
-    :return: _description_
+    :return: Node consumption
     :rtype: pd.DataFrame
     """
     dict_agg = {}
@@ -32,9 +32,9 @@ def build_df_from_containers(df_indiv):
 def df_from_csv(file):
     """Load DataFrame from CSV file.
 
-    :param file: _description_
+    :param file: Data file path
     :type file: Path
-    :return: _description_
+    :return: Dataframe with data
     :rtype: pd.DataFrame
     """
     return pd.read_csv(
@@ -45,9 +45,9 @@ def df_from_csv(file):
 def init_dfs(data):
     """Perform CSV files reading in data folder.
 
-    :param data: _description_
+    :param data: Data folder path
     :type data: str
-    :return: _description_
+    :return: Individual consumption, Node consumption, Nodes capacity
     :rtype: Tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]
     """
     p_data = Path(data)
@@ -71,23 +71,21 @@ def read_params(
 ):
     """Get parameters from file and build the Dict config object.
 
-    :param path: _description_
+    :param path: Config file path
     :type path: str
-    :param k: _description_
+    :param k: Number of clusters
     :type k: int
-    :param tau: _description_
+    :param tau: Time window size
     :type tau: int
-    :param method: _description_
+    :param method: Method for global process
     :type method: str
-    :param cluster_method: _description_
+    :param cluster_method: Clustering method
     :type cluster_method: str
-    :param output_path: _description_
+    :param output_path: Path for output files
     :type output_path: str
     :param kafka_var: streaming platform
     :type kafka_var: bool
-    :raises ValueError: _description_
-    :raises ValueError: _description_
-    :return: _description_
+    :return: Configs object, Path for output, Parent folder path
     :rtype: Dict
     """
     p_path = Path(path)
@@ -125,7 +123,7 @@ def read_params(
 def set_loop_results():
     """Create the dataframe for loop results.
 
-    :return: _description_
+    :return: Loop results dataframe
     :rtype: pd.DataFrame
     """
     return pd.DataFrame(columns=[
@@ -143,7 +141,7 @@ def set_loop_results():
 def set_times_df():
     """Create the dataframe for times info.
 
-    :return: _description_
+    :return: Times results dataframe
     :rtype: pd.DataFrame
     """
     return pd.DataFrame(columns=[
@@ -154,9 +152,9 @@ def set_times_df():
 def define_globals(p_path, config, kafka_var):
     """Define the fields, as global variables, from config.
 
-    :param p_path: _description_
+    :param p_path: Parent folder path
     :type p_path: Path
-    :param config: _description_
+    :param config: Configs Dict
     :type config: Dict
     :param kafka_var: streaming platform
     :type kafka_var: bool

@@ -14,11 +14,11 @@ from . import init as it
 def assign_container_node(node_id, container_id, remove=True):
     """Assign container_id to node_id, and remove it from old node.
 
-    :param node_id: _description_
+    :param node_id: Node ID
     :type node_id: str
-    :param container_id: _description_
+    :param container_id: Container ID
     :type container_id: str
-    :param remove: _description_, defaults to True
+    :param remove: Remove the container from old node, defaults to True
     :type remove: bool, optional
     """
     old_id = it.my_instance.df_indiv.loc[
@@ -45,9 +45,9 @@ def assign_container_node(node_id, container_id, remove=True):
 def remove_container_node(node_id, container_id):
     """Remove container from node.
 
-    :param node_id: _description_
+    :param node_id: Node ID
     :type node_id: str
-    :param container_id: _description_
+    :param container_id: Container ID
     :type container_id: str
     """
     it.my_instance.df_host.loc[
@@ -62,9 +62,9 @@ def remove_container_node(node_id, container_id):
 def free_full_nodes(full_nodes, tick):
     """Change the solution in order to satisfy node capacities.
 
-    :param full_nodes: _description_
+    :param full_nodes: List of full nodes
     :type full_nodes: List
-    :param tick: _description_
+    :param tick: Progressing time tick
     :type tick: int
     """
     for host in full_nodes:
@@ -92,15 +92,14 @@ def free_full_nodes(full_nodes, tick):
 def assign_indiv_available_host(indiv_id, tmin, tmax, nb_open_nodes):
     """Assign the individual to first available host.
 
-    :param indiv_id: _description_
+    :param indiv_id: Container ID
     :type indiv_id: str
-    :param tmin: _description_
+    :param tmin: Minimum window time
     :type tmin: int
-    :param tmax: _description_
+    :param tmax: Maximum window time
     :type tmax: int
-    :param nb_open_nodes: _description_
+    :param nb_open_nodes: Number of open nodes
     :type nb_open_nodes: int
-    :raises RuntimeError: _description_
     """
     print('Moving individual %s' % indiv_id)
     cons_c = it.my_instance.df_indiv.loc[
@@ -155,19 +154,19 @@ def assign_indiv_initial_placement(
 ):
     """Assign indiv in node during first heuristic.
 
-    :param indiv_id: _description_
+    :param indiv_id: Container ID
     :type indiv_id: str
-    :param tmin: _description_
+    :param tmin: Minimum window time
     :type tmin: int
-    :param tmax: _description_
+    :param tmax: Maximum window time
     :type tmax: int
-    :param conso_nodes: _description_
+    :param conso_nodes: Nodes data
     :type conso_nodes: List
-    :param min_nodes: _description_
+    :param min_nodes: Minimum number of nodes to use
     :type min_nodes: int
-    :param n: _description_, defaults to 0
+    :param n: Current node index, defaults to 0
     :type n: int, optional
-    :return: _description_
+    :return: Container has been assigned
     :rtype: bool
     """
     cons_c = it.my_instance.df_indiv.loc[
@@ -219,13 +218,12 @@ def assign_indiv_initial_placement(
 def find_substitution(indiv_id, tmin, tmax):
     """Find a node in which we can place indiv_id by moving another indiv.
 
-    :param indiv_id: _description_
+    :param indiv_id: Container ID
     :type indiv_id: str
-    :param tmin: _description_
+    :param tmin: Minimum window time
     :type tmin: int
-    :param tmax: _description_
+    :param tmax: Maximum window time
     :type tmax: int
-    :raises RuntimeError: _description_
     """
     # TODO not fully functionnal
     cons_c = it.my_instance.df_indiv.loc[
@@ -272,7 +270,17 @@ def find_substitution(indiv_id, tmin, tmax):
 
 
 def spread_containers_new(list_containers, conso_nodes, total_time, min_nodes):
-    """Propose an alternative to spread technique."""
+    """Propose an alternative to spread technique.
+
+    :param list_containers: List of containers
+    :type list_containers: List
+    :param conso_nodes: Nodes data
+    :type conso_nodes: np.array
+    :param total_time: Total duration
+    :type total_time: int
+    :param min_nodes: Minimum number of nodes to use
+    :type min_nodes: int
+    """
     df_indiv = it.my_instance.df_indiv
     df_host_meta = it.my_instance.df_host_meta
     dict_id_n = it.my_instance.dict_id_n
@@ -317,13 +325,13 @@ def spread_containers(
 ):
     """Spread containers from list_containers into nodes.
 
-    :param list_containers: _description_
+    :param list_containers: List of containers
     :type list_containers: List
-    :param conso_nodes: _description_
+    :param conso_nodes: Nodes data
     :type conso_nodes: np.array
-    :param total_time: _description_
+    :param total_time: Total duration
     :type total_time: int
-    :param min_nodes: _description_
+    :param min_nodes: Minimum number of nodes to use
     :type min_nodes: int
     """
     n = 0
@@ -363,23 +371,21 @@ def colocalize_clusters(
 ):
     """Allocate containers of 2 clusters grouping by pairs.
 
-    :param list_containers_i: _description_
+    :param list_containers_i: Containers list for 1st cluster
     :type list_containers_i: List
-    :param list_containers_j: _description_
+    :param list_containers_j: Containers list for 2nd cluster
     :type list_containers_j: List
-    :param containers_grouped: _description_
+    :param containers_grouped: List of containers colocalized
     :type containers_grouped: List
-    :param total_time: _description_
+    :param total_time: Total duration
     :type total_time: int
-    :param min_nodes: _description_
+    :param min_nodes: Minimum number of nodes to use
     :type min_nodes: int
-    :param conso_nodes: _description_
+    :param conso_nodes: Nodes data
     :type conso_nodes: List
-    :param n: _description_, defaults to 0
+    :param n: Current node index, defaults to 0
     :type n: int, optional
-    :raises RuntimeError: _description_
-    :raises RuntimeError: _description_
-    :return: _description_
+    :return: Remaing containers to assign
     :rtype: int
     """
     for c in range(min(len(list_containers_i),
@@ -458,23 +464,21 @@ def colocalize_clusters_new(
 ):
     """Allocate containers of 2 clusters grouping by pairs.
 
-    :param list_containers_i: _description_
+    :param list_containers_i: Containers list for 1st cluster
     :type list_containers_i: List
-    :param list_containers_j: _description_
+    :param list_containers_j: Containers list for 2nd cluster
     :type list_containers_j: List
-    :param containers_grouped: _description_
+    :param containers_grouped: List of containers colocalized
     :type containers_grouped: List
-    :param total_time: _description_
+    :param total_time: Total duration
     :type total_time: int
-    :param min_nodes: _description_
+    :param min_nodes: Minimum number of nodes to use
     :type min_nodes: int
-    :param conso_nodes: _description_
+    :param conso_nodes: Nodes data
     :type conso_nodes: List
-    :param n: _description_, defaults to 0
+    :param n: Current node index, defaults to 0
     :type n: int, optional
-    :raises RuntimeError: _description_
-    :raises RuntimeError: _description_
-    :return: _description_
+    :return: Remaing containers to assign
     :rtype: int
     """
     df_indiv = it.my_instance.df_indiv
@@ -543,13 +547,13 @@ def allocation_distant_pairwise(
     current one has not enough resources.
     Return a list of containers forced to be grouped together.
 
-    :param cluster_var_matrix: _description_
+    :param cluster_var_matrix: Clusters variance matrix
     :type cluster_var_matrix: np.array
-    :param labels_: _description_
+    :param labels_: Clustering result
     :type labels_: List
-    :param nb_nodes: _description_, defaults to None
+    :param nb_nodes: Numbers of nodes, defaults to None
     :type nb_nodes: int, optional
-    :param lb: _description_, defaults to 0.0
+    :param lb: Precision threshold, defaults to 0.0
     :type lb: float, optional
     """
     print('Beginning of allocation ...')
@@ -634,11 +638,11 @@ def allocation_ffd(
     variance. If not possible, place it on the node whose variance increases
     the least.
 
-    :param cluster_vars: _description_
+    :param cluster_vars: List of clusters variance
     :type cluster_vars: np.array
-    :param cluster_var_matrix: _description_
+    :param cluster_var_matrix: Clusters variance matrix
     :type cluster_var_matrix: np.array
-    :param labels_: _description_
+    :param labels_: Clustering result
     :type labels_: List
     """
     # TODO add open-nodes system (to run through open nodes only, and open a
@@ -731,7 +735,7 @@ def allocation_ffd(
 def allocation_spread(min_nodes=None):
     """Spread technique for placement.
 
-    :param min_nodes: _description_, defaults to None
+    :param min_nodes: Minimum number of nodes to use, defaults to None
     :type min_nodes: int, optional
     """
     total_time = it.my_instance.sep_time
@@ -748,7 +752,7 @@ def allocation_spread(min_nodes=None):
 def nb_min_nodes():
     """Compute the minimum number of nodes needed to support the load.
 
-    :return: _description_
+    :return: Minimum number of nodes to use
     :rtype: float
     """
     # TODO consider nodes with different capacities
@@ -776,15 +780,15 @@ def place_opposite_clusters(
 ):
     """Initialize allocation heuristic by co-localizing distant clusters.
 
-    :param cluster_var_matrix: _description_
+    :param cluster_var_matrix: Clustering variance matrix
     :type cluster_var_matrix: np.array
-    :param labels_: _description_
+    :param labels_: Clustering result
     :type labels_: List
-    :param min_nodes: _description_
+    :param min_nodes: Minimum number of nodes to use
     :type min_nodes: int
-    :param conso_nodes: _description_
+    :param conso_nodes: Nodes data
     :type conso_nodes: np.array
-    :return: _description_
+    :return: Nodes data and clusters considered for placement
     :rtype: Tuple[np.array, np.array]
     """
     total_time = it.my_instance.sep_time
@@ -825,15 +829,15 @@ def place_opposite_clusters(
 def move_list_containers(mvg_conts, tmin, tmax, order='max'):
     """Move the list of containers to move.
 
-    :param mvg_conts: _description_
+    :param mvg_conts: Containers to move list
     :type mvg_conts: List
-    :param tmin: _description_
+    :param tmin: Minimum window time
     :type tmin: int
-    :param tmax: _description_
+    :param tmax: Maximum window time
     :type tmax: int
-    :param order: _description_, defaults to 'max'
+    :param order: Order to consider the list, defaults to 'max'
     :type order: str, optional
-    :return: _description_
+    :return: Effective moved containers list
     :rtype: List
     """
     # Remove all moving containers from nodes first
@@ -871,15 +875,15 @@ def move_list_containers(mvg_conts, tmin, tmax, order='max'):
 def move_container(mvg_cont, tmin, tmax, old_id, moves_list):
     """Move `mvg_cont` to another node.
 
-    :param mvg_cont: _description_
+    :param mvg_cont: Container index to move
     :type mvg_cont: int
-    :param tmin: _description_
+    :param tmin: Minimum window time
     :type tmin: int
-    :param tmax: _description_
+    :param tmax: Maximum window time
     :type tmax: int
-    :param old_id: _description_
+    :param old_id: Old node ID
     :type old_id: str
-    :param moves_list: _description_
+    :param moves_list: Effective moved containers list
     :type moves_list: List
     """
     print('Moving container :', it.my_instance.dict_id_c[mvg_cont])
@@ -979,11 +983,11 @@ def move_container(mvg_cont, tmin, tmax, old_id, moves_list):
 def build_placement_adj_matrix(df_indiv, dict_id_c):
     """Build the adjacency matrix of placement.
 
-    :param df_indiv: _description_
+    :param df_indiv: Containers data
     :type df_indiv: pd.DataFrame
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :return: _description_
+    :return: Adjacency matrix
     :rtype: np.array
     """
     nodes_ = [None] * df_indiv[it.indiv_field].nunique()

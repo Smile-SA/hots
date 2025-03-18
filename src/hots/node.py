@@ -394,8 +394,11 @@ def check_capacities(df_host, df_host_meta):
 
 
 def reassign_node(c_info):
-    """Reassign node in containers df."""
-    # c_info = value['containers']
+    """Reassign node in containers df.
+
+    :param c_info: Container name
+    :type c_info: str
+    """
     new_df_container = pd.DataFrame(c_info)
     new_df_container = new_df_container.astype({
         it.indiv_field: str,

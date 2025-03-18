@@ -41,25 +41,25 @@ class Model:
     ):
         """Initialize Pyomo model with data in Instance.
 
-        :param pb_number: _description_
+        :param pb_number: Problem type (clustering or placement)
         :type pb_number: int
-        :param df_indiv: _description_
+        :param df_indiv: Containers data
         :type df_indiv: pd.DataFrame
-        :param metric: _description_
+        :param metric: Considered metric
         :type metric: str
-        :param dict_id_c: _description_
+        :param dict_id_c: Mapping dict container ID / numerical ID
         :type dict_id_c: Dict
-        :param df_host_meta: _description_, defaults to None
+        :param df_host_meta: Nodes capacity, defaults to None
         :type df_host_meta: pd.DataFrame, optional
-        :param nb_clusters: _description_, defaults to None
+        :param nb_clusters: Number of clusters, defaults to None
         :type nb_clusters: int, optional
-        :param w: _description_, defaults to None
+        :param w: Similarity matrix, defaults to None
         :type w: np.array, optional
-        :param dv: _description_, defaults to None
+        :param dv: Clustering variance matrix, defaults to None
         :type dv: np.array, optional
-        :param sol_u: _description_, defaults to None
+        :param sol_u: Clustering adjacency matrix, defaults to None
         :type sol_u: np.array, optional
-        :param sol_v: _description_, defaults to None
+        :param sol_v: Placement adjacency matrix, defaults to None
         :type sol_v: np.array, optional
         """
         print('Building of pyomo model ...')
@@ -100,13 +100,13 @@ class Model:
     def build_parameters(self, w, dv, u, v):
         """Build all Params and Sets.
 
-        :param w: _description_
+        :param w: Similarity matrix
         :type w: np.array
-        :param dv: _description_
+        :param dv: Clustering variance matrix
         :type dv: np.array
-        :param u: _description_
+        :param u: Clustering adjacency matrix
         :type u: np.array
-        :param v: _description_
+        :param v: Placement adjacency matrix
         :type v: np.array
         """
         # number of containers
@@ -263,16 +263,16 @@ class Model:
                     df_host_meta, nb_clusters):
         """Create data from dataframe.
 
-        :param df_indiv: _description_
-        :type df_indiv: _type_
-        :param metric: _description_
+        :param df_indiv: Containers data
+        :type df_indiv: pd.DataFrame
+        :param metric: Considered metric
         :type metric: str
-        :param dict_id_c: _description_
-        :type dict_id_c: _type_
-        :param df_host_meta: _description_
-        :type df_host_meta: _type_
-        :param nb_clusters: _description_
-        :type nb_clusters: _type_
+        :param dict_id_c: Mapping dict container ID / numerical ID
+        :type dict_id_c: Dict
+        :param df_host_meta: Nodes capacity
+        :type df_host_meta: pd.DataFrame
+        :param nb_clusters: Number of clusters
+        :type nb_clusters: int
         """
         if self.pb_number == 1:
             self.data = {None: {
@@ -306,14 +306,14 @@ class Model:
     def conso_n_t(self, mdl, node, t):
         """Express the total consumption of node at time t.
 
-        :param mdl: _description_
-        :type mdl: _type_
-        :param node: _description_
-        :type node: _type_
-        :param t: _description_
-        :type t: _type_
-        :return: _description_
-        :rtype: _type_
+        :param mdl: Pyomo model object
+        :type mdl: pe.AbstractModel
+        :param node: Node index
+        :type node: int
+        :param t: Time index
+        :type t: int
+        :return: Total consumption of the node at time t
+        :rtype: float
         """
         return sum(
             mdl.x[cont, node] * self.cons[cont_c][t]
@@ -322,12 +322,12 @@ class Model:
     def mean(self, mdl, node):
         """Express the mean consumption of node.
 
-        :param mdl: _description_
-        :type mdl: _type_
-        :param node: _description_
-        :type node: _type_
-        :return: _description_
-        :rtype: _type_
+        :param mdl: Pyomo model object
+        :type mdl: pe.AbstractModel
+        :param node: Node index
+        :type node: int
+        :return: Mean consumption of the node
+        :rtype: float
         """
         return (sum(
             self.conso_n_t(node, t) for t in mdl.T
@@ -363,7 +363,13 @@ class Model:
             self._print_objective_value()
 
     def _attempt_solve(self, opt, verbose):
-        """Attempt to solve the model and handles solver errors."""
+        """Attempt to solve the model and handles solver errors.
+
+        :param opt: Pyomo solver object.
+        :type opt: pe.SolverFactory
+        :param verbose: Enable / disable logs during solve process.
+        :type verbose: bool
+        """
         try:
             return opt.solve(self.instance_model, tee=verbose)
         except ApplicationError as e:
@@ -378,7 +384,13 @@ class Model:
                 self._check_constraint_violation(c, index)
 
     def _check_constraint_violation(self, constraint, index):
-        """Check if a specific constraint is violated."""
+        """Check if a specific constraint is violated.
+
+        :param constraint: Pyomo constraint object
+        :type constraint: pe.Constraint
+        :param index: Index of the constraint
+        :type index: int
+        """
         lhs = constraint[index].body()
         upper, lower = constraint[index].upper, constraint[index].lower
 
@@ -392,7 +404,11 @@ class Model:
             print(f'  ✅ Constraint {constraint.name}[{index}] holds. (LHS = {lhs})')
 
     def _print_solver_status(self, results):
-        """Print solver termination condition."""
+        """Print solver termination condition.
+
+        :param results: Results object returned by the solver
+        :type results: SolverResults
+        """
         print('--------------------------------------------------')
         condition = results.solver.termination_condition if results else None
 
@@ -412,8 +428,8 @@ class Model:
     def update_adjacency_clust_constraints(self, u):
         """Update constraints fixing u variables from new adjacency matrix.
 
-        :param u: _description_
-        :type u: _type_
+        :param u: Clustering adjacency matrix
+        :type u: np.array
         """
         self.instance_model.del_component(self.instance_model.must_link_c)
         self.update_sol_u(u)
@@ -422,8 +438,8 @@ class Model:
     def update_sol_u(self, u):
         """Update directly the sol_u param in instance from new u matrix.
 
-        :param u: _description_
-        :type u: _type_
+        :param u: Clustering adjacency matrix
+        :type u: np.array
         """
         for i, j in prod(range(len(u)), range(len(u[0]))):
             self.instance_model.sol_u[(i, j)] = u[i][j]
@@ -432,8 +448,8 @@ class Model:
     def update_adjacency_place_constraints(self, v):
         """Update constraints fixing v variables from new adjacency matrix.
 
-        :param v: _description_
-        :type v: _type_
+        :param v: Placement adjacency matrix
+        :type v: np.array
         """
         self.instance_model.del_component(self.instance_model.must_link_n)
         # self.instance_model.del_component(self.instance_model.must_link_n_index)
@@ -443,8 +459,8 @@ class Model:
     def update_sol_v(self, v):
         """Update directly the sol_v param in instance from new v matrix.
 
-        :param v: _description_
-        :type v: _type_
+        :param v: Placement adjacency matrix
+        :type v: np.array
         """
         for i, j in prod(range(len(v)), range(len(v[0]))):
             self.instance_model.sol_v[(i, j)] = v[i][j]
@@ -452,8 +468,8 @@ class Model:
     def update_obj_clustering(self, w):
         """Update the objective for clustering with new w matrix.
 
-        :param w: _description_
-        :type w: _type_
+        :param w: Similarity matrix
+        :type w: np.array
         """
         self.update_w(w)
         self.instance_model.obj = sum([
@@ -466,8 +482,8 @@ class Model:
     def update_w(self, w):
         """Update directly the w param in instance from new w matrix.
 
-        :param w: _description_
-        :type w: _type_
+        :param w: Similarity matrix
+        :type w: np.array
         """
         for i, j in prod(range(len(w)), range(len(w[0]))):
             self.instance_model.w[(i, j)] = w[i][j]
@@ -475,8 +491,8 @@ class Model:
     def update_obj_place(self, dv):
         """Update the objective for placement with new dv matrix.
 
-        :param dv: _description_
-        :type dv: _type_
+        :param dv: Clustering variance matrix
+        :type dv: np.array
         """
         self.update_dv(dv)
         self.instance_model.obj = sum([
@@ -494,8 +510,8 @@ class Model:
     def update_dv(self, dv):
         """Update directly the dv param in instance from new dv matrix.
 
-        :param dv: _description_
-        :type dv: _type_
+        :param dv: Clustering variance matrix
+        :type dv: np.array
         """
         for i, j in prod(range(len(dv)), range(len(dv[0]))):
             self.instance_model.dv[(i, j)] = dv[i][j]
@@ -503,7 +519,21 @@ class Model:
     def update_size_model(
             self, df_indiv=None, w=None, u=None, dv=None, v=None, verbose=False
     ):
-        """Update the model instance based on new number of containers."""
+        """Update the model instance based on new number of containers.
+
+        :param df_indiv: DataFrame describing container data
+        :type df_indiv: pd.DataFrame, optional
+        :param w: Similarity matrix for clustering
+        :type w: np.array, optional
+        :param u: Clustering adjacency matrix
+        :type u: np.array, optional
+        :param dv: Clustering variance matrix
+        :type dv: np.array, optional
+        :param v: Placement adjacency matrix
+        :type v: np.array, optional
+        :param verbose: Enable/disable logs during the update process.
+        :type verbose: bool, optional
+        """
         # TODO try update model dynamically
         del self.mdl
         self.mdl = pe.AbstractModel()
@@ -536,12 +566,12 @@ class Model:
 def clust_assign_(mdl, container):
     """Express the assignment constraint.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :param container: _description_
-    :type container: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :param container: Container
+    :type container: int
+    :return: Expression for assignment constraint
+    :rtype: Expression
     """
     return sum(mdl.y[container, cluster] for cluster in mdl.K) == 1
 
@@ -549,14 +579,14 @@ def clust_assign_(mdl, container):
 def capacity_(mdl, node, time):
     """Express the capacity constraints.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :param node: _description_
-    :type node: _type_
-    :param time: _description_
-    :type time: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :param node: Node index
+    :type node: int
+    :param time: Time index
+    :type time: int
+    :return: Expression for capacity constraint
+    :rtype: Expression
     """
     return (sum(
         mdl.x[i, node] * mdl.cons[j, time] for i, j in zip(mdl.C, mdl.Ccons)
@@ -566,14 +596,14 @@ def capacity_(mdl, node, time):
 def open_node_(mdl, container, node):
     """Express the opening node constraint.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :param container: _description_
-    :type container: _type_
-    :param node: _description_
-    :type node: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :param container: Container index
+    :type container: int
+    :param node: Node index
+    :type node: int
+    :return: Expression for opening node constraint
+    :rtype: Expression
     """
     return mdl.x[container, node] <= mdl.a[node]
 
@@ -581,12 +611,12 @@ def open_node_(mdl, container, node):
 def assignment_(mdl, container):
     """Express the assignment constraint.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :param container: _description_
-    :type container: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :param container: Container index
+    :type container: int
+    :return: Expression for container assignment
+    :rtype: Expression
     """
     return sum(mdl.x[container, node] for node in mdl.N) == 1
 
@@ -594,10 +624,10 @@ def assignment_(mdl, container):
 def open_nodes_(mdl):
     """Express the numbers of open nodes.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :return: Number of open nodes
+    :rtype: int
     """
     return sum(mdl.a[m] for m in mdl.N)
 
@@ -605,14 +635,14 @@ def open_nodes_(mdl):
 def open_cluster_(mdl, container, cluster):
     """Express the opening cluster constraint.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :param container: _description_
-    :type container: _type_
-    :param cluster: _description_
-    :type cluster: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :param container: Container index
+    :type container: type
+    :param cluster: Cluster index
+    :type cluster: type
+    :return: Expression for opening cluster constraint
+    :rtype: Expression
     """
     return mdl.y[container, cluster] <= mdl.b[cluster]
 
@@ -620,10 +650,10 @@ def open_cluster_(mdl, container, cluster):
 def open_clusters_(mdl):
     """Express the numbers of open clusters.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :return: Number of open clusters
+    :rtype: int
     """
     return sum(mdl.b[k] for k in mdl.K) <= mdl.k
 
@@ -631,14 +661,14 @@ def open_clusters_(mdl):
 def must_link_c_(mdl, i, j):
     """Express the clustering mustlink constraint.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :param i: _description_
-    :type i: _type_
-    :param j: _description_
-    :type j: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :param i: Container i index
+    :type i: int
+    :param j: Container j index
+    :type j: int
+    :return: Expression for must link constraint
+    :rtype: Expression
     """
     uu = mdl.sol_u[(i, j)].value
     if uu == 1:
@@ -650,14 +680,14 @@ def must_link_c_(mdl, i, j):
 def must_link_n_(mdl, i, j):
     """Express the placement mustlink constraint.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :param i: _description_
-    :type i: _type_
-    :param j: _description_
-    :type j: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :param i: Container i index
+    :type i: int
+    :param j: Container j index
+    :type j: int
+    :return: Expression for must link constraint
+    :rtype: Expression
     """
     vv = mdl.sol_v[(i, j)].value
     if vv == 1:
@@ -669,10 +699,10 @@ def must_link_n_(mdl, i, j):
 def min_dissim_(mdl):
     """Express the within clusters dissimilarities.
 
-    :param mdl: _description_
-    :type mdl: _type_
-    :return: _description_
-    :rtype: _type_
+    :param mdl: Pyomo model object
+    :type mdl: pe.AbstractModel
+    :return: Within clusters dissimilarities
+    :rtype: float
     """
     return sum([
         mdl.u[(i, j)] * mdl.w[(i, j)] for i, j in prod(mdl.C, mdl.C) if i < j
@@ -682,10 +712,10 @@ def min_dissim_(mdl):
 def min_coloc_cluster_(mdl):
     """Express the placement minimization objective from clustering.
 
-    :param mdl: _description_
+    :param mdl: Pyomo model object
     :type mdl: pe.AbstractModel
-    :return: _description_
-    :rtype: _type_
+    :return: Objective for placement optimization
+    :rtype: Expression
     """
     return sum([
         mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in
@@ -698,9 +728,9 @@ def min_coloc_cluster_(mdl):
 def fill_dual_values(my_mdl):
     """Fill dual values from specific constraints.
 
-    :param my_mdl: _description_
+    :param my_mdl: Optimization model
     :type my_mdl: Model
-    :return: _description_
+    :return: Dual values for considered constraints
     :rtype: Dict
     """
     dual_values = {}
@@ -723,13 +753,13 @@ def fill_dual_values(my_mdl):
 def get_conflict_graph_old(my_mdl, constraints_dual_values, tol):
     """Build conflict graph from comapring dual variables.
 
-    :param my_mdl: _description_
+    :param my_mdl: Optimization model
     :type my_mdl: Model
-    :param constraints_dual_values: _description_
+    :param constraints_dual_values: Dual values from considered constraints
     :type constraints_dual_values: Dict
-    :param tol: _description_
+    :param tol: Threshold for rise a conflict
     :type tol: float
-    :return: _description_
+    :return: Conflict graph
     :rtype: nx.Graph
     """
     conflict_graph = nx.Graph()
@@ -773,13 +803,13 @@ def get_conflict_graph_old(my_mdl, constraints_dual_values, tol):
 def get_conflict_graph(my_mdl, constraints_dual_values, tol):
     """Build conflict graph from comapring dual variables.
 
-    :param my_mdl: _description_
+    :param my_mdl: Optimization model
     :type my_mdl: Model
-    :param constraints_dual_values: _description_
+    :param constraints_dual_values: Dual values from considered constraints
     :type constraints_dual_values: Dict
-    :param tol: _description_
+    :param tol: Threshold for rise a conflict
     :type tol: float
-    :return: _description_
+    :return: Conflict graph
     :rtype: nx.Graph
     """
     # max_edges = len(my_mdl.instance_model.must_link_c)
@@ -845,23 +875,23 @@ def get_moving_containers_clust(
 ):
     """Get the list of moving containers from constraints dual values.
 
-    :param my_mdl: _description_
+    :param my_mdl: Optimization model
     :type my_mdl: Model
-    :param constraints_dual_values: _description_
+    :param constraints_dual_values: Dual values from considered constraints
     :type constraints_dual_values: Dict
-    :param tol: _description_
+    :param tol: Threshold for rise a conflict
     :type tol: float
-    :param tol_move: _description_
+    :param tol_move: Threshold of moving containers
     :type tol_move: float
-    :param nb_containers: _description_
+    :param nb_containers: Total number of containers
     :type nb_containers: int
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :param df_clust: _description_
+    :param df_clust: Data with clustering result
     :type df_clust: pd.DataFrame
-    :param profiles: _description_
+    :param profiles: Clusters mean profiles
     :type profiles: np.array
-    :return: _description_
+    :return: Moving containers and conflict graph information
     :rtype: Tuple[List, int, int, int, int]
     """
     mvg_containers = []
@@ -927,21 +957,21 @@ def get_moving_containers_place(
 ):
     """Get the list of moving containers from constraints dual values.
 
-    :param my_mdl: _description_
+    :param my_mdl: Optimization model
     :type my_mdl: Model
-    :param constraints_dual_values: _description_
+    :param constraints_dual_values: Dual values from considered constraints
     :type constraints_dual_values: Dict
-    :param tol: _description_
+    :param tol: Threshold for rising a conflict
     :type tol: float
-    :param tol_move: _description_
+    :param tol_move: Threshold for moving containers
     :type tol_move: float
-    :param nb_containers: _description_
+    :param nb_containers: Total number of containers
     :type nb_containers: int
-    :param working_df: _description_
+    :param working_df: Current window data
     :type working_df: pd.DataFrame
-    :param dict_id_c: _description_
+    :param dict_id_c: Mapping dict container ID / numerical ID
     :type dict_id_c: Dict
-    :return: _description_
+    :return: Moving containers and conflict graph information
     :rtype: Tuple[List, int, int, int, int]
     """
     mvg_containers = []
@@ -1003,13 +1033,13 @@ def get_moving_containers_place(
 def get_container_tomove(c1, c2, working_df):
     """Get the container we want to move between c1 and c2.
 
-    :param c1: _description_
+    :param c1: First container index
     :type c1: int
-    :param c2: _description_
+    :param c2: Second container index
     :type c2: int
-    :param working_df: _description_
+    :param working_df: Current window data
     :type working_df: pd.DataFrame
-    :return: _description_
+    :return: Container index to move
     :rtype: int
     """
     node = working_df.loc[
@@ -1033,11 +1063,11 @@ def get_container_tomove(c1, c2, working_df):
 def get_obj_value_host(t_min=None, t_max=None):
     """Get objectives value of current solution.
 
-    :param t_min: _description_, defaults to None
+    :param t_min: Minimum time of current window, defaults to None
     :type t_min: int, optional
-    :param t_max: _description_, defaults to None
+    :param t_max: Maximum time of current window, defaults to None
     :type t_max: int, optional
-    :return: _description_
+    :return: Number of nodes and node variance objective
     :rtype: Tuple[int, float]
     """
     t_min = t_min or it.my_instance.df_host_evo[it.tick_field].min()
@@ -1061,13 +1091,13 @@ def get_obj_value_host(t_min=None, t_max=None):
 def get_obj_value_indivs(df_indiv, t_min=None, t_max=None):
     """Get objective value of current solution (max delta).
 
-    :param df_indiv: _description_
+    :param df_indiv: Container data
     :type df_indiv: pd.DataFrame
-    :param t_min: _description_, defaults to None
+    :param t_min: Minimum time of current window, defaults to None
     :type t_min: int, optional
-    :param t_max: _description_, defaults to None
+    :param t_max: Maximum time of current window, defaults to None
     :type t_max: int, optional
-    :return: _description_
+    :return: Number of nodes and amplitude objective
     :rtype: Tuple[int, float]
     """
     t_min = t_min or df_indiv[it.tick_field].min()

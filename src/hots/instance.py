@@ -153,11 +153,7 @@ class Instance:
         ][it.host_field].to_numpy()[0])
 
     def get_node_information(self):
-        """Get node information from environment.
-
-        :return: Node information
-        :rtype: Dict
-        """
+        """Get node information from environment."""
         url = f'{it.connector_url}/vm/data'
         response = requests.get(url)
         node_data = {}
@@ -169,7 +165,6 @@ class Instance:
         else:
             # If the request was not successful, print the error status code
             print(f'Error: {response.status_code}')
-        return node_data
 
     def start_stream():
         """Start stream data in environment."""

@@ -230,13 +230,13 @@ def define_globals(p_path, config, kafka_var):
     use_kafka = kafka_var
     if kafka_var:
         kafka_topics = config['kafkaConf']['topics']
-        reader.kafka_availability(config)
-        Instance.clear_kafka_topics()
         kafka_producer = reader.get_producer(config)
         kafka_consumer = reader.get_consumer(config)
         kafka_schema = config['kafkaConf']['schema']
         kafka_schema_url = config['kafkaConf']['schema_url']
         connector_url = config['kafkaConf']['connector_url']
+        reader.kafka_availability(config)
+        Instance.clear_kafka_topics()
     dict_agg_metrics = {}
     for metric in metrics:
         dict_agg_metrics[metric] = 'sum'

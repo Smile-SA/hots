@@ -1,0 +1,102 @@
+{
+    "csv": 0,
+    "host_meta_path": "tests/data/thesis_ex_10/node_meta.csv",
+    "data": {
+      "individuals_file": "container_usage.csv",
+      "hosts_meta_file": "node_meta.csv",
+      "individual_field": "container_id",
+      "host_field": "machine_id",
+      "tick_field": "timestamp",
+      "metrics": ["cpu"]
+    },
+    "analysis": {
+      "sep_time": "3",
+      "placement_recompute": 0
+    },
+    "clustering": {
+      "algo": "kmeans",
+      "nb_clusters": 3
+    },
+    "heuristic": {
+      "algo": "distant_pairwise"
+    },
+    "optimization": {
+      "solver": "glpk",
+      "verbose": false
+    },
+    "loop": {
+      "mode": "default",
+      "window_duration": 3,
+      "tick": 2,
+      "constraints_dual": ["mustLink"],
+      "tol_dual_clust": 0.5,
+      "tol_move_clust": 1,
+      "tol_open_clust": 0.0,
+      "tol_dual_place": 0.5,
+      "tol_move_place": 1,
+      "tol_step": 0.0
+    },
+    "placement":{
+      "enable": true,
+      "allocation_support": true,
+      "allocation_objectives":{
+        "open_nodes": 1
+      }
+    },
+    "allocation":{
+      "enable": false,
+      "constraints":{
+        "load_threshold": 0.5,
+        "max_amplitude": 0.5
+      },
+      "objective":{
+        "open_nodes": 1,
+        "target_load_CPU": 0.8 
+      }
+    },
+    "kafkaConf":{
+      "topics":{
+        "docker_topic": "DockerPlacer",
+        "docker_replacer": "DockerPlacerTest",
+        "mock_topic": "MockPlacement"
+      },
+      "Producer":{
+        "brokers":[
+          "10.1.76.63:9092"
+        ]
+      },
+      "Consumer":{
+        "group": "DockerPlacerTestConsumer",
+        "brokers":[
+          "10.1.76.63:9092"
+        ]
+      },
+      "connector_url": "http://10.1.76.63:5000",
+      "schema":{
+        "type": "record",
+        "name": "ContainerData",
+        "namespace": "com.smile.hots",
+        "fields": [
+          {
+            "name": "containers",
+            "type": {
+              "type": "array",
+              "items": {
+                "type": "record",
+                "name": "Container",
+                "fields": [
+                  {"name": "timestamp", "type": "int"},
+                  {"name": "container_id", "type": "string"},
+                  {"name": "machine_id", "type": "string"},
+                  {"name": "cpu", "type": "float"}
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "schema_url": "http://localhost:8081"
+    }
+      
+  }
+  

@@ -22,7 +22,8 @@ try:
         MessageField, SerializationContext, StringSerializer)
 
     import requests
-except ImportError:
+except ImportError as e:
+    print(f"ImportError: {e}")
     _has_kafka = False
 else:
     _has_kafka = True
@@ -47,6 +48,7 @@ def init_reader(path):
             it.avro_deserializer = connect_schema(
                 use_schema, it.kafka_schema_url)
             it.csv_reader = None
+            it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']], on_assign=on_assign)
     else:
         it.csv_file = open(p_data / 'container_usage.csv', 'r')
         it.csv_reader = csv.reader(it.csv_file)
@@ -55,6 +57,10 @@ def init_reader(path):
         header = next(it.csv_reader, None)
         print('Headers : ', header)
         # TODO and then ?
+
+
+def on_assign(consumer, partitions):
+    print("Partitions assigned:", partitions)
 
 
 # TODO progress time no loop here
@@ -79,7 +85,7 @@ def get_next_data(
     while not it.end:
         if it.use_kafka:
 
-            it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']])
+            # it.kafka_consumer.subscribe([it.kafka_topics['docker_topic']], on_assign=on_assign)
             dval = process_kafka_msg(it.avro_deserializer)
             if dval is None:
                 continue
@@ -218,8 +224,9 @@ def get_consumer(config):
     print(server1)
     group = config['kafkaConf']['Consumer']['group']
     conf = {'bootstrap.servers': server1,
-            'max.poll.interval.ms': 1200000,
-            'default.topic.config': {'auto.offset.reset': 'earliest'},
+            'max.poll.interval.ms': 300000,
+            'enable.auto.commit': True,
+            'auto.offset.reset': 'earliest',
             'group.id': group}
     consumer = Consumer(conf)
     return consumer
@@ -514,7 +521,9 @@ def process_kafka_msg(avro_deserializer):
     :return: Deserialized message value or None if no message is available
     :rtype: Any or None
     """
+    print("Polling for message...")
     msg = it.kafka_consumer.poll(timeout=1.0)
+    print(f"[CONSUMER] Assigned to: {it.kafka_consumer.assignment()}")
 
     if msg is None:
         return None
@@ -533,7 +542,13 @@ def process_kafka_msg(avro_deserializer):
             raise KafkaException(msg.error())
 
     else:
+        print(f"✅ Message received at offset {msg.offset()}")
         (_, dval) = msg_process(msg, avro_deserializer)
+        try:
+            it.kafka_consumer.commit(msg, asynchronous=False)
+            print(f"✅ Offset {msg.offset()} committed successfully")
+        except Exception as e:
+            print(f"❌ Commit failed: {e}")
         return dval
 
 

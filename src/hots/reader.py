@@ -221,7 +221,6 @@ def get_consumer(config):
     :rtype: confluent_kafka.Consumer
     """
     server1 = config['kafkaConf']['Consumer']['brokers'][0]
-    print(server1)
     group = config['kafkaConf']['Consumer']['group']
     conf = {'bootstrap.servers': server1,
             'max.poll.interval.ms': 300000,
@@ -521,9 +520,7 @@ def process_kafka_msg(avro_deserializer):
     :return: Deserialized message value or None if no message is available
     :rtype: Any or None
     """
-    print("Polling for message...")
     msg = it.kafka_consumer.poll(timeout=1.0)
-    print(f"[CONSUMER] Assigned to: {it.kafka_consumer.assignment()}")
 
     if msg is None:
         return None

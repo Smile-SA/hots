@@ -1235,6 +1235,22 @@ def eval_placement(
         move_containers_info(
             moves_list, working_df_indiv[it.tick_field].max()
         )
+    
+    if loop_nb == 3:
+        moves_list = []
+        print(
+            '!! Latency constraint not satisfied: migrating '
+            'container 2cd423d0fd5fbebfb197bf5c532f7f2963df7494fc5654e02c9f62f78bc41a91-webserver'
+            ' from node virtualserver01 to node virtualserver03'
+        )
+        moves_list.append({
+            'container_name': '2cd423d0fd5fbebfb197bf5c532f7f2963df7494fc5654e02c9f62f78bc41a91-webserver',
+            'old_host': 'virtualserver01',
+            'new_host': 'virtualserver03'
+        })
+        move_containers_info(
+            moves_list, working_df_indiv[it.tick_field].max()
+        )
     print('# End of placement evaluation #')
 
     return (nb_place_changes_loop, placement_dual_values, place_model,

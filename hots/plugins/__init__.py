@@ -6,6 +6,7 @@ from .ingestion.kafka_reader import KafkaReader
 
 # connector
 from .connector.kafka_connector import KafkaConnector
+from .connector.file_connector import FileConnector
 
 # clustering
 from .clustering.kmeans import StreamKMeans
@@ -93,5 +94,8 @@ class ConnectorFactory:
         t = cfg.type.lower()
         if t == 'kafka':
             return KafkaConnector(cfg.parameters, instance)
+        elif t == 'file':
+            # routes “file” to your FileConnector
+            return FileConnector(cfg.parameters, instance)
         else:
             raise ValueError(f"Unknown connector type: {cfg.type}")

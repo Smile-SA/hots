@@ -1,6 +1,6 @@
 from pathlib import Path
 import pandas as pd
-from typing import Optional, Any, Tuple
+from typing import Optional, Any, List, Dict, Tuple
 from config.loader import AppConfig
 from preprocessing.tools import build_df_from_containers
 from plugins import ReaderFactory, KafkaPlugin, CSVReader
@@ -8,6 +8,8 @@ from plugins import ReaderFactory, KafkaPlugin, CSVReader
 class Instance:
     def __init__(self, config: AppConfig):
         self.config = config
+        self.metrics_history: List[Dict[str, Any]] = []
+        self.results_file: Path = config.reporting.metrics_file
         self.reader = ReaderFactory.create(config.reader, self)
         self.kafka_producer = None
         self.kafka_consumer = None

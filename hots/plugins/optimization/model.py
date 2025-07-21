@@ -2,7 +2,7 @@ from pyomo import environ as pe
 from pyomo.common.errors import ApplicationError
 from pyomo.opt import TerminationCondition
 from itertools import product
-from typing import Dict, Any
+from typing import Dict, Any, List
 import networkx as nx
 import pandas as pd
 import numpy as np
@@ -167,33 +167,47 @@ class Model:
 
     def build_variables(self):
         """
-        Define the decision variables for either the clustering (pb_number=1)
-        or the placement (pb_number=2) problem. Uses self.mdl, self.mdl.C, etc.
+        Define decision variables for clustering (pb_number=1)
+        or placement (pb_number=2).
         """
         if self.pb_number == 1:
             # --- Clustering variables ---
+            # yc[k] = 1 if cluster k is opened
+            self.mdl.yc = pe.Var(
+                self.mdl.K,
+                domain=pe.Binary,
+                doc="Cluster-open indicator"
+            )
             # assign[c,k] = 1 if container c is assigned to cluster k
             self.mdl.assign = pe.Var(
                 self.mdl.C, self.mdl.K,
-                domain=pe.Binary
+                domain=pe.Binary,
+                doc="Container-to-cluster assignment"
             )
-            # dist[i,j] = continuous variable representing cluster distance between i and j
+            # dist[i,j] = distance between containers i and j
             self.mdl.dist = pe.Var(
                 self.mdl.C, self.mdl.C,
-                domain=pe.NonNegativeReals
+                domain=pe.NonNegativeReals,
+                doc="Inter-container distance"
+            )
+            # u[c1,c2] = 1 if containers c1 and c2 are assigned to the same cluster
+            self.mdl.u = pe.Var(
+                self.mdl.C, self.mdl.C,
+                domain=pe.Binary,
+                doc="Pairwise cluster adjacency"
             )
 
         elif self.pb_number == 2:
             # --- Placement variables ---
-            # place[c,n,t] = 1 if container c is placed on node n at time t
             self.mdl.place = pe.Var(
                 self.mdl.C, self.mdl.N, self.mdl.T,
-                domain=pe.Binary
+                domain=pe.Binary,
+                doc="Container-to-node-time placement"
             )
-            # load[n,t] = total load on node n at time t
             self.mdl.load = pe.Var(
                 self.mdl.N, self.mdl.T,
-                domain=pe.NonNegativeReals
+                domain=pe.NonNegativeReals,
+                doc="Node load over time"
             )
 
         else:
@@ -220,6 +234,12 @@ class Model:
             self.mdl.max_clusters = pe.Constraint(
                 rule=self._max_clusters_rule
             )
+            self.mdl.link_u1 = pe.Constraint(self.mdl.C, self.mdl.C, self.mdl.K,
+                                             rule=self._link_u1_rule)
+            self.mdl.link_u2 = pe.Constraint(self.mdl.C, self.mdl.C, self.mdl.K,
+                                             rule=self._link_u2_rule)
+            self.mdl.link_u3 = pe.Constraint(self.mdl.C, self.mdl.C, self.mdl.K,
+                                             rule=self._link_u3_rule)
 
         elif self.pb_number == 2:
             # (1) capacity constraint: load on each node ≤ cap
@@ -365,21 +385,27 @@ class Model:
             io_options={'symbolic_solver_labels': True}
         )
 
-    def solve(self, solver='glpk', verbose=False):
-        """Solve the model using a specific solver.
-
-        :param solver: The solver to use to solve the problem.
-        :type solver: str
-        :param verbose: Enable / disable logs during solve process.
-        :type verbose: bool
+    def solve(self, solver: str = 'glpk', verbose: bool = False):
+        """
+        Solve the concrete instance_model with the given solver.
+        
+        :param solver: Name of the Pyomo solver to use (e.g. 'glpk').
+        :param verbose: If True, prints constraint checks, status, and objective.
+        :return: self, with instance_model solved and suffixes/duals populated.
         """
         opt = pe.SolverFactory(solver)
         results = self._attempt_solve(opt, verbose)
 
         if verbose:
+            # Check each constraint for violations
             self._check_constraints()
+            # Print solver termination status
             self._print_solver_status(results)
+            # Print the final objective value
             self._print_objective_value()
+
+        return self
+
 
     def _attempt_solve(self, opt, verbose):
         """Attempt to solve the model and handles solver errors.
@@ -616,108 +642,135 @@ class Model:
             for idx in con  # iterates over all index tuples in the Constraint
         }
 
+    def _clust_assign_rule(self, mdl, c):
+        # sum of assign[c,k] over clusters k must equal 1
+        return sum(mdl.assign[c, k] for k in mdl.K) == 1
 
-def _clust_assign_rule(self, mdl, c):
-    # sum of assign[c,k] over clusters k must equal 1
-    return sum(mdl.assign[c, k] for k in mdl.K) == 1
+    def _open_cluster_rule(self, mdl, c, k):
+        # you can only assign container c to cluster k
+        # if that cluster has been ‘opened’ via yc[k] = 1
+        return mdl.assign[c, k] <= mdl.yc[k]
 
+    def _max_clusters_rule(self, mdl):
+        # total number of opened clusters ≤ k
+        return sum(mdl.yc[k] for k in mdl.K) <= mdl.k
+    
+    def _link_u1_rule(self, mdl, i, j, k):
+        # u[i,j] ≥ assign[i,k] + assign[j,k] – 1
+        return mdl.u[i, j] >= mdl.assign[i, k] + mdl.assign[j, k] - 1
 
-def _open_cluster_rule(self, mdl, c, k):
-    # you can only assign container c to cluster k
-    # if that cluster has been ‘opened’ via yc[k] = 1
-    return mdl.assign[c, k] <= mdl.yc[k]
+    def _link_u2_rule(self, mdl, i, j, k):
+        # u[i,j] ≤ assign[i,k]
+        return mdl.u[i, j] <= mdl.assign[i, k]
 
+    def _link_u3_rule(self, mdl, i, j, k):
+        # u[i,j] ≤ assign[j,k]
+        return mdl.u[i, j] <= mdl.assign[j, k]
 
-def _max_clusters_rule(self, mdl):
-    # total number of opened clusters ≤ k
-    return sum(mdl.yc[k] for k in mdl.K) <= mdl.k
+    def _capacity_rule(self, mdl, node, t):
+        # load[node,t] = sum(place[c,node,t] * cons[c,t])
+        return mdl.load[node, t] <= mdl.cap[node]
 
+    def _flow_conservation_rule(self, mdl, c, t):
+        # sum of place[c,node,t] over nodes = 1 (each container runs somewhere)
+        return sum(mdl.place[c, n, t] for n in mdl.N) == 1
 
-def _capacity_rule(self, mdl, node, t):
-    # load[node,t] = sum(place[c,node,t] * cons[c,t])
-    return mdl.load[node, t] <= mdl.cap[node]
+    def open_node_(mdl, container, node):
+        """Express the opening node constraint.
 
+        :param mdl: Pyomo model object
+        :type mdl: pe.AbstractModel
+        :param container: Container index
+        :type container: int
+        :param node: Node index
+        :type node: int
+        :return: Expression for opening node constraint
+        :rtype: Expression
+        """
+        return mdl.x[container, node] <= mdl.a[node]
 
-def _flow_conservation_rule(self, mdl, c, t):
-    # sum of place[c,node,t] over nodes = 1 (each container runs somewhere)
-    return sum(mdl.place[c, n, t] for n in mdl.N) == 1
+    def assignment_(mdl, container):
+        """Express the assignment constraint.
 
+        :param mdl: Pyomo model object
+        :type mdl: pe.AbstractModel
+        :param container: Container index
+        :type container: int
+        :return: Expression for container assignment
+        :rtype: Expression
+        """
+        return sum(mdl.x[container, node] for node in mdl.N) == 1
 
-def open_node_(mdl, container, node):
-    """Express the opening node constraint.
+    def open_nodes_(mdl):
+        """Express the numbers of open nodes.
 
-    :param mdl: Pyomo model object
-    :type mdl: pe.AbstractModel
-    :param container: Container index
-    :type container: int
-    :param node: Node index
-    :type node: int
-    :return: Expression for opening node constraint
-    :rtype: Expression
-    """
-    return mdl.x[container, node] <= mdl.a[node]
+        :param mdl: Pyomo model object
+        :type mdl: pe.AbstractModel
+        :return: Number of open nodes
+        :rtype: int
+        """
+        return sum(mdl.a[m] for m in mdl.N)
 
+    def must_link_c_(mdl, i, j):
+        """Express the clustering mustlink constraint.
 
-def assignment_(mdl, container):
-    """Express the assignment constraint.
+        :param mdl: Pyomo model object
+        :type mdl: pe.AbstractModel
+        :param i: Container i index
+        :type i: int
+        :param j: Container j index
+        :type j: int
+        :return: Expression for must link constraint
+        :rtype: Expression
+        """
+        uu = mdl.sol_u[(i, j)].value
+        if uu == 1:
+            return mdl.u[(i, j)] == 1
+        else:
+            return pe.Constraint.Skip
 
-    :param mdl: Pyomo model object
-    :type mdl: pe.AbstractModel
-    :param container: Container index
-    :type container: int
-    :return: Expression for container assignment
-    :rtype: Expression
-    """
-    return sum(mdl.x[container, node] for node in mdl.N) == 1
+    def must_link_n_(mdl, i, j):
+        """Express the placement mustlink constraint.
 
+        :param mdl: Pyomo model object
+        :type mdl: pe.AbstractModel
+        :param i: Container i index
+        :type i: int
+        :param j: Container j index
+        :type j: int
+        :return: Expression for must link constraint
+        :rtype: Expression
+        """
+        vv = mdl.sol_v[(i, j)].value
+        if vv == 1:
+            return mdl.v[(i, j)] == 1
+        else:
+            return pe.Constraint.Skip
 
-def open_nodes_(mdl):
-    """Express the numbers of open nodes.
+    def extract_moves(self) -> List[Dict[str, Any]]:
+        """
+        Return the placement moves encoded in the solved instance_model.
+        Each entry is a dict with:
+          - container_id: the container key
+          - node: the target node key
+          - tick: the time tick
+        """
+        moves: List[Dict[str, Any]] = []
+        inst = self.instance_model
 
-    :param mdl: Pyomo model object
-    :type mdl: pe.AbstractModel
-    :return: Number of open nodes
-    :rtype: int
-    """
-    return sum(mdl.a[m] for m in mdl.N)
-
-
-def must_link_c_(mdl, i, j):
-    """Express the clustering mustlink constraint.
-
-    :param mdl: Pyomo model object
-    :type mdl: pe.AbstractModel
-    :param i: Container i index
-    :type i: int
-    :param j: Container j index
-    :type j: int
-    :return: Expression for must link constraint
-    :rtype: Expression
-    """
-    uu = mdl.sol_u[(i, j)].value
-    if uu == 1:
-        return mdl.u[(i, j)] == 1
-    else:
-        return pe.Constraint.Skip
-
-
-def must_link_n_(mdl, i, j):
-    """Express the placement mustlink constraint.
-
-    :param mdl: Pyomo model object
-    :type mdl: pe.AbstractModel
-    :param i: Container i index
-    :type i: int
-    :param j: Container j index
-    :type j: int
-    :return: Expression for must link constraint
-    :rtype: Expression
-    """
-    vv = mdl.sol_v[(i, j)].value
-    if vv == 1:
-        return mdl.v[(i, j)] == 1
-    else:
-        return pe.Constraint.Skip
+        # only for placement problems
+        if self.pb_number == 2:
+            for c in inst.C:
+                for t in inst.T:
+                    for n in inst.N:
+                        # check the binary variable place[c,n,t]
+                        if value(inst.place[c, n, t]) > 0.5:
+                            moves.append({
+                                'container_id': c,
+                                'node': n,
+                                'tick': t
+                            })
+        return moves
 
 
 def min_dissim_(mdl):

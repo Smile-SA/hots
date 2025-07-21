@@ -1,0 +1,51 @@
+{
+  "data_folder": "./tests/data/thesis_ex_10",
+  "tick_field": "timestamp",
+  "host_field": "machine_id",
+  "individual_field": "container_id",
+  "metrics": ["cpu_usage"],
+  "reader": {
+    "type": "csv",
+    "parameters": {
+      "data_folder": "./tests/data/thesis_ex_10",
+      "file_name": "container_usage.csv",
+      "tick_field": "timestamp",
+      "individual_field": "container_id",
+      "host_field": "machine_id",
+      "metrics": ["cpu_usage"],
+      "tick_increment": 60
+    }
+  },
+  "clustering": {
+    "method": "stream_kmeans",
+    "nb_clusters": 3,
+    "parameters": {
+      "nb_clusters": 3
+    }
+  },
+  "optimization": {
+    "solver": "pyomo",
+    "parameters": {
+      "pb_number": 1,
+      "solver": "glpk"
+    }
+  },
+  "heuristic": {
+    "type": "spread",
+    "parameters": {
+      "method": "spread",
+      "min_nodes": 1
+    }
+  },
+  "connector": {
+    "type": "file",
+    "parameters": {
+      "outfile": "./out/moves.log"
+    }
+  },
+  "reporting": {
+    "results_folder": "./out",
+    "metrics_file": "./out/metrics.csv",
+    "plots_folder": "./out/plots"
+  }
+}

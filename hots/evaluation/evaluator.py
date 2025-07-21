@@ -1,9 +1,230 @@
-import pandas as pd
-from sklearn.metrics import silhouette_score
+# evaluation/evaluator.py
 
-def eval_solutions(df_indiv, df_host, labels, clustering, optimization, heuristic, instance):
-    # silhouette
-    sil = silhouette_score(df_host.drop([instance.config.tick_field, instance.config.host_field], axis=1), labels)
-    # detect conflicts via similarity matrix, capacity, etc.
-    # return (solution2, {'silhouette': sil, ...})
-    return solution2, {'silhouette': sil}
+import networkx as nx
+import pandas as pd
+import numpy as np
+from typing import Any, Dict, Tuple, List
+from sklearn.metrics import silhouette_score
+from pyomo.environ import value
+from plugins.clustering.builder import build_matrix_indiv_attr
+
+
+def eval_solutions(
+    df_indiv: pd.DataFrame,
+    df_host: pd.DataFrame,
+    labels: pd.Series,
+    clustering,
+    optimization,
+    heuristic,
+    instance
+) -> Tuple[Any, Dict[str, Any]]:
+    """
+    Run clustering → optimization → retrieve duals → conflict detection →
+    heuristic move selection → return (solution, metrics).
+    """
+    # 1) Silhouette on individual‐level profiles
+    mat = build_matrix_indiv_attr(
+        df_indiv,
+        instance.config.tick_field,
+        instance.config.individual_field,
+        instance.config.metrics,
+        instance.get_id_map()
+    )
+    sil = silhouette_score(mat.values, labels)
+
+    # 2) Solve the optimization model once
+    model = optimization.solve(df_host, labels)
+    model.solve(
+        solver=instance.config.optimization.parameters.get('solver', 'glpk'),
+        verbose=False
+    )
+
+    # 3) Extract dual values from the just‐solved model
+    duals = model.fill_dual_values()
+
+    # 4) Read tolerances
+    tol      = instance.config.heuristic.parameters.get('tol', 0.1)
+    tol_move = instance.config.heuristic.parameters.get('tol_move', 0.1)
+
+    # 5) Conflict detection & pick moving containers
+    if instance.config.optimization.parameters.get('pb_number', 1) == 1:
+        moving, nodes, edges, max_deg, mean_deg = get_moving_containers_clust(
+            model, duals, tol, tol_move,
+            df_clust=df_indiv,
+            profiles=None
+        )
+    else:
+        moving, nodes, edges, max_deg, mean_deg = get_moving_containers_place(
+            model, duals, tol, tol_move,
+            working_df=df_indiv
+        )
+
+    # 6) Apply heuristic (now takes the list of containers to move)
+    solution2 = heuristic.adjust(model, moving)
+
+    # 7) Collect metrics
+    metrics: Dict[str, Any] = {
+        'silhouette':        sil,
+        'conflict_nodes':    nodes,
+        'conflict_edges':    edges,
+        'max_conf_degree':   max_deg,
+        'mean_conf_degree':  mean_deg,
+        'moving_containers': moving
+    }
+
+    return solution2, metrics
+
+
+def get_conflict_graph(
+    model,
+    prev_duals: Dict[Any, float],
+    tol: float
+) -> nx.Graph:
+    """
+    Build an undirected conflict graph where an edge (i,j) exists
+    if the dual for the must_link constraint rose by more than tol * prev_dual.
+    """
+    inst = model.instance_model
+    dual = inst.dual
+
+    # Pick the right “must‐link” constraint mapping (if it exists)
+    if model.pb_number == 1:
+        must_link = getattr(inst, 'must_link_c', {})
+    else:
+        must_link = getattr(inst, 'must_link_n', {})
+
+    graph = nx.Graph()
+    for idx_pair, con in must_link.items():
+        prev = prev_duals.get(idx_pair, 0.0)
+        # only consider links we had before
+        if prev <= 0:
+            continue
+        curr = dual[con]
+        # conflict if it rose by more than tol × prev
+        if curr > prev * (1 + tol):
+            graph.add_edge(idx_pair[0], idx_pair[1])
+    return graph
+
+
+def get_moving_containers_clust(
+    model,
+    prev_duals: Dict[Any, float],
+    tol: float,
+    tol_move: float,
+    df_clust: pd.DataFrame,
+    profiles: np.ndarray
+) -> Tuple[List[Any], int, int, int, float]:
+    """
+    From the clustering conflict graph, pick which containers to move.
+    """
+    G = get_conflict_graph(model, prev_duals, tol)
+    n_nodes, n_edges = G.number_of_nodes(), G.number_of_edges()
+    degrees = sorted(G.degree(), key=lambda x: x[1], reverse=True)
+    if not degrees:
+        return [], n_nodes, n_edges, 0, 0.0
+    max_deg = degrees[0][1]
+    mean_deg = sum(d for _, d in degrees) / len(degrees)
+
+    moving = []
+    budget = len(model.dict_id_c) * tol_move
+    while degrees and len(moving) < budget:
+        cid, deg = degrees[0]
+        if deg > 1:
+            moving.append(cid)
+            G.remove_node(cid)
+        else:
+            partner = next(iter(G.neighbors(cid)))
+            to_move = get_far_container(model, cid, partner, df_clust, profiles)
+            moving.append(to_move)
+            G.remove_node(cid)
+            if partner in G:
+                G.remove_node(partner)
+        G.remove_nodes_from(nx.isolates(G))
+        degrees = sorted(G.degree(), key=lambda x: x[1], reverse=True)
+
+    return moving, n_nodes, n_edges, max_deg, mean_deg
+
+
+def get_moving_containers_place(
+    model,
+    prev_duals: Dict[Any, float],
+    tol: float,
+    tol_move: float,
+    working_df: pd.DataFrame
+) -> Tuple[List[Any], int, int, int, float]:
+    """
+    From the placement conflict graph, pick which containers to move.
+    """
+    G = get_conflict_graph(model, prev_duals, tol)
+    n_nodes, n_edges = G.number_of_nodes(), G.number_of_edges()
+    degrees = sorted(G.degree(), key=lambda x: x[1], reverse=True)
+    if not degrees:
+        return [], n_nodes, n_edges, 0, 0.0
+    max_deg = degrees[0][1]
+    mean_deg = sum(d for _, d in degrees) / len(degrees)
+
+    moving = []
+    budget = len(model.dict_id_c) * tol_move
+    while degrees and len(moving) < budget:
+        cid, deg = degrees[0]
+        if deg > 1:
+            moving.append(cid)
+            G.remove_node(cid)
+        else:
+            partner = next(iter(G.neighbors(cid)))
+            to_move = get_container_tomove(model, cid, partner, working_df)
+            moving.append(to_move)
+            G.remove_node(cid)
+            if partner in G:
+                G.remove_node(partner)
+        G.remove_nodes_from(nx.isolates(G))
+        degrees = sorted(G.degree(), key=lambda x: x[1], reverse=True)
+
+    return moving, n_nodes, n_edges, max_deg, mean_deg
+
+
+def get_far_container(
+    model,
+    c1: Any,
+    c2: Any,
+    df_clust: pd.DataFrame,
+    profiles: np.ndarray
+) -> Any:
+    """Pick between c1 and c2 by variance from cluster profile."""
+    nf, hf, tf, metric = (
+        model.indiv_field,
+        model.host_field,
+        model.tick_field,
+        model.metrics[0]
+    )
+    host = df_clust.loc[df_clust[nf] == c1, hf].iloc[0]
+    node_ts = (
+        df_clust[df_clust[hf] == host]
+        .groupby(tf)[metric].sum().sort_index().values
+    )
+    c1_ts = df_clust[df_clust[nf] == c1][metric].sort_index().values
+    c2_ts = df_clust[df_clust[nf] == c2][metric].sort_index().values
+    return c1 if np.var(node_ts - c1_ts) > np.var(node_ts - c2_ts) else c2
+
+
+def get_container_tomove(
+    model,
+    c1: Any,
+    c2: Any,
+    working_df: pd.DataFrame
+) -> Any:
+    """Pick between c1 and c2 by variance on placement node."""
+    nf, hf, tf, metric = (
+        model.indiv_field,
+        model.host_field,
+        model.tick_field,
+        model.metrics[0]
+    )
+    host = working_df.loc[working_df[nf] == c1, hf].iloc[0]
+    node_ts = (
+        working_df[working_df[hf] == host]
+        .groupby(tf)[metric].sum().sort_index().values
+    )
+    c1_ts = working_df[working_df[nf] == c1][metric].sort_index().values
+    c2_ts = working_df[working_df[nf] == c2][metric].sort_index().values
+    return c1 if np.var(node_ts - c1_ts) > np.var(node_ts - c2_ts) else c2

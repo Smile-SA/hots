@@ -14,7 +14,7 @@ stages:
 
 run-tests-py310:
   stage: test
-  image: python:3.10-buster
+  image: python:3.10-slim-bullseye
   script:
     - apt update
     - apt install -y python-dev build-essential libopenblas-dev gfortran libboost-thread-dev

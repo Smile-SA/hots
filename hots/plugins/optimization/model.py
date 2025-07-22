@@ -267,22 +267,22 @@ class Model:
         """Add mustLink constraints for fixing solution."""
         if self.pb_number == 1:
             self.mdl.must_link_c = pe.Constraint(
-                self.mdl.C, self.mdl.C, rule=must_link_c_
+                self.mdl.C, self.mdl.C, rule=self.must_link_c_
             )
         if self.pb_number == 2:
             self.mdl.must_link_n = pe.Constraint(
-                self.mdl.C, self.mdl.C, rule=must_link_n_
+                self.mdl.C, self.mdl.C, rule=self.must_link_n_
             )
 
     def add_mustlink_instance(self):
         """Add mustLink constraints for fixing solution."""
         if self.pb_number == 1:
             self.instance_model.must_link_c = pe.Constraint(
-                self.instance_model.C, self.instance_model.C, rule=must_link_c_
+                self.instance_model.C, self.instance_model.C, rule=self.must_link_c_
             )
         if self.pb_number == 2:
             self.instance_model.must_link_n = pe.Constraint(
-                self.instance_model.C, self.instance_model.C, rule=must_link_n_
+                self.instance_model.C, self.instance_model.C, rule=self.must_link_n_
             )
 
     def build_objective(self):
@@ -376,7 +376,7 @@ class Model:
             fname = './py_clustering.lp' if self.pb_number == 1 else './py_placement.lp'
         self.instance_model.write(fname, io_options={'symbolic_solver_labels': True})
 
-    def solve(self, solver: str = "glpk", verbose: bool = False):
+    def solve(self, solver: str = 'glpk', verbose: bool = False):
         """
         Solve the concrete instance_model with the given solver.
 
@@ -663,7 +663,7 @@ class Model:
         # sum of place[c,node,t] over nodes = 1 (each container runs somewhere)
         return sum(mdl.place[c, n, t] for n in mdl.N) == 1
 
-    def open_node_(mdl, container, node):
+    def open_node_(self, mdl, container, node):
         """Express the opening node constraint.
 
         :param mdl: Pyomo model object
@@ -677,7 +677,7 @@ class Model:
         """
         return mdl.x[container, node] <= mdl.a[node]
 
-    def assignment_(mdl, container):
+    def assignment_(self, mdl, container):
         """Express the assignment constraint.
 
         :param mdl: Pyomo model object
@@ -689,7 +689,7 @@ class Model:
         """
         return sum(mdl.x[container, node] for node in mdl.N) == 1
 
-    def open_nodes_(mdl):
+    def open_nodes_(self, mdl):
         """Express the numbers of open nodes.
 
         :param mdl: Pyomo model object
@@ -699,7 +699,7 @@ class Model:
         """
         return sum(mdl.a[m] for m in mdl.N)
 
-    def must_link_c_(mdl, i, j):
+    def must_link_c_(self, mdl, i, j):
         """Express the clustering mustlink constraint.
 
         :param mdl: Pyomo model object
@@ -717,7 +717,7 @@ class Model:
         else:
             return pe.Constraint.Skip
 
-    def must_link_n_(mdl, i, j):
+    def must_link_n_(self, mdl, i, j):
         """Express the placement mustlink constraint.
 
         :param mdl: Pyomo model object
@@ -752,7 +752,7 @@ class Model:
                 for t in inst.T:
                     for n in inst.N:
                         # check the binary variable place[c,n,t]
-                        if value(inst.place[c, n, t]) > 0.5:
+                        if pe.value(inst.place[c, n, t]) > 0.5:
                             moves.append({'container_id': c, 'node': n, 'tick': t})
         return moves
 

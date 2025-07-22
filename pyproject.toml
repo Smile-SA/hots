@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "hots"
-description = "Resource Allocation via Clustering"
+description = "HOTS: dynamic microservice placement via clustering + optimization"
 keywords = [
     "Resource",
     "Optimisation",
@@ -29,8 +29,7 @@ authors = [
 ]
 requires-python = ">=3.8"
 dependencies = [
-    "click",
-    "clusopt_core",
+    "click>=8.0",
     "matplotlib",
     "networkx",
     "numpy",
@@ -40,7 +39,6 @@ dependencies = [
     "scikit-learn",
     "scipy",
     "tqdm",
-    "python-dotenv"
 ]
 dynamic = [
     "version",
@@ -80,7 +78,7 @@ testing = [
 ]
 
 [project.scripts]
-hots = "hots.main:main"
+hots = "hots.cli:main"
 
 [tool.setuptools]
 zip-safe = false

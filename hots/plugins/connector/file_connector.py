@@ -13,6 +13,8 @@ class FileConnector(ConnectorPlugin):
     def __init__(self, params, instance):
         """Initialize with output file path."""
         self.outfile = params.get('outfile', 'moves.jsonl')
+        from pathlib import Path
+        Path(self.outfile).parent.mkdir(parents=True, exist_ok=True)
 
     def apply_moves(self, solution):
         """Write relocation moves to a JSONL file."""

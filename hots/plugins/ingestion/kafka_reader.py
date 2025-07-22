@@ -4,7 +4,7 @@ import json
 
 from confluent_kafka import Consumer, KafkaError, KafkaException
 
-from core.interfaces import IngestionPlugin
+from hots.core.interfaces import IngestionPlugin
 
 import pandas as pd
 

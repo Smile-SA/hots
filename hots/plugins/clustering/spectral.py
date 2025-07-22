@@ -2,14 +2,13 @@
 
 """Clustering plugin: spectral clustering with precomputed affinity."""
 
-from core.interfaces import ClusteringPlugin
-
-import pandas as pd
-
-from plugins.clustering.builder import (
+from hots.core.interfaces import ClusteringPlugin
+from hots.plugins.clustering.builder import (
     build_matrix_indiv_attr,
     build_similarity_matrix,
 )
+
+import pandas as pd
 
 from sklearn.cluster import SpectralClustering as SkSpectral
 

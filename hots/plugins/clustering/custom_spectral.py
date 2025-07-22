@@ -2,17 +2,16 @@
 
 """Clustering plugin: custom spectral clustering for HOTS."""
 
-from core.interfaces import ClusteringPlugin
+from hots.core.interfaces import ClusteringPlugin
+from hots.plugins.clustering.builder import (
+    build_matrix_indiv_attr,
+    build_similarity_matrix,
+)
 
 import numpy as np
 from numpy.linalg import multi_dot
 
 import pandas as pd
-
-from plugins.clustering.builder import (
-    build_matrix_indiv_attr,
-    build_similarity_matrix,
-)
 
 from scipy.linalg import fractional_matrix_power
 from scipy.linalg.lapack import dsyevr

@@ -1,6 +1,7 @@
 [build-system]
 requires = [
     "setuptools>=61.2",
+    "wheel"
 ]
 build-backend = "setuptools.build_meta"
 
@@ -17,7 +18,6 @@ classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: Implementation :: CPython",
-    "License :: OSI Approved :: MIT License",
     "Development Status :: 2 - Pre-Alpha",
     "Operating System :: POSIX",
     "Framework :: Matplotlib",
@@ -28,6 +28,8 @@ authors = [
     { name = "Smile R&D team", email = "rnd@smile.fr" },
 ]
 requires-python = ">=3.8"
+license = "MIT"
+license-files = ["LICENSE.txt"]
 dependencies = [
     "click>=8.0",
     "matplotlib",
@@ -47,9 +49,6 @@ dynamic = [
 [project.readme]
 file = "README.md"
 content-type = "text/markdown"
-
-[project.license]
-text = "MIT"
 
 [project.urls]
 Homepage = "https://github.com/Smile-SA/hots"
@@ -84,20 +83,12 @@ hots = "hots.cli:main"
 zip-safe = false
 include-package-data = true
 platforms = [
-    "any",
+    "any"
 ]
-license-files = [
-    "LICENSE.txt",
-]
-
-[tool.setuptools.package-dir]
-"" = "src"
 
 [tool.setuptools.packages.find]
-where = [
-    "src",
-]
-namespaces = false
+where = ["."]
+include = ["hots*"]
 
 [tool.setuptools.data-files]
 "." = [

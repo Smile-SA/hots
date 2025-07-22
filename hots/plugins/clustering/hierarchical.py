@@ -2,11 +2,10 @@
 
 """Clustering plugin: agglomerative (hierarchical) clustering."""
 
-from core.interfaces import ClusteringPlugin
+from hots.core.interfaces import ClusteringPlugin
+from hots.plugins.clustering.builder import build_matrix_indiv_attr
 
 import pandas as pd
-
-from plugins.clustering.builder import build_matrix_indiv_attr
 
 from scipy.cluster.hierarchy import fcluster, linkage
 

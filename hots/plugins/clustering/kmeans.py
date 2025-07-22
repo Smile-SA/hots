@@ -2,11 +2,10 @@
 
 """Clustering plugin: mini‐batch KMeans streaming."""
 
-from core.interfaces import ClusteringPlugin
+from hots.core.interfaces import ClusteringPlugin
+from hots.plugins.clustering.builder import build_matrix_indiv_attr
 
 import pandas as pd
-
-from plugins.clustering.builder import build_matrix_indiv_attr
 
 from sklearn.cluster import MiniBatchKMeans
 

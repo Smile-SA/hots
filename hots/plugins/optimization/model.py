@@ -3,11 +3,11 @@
 from itertools import product
 from typing import Any, Dict, List
 
+from hots.plugins.clustering.builder import build_matrix_indiv_attr, build_similarity_matrix
+
 import numpy as np
 
 import pandas as pd
-
-from plugins.clustering.builder import build_matrix_indiv_attr, build_similarity_matrix
 
 from pyomo import environ as pe
 from pyomo.common.errors import ApplicationError

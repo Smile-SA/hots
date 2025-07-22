@@ -6,7 +6,7 @@ import json
 
 from confluent_kafka import Producer
 
-from core.interfaces import ConnectorPlugin
+from hots.core.interfaces import ConnectorPlugin
 
 
 class KafkaConnector(ConnectorPlugin):

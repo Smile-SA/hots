@@ -1,6 +1,6 @@
 """Pyomo‑based optimization plugin for HOTS."""
 
-from core.interfaces import OptimizationPlugin
+from hots.core.interfaces import OptimizationPlugin
 
 from .model import Model as PyomoModelClass
 

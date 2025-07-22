@@ -2,9 +2,8 @@
 
 import click
 
-from config.loader import load_config
-
-from core.app import App
+from hots.config.loader import load_config
+from hots.core.app import App
 
 
 @click.command()

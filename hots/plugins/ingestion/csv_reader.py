@@ -4,7 +4,7 @@ import csv
 import queue
 from pathlib import Path
 
-from core.interfaces import IngestionPlugin
+from hots.core.interfaces import IngestionPlugin
 
 import pandas as pd
 

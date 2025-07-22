@@ -4,7 +4,7 @@
 
 import json
 
-from core.interfaces import ConnectorPlugin
+from hots.core.interfaces import ConnectorPlugin
 
 
 class FileConnector(ConnectorPlugin):

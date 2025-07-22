@@ -2,13 +2,13 @@
 
 from typing import Any, Dict, List, Tuple
 
+from hots.plugins.clustering.builder import build_matrix_indiv_attr
+
 import networkx as nx
 
 import numpy as np
 
 import pandas as pd
-
-from plugins.clustering.builder import build_matrix_indiv_attr
 
 from sklearn.metrics import silhouette_score
 

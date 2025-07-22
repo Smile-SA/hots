@@ -2,22 +2,17 @@
 
 """HOTS."""
 
-from config.loader import AppConfig
-
-from core.instance import Instance
-
-from evaluation.evaluator import eval_solutions
-
-from plugins import (
+from hots.config.loader import AppConfig
+from hots.core.instance import Instance
+from hots.evaluation.evaluator import eval_solutions
+from hots.plugins import (
     ClusteringFactory,
     ConnectorFactory,
     HeuristicFactory,
     OptimizationFactory,
 )
-
-from reporting.writer import write_metrics
-
-from utils.signals import setup_signal_handlers
+from hots.reporting.writer import write_metrics
+from hots.utils.signals import setup_signal_handlers
 
 
 class App:

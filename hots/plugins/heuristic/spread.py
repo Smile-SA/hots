@@ -1,6 +1,6 @@
 """HOTS spread heuristic plugin."""
 
-from core.interfaces import HeuristicPlugin
+from hots.core.interfaces import HeuristicPlugin
 
 
 class SpreadHeuristic(HeuristicPlugin):

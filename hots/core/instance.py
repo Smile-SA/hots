@@ -5,13 +5,11 @@
 from pathlib import Path
 from typing import Any, Dict, List
 
-from config.loader import AppConfig
+from hots.config.loader import AppConfig
+from hots.plugins import KafkaPlugin, ReaderFactory
+from hots.preprocessing.tools import build_df_from_containers
 
 import pandas as pd
-
-from plugins import KafkaPlugin, ReaderFactory
-
-from preprocessing.tools import build_df_from_containers
 
 
 class Instance:

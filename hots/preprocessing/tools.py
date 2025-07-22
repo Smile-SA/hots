@@ -1,5 +1,9 @@
-import pandas as pd
+"""HOTS preprocessing tools."""
+
 from typing import List
+
+import pandas as pd
+
 
 def build_df_from_containers(
     df_indiv: pd.DataFrame,
@@ -8,10 +12,10 @@ def build_df_from_containers(
     individual_field: str,
     metrics: List[str]
 ) -> pd.DataFrame:
-    """
-    Aggregate individual consumption into host-level time-series,
-    ensuring each host has an entry for every tick (filling missing
-    values with zeros). Flattens any MultiIndex columns correctly.
+    """Aggregate individual consumption into host‑level time‑series.
+
+    Ensures each host has an entry for every tick (filling missing values
+    with zeros) and flattens any MultiIndex columns.
     """
     # 1) Pivot to wide
     df_pivot = (
@@ -25,12 +29,10 @@ def build_df_from_containers(
         .fillna(0)
     )
 
-    # 2) Reset index → all columns become MultiIndex (lvl2 empty for idx fields)
+    # 2) Reset index → all columns become MultiIndex
     df_pivot = df_pivot.reset_index()
 
-    # 3) Flatten columns:
-    #    - If tuple[1] is empty ('' or None), keep tuple[0]
-    #    - Else combine as "{container}_{metric}"
+    # 3) Flatten columns
     flat_cols = []
     for col in df_pivot.columns:
         if isinstance(col, tuple):
@@ -38,13 +40,14 @@ def build_df_from_containers(
             if cid in (None, ''):
                 flat_cols.append(metric)
             else:
-                flat_cols.append(f"{cid}_{metric}")
+                flat_cols.append(f'{cid}_{metric}')
         else:
             flat_cols.append(col)
     df_pivot.columns = flat_cols
 
     # 4) Build full tick list
-    all_ticks = pd.DataFrame({tick_field: df_pivot[tick_field].unique()})
+    unique_ticks = df_pivot[tick_field].unique()
+    all_ticks = pd.DataFrame({tick_field: unique_ticks})
     hosts = df_pivot[host_field].unique()
 
     # 5) For each host, merge full ticks (fills NaN → 0)

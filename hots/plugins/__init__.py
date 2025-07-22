@@ -1,46 +1,43 @@
-# hots/plugins/__init__.py
+"""HOTS plugin package."""
 
-# ingestion
+from .clustering.custom_spectral import CustomSpectralClustering
+from .clustering.hierarchical import HierarchicalClustering
+from .clustering.kmeans import StreamKMeans
+from .clustering.spectral import SpectralClustering
+from .connector.file_connector import FileConnector
+from .connector.kafka_connector import KafkaConnector
+from .heuristic.spread import SpreadHeuristic
 from .ingestion.csv_reader import CSVReader
 from .ingestion.kafka_reader import KafkaReader
-
-# connector
-from .connector.kafka_connector import KafkaConnector
-from .connector.file_connector import FileConnector
-
-# clustering
-from .clustering.kmeans import StreamKMeans
-from .clustering.hierarchical import HierarchicalClustering
-from .clustering.spectral import SpectralClustering
-from .clustering.custom_spectral import CustomSpectralClustering
-
-# optimization
 from .optimization.pyomo_model import PyomoModel
-
-# heuristic
-from .heuristic.spread import SpreadHeuristic
 
 
 class ReaderFactory:
+    """Factory for data ingestion plugins."""
+
     @staticmethod
     def create(cfg, instance):
+        """Create and return an ingestion plugin based on the config."""
         t = cfg.type.lower()
         if t == 'csv':
             return CSVReader(cfg.parameters, instance)
-        elif t == 'kafka':
+        if t == 'kafka':
             return KafkaReader(cfg.parameters, instance)
-        else:
-            raise ValueError(f"Unknown reader type: {cfg.type}")
+        raise ValueError(f'Unknown reader type: {cfg.type}')
 
 
 class KafkaPlugin:
+    """Utility to manage Kafka producers and consumers."""
+
     @staticmethod
     def create_producer(cfg):
+        """Create and return a Kafka producer."""
         from confluent_kafka import Producer
         return Producer({'bootstrap.servers': cfg.parameters['bootstrap.servers']})
 
     @staticmethod
     def create_consumer(cfg):
+        """Create and return a Kafka consumer subscribed to topics."""
         from confluent_kafka import Consumer
         consumer = Consumer(cfg.parameters['consumer_conf'])
         consumer.subscribe(cfg.parameters['topics'])
@@ -48,54 +45,61 @@ class KafkaPlugin:
 
     @staticmethod
     def clear_topics():
-        # Implement topic/offset reset if your Kafka setup requires it
+        """Clear offsets for configured Kafka topics (if needed)."""
         pass
 
 
 class ClusteringFactory:
+    """Factory for clustering plugins."""
+
     @staticmethod
     def create(cfg, instance):
+        """Create and return a clustering plugin based on config."""
         m = cfg.method.lower()
         if m in ('kmeans', 'stream_kmeans'):
             return StreamKMeans(cfg.parameters, instance)
-        elif m == 'hierarchical':
+        if m == 'hierarchical':
             return HierarchicalClustering(cfg.parameters, instance)
-        elif m == 'spectral':
+        if m == 'spectral':
             return SpectralClustering(cfg.parameters, instance)
-        elif m == 'custom_spectral':
+        if m == 'custom_spectral':
             return CustomSpectralClustering(cfg.parameters, instance)
-        else:
-            raise ValueError(f"Unknown clustering method: {cfg.method}")
+        raise ValueError(f'Unknown clustering method: {cfg.method}')
 
 
 class OptimizationFactory:
+    """Factory for optimization plugins."""
+
     @staticmethod
     def create(cfg, instance):
+        """Create and return an optimization plugin based on config."""
         s = cfg.solver.lower()
         if s == 'pyomo':
             return PyomoModel(cfg.parameters, instance)
-        else:
-            raise ValueError(f"Unknown optimization solver: {cfg.solver}")
+        raise ValueError(f'Unknown optimization solver: {cfg.solver}')
 
 
 class HeuristicFactory:
+    """Factory for heuristic plugins."""
+
     @staticmethod
     def create(cfg, instance):
+        """Create and return a heuristic plugin based on config."""
         t = cfg.type.lower()
         if t == 'spread':
             return SpreadHeuristic(cfg.parameters, instance)
-        else:
-            raise ValueError(f"Unknown heuristic type: {cfg.type}")
+        raise ValueError(f'Unknown heuristic type: {cfg.type}')
 
 
 class ConnectorFactory:
+    """Factory for connector plugins."""
+
     @staticmethod
     def create(cfg, instance):
+        """Create and return a connector plugin based on config."""
         t = cfg.type.lower()
         if t == 'kafka':
             return KafkaConnector(cfg.parameters, instance)
-        elif t == 'file':
-            # routes “file” to your FileConnector
+        if t == 'file':
             return FileConnector(cfg.parameters, instance)
-        else:
-            raise ValueError(f"Unknown connector type: {cfg.type}")
+        raise ValueError(f'Unknown connector type: {cfg.type}')

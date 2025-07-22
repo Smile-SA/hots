@@ -1,13 +1,15 @@
-# config/loader.py
+"""Configuration loader for the HOTS application."""
 
-from pathlib import Path
 import json
 from dataclasses import dataclass
-from typing import Optional, List, Dict, Any
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 
 @dataclass
 class KafkaConfig:
+    """Configuration for the Kafka connector: topics and optional schema settings."""
+
     topics: List[str]
     schema: Optional[Dict[str, Any]] = None
     schema_url: Optional[str] = None
@@ -16,12 +18,16 @@ class KafkaConfig:
 
 @dataclass
 class ReaderConfig:
+    """Configuration for the data reader: type ('csv', 'kafka', etc.) and parameters."""
+
     type: str
     parameters: Dict[str, Any]
 
 
 @dataclass
 class ClusteringConfig:
+    """Configuration for the clustering plugin: method name and its parameters."""
+
     method: str
     nb_clusters: int
     parameters: Dict[str, Any]
@@ -29,24 +35,32 @@ class ClusteringConfig:
 
 @dataclass
 class OptimizationConfig:
+    """Configuration for the optimization plugin: solver and its parameters."""
+
     solver: str
     parameters: Dict[str, Any]
 
 
 @dataclass
 class HeuristicConfig:
+    """Configuration for the heuristic plugin: type and its parameters."""
+
     type: str
     parameters: Dict[str, Any]
 
 
 @dataclass
 class ConnectorConfig:
+    """Configuration for the connector plugin: type and its parameters."""
+
     type: str
     parameters: Dict[str, Any]
 
 
 @dataclass
 class ReportingConfig:
+    """Configuration for reporting: folders and file paths for outputs."""
+
     results_folder: Path
     metrics_file: Path
     plots_folder: Path
@@ -54,6 +68,8 @@ class ReportingConfig:
 
 @dataclass
 class AppConfig:
+    """Top‑level application configuration, combining all sub‑configs."""
+
     data_folder: Path
     tick_field: str
     host_field: str
@@ -69,7 +85,12 @@ class AppConfig:
 
 
 def load_config(path: Path) -> AppConfig:
-    """Load JSON config into nested dataclasses."""
+    """
+    Load JSON configuration from the given path into nested dataclasses.
+
+    :param path: Path to the JSON config file.
+    :return: An AppConfig instance populated from the file.
+    """
     raw = json.loads(Path(path).read_text())
 
     reader = ReaderConfig(**raw['reader'])

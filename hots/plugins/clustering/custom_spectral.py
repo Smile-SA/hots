@@ -1,22 +1,31 @@
 # hots/plugins/clustering/custom_spectral.py
 
+"""Clustering plugin: custom spectral clustering for HOTS."""
+
 from core.interfaces import ClusteringPlugin
-from plugins.clustering.builder import build_matrix_indiv_attr, build_similarity_matrix
+
 import numpy as np
-from scipy.linalg import fractional_matrix_power
-from scipy.linalg.lapack import dsyevr
 from numpy.linalg import multi_dot
+
 import pandas as pd
 
+from plugins.clustering.builder import (
+    build_matrix_indiv_attr,
+    build_similarity_matrix,
+)
+
+from scipy.linalg import fractional_matrix_power
+from scipy.linalg.lapack import dsyevr
+
+
 class CustomSpectralClustering(ClusteringPlugin):
-    """
-    Custom spectral clustering: compute normalized Laplacian,
-    extract top‐k eigenvectors, simple label assignment.
-    """
+    """Custom spectral clustering plugin using normalized Laplacian."""
+
     def __init__(self, parameters: dict, instance):
+        """Initialize with cluster count and instance configuration."""
         self.n_clusters = parameters.get(
             'nb_clusters',
-            instance.config.clustering.nb_clusters
+            instance.config.clustering.nb_clusters,
         )
         self.tick_field = instance.config.tick_field
         self.indiv_field = instance.config.individual_field
@@ -24,29 +33,20 @@ class CustomSpectralClustering(ClusteringPlugin):
         self.id_map = instance.get_id_map()
 
     def fit(self, df: pd.DataFrame) -> pd.Series:
-        # 1) build individual×tick matrix
-        X = build_matrix_indiv_attr(
+        """Compute labels by eigen-decomposing the normalized Laplacian."""
+        x = build_matrix_indiv_attr(
             df,
             self.tick_field,
             self.indiv_field,
             self.metrics,
-            self.id_map
+            self.id_map,
         )
-        # 2) compute similarity and degree matrix
-        W = build_similarity_matrix(X)
-        D = np.diag(W.sum(axis=1))
-
-        # 3) normalized Laplacian: D^(-1/2) @ W @ D^(-1/2)
-        D_inv_sqrt = fractional_matrix_power(D, -0.5)
-        L = multi_dot([D_inv_sqrt, W, D_inv_sqrt])
-
-        # 4) eigen-decomposition
-        eigvals, eigvecs, _ = dsyevr(L, range='A')
-        # pick the top k eigenvectors
-        idx = np.argsort(eigvals)[::-1][: self.n_clusters]
-        U = eigvecs[:, idx]
-
-        # 5) simple label assignment (you can swap in k-means on U here)
-        labels = (np.arange(len(U)) % self.n_clusters).astype(int)
-
-        return pd.Series(labels, index=X.index)
+        w = build_similarity_matrix(x)
+        d = np.diag(w.sum(axis=1))
+        d_inv_sqrt = fractional_matrix_power(d, -0.5)
+        var_l = multi_dot([d_inv_sqrt, w, d_inv_sqrt])
+        eigvals, eigvecs, _ = dsyevr(var_l, range='A')
+        idx = np.argsort(eigvals)[::-1][:self.n_clusters]
+        u = eigvecs[:, idx]
+        labels = (np.arange(len(u)) % self.n_clusters).astype(int)
+        return pd.Series(labels, index=x.index)

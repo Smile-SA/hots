@@ -1,15 +1,28 @@
+# hots/core/instance.py
+
+"""HOTS core functionality: manage state and data ingestion."""
+
 from pathlib import Path
-import pandas as pd
-from typing import Optional, Any, List, Dict, Tuple
+from typing import Any, Dict, List
+
 from config.loader import AppConfig
+
+import pandas as pd
+
+from plugins import KafkaPlugin, ReaderFactory
+
 from preprocessing.tools import build_df_from_containers
-from plugins import ReaderFactory, KafkaPlugin, CSVReader
+
 
 class Instance:
+    """Maintain application state, including data, Kafka, and metrics."""
+
     def __init__(self, config: AppConfig):
+        """Initialize the Instance with configuration and initial data."""
         self.config = config
         self.metrics_history: List[Dict[str, Any]] = []
         self.results_file: Path = config.reporting.metrics_file
+
         self.reader = ReaderFactory.create(config.reader, self)
         self.kafka_producer = None
         self.kafka_consumer = None
@@ -18,34 +31,35 @@ class Instance:
             self.kafka_consumer = KafkaPlugin.create_consumer(config.kafka)
 
         self.df_indiv, self.df_host, self.df_meta = self._load_initial_data()
-        self.current_solution: Optional[Any] = None
-        self.cluster_labels: Optional[pd.Series] = None
+        self.current_solution = None
+        self.cluster_labels = None
 
     def _load_initial_data(self):
         """
-        Always load the raw individual‐level data via the reader,
-        then derive the host‐level DataFrame by aggregation.
+        Load the raw individual-level data via the reader
+        and derive the host-level DataFrame by aggregation.
         """
-        # 1) Ingest raw container‐level ticks
         df_indiv, _, df_meta = self.reader.load_initial()
-
-        # 2) Derive host‐level time series from the raw data
         df_host = build_df_from_containers(
             df_indiv,
-            tick_field   = self.config.tick_field,
-            host_field   = self.config.host_field,
-            individual_field = self.config.individual_field,
-            metrics      = self.config.metrics
+            tick_field=self.config.tick_field,
+            host_field=self.config.host_field,
+            individual_field=self.config.individual_field,
+            metrics=self.config.metrics,
         )
-
         return df_indiv, df_host, df_meta
 
     @staticmethod
     def clear_kafka_topics() -> None:
+        """Clear all configured Kafka topics."""
         KafkaPlugin.clear_topics()
 
     def update_data(self, new_df_indiv: pd.DataFrame) -> None:
-        self.df_indiv = pd.concat([self.df_indiv, new_df_indiv], ignore_index=True)
+        """Update the dataframes with newly ingested individual-level data."""
+        self.df_indiv = pd.concat(
+            [self.df_indiv, new_df_indiv],
+            ignore_index=True,
+        )
         self.df_host = build_df_from_containers(
             self.df_indiv,
             tick_field=self.config.tick_field,
@@ -54,7 +68,9 @@ class Instance:
             metrics=self.config.metrics,
         )
 
-    def get_id_map(self) -> dict:
-        # Map container IDs to integer indices for clustering
-        unique = sorted(self.df_indiv[self.config.individual_field].unique())
+    def get_id_map(self) -> Dict[Any, int]:
+        """Get a mapping from container IDs to integer indices."""
+        unique = sorted(
+            self.df_indiv[self.config.individual_field].unique()
+        )
         return {cid: idx for idx, cid in enumerate(unique)}

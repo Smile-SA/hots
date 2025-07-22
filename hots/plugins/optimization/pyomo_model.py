@@ -1,14 +1,22 @@
+"""Pyomo‑based optimization plugin for HOTS."""
+
 from core.interfaces import OptimizationPlugin
+
 from .model import Model as PyomoModelClass
 
+
 class PyomoModel(OptimizationPlugin):
-    def __init__(self, params, instance):
+    """Optimization plugin using Pyomo."""
+
+    def __init__(self, params: dict, instance):
+        """Initialize with parameters and HOTS instance."""
         self.instance = instance
-        self.pb_number = params.get('pb_number',1)
-        self.solver = params.get('solver','glpk')
-        self.verbose = params.get('verbose',False)
+        self.pb_number = params.get('pb_number', 1)
+        self.solver = params.get('solver', 'glpk')
+        self.verbose = params.get('verbose', False)
 
     def solve(self, df_host, labels):
+        """Build, solve, and return a HOTS Model."""
         model = PyomoModelClass(
             self.pb_number,
             self.instance.df_indiv,
@@ -16,7 +24,7 @@ class PyomoModel(OptimizationPlugin):
             self.instance.get_id_map(),
             self.instance.df_meta,
             nb_clusters=self.instance.config.clustering.nb_clusters,
-            verbose=self.verbose
+            verbose=self.verbose,
         )
         model.solve(solver=self.solver)
         model.labels = labels

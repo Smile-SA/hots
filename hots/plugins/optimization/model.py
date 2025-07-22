@@ -1,15 +1,18 @@
+"""HOTS optimization model definitions."""
+
+from itertools import product
+from typing import Any, Dict, List
+
+import numpy as np
+
+import pandas as pd
+
+from plugins.clustering.builder import build_matrix_indiv_attr, build_similarity_matrix
+
 from pyomo import environ as pe
 from pyomo.common.errors import ApplicationError
 from pyomo.opt import TerminationCondition
-from itertools import product
-from typing import Dict, Any, List
-import networkx as nx
-import pandas as pd
-import numpy as np
-from plugins.clustering.builder import (
-    build_matrix_indiv_attr,
-    build_similarity_matrix
-)
+
 
 class Model:
     """
@@ -17,6 +20,7 @@ class Model:
     All original methods (build_parameters, build_variables, etc.)
     become instance methods on this class.
     """
+
     def __init__(
         self,
         pb_number: int,
@@ -25,22 +29,33 @@ class Model:
         dict_id_c: dict,
         df_meta: pd.DataFrame = None,
         nb_clusters: int = None,
-        verbose: bool = False
+        verbose: bool = False,
     ):
+        """
+        Initialize the optimization Model with data, parameters, and build the Pyomo instance.
+
+        :param pb_number: Problem identifier (1 for clustering, 2 for placement).
+        :param df_indiv: DataFrame of individual‑level usage data.
+        :param metric: Name of the metric to optimize (e.g. 'cpu').
+        :param dict_id_c: Mapping from container IDs to integer indices.
+        :param df_meta: Host metadata DataFrame (optional; required for placement).
+        :param nb_clusters: Number of clusters for clustering problems.
+        :param verbose: If True, enables verbose debug output and writes LP files.
+        """
         # --- Store inputs as attributes instead of using module‐globals (it.*) ---
-        self.pb_number   = pb_number
-        self.df_indiv    = df_indiv
-        self.metric      = metric
-        self.dict_id_c   = dict_id_c
-        self.df_meta     = df_meta
+        self.pb_number = pb_number
+        self.df_indiv = df_indiv
+        self.metric = metric
+        self.dict_id_c = dict_id_c
+        self.df_meta = df_meta
         self.nb_clusters = nb_clusters
-        self.verbose     = verbose
+        self.verbose = verbose
 
         # Extract from df_indiv for convenience
-        self.tick_field     = 'timestamp'       # or pass as extra arg if you need it parametric
-        self.indiv_field    = 'container_id'    # likewise if needed
-        self.host_field     = 'machine_id'
-        self.metrics        = [metric]
+        self.tick_field = 'timestamp'  # or pass as extra arg if you need it parametric
+        self.indiv_field = 'container_id'  # likewise if needed
+        self.host_field = 'machine_id'
+        self.metrics = [metric]
 
         # suppose you have numpy arrays u_prev, v_prev
         # model.u_matrix = u_prev
@@ -54,7 +69,7 @@ class Model:
         self.create_data()
 
         if verbose:
-            self.write_infile(fname=f"./debug_pb{self.pb_number}.lp")
+            self.write_infile(fname=f'./debug_pb{self.pb_number}.lp')
 
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
 
@@ -79,7 +94,7 @@ class Model:
             self.tick_field,
             self.indiv_field,
             self.metrics,
-            self.dict_id_c
+            self.dict_id_c,
         )
         n = mat.shape[0]
         w = build_similarity_matrix(mat)
@@ -96,7 +111,7 @@ class Model:
         v = getattr(self, 'v_matrix', np.zeros((n, n), dtype=int))
 
         # --- Define Sets & Params on container IDs ---
-        self.mdl.C = pe.Set(initialize=id_list, doc="Container IDs")
+        self.mdl.C = pe.Set(initialize=id_list, doc='Container IDs')
         self.mdl.c = pe.Param(within=pe.NonNegativeIntegers, mutable=True)
 
         # sol_u: clustering adjacency param indexed by (container_j, container_i)
@@ -105,9 +120,7 @@ class Model:
             for i, j in product(range(n), range(n))
         }
         self.mdl.sol_u = pe.Param(
-            self.mdl.C, self.mdl.C,
-            initialize=sol_u_dict,
-            mutable=True
+            self.mdl.C, self.mdl.C, initialize=sol_u_dict, mutable=True
         )
 
         # sol_v: placement adjacency
@@ -116,9 +129,7 @@ class Model:
             for i, j in product(range(n), range(n))
         }
         self.mdl.sol_v = pe.Param(
-            self.mdl.C, self.mdl.C,
-            initialize=sol_v_dict,
-            mutable=True
+            self.mdl.C, self.mdl.C, initialize=sol_v_dict, mutable=True
         )
 
         # --- Problem‑specific parameters ---
@@ -131,9 +142,7 @@ class Model:
                 for i, j in product(range(n), range(n))
             }
             self.mdl.w = pe.Param(
-                self.mdl.C, self.mdl.C,
-                initialize=w_dict,
-                mutable=True
+                self.mdl.C, self.mdl.C, initialize=w_dict, mutable=True
             )
 
         elif self.pb_number == 2:
@@ -147,9 +156,10 @@ class Model:
             self.mdl.t = pe.Param(within=pe.NonNegativeIntegers)
             self.mdl.Ccons = pe.Set(initialize=self.data[None]['Ccons'])
             self.mdl.cons = pe.Param(
-                self.mdl.Ccons, self.mdl.T,
+                self.mdl.Ccons,
+                self.mdl.T,
                 initialize=self.data[None]['cons'],
-                mutable=True
+                mutable=True,
             )
 
             dv_dict = {
@@ -157,13 +167,11 @@ class Model:
                 for i, j in product(range(n), range(n))
             }
             self.mdl.dv = pe.Param(
-                self.mdl.C, self.mdl.C,
-                initialize=dv_dict,
-                mutable=True
+                self.mdl.C, self.mdl.C, initialize=dv_dict, mutable=True
             )
 
         else:
-            raise ValueError(f"Unsupported pb_number: {self.pb_number}")
+            raise ValueError(f'Unsupported pb_number: {self.pb_number}')
 
     def build_variables(self):
         """
@@ -174,45 +182,48 @@ class Model:
             # --- Clustering variables ---
             # yc[k] = 1 if cluster k is opened
             self.mdl.yc = pe.Var(
-                self.mdl.K,
-                domain=pe.Binary,
-                doc="Cluster-open indicator"
+                self.mdl.K, domain=pe.Binary, doc='Cluster-open indicator'
             )
             # assign[c,k] = 1 if container c is assigned to cluster k
             self.mdl.assign = pe.Var(
-                self.mdl.C, self.mdl.K,
+                self.mdl.C,
+                self.mdl.K,
                 domain=pe.Binary,
-                doc="Container-to-cluster assignment"
+                doc='Container-to-cluster assignment',
             )
             # dist[i,j] = distance between containers i and j
             self.mdl.dist = pe.Var(
-                self.mdl.C, self.mdl.C,
+                self.mdl.C,
+                self.mdl.C,
                 domain=pe.NonNegativeReals,
-                doc="Inter-container distance"
+                doc='Inter-container distance',
             )
             # u[c1,c2] = 1 if containers c1 and c2 are assigned to the same cluster
             self.mdl.u = pe.Var(
-                self.mdl.C, self.mdl.C,
+                self.mdl.C,
+                self.mdl.C,
                 domain=pe.Binary,
-                doc="Pairwise cluster adjacency"
+                doc='Pairwise cluster adjacency',
             )
 
         elif self.pb_number == 2:
             # --- Placement variables ---
             self.mdl.place = pe.Var(
-                self.mdl.C, self.mdl.N, self.mdl.T,
+                self.mdl.C,
+                self.mdl.N,
+                self.mdl.T,
                 domain=pe.Binary,
-                doc="Container-to-node-time placement"
+                doc='Container-to-node-time placement',
             )
             self.mdl.load = pe.Var(
-                self.mdl.N, self.mdl.T,
+                self.mdl.N,
+                self.mdl.T,
                 domain=pe.NonNegativeReals,
-                doc="Node load over time"
+                doc='Node load over time',
             )
 
         else:
-            raise ValueError(f"Unsupported pb_number: {self.pb_number}")
-
+            raise ValueError(f'Unsupported pb_number: {self.pb_number}')
 
     def build_constraints(self):
         """
@@ -222,74 +233,64 @@ class Model:
         if self.pb_number == 1:
             # (1) each container assigned to exactly one cluster
             self.mdl.clust_assign = pe.Constraint(
-                self.mdl.C,
-                rule=self._clust_assign_rule
+                self.mdl.C, rule=self._clust_assign_rule
             )
             # (2) you can only open a cluster if at least one container is in it
             self.mdl.open_cluster = pe.Constraint(
-                self.mdl.C, self.mdl.K,
-                rule=self._open_cluster_rule
+                self.mdl.C, self.mdl.K, rule=self._open_cluster_rule
             )
             # (3) limit on total open clusters
-            self.mdl.max_clusters = pe.Constraint(
-                rule=self._max_clusters_rule
+            self.mdl.max_clusters = pe.Constraint(rule=self._max_clusters_rule)
+            self.mdl.link_u1 = pe.Constraint(
+                self.mdl.C, self.mdl.C, self.mdl.K, rule=self._link_u1_rule
             )
-            self.mdl.link_u1 = pe.Constraint(self.mdl.C, self.mdl.C, self.mdl.K,
-                                             rule=self._link_u1_rule)
-            self.mdl.link_u2 = pe.Constraint(self.mdl.C, self.mdl.C, self.mdl.K,
-                                             rule=self._link_u2_rule)
-            self.mdl.link_u3 = pe.Constraint(self.mdl.C, self.mdl.C, self.mdl.K,
-                                             rule=self._link_u3_rule)
+            self.mdl.link_u2 = pe.Constraint(
+                self.mdl.C, self.mdl.C, self.mdl.K, rule=self._link_u2_rule
+            )
+            self.mdl.link_u3 = pe.Constraint(
+                self.mdl.C, self.mdl.C, self.mdl.K, rule=self._link_u3_rule
+            )
 
         elif self.pb_number == 2:
             # (1) capacity constraint: load on each node ≤ cap
             self.mdl.capacity = pe.Constraint(
-                self.mdl.N, self.mdl.T,
-                rule=self._capacity_rule
+                self.mdl.N, self.mdl.T, rule=self._capacity_rule
             )
             # (2) flow conservation: consumption matches load
             self.mdl.flow_conservation = pe.Constraint(
-                self.mdl.Ccons, self.mdl.T,
-                rule=self._flow_conservation_rule
+                self.mdl.Ccons, self.mdl.T, rule=self._flow_conservation_rule
             )
         else:
-            raise ValueError(f"Unsupported pb_number: {self.pb_number}")
+            raise ValueError(f'Unsupported pb_number: {self.pb_number}')
 
     def add_mustlink(self):
         """Add mustLink constraints for fixing solution."""
         if self.pb_number == 1:
             self.mdl.must_link_c = pe.Constraint(
-                self.mdl.C, self.mdl.C,
-                rule=must_link_c_
+                self.mdl.C, self.mdl.C, rule=must_link_c_
             )
         if self.pb_number == 2:
             self.mdl.must_link_n = pe.Constraint(
-                self.mdl.C, self.mdl.C,
-                rule=must_link_n_
+                self.mdl.C, self.mdl.C, rule=must_link_n_
             )
 
     def add_mustlink_instance(self):
         """Add mustLink constraints for fixing solution."""
         if self.pb_number == 1:
             self.instance_model.must_link_c = pe.Constraint(
-                self.instance_model.C, self.instance_model.C,
-                rule=must_link_c_
+                self.instance_model.C, self.instance_model.C, rule=must_link_c_
             )
         if self.pb_number == 2:
             self.instance_model.must_link_n = pe.Constraint(
-                self.instance_model.C, self.instance_model.C,
-                rule=must_link_n_
+                self.instance_model.C, self.instance_model.C, rule=must_link_n_
             )
 
     def build_objective(self):
         """Build the objective."""
         if self.pb_number == 1:
-            self.mdl.obj = pe.Objective(
-                rule=min_dissim_, sense=pe.minimize
-            )
+            self.mdl.obj = pe.Objective(rule=min_dissim_, sense=pe.minimize)
         elif self.pb_number == 2:
-            self.mdl.obj = pe.Objective(
-                rule=min_coloc_cluster_, sense=pe.minimize)
+            self.mdl.obj = pe.Objective(rule=min_coloc_cluster_, sense=pe.minimize)
 
     def create_data(self):
         """
@@ -298,21 +299,21 @@ class Model:
         """
         # Shortcuts
         df_indiv = self.df_indiv
-        df_meta  = self.df_meta or pd.DataFrame()
-        metric   = self.metric
-        id_map   = self.dict_id_c
-        nf       = self.indiv_field
-        hf       = self.host_field
-        tf       = self.tick_field
+        df_meta = self.df_meta or pd.DataFrame()
+        metric = self.metric
+        id_map = self.dict_id_c
+        nf = self.indiv_field
+        hf = self.host_field
+        tf = self.tick_field
 
         if self.pb_number == 1:
             # Clustering formulation
             self.data = {
                 None: {
-                    'c':  {None: df_indiv[nf].nunique()},
-                    'C':  {None: list(id_map.keys())},
-                    'k':  {None: self.nb_clusters},
-                    'K':  {None: list(range(self.nb_clusters))},
+                    'c': {None: df_indiv[nf].nunique()},
+                    'C': {None: list(id_map.keys())},
+                    'k': {None: self.nb_clusters},
+                    'K': {None: list(range(self.nb_clusters))},
                 }
             }
 
@@ -331,23 +332,22 @@ class Model:
 
             self.data = {
                 None: {
-                    'n':    {None: df_meta[hf].nunique()},
-                    'c':    {None: df_indiv[nf].nunique()},
-                    't':    {None: df_indiv[tf].nunique()},
-                    'N':    {None: df_meta[hf].unique().tolist()},
-                    'C':    {None: list(id_map.keys())},
-                    'Ccons':{None: df_indiv[nf].unique().tolist()},
-                    'cap':  cap,
-                    'T':    {None: df_indiv[tf].unique().tolist()},
+                    'n': {None: df_meta[hf].nunique()},
+                    'c': {None: df_indiv[nf].nunique()},
+                    't': {None: df_indiv[tf].nunique()},
+                    'N': {None: df_meta[hf].unique().tolist()},
+                    'C': {None: list(id_map.keys())},
+                    'Ccons': {None: df_indiv[nf].unique().tolist()},
+                    'cap': cap,
+                    'T': {None: df_indiv[tf].unique().tolist()},
                     'cons': cons,
                 }
             }
         else:
-            raise ValueError(f"Unsupported pb_number: {self.pb_number!r}")
+            raise ValueError(f'Unsupported pb_number: {self.pb_number!r}')
 
         # Finally, instantiate the model with data:
         self.instance_model = self.mdl.create_instance(self.data)
-
 
     def conso_n_t(self, mdl, node, t):
         """Express the total consumption of node at time t.
@@ -363,32 +363,23 @@ class Model:
         """
         return sum(
             mdl.x[cont, node] * self.cons[cont_c][t]
-            for cont, cont_c in zip(mdl.C, mdl.Ccons))
-
-    def mean(self, mdl, node):
-        """
-        Compute the mean consumption on a node across all ticks.
-        """
-        return sum(
-            mdl.load[node, t]
-            for t in mdl.T
-        ) / len(mdl.T)
-
-    def write_infile(self, fname=None):
-        """
-        Dump the concrete model to an LP file for debugging.
-        """
-        if fname is None:
-            fname = './py_clustering.lp' if self.pb_number == 1 else './py_placement.lp'
-        self.instance_model.write(
-            fname,
-            io_options={'symbolic_solver_labels': True}
+            for cont, cont_c in zip(mdl.C, mdl.Ccons)
         )
 
-    def solve(self, solver: str = 'glpk', verbose: bool = False):
+    def mean(self, mdl, node):
+        """Compute the mean consumption on a node across all ticks."""
+        return sum(mdl.load[node, t] for t in mdl.T) / len(mdl.T)
+
+    def write_infile(self, fname=None):
+        """Dump the concrete model to an LP file for debugging."""
+        if fname is None:
+            fname = './py_clustering.lp' if self.pb_number == 1 else './py_placement.lp'
+        self.instance_model.write(fname, io_options={'symbolic_solver_labels': True})
+
+    def solve(self, solver: str = "glpk", verbose: bool = False):
         """
         Solve the concrete instance_model with the given solver.
-        
+
         :param solver: Name of the Pyomo solver to use (e.g. 'glpk').
         :param verbose: If True, prints constraint checks, status, and objective.
         :return: self, with instance_model solved and suffixes/duals populated.
@@ -405,7 +396,6 @@ class Model:
             self._print_objective_value()
 
         return self
-
 
     def _attempt_solve(self, opt, verbose):
         """Attempt to solve the model and handles solver errors.
@@ -500,7 +490,7 @@ class Model:
 
         # 2) update the sol_v param in the _instance_, using ID keys
         n = len(self.dict_id_c)
-        id_list = [None]*n
+        id_list = [None] * n
         for cid, idx in self.dict_id_c.items():
             id_list[idx] = cid
 
@@ -511,20 +501,16 @@ class Model:
         # 3) rebuild the must_link constraint under the new data
         self.add_mustlink_instance()
 
-
     def update_sol_v(self, v_matrix):
-        """
-        Directly overwrite the concrete model’s sol_v param values.
-        """
+        """Directly overwrite the concrete model’s sol_v param values."""
         n = len(self.dict_id_c)
-        id_list = [None]*n
+        id_list = [None] * n
         for cid, idx in self.dict_id_c.items():
             id_list[idx] = cid
 
         for i, j in product(range(n), range(n)):
             key = (id_list[j], id_list[i])
             self.instance_model.sol_v[key] = int(v_matrix[i][j])
-
 
     def update_obj_clustering(self, w_matrix):
         """
@@ -535,7 +521,7 @@ class Model:
 
         # Update the w param in the ABSTRACT instance_model
         n = len(self.dict_id_c)
-        id_list = [None]*n
+        id_list = [None] * n
         for cid, idx in self.dict_id_c.items():
             id_list[idx] = cid
 
@@ -551,7 +537,6 @@ class Model:
 
         # 3) re‐fetch duals
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
-
 
     def update_w(self, w):
         """Update directly the w param in instance from new w matrix.
@@ -569,17 +554,20 @@ class Model:
         :type dv: np.array
         """
         self.update_dv(dv)
-        self.instance_model.obj = sum([
-            self.instance_model.sol_u[(i, j)] * (
-                self.instance_model.v[(i, j)]) for i, j in product(
-                self.instance_model.C, self.instance_model.C
-            ) if i < j
-        ]) + sum([
-            (1 - self.instance_model.sol_u[(i, j)]) * (
-                self.instance_model.v[(i, j)] * self.instance_model.dv[(i, j)]
-            ) for i, j in product(self.instance_model.C,
-                               self.instance_model.C) if i < j
-        ])
+        self.instance_model.obj = sum(
+            [
+                self.instance_model.sol_u[(i, j)] * (self.instance_model.v[(i, j)])
+                for i, j in product(self.instance_model.C, self.instance_model.C)
+                if i < j
+            ]
+        ) + sum(
+            [
+                (1 - self.instance_model.sol_u[(i, j)])
+                * (self.instance_model.v[(i, j)] * self.instance_model.dv[(i, j)])
+                for i, j in product(self.instance_model.C, self.instance_model.C)
+                if i < j
+            ]
+        )
 
     def update_dv(self, dv):
         """Update directly the dv param in instance from new dv matrix.
@@ -616,7 +604,7 @@ class Model:
 
         # 5) Optionally dump the LP for inspection
         if verbose:
-            self.write_infile(fname=f"./debug_pb{self.pb_number}.lp")
+            self.write_infile(fname=f'./debug_pb{self.pb_number}.lp')
 
         # 6) Re‑attach dual suffix for post‑solve inspection
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
@@ -654,7 +642,7 @@ class Model:
     def _max_clusters_rule(self, mdl):
         # total number of opened clusters ≤ k
         return sum(mdl.yc[k] for k in mdl.K) <= mdl.k
-    
+
     def _link_u1_rule(self, mdl, i, j, k):
         # u[i,j] ≥ assign[i,k] + assign[j,k] – 1
         return mdl.u[i, j] >= mdl.assign[i, k] + mdl.assign[j, k] - 1
@@ -765,11 +753,7 @@ class Model:
                     for n in inst.N:
                         # check the binary variable place[c,n,t]
                         if value(inst.place[c, n, t]) > 0.5:
-                            moves.append({
-                                'container_id': c,
-                                'node': n,
-                                'tick': t
-                            })
+                            moves.append({'container_id': c, 'node': n, 'tick': t})
         return moves
 
 
@@ -781,9 +765,9 @@ def min_dissim_(mdl):
     :return: Within clusters dissimilarities
     :rtype: float
     """
-    return sum([
-        mdl.u[(i, j)] * mdl.w[(i, j)] for i, j in product(mdl.C, mdl.C) if i < j
-    ])
+    return sum(
+        [mdl.u[(i, j)] * mdl.w[(i, j)] for i, j in product(mdl.C, mdl.C) if i < j]
+    )
 
 
 def min_coloc_cluster_(mdl):
@@ -794,9 +778,12 @@ def min_coloc_cluster_(mdl):
     :return: Objective for placement optimization
     :rtype: Expression
     """
-    return sum([
-        mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in
-        product(mdl.C, mdl.C) if i < j
-    ]) + sum([(
-            (1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)]
-    ) for i, j in product(mdl.C, mdl.C) if i < j])
+    return sum(
+        [mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in product(mdl.C, mdl.C) if i < j]
+    ) + sum(
+        [
+            ((1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)])
+            for i, j in product(mdl.C, mdl.C)
+            if i < j
+        ]
+    )

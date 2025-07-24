@@ -32,6 +32,7 @@ license = "MIT"
 license-files = ["LICENSE.txt"]
 dependencies = [
     "click>=8.0",
+    "confluent-kafka",
     "matplotlib",
     "networkx",
     "numpy",

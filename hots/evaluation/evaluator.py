@@ -50,16 +50,12 @@ def eval_solutions(
     # 5) Conflict detection & pick moving containers
     pb = instance.config.optimization.parameters.get('pb_number', 1)
     pb = instance.config.optimization.parameters.get('pb_number', 1)
-    dict_id_c = instance.get_id_map()
-    nb_containers = len(dict_id_c)
     if pb == 1:
         moving, nodes, edges, max_deg, mean_deg = get_moving_containers_clust(
             model,
             duals,
             tol,
             tol_move,
-            nb_containers,
-            dict_id_c,
             df_clust=df_indiv,
             profiles=None,
         )
@@ -69,9 +65,7 @@ def eval_solutions(
             duals,
             tol,
             tol_move,
-            nb_containers,
             working_df=df_indiv,
-            dict_id_c=dict_id_c,
         )
 
     # 6) Apply business‑problem logic

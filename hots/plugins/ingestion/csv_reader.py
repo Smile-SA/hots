@@ -20,6 +20,7 @@ class CSVReader(IngestionPlugin):
         self.indiv_field = parameters['individual_field']
         self.host_field = parameters['host_field']
         self.metrics = parameters['metrics']
+        self.sep_time = parameters.get('sep_time', 5)
         self.tick_increment = parameters.get('tick_increment', 1)
 
         self.csv_file = open(self.csv_path)
@@ -32,7 +33,7 @@ class CSVReader(IngestionPlugin):
     def load_initial(self) -> pd.DataFrame:
         """Load the first batch of rows from the CSV."""
         df = self._get_batch()
-        self.current_time += self.tick_increment
+        self.current_time += self.sep_time
         return df, None, None
 
     def load_next(self) -> pd.DataFrame:

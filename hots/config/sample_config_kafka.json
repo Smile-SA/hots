@@ -13,7 +13,8 @@
       "individual_field": "container_id",
       "host_field": "machine_id",
       "metrics": ["cpu_usage"],
-      "tick_increment": 60
+      "sep_time": 10,
+      "tick_increment": 3
     }
   },
   "clustering": {

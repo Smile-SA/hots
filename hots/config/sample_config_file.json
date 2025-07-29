@@ -13,6 +13,7 @@
       "individual_field": "container_id",
       "host_field": "machine_id",
       "metrics": ["cpu_usage"],
+      "sep_time": 3,
       "tick_increment": 3
     }
   },

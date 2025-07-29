@@ -2,13 +2,14 @@
 
 """HOTS."""
 
+import importlib
+
 from hots.config.loader import AppConfig
 from hots.core.instance import Instance
 from hots.evaluation.evaluator import eval_solutions
 from hots.plugins import (
     ClusteringFactory,
     ConnectorFactory,
-    HeuristicFactory,
     OptimizationFactory,
 )
 from hots.reporting.writer import write_metrics
@@ -30,14 +31,18 @@ class App:
             config.optimization,
             self.instance,
         )
-        self.heuristic = HeuristicFactory.create(
-            config.heuristic,
-            self.instance,
-        )
         self.connector = ConnectorFactory.create(
             config.connector,
             self.instance,
         )
+        # dynamically load the problem plugin (e.g. 'placement')
+        problem_type = config.problem.type.lower()
+        module_path = f'hots.plugins.problem.{problem_type}'
+        cls_name = f'{problem_type.title()}Plugin'
+        mod = importlib.import_module(module_path)
+        problem_cls = getattr(mod, cls_name)
+        self.problem = problem_cls(config.problem.parameters, self.instance)
+
         setup_signal_handlers(self.shutdown)
 
     def run(self):
@@ -52,7 +57,6 @@ class App:
             self.clustering.fit(self.instance.df_indiv),
             self.clustering,
             self.optimization,
-            self.heuristic,
             self.instance,
         )
         self.connector.apply_moves(sol2)
@@ -74,7 +78,6 @@ class App:
                 self.clustering.fit(self.instance.df_indiv),
                 self.clustering,
                 self.optimization,
-                self.heuristic,
                 self.instance,
             )
             self.connector.apply_moves(sol2)

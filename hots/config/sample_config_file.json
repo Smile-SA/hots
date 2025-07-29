@@ -30,11 +30,11 @@
       "solver": "glpk"
     }
   },
-  "heuristic": {
-    "type": "spread",
+  "problem": {
+    "type": "placement",
     "parameters": {
-      "method": "spread",
-      "min_nodes": 1
+      "tol": 0.1,
+      "tol_move": 0.2
     }
   },
   "connector": {

@@ -40,19 +40,22 @@ class OptimizationPlugin(ABC):
         pass
 
 
-class HeuristicPlugin(ABC):
-    """Interface for heuristic plugins."""
-
-    @abstractmethod
-    def adjust(self, solution: Any) -> Any:
-        """Adjust the solution according to heuristic logic."""
-        pass
-
-
 class ConnectorPlugin(ABC):
     """Interface for connector plugins."""
 
     @abstractmethod
     def apply_moves(self, moves: Any) -> None:
         """Apply relocation moves to the target environment."""
+        pass
+
+
+class ProblemPlugin(ABC):
+    """Interface for domain‑specific problem plugins (placement, allocation, etc.)."""
+
+    @abstractmethod
+    def adjust(self, solution: Any, **kwargs) -> Any:
+        """
+        Given an optimization solution (and any auxiliary data),
+        return an adjusted solution.
+        """
         pass

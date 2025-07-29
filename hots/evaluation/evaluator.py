@@ -19,7 +19,7 @@ def eval_solutions(
     labels: pd.Series,
     clustering,
     optimization,
-    heuristic,
+    problem,
     instance
 ) -> Tuple[Any, Dict[str, Any]]:
     """Run the full pipeline and collect evaluation metrics."""
@@ -44,29 +44,38 @@ def eval_solutions(
     duals = model.fill_dual_values()
 
     # 4) Read tolerances
-    tol = instance.config.heuristic.parameters.get('tol', 0.1)
-    tol_move = instance.config.heuristic.parameters.get('tol_move', 0.1)
+    tol = instance.config.problem.parameters.get('tol', 0.1)
+    tol_move = instance.config.problem.parameters.get('tol_move', 0.1)
 
     # 5) Conflict detection & pick moving containers
     pb = instance.config.optimization.parameters.get('pb_number', 1)
+    pb = instance.config.optimization.parameters.get('pb_number', 1)
+    dict_id_c = instance.get_id_map()
+    nb_containers = len(dict_id_c)
     if pb == 1:
-        moving, nodes, edges, max_deg, mean_deg = (
-            get_moving_containers_clust(
-                model, duals, tol, tol_move,
-                df_clust=df_indiv,
-                profiles=None
-            )
+        moving, nodes, edges, max_deg, mean_deg = get_moving_containers_clust(
+            model,
+            duals,
+            tol,
+            tol_move,
+            nb_containers,
+            dict_id_c,
+            df_clust=df_indiv,
+            profiles=None,
         )
     else:
-        moving, nodes, edges, max_deg, mean_deg = (
-            get_moving_containers_place(
-                model, duals, tol, tol_move,
-                working_df=df_indiv
-            )
+        moving, nodes, edges, max_deg, mean_deg = get_moving_containers_place(
+            model,
+            duals,
+            tol,
+            tol_move,
+            nb_containers,
+            working_df=df_indiv,
+            dict_id_c=dict_id_c,
         )
 
-    # 6) Apply heuristic
-    solution2 = heuristic.adjust(model, moving)
+    # 6) Apply business‑problem logic
+    solution2 = problem.adjust(model, moving)
 
     # 7) Collect metrics
     metrics: Dict[str, Any] = {

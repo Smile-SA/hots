@@ -42,8 +42,8 @@ class OptimizationConfig:
 
 
 @dataclass
-class HeuristicConfig:
-    """Configuration for the heuristic plugin: type and its parameters."""
+class ProblemConfig:
+    """Configuration for the domain problem plugin: type and its parameters."""
 
     type: str
     parameters: Dict[str, Any]
@@ -79,7 +79,7 @@ class AppConfig:
     kafka: Optional[KafkaConfig]
     clustering: ClusteringConfig
     optimization: OptimizationConfig
-    heuristic: HeuristicConfig
+    problem: ProblemConfig
     connector: ConnectorConfig
     reporting: ReportingConfig
 
@@ -101,7 +101,7 @@ def load_config(path: Path) -> AppConfig:
 
     clustering = ClusteringConfig(**raw['clustering'])
     optimization = OptimizationConfig(**raw['optimization'])
-    heuristic = HeuristicConfig(**raw['heuristic'])
+    problem = ProblemConfig(**raw['problem'])
     connector = ConnectorConfig(**raw['connector'])
 
     rpt = raw['reporting']
@@ -121,7 +121,7 @@ def load_config(path: Path) -> AppConfig:
         kafka=kafka,
         clustering=clustering,
         optimization=optimization,
-        heuristic=heuristic,
+        problem=problem,
         connector=connector,
         reporting=reporting,
     )

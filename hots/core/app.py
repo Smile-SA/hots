@@ -57,6 +57,7 @@ class App:
             self.clustering.fit(self.instance.df_indiv),
             self.clustering,
             self.optimization,
+            self.problem,
             self.instance,
         )
         self.connector.apply_moves(sol2)
@@ -78,6 +79,7 @@ class App:
                 self.clustering.fit(self.instance.df_indiv),
                 self.clustering,
                 self.optimization,
+                self.problem,
                 self.instance,
             )
             self.connector.apply_moves(sol2)

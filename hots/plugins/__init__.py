@@ -6,7 +6,6 @@ from .clustering.kmeans import StreamKMeans
 from .clustering.spectral import SpectralClustering
 from .connector.file_connector import FileConnector
 from .connector.kafka_connector import KafkaConnector
-from .heuristic.spread import SpreadHeuristic
 from .ingestion.csv_reader import CSVReader
 from .ingestion.kafka_reader import KafkaReader
 from .optimization.pyomo_model import PyomoModel
@@ -77,18 +76,6 @@ class OptimizationFactory:
         if s == 'pyomo':
             return PyomoModel(cfg.parameters, instance)
         raise ValueError(f'Unknown optimization solver: {cfg.solver}')
-
-
-class HeuristicFactory:
-    """Factory for heuristic plugins."""
-
-    @staticmethod
-    def create(cfg, instance):
-        """Create and return a heuristic plugin based on config."""
-        t = cfg.type.lower()
-        if t == 'spread':
-            return SpreadHeuristic(cfg.parameters, instance)
-        raise ValueError(f'Unknown heuristic type: {cfg.type}')
 
 
 class ConnectorFactory:

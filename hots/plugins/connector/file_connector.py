@@ -3,6 +3,8 @@
 """File‑based connector plugin for HOTS."""
 
 import json
+import os
+from pathlib import Path
 
 from hots.core.interfaces import ConnectorPlugin
 
@@ -17,8 +19,16 @@ class FileConnector(ConnectorPlugin):
         Path(self.outfile).parent.mkdir(parents=True, exist_ok=True)
 
     def apply_moves(self, solution):
-        """Write relocation moves to a JSONL file."""
-        moves = solution.extract_moves()
+        """Write moves (list of dicts) to the output file."""
+        # solution may be a list of move dicts, or a model with extract_moves()
+        if isinstance(solution, list):
+            moves = solution
+        else:
+            moves = solution.extract_moves()
+        # ensure output directory exists
+        outdir = Path(self.outfile).parent
+        outdir.mkdir(parents=True, exist_ok=True)
         with open(self.outfile, 'a') as f:
-            for m in moves:
-                f.write(json.dumps(m) + '\n')
+            for move in moves:
+                # one JSON per line
+                f.write(json.dumps(move) + os.linesep)

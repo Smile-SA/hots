@@ -20,8 +20,14 @@ class KafkaConnector(ConnectorPlugin):
         self.topic = params['topics'][0]
 
     def apply_moves(self, solution):
-        """Produce relocation moves to the configured Kafka topic."""
-        moves = solution.extract_moves()
-        for m in moves:
-            self.producer.produce(self.topic, json.dumps(m))
+        """Publish moves (list of dicts) to Kafka."""
+        if isinstance(solution, list):
+            moves = solution
+        else:
+            moves = solution.extract_moves()
+
+        for move in moves:
+            # send JSON over Kafka topic
+            msg = json.dumps(move).encode('utf-8')
+            self.producer.produce(self.topic, msg)
         self.producer.flush()

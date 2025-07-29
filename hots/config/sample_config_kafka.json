@@ -45,6 +45,11 @@
       "topics": ["hots_moves"]
     }
   },
+  "logging": {
+    "level": "INFO",
+    "filename": "./out/hots.log",
+    "fmt": "%(asctime)s %(levelname)s: %(message)s"
+  },
   "reporting": {
     "results_folder": "./out",
     "metrics_file": "./out/metrics.csv",

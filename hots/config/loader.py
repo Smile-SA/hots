@@ -58,6 +58,15 @@ class ConnectorConfig:
 
 
 @dataclass
+class LoggingConfig:
+    """Configuration for application‑wide logging."""
+
+    level: str               # e.g. "INFO" or "DEBUG"
+    filename: Optional[str]  # if None, logs to stdout
+    fmt: str                 # e.g. "%(asctime)s %(levelname)s: %(message)s"
+
+
+@dataclass
 class ReportingConfig:
     """Configuration for reporting: folders and file paths for outputs."""
 
@@ -81,6 +90,7 @@ class AppConfig:
     optimization: OptimizationConfig
     problem: ProblemConfig
     connector: ConnectorConfig
+    logging: LoggingConfig
     reporting: ReportingConfig
 
 
@@ -105,6 +115,7 @@ def load_config(path: Path) -> AppConfig:
     connector = ConnectorConfig(**raw['connector'])
 
     rpt = raw['reporting']
+    logging_cfg = LoggingConfig(**raw['logging'])
     reporting = ReportingConfig(
         results_folder=Path(rpt['results_folder']),
         metrics_file=Path(rpt['metrics_file']),
@@ -123,5 +134,6 @@ def load_config(path: Path) -> AppConfig:
         optimization=optimization,
         problem=problem,
         connector=connector,
-        reporting=reporting,
+        logging=logging_cfg,
+        reporting=reporting
     )

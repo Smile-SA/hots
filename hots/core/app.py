@@ -55,25 +55,31 @@ class App:
         # Clear any residual offsets/state
         self.instance.clear_kafka_topics()
 
-        logging.info('Running initial evaluation')
-        # Initial evaluation
-        sol2, metrics = eval_solutions(
-            self.instance.df_indiv,
-            self.instance.df_host,
-            self.clustering.fit(self.instance.df_indiv),
-            self.clustering,
-            self.optimization,
-            self.problem,
-            self.instance,
-        )
-        logging.info('Initial silhouette: %.4f', metrics['silhouette'])
-        logging.info('Initial moves: %d containers', len(metrics['moving_containers']))
+        logging.info('Analysis period')
+        labels = self.clustering.fit(self.instance.df_indiv)
+        n_clusters = int(labels.nunique())
+        logging.info('First clustering complete: %d clusters', n_clusters)
 
-        logging.info('Applying initial moves')
-        self.connector.apply_moves(sol2)
-        logging.info('Initial moves applied')
+        if self.config.problem.parameters.get('initial_placement', True):
+            logging.info('Running first placement heuristic')
+            initial_moves = self.problem.initial(
+                labels,
+                self.instance.df_indiv,
+                self.instance.df_host,
+            )
+            logging.info('First placement produced %d moves', len(initial_moves))
+        else:
+            logging.info('Skipping first placement (keeping existing)')
+            initial_moves = []
 
-        self.instance.metrics_history.append(metrics)
+        self.connector.apply_moves(initial_moves)
+        logging.info('Applied initial placement moves')
+
+        # record a minimal “initial” metric
+        self.instance.metrics_history.append({
+            'initial_clusters': n_clusters,
+            'initial_moves': len(initial_moves),
+        })
 
         # Streaming loop
         loop_nb = 1

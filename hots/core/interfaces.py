@@ -3,7 +3,7 @@
 """HOTS core interfaces: plugin base classes."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Tuple
+from typing import Any, Dict, List, Tuple
 
 import pandas as pd
 
@@ -59,3 +59,18 @@ class ProblemPlugin(ABC):
         return an adjusted solution.
         """
         pass
+
+    def initial(
+        self,
+        labels: pd.Series,
+        df_indiv: pd.DataFrame,
+        df_host: pd.DataFrame,
+    ) -> List[Dict[str, Any]]:
+        """
+        Produce the initial problem solution if needed.
+
+        :param labels: cluster labels from initial clustering
+        :param df_indiv: individual‐level data
+        :param df_host: host‐level data
+        :return: list of move dicts to apply
+        """

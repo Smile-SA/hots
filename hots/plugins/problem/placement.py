@@ -9,6 +9,8 @@ from hots.core.interfaces import ProblemPlugin
 
 import numpy as np
 
+import pandas as pd
+
 
 class PlacementPlugin(ProblemPlugin):
     """Handles the 'placement' business problem."""
@@ -44,6 +46,37 @@ class PlacementPlugin(ProblemPlugin):
             order=order
         )
         moves.extend(extra)
+        return moves
+
+    def initial(
+        self,
+        labels: pd.Series,
+        df_indiv: pd.DataFrame,
+        df_host: pd.DataFrame,
+    ) -> List[Dict[str, Any]]:
+        """From initial labels, get first placement solution."""
+        print(df_indiv)
+        print(df_host)
+        from hots.plugins.clustering.builder import (
+            build_matrix_indiv_attr,
+            build_similarity_matrix,
+        )
+
+        # 1) Build the (containers × features) matrix
+        mat = build_matrix_indiv_attr(
+            df_indiv,
+            self.instance.config.tick_field,
+            self.instance.config.individual_field,
+            self.instance.config.metrics,
+            self.instance.get_id_map(),
+        )
+        # 2) Turn it into a similarity matrix
+        w = build_similarity_matrix(mat)
+
+        moves = allocation_distant_pairwise(
+            w, labels.values.tolist()
+        )
+
         return moves
 
 

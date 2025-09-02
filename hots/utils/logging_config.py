@@ -12,6 +12,7 @@ def setup_logging(level: str, filename: Optional[str], fmt: str, add_console: bo
     :param level: e.g. "INFO" or "DEBUG"
     :param filename: path to log file, or None for stdout
     :param fmt: logging format string
+    :param add_console: logging in console
     """
     numeric_level = getattr(logging, level.upper(), logging.INFO)
     handlers = []

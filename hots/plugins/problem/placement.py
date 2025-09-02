@@ -1,28 +1,63 @@
 """Provide placement heuristics and all placement-related methods."""
 
-import math
-import random
-from itertools import combinations
-from typing import Any, Dict, List
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+
+import numpy as np
+import pandas as pd
 
 from hots.core.interfaces import ProblemPlugin
 
-import numpy as np
 
-import pandas as pd
+@dataclass
+class _Fields:
+    indiv: str
+    host: str
+    metric: str  # we use the first metric
+
+
+def _get_ts(x: Any, T: Optional[int] = None) -> np.ndarray:
+    """Return a 1D numpy array time series.
+
+    - If `x` is a scalar, broadcast to length T (must be provided).
+    - If `x` is already a sequence/array, convert to np.ndarray and slice to T.
+    """
+    if isinstance(x, (list, tuple, np.ndarray, pd.Series)):
+        arr = np.asarray(x, dtype=float)
+        if T is not None:
+            arr = arr[:T]
+        return arr.astype(float, copy=False)
+    # scalar
+    if T is None:
+        raise ValueError("Cannot broadcast scalar without T")
+    return np.full(T, float(x), dtype=float)
+
+
+def _fits(remaining: np.ndarray, demand: np.ndarray) -> bool:
+    return np.all(remaining - demand >= 0.0)
+
+
+def _safe_first(values: Iterable[Any], default: Any = None) -> Any:
+    for v in values:
+        return v
+    return default
 
 
 class PlacementPlugin(ProblemPlugin):
     """Handles the 'placement' business problem."""
 
-    def __init__(self, params: Dict[str, Any], instance):
-        """
-        :param params: placement‑specific parameters
-        :param instance: the HOTS core Instance object
-        """
-        self.params = params
+    def __init__(self, instance):
         self.instance = instance
+        cfg = instance.config
+        self._f = _Fields(
+            indiv=cfg.individual_field,
+            host=cfg.host_field,
+            metric=cfg.metrics[0],
+        )
 
+    # ProblemPlugin required API
     def adjust(self, model: Any, moving: List[Any]) -> List[Dict[str, Any]]:
         """
         Given the Pyomo model and list of container IDs to move,
@@ -31,14 +66,13 @@ class PlacementPlugin(ProblemPlugin):
         # start with the solver’s own moves
         moves: List[Dict[str, Any]] = model.extract_moves()
 
-        # compute your time window
+        # compute the time window
         df = self.instance.df_indiv
         tick = self.instance.config.tick_field
         tmin, tmax = int(df[tick].min()), int(df[tick].max())
         order = self.params.get('order', 'max')
 
-        # call your legacy move_list_containers
-        extra = move_list_containers(
+        extra = self.move_list_containers(
             self.instance,
             moving,
             tmin,
@@ -73,1002 +107,494 @@ class PlacementPlugin(ProblemPlugin):
         # 2) Turn it into a similarity matrix
         w = build_similarity_matrix(mat)
 
-        moves = allocation_distant_pairwise(
-            w, labels.values.tolist()
+        moves = self.allocation_distant_pairwise(
+            df_indiv, df_host, w, labels.values.tolist()
         )
 
         return moves
 
+    # Core primitives
+    def assign_container_node(
+        self, node_id: Any, container_id: Any, remove: bool = True
+    ) -> Dict[str, Any]:
+        """Return the move dict to place `container_id` on `node_id`.
 
-# TODO factorize many functions
-# (assign indiv, change node during assign indiv..)
-def assign_container_node(instance, node_id, container_id, remove=True):
-    """Assign container_id to node_id, and remove it from old node.
+        If `remove` is True, we capture the current host as `src`; otherwise
+        `src` is set to None.
+        """
+        f = self._f
+        df_indiv = self.instance.df_indiv
+        current = _safe_first(
+            df_indiv.loc[df_indiv[f.indiv] == container_id][f.host].to_numpy()
+        )
+        if current == node_id:
+            return {"container": container_id, "src": current, "dst": current}
+        return {
+            "container": container_id,
+            "src": current if remove else None,
+            "dst": node_id,
+        }
 
-    :param node_id: Node ID
-    :type node_id: str
-    :param container_id: Container ID
-    :type container_id: str
-    :param remove: Remove the container from old node, defaults to True
-    :type remove: bool, optional
-    """
-    old_id = instance.df_indiv.loc[
-        instance.df_indiv[instance.indiv_field] == container_id
-    ][instance.host_field].to_numpy()[0]
+    def remove_container_node(self, node_id: Any, container_id: Any) -> Dict[str, Any]:
+        """Represent removing a container from a node (dst=None)."""
+        return {"container": container_id, "src": node_id, "dst": None}
 
-    instance.df_host.loc[
-        instance.df_host[instance.host_field] == node_id, instance.metrics
-    ] = instance.df_host.loc[
-        instance.df_host[instance.host_field] == node_id, instance.metrics
-    ].to_numpy() + instance.df_indiv.loc[
-        instance.df_indiv[instance.indiv_field] == container_id, instance.metrics
-    ].to_numpy()
+    def move_container(self, host_src: Any, host_dst: Any, container_id: Any) -> Dict[str, Any]:
+        return {"container": container_id, "src": host_src, "dst": host_dst}
 
-    if remove:
-        remove_container_node(old_id, container_id)
+    def move_list_containers(
+        self, host_src: Any, host_dst: Any, list_containers: Sequence[Any]
+    ) -> List[Dict[str, Any]]:
+        return [self.move_container(host_src, host_dst, cid) for cid in list_containers]
 
-    instance.df_indiv.loc[
-        instance.df_indiv[instance.indiv_field] == container_id,
-        [instance.host_field]
-    ] = node_id
+    # Helpers operating on time-series feasibility
+    def _time_horizon(self, df_indiv: pd.DataFrame, df_host_meta: pd.DataFrame, time_horizon: Optional[int]) -> int:
+        if time_horizon is not None:
+            return int(time_horizon)
+        # infer max length from first rows
+        f = self._f
+        c_first = _safe_first(df_indiv[f.metric].to_numpy())
+        if isinstance(c_first, (list, tuple, np.ndarray, pd.Series)):
+            return len(np.asarray(c_first))
+        h_first = _safe_first(df_host_meta[f.metric].to_numpy())
+        if isinstance(h_first, (list, tuple, np.ndarray, pd.Series)):
+            return len(np.asarray(h_first))
+        # fallback
+        return 1
 
+    def _capacity_for_host(self, host_row: pd.Series, T: int) -> np.ndarray:
+        cap = host_row[self._f.metric]
+        return _get_ts(cap, T)
 
-def remove_container_node(instance, node_id, container_id):
-    """Remove container from node.
+    def _demand_for_container(self, indiv_row: pd.Series, T: int) -> np.ndarray:
+        dem = indiv_row[self._f.metric]
+        return _get_ts(dem, T)
 
-    :param node_id: Node ID
-    :type node_id: str
-    :param container_id: Container ID
-    :type container_id: str
-    """
-    instance.df_host.loc[
-        instance.df_host[instance.host_field] == node_id, instance.metrics
-    ] = instance.df_host.loc[
-        instance.df_host[instance.host_field] == node_id, instance.metrics
-    ].to_numpy() - instance.df_indiv.loc[
-        instance.df_indiv[instance.indiv_field] == container_id, instance.metrics
-    ].to_numpy()
+    # Allocation strategies
+    def _group_by_labels(
+        self, labels: pd.Series, df_indiv: pd.DataFrame
+    ) -> Tuple[Dict[Any, List[Any]], List[Any]]:
+        """Return (label -> [container_id]), and ordered list of unique labels.
 
+        Labels can be:
+          - Series indexed by container ids
+          - Series aligned with df_indiv rows
+          - List/ndarray aligned with df_indiv rows
+        """
+        f = self._f
+        label_to_conts: Dict[Any, List[Any]] = {}
+        if isinstance(labels, pd.Series):
+            if set(labels.index) >= set(df_indiv[f.indiv]):
+                # index are container ids
+                for _, r in df_indiv.iterrows():
+                    cid = r[f.indiv]
+                    lab = labels.loc[cid]
+                    label_to_conts.setdefault(lab, []).append(cid)
+            else:
+                # align by order
+                for cid, lab in zip(df_indiv[f.indiv].tolist(), labels.to_numpy()):
+                    label_to_conts.setdefault(lab, []).append(cid)
+        else:
+            # list/ndarray
+            labs = np.asarray(labels)
+            for cid, lab in zip(df_indiv[f.indiv].tolist(), labs):
+                label_to_conts.setdefault(lab, []).append(cid)
 
-def free_full_nodes(instance, full_nodes, tick):
-    """Change the solution in order to satisfy node capacities.
+        uniq = list(label_to_conts.keys())
+        return label_to_conts, uniq
 
-    :param full_nodes: List of full nodes
-    :type full_nodes: List
-    :param tick: Progressing time tick
-    :type tick: int
-    """
-    for host in full_nodes:
-        stop = False
-        while not stop:
-            df_indiv_host = instance.df_indiv.loc[
-                (instance.df_indiv[instance.host_field] == host) & (
-                    instance.df_indiv[instance.tick_field] == tick
+    def allocation_distant_pairwise(
+        self,
+        df_indiv: pd.DataFrame,
+        df_host_meta: pd.DataFrame,
+        labels: pd.Series,
+        distance_mat: np.ndarray,
+        lower_bound: Optional[float] = None,
+    ) -> List[Dict[str, Any]]:
+        """Place containers by repeatedly picking the two **most distant** clusters
+        (based on `distance_mat`) and assigning their items in pairs onto hosts.
+
+        If a given pair cannot fit on any single host, we place them individually.
+        Any remaining items from an unmatched cluster are then *spread* individually.
+        """
+        f = self._f
+        T = self._time_horizon(df_indiv, df_host_meta, None)
+        moves: List[Dict[str, Any]] = []
+
+        # Host state
+        hosts = self._init_remaining(df_host_meta, T)
+        host_id_list = [h["id"] for h in hosts]
+        H = len(hosts)
+        if H == 0:
+            return moves
+        host_idx_cycle = 0  # emulate "first available node, then next"
+
+        # Current assignment (for src in move dicts)
+        current_host = self._current_host_map()
+
+        # Prepare per-container demand lookup
+        cid_to_demand: Dict[Any, np.ndarray] = {}
+        for _, r in df_indiv.iterrows():
+            cid_to_demand[r[f.indiv]] = self._demand_for_container(r, T)
+
+        # Group containers by cluster label
+        label_to_conts, labels_list = self._group_by_labels(labels, df_indiv)
+
+        # Map label -> position in distance matrix
+        # We assume `distance_mat` is indexed by the order of `labels_list`
+        L = len(labels_list)
+        if distance_mat.shape[0] != distance_mat.shape[1] or distance_mat.shape[0] != L:
+            # Try to reindex by sorted unique labels if mismatched
+            labels_list = sorted(labels_list)
+            L = len(labels_list)
+            if distance_mat.shape[0] != L:
+                raise ValueError(
+                    "distance_mat shape does not match number of unique labels"
                 )
-            ]
-            if df_indiv_host[instance.metrics[0]].sum() > (
-                instance.df_host_meta.loc[
-                    instance.df_host_meta[instance.host_field] == host
-                ][instance.metrics[0]].to_numpy()[0]
-            ):
-                moving_indiv = random.choice(
-                    df_indiv_host[instance.indiv_field].unique())
-                assign_indiv_available_host(
-                    moving_indiv, tick, tick,
-                    instance.df_indiv[instance.host_field].nunique())
+
+        # A mask of remaining labels (by index in labels_list)
+        remaining = set(range(L))
+
+        def _idx_of(label):
+            return labels_list.index(label)
+
+        def _try_place_on_host_pair(d_i: np.ndarray, d_j: np.ndarray) -> Optional[int]:
+            """Return host index if both demands fit together on some host, using cyclic scan."""
+            nonlocal host_idx_cycle
+            for k in range(H):
+                idx = (host_idx_cycle + k) % H
+                rem = hosts[idx]["remaining"]
+                if _fits(rem, d_i + d_j):
+                    return idx
+            return None
+
+        def _place_single(cid: Any) -> Optional[int]:
+            """Place a single container on first feasible host (cyclic)."""
+            nonlocal host_idx_cycle
+            d = cid_to_demand[cid]
+            for k in range(H):
+                idx = (host_idx_cycle + k) % H
+                rem = hosts[idx]["remaining"]
+                if _fits(rem, d):
+                    # commit
+                    src = current_host.get(cid, None)
+                    dst = hosts[idx]["id"]
+                    if src != dst:
+                        moves.append({"container": cid, "src": src, "dst": dst})
+                    hosts[idx]["remaining"] = rem - d
+                    host_idx_cycle = (idx + 1) % H
+                    return idx
+            return None  # not placed
+
+        def _place_pair(c_i: Any, c_j: Any) -> None:
+            """Try to put both on same host; else place individually."""
+            nonlocal host_idx_cycle
+            d_i = cid_to_demand[c_i]
+            d_j = cid_to_demand[c_j]
+            idx = _try_place_on_host_pair(d_i, d_j)
+            if idx is not None:
+                # commit both to host idx
+                src_i = current_host.get(c_i, None)
+                src_j = current_host.get(c_j, None)
+                dst = hosts[idx]["id"]
+                if src_i != dst:
+                    moves.append({"container": c_i, "src": src_i, "dst": dst})
+                if src_j != dst:
+                    moves.append({"container": c_j, "src": src_j, "dst": dst})
+                hosts[idx]["remaining"] = hosts[idx]["remaining"] - (d_i + d_j)
+                host_idx_cycle = (idx + 1) % H
             else:
-                stop = True
+                # place individually (best-effort)
+                _place_single(c_i)
+                _place_single(c_j)
 
+        # Process until no labels remain
+        while remaining:
+            if len(remaining) == 1:
+                # Only one cluster left: spread its containers individually
+                last_idx = next(iter(remaining))
+                last_label = labels_list[last_idx]
+                leftover = label_to_conts.get(last_label, [])
+                # Heaviest first can help
+                leftover.sort(key=lambda cid: float(np.max(cid_to_demand[cid])), reverse=True)
+                for cid in leftover:
+                    _place_single(cid)
+                remaining.clear()
+                break
 
-def assign_indiv_available_host(instance, indiv_id, tmin, tmax, nb_open_nodes):
-    """Assign the individual to first available host.
+            # Choose the two MOST distant clusters among remaining
+            # distance_mat is assumed to be symmetric, with NaN/diag ignored
+            best_pair = None
+            best_dist = -np.inf
+            rem_list = sorted(list(remaining))
+            for a in rem_list:
+                for b in rem_list:
+                    if a >= b:
+                        continue
+                    val = distance_mat[a, b]
+                    if np.isnan(val):
+                        continue
+                    if lower_bound is not None and val < lower_bound:
+                        continue
+                    if val > best_dist:
+                        best_dist = val
+                        best_pair = (a, b)
 
-    :param indiv_id: Container ID
-    :type indiv_id: str
-    :param tmin: Minimum window time
-    :type tmin: int
-    :param tmax: Maximum window time
-    :type tmax: int
-    :param nb_open_nodes: Number of open nodes
-    :type nb_open_nodes: int
-    """
-    print('Moving individual %s' % indiv_id)
-    cons_c = instance.df_indiv.loc[
-        (instance.df_indiv[instance.indiv_field] == indiv_id) & (
-            instance.df_indiv[instance.tick_field] >= tmin) & (
-            instance.df_indiv[instance.tick_field] <= tmax
+            if best_pair is None:
+                # No valid pair under lower_bound; just spread all remaining
+                for idx in rem_list:
+                    lab = labels_list[idx]
+                    conts = label_to_conts.get(lab, [])
+                    conts.sort(key=lambda cid: float(np.max(cid_to_demand[cid])), reverse=True)
+                    for cid in conts:
+                        _place_single(cid)
+                remaining.clear()
+                break
+
+            i_idx, j_idx = best_pair
+            label_i, label_j = labels_list[i_idx], labels_list[j_idx]
+            list_i = list(label_to_conts.get(label_i, []))
+            list_j = list(label_to_conts.get(label_j, []))
+
+            # Pairwise place
+            n_pairs = min(len(list_i), len(list_j))
+            for k in range(n_pairs):
+                _place_pair(list_i[k], list_j[k])
+
+            # Place any leftovers from the larger cluster
+            if len(list_i) > n_pairs:
+                rem_i = list_i[n_pairs:]
+                rem_i.sort(key=lambda cid: float(np.max(cid_to_demand[cid])), reverse=True)
+                for cid in rem_i:
+                    _place_single(cid)
+            if len(list_j) > n_pairs:
+                rem_j = list_j[n_pairs:]
+                rem_j.sort(key=lambda cid: float(np.max(cid_to_demand[cid])), reverse=True)
+                for cid in rem_j:
+                    _place_single(cid)
+
+            # Mark these two clusters as processed
+            remaining.discard(i_idx)
+            remaining.discard(j_idx)
+
+        return moves
+
+    def allocation_ffd(
+        self,
+        df_indiv: pd.DataFrame,
+        df_host_meta: pd.DataFrame,
+        time_horizon: Optional[int] = None,
+    ) -> List[Dict[str, Any]]:
+        """First-Fit Decreasing across time-series capacity.
+
+        Sort containers by descending peak demand; assign to first host whose
+        remaining timeline supports the entire demand.
+        """
+        f = self._f
+        T = self._time_horizon(df_indiv, df_host_meta, time_horizon)
+
+        # hosts state: remaining capacity per host over time
+        hosts = []
+        for _, h in df_host_meta.iterrows():
+            hid = h[f.host]
+            rem = self._capacity_for_host(h, T).copy()
+            hosts.append({"id": hid, "remaining": rem})
+        host_ids = [h["id"] for h in hosts]
+
+        # index current host per container
+        current_host = {
+            r[f.indiv]: r[f.host] for _, r in self.instance.df_indiv.iterrows()
+        }
+
+        # sort containers by descending total demand (or max)
+        items: List[Tuple[Any, np.ndarray]] = []
+        for _, r in df_indiv.iterrows():
+            cid = r[f.indiv]
+            d = self._demand_for_container(r, T)
+            items.append((cid, d))
+        items.sort(key=lambda x: (float(np.max(x[1])), float(np.sum(x[1]))), reverse=True)
+
+        moves: List[Dict[str, Any]] = []
+        for cid, demand in items:
+            placed = False
+            for h in hosts:
+                if _fits(h["remaining"], demand):
+                    src = current_host.get(cid, None)
+                    dst = h["id"]
+                    if src != dst:
+                        moves.append({"container": cid, "src": src, "dst": dst})
+                    h["remaining"] = h["remaining"] - demand
+                    placed = True
+                    break
+            if not placed:
+                # not placeable with current hosts – leave as is (no move)
+                pass
+
+        return moves
+
+    def allocation_spread(
+        self,
+        df_indiv: pd.DataFrame,
+        df_host_meta: pd.DataFrame,
+        labels: Optional[pd.Series] = None,
+    ) -> List[Dict[str, Any]]:
+        """Greedy spread: try to reduce peak usage by moving heavy containers
+        off the most loaded hosts to the least loaded feasible ones."""
+        f = self._f
+        # Reuse FFD notion of remaining by reconstructing from scratch
+        T = self._time_horizon(df_indiv, df_host_meta, None)
+
+        # compute total demand per container
+        indiv_dem = {
+            r[f.indiv]: self._demand_for_container(r, T) for _, r in df_indiv.iterrows()
+        }
+
+        # compute host remaining given current placement
+        # start from full capacity
+        host_remaining: Dict[Any, np.ndarray] = {}
+        for _, h in df_host_meta.iterrows():
+            host_remaining[h[f.host]] = self._capacity_for_host(h, T)
+
+        # subtract each container currently assigned
+        for _, r in self.instance.df_indiv.iterrows():
+            hid = r[f.host]
+            cid = r[f.indiv]
+            d = indiv_dem.get(cid)
+            if d is None:
+                d = self._demand_for_container(r, T)
+            host_remaining[hid] = host_remaining[hid] - d
+
+        # order hosts by current peak usage (lowest remaining)
+        hosts_sorted = sorted(
+            host_remaining.items(), key=lambda kv: float(np.min(kv[1]))
         )
-    ][instance.metrics[0]].to_numpy()
 
-    n = 0
-    checked_nodes = 1
-    done = False
-    while not done:
-        # TODO check n <= min_nodes or infeasibility
-        cap_node = instance.df_host_meta.loc[
-            instance.
-            df_host_meta[instance.host_field] == instance.dict_id_n[n]
-        ][instance.metrics[0]].to_numpy()[0]
-        conso_node = instance.df_indiv.loc[
-            (instance.df_indiv[instance.host_field] == (
-                instance.dict_id_n[n])) & (
-                instance.df_indiv[instance.tick_field] >= tmin) & (
-                instance.df_indiv[instance.tick_field] <= tmax
-            )
-        ][instance.metrics[0]].sum()
-        if np.all(np.less((conso_node + cons_c), cap_node)):
-            conso_node += cons_c
-            done = True
-            assign_container_node(
-                instance.dict_id_n[n], indiv_id)
-        else:
-            checked_nodes += 1
-            n = (n + 1) % nb_open_nodes
-            if checked_nodes > nb_open_nodes:
-                print('Impossible to move %s on another existing node.' %
-                      indiv_id)
-                if (instance.dict_id_n[checked_nodes] in
-                    instance.df_host_meta[instance.host_field].unique()) & (
-                        np.all(np.less(cons_c, cap_node))):
-                    print('We can open node %s' %
-                          (instance.dict_id_n[checked_nodes]))
-                    assign_container_node(
-                        instance.dict_id_n[checked_nodes], indiv_id)
-                    done = True
-                else:
-                    raise RuntimeError('No node to welcome %s' % indiv_id)
-                # find_substitution(indiv_id, tmin, tmax)
-
-
-def assign_indiv_initial_placement(
-        instance, indiv_id, tmin, tmax, conso_nodes, min_nodes, n=0
-):
-    """Assign indiv in node during first heuristic.
-
-    :param indiv_id: Container ID
-    :type indiv_id: str
-    :param tmin: Minimum window time
-    :type tmin: int
-    :param tmax: Maximum window time
-    :type tmax: int
-    :param conso_nodes: Nodes data
-    :type conso_nodes: List
-    :param min_nodes: Minimum number of nodes to use
-    :type min_nodes: int
-    :param n: Current node index, defaults to 0
-    :type n: int, optional
-    :return: Container has been assigned
-    :rtype: bool
-    """
-    cons_c = instance.df_indiv.loc[
-        (instance.df_indiv[instance.indiv_field] == indiv_id) & (
-            instance.df_indiv[instance.tick_field] >= tmin) & (
-            instance.df_indiv[instance.tick_field] <= tmax
-        )
-    ][instance.metrics[0]].to_numpy()
-    checked_nodes = 1
-    done = False
-    while not done:
-        cap_node = instance.df_host_meta.loc[
-            instance.
-            df_host_meta[instance.host_field] == instance.dict_id_n[n]
-        ][instance.metrics[0]].to_numpy()[0]
-        if np.all(np.less(
-                (conso_nodes[n] + cons_c), cap_node)):
-            conso_nodes[n] += cons_c
-            assign_container_node(
-                instance.dict_id_n[n],
-                indiv_id
-            )
-            done = True
-        else:
-            checked_nodes += 1
-            if checked_nodes >= min_nodes:
-                print('Impossible to move %s on another existing node.' %
-                      indiv_id)
-                if (instance.dict_id_n[checked_nodes] in
-                    instance.df_host_meta[instance.host_field].unique()) & (
-                        np.all(np.less(cons_c, cap_node))):
-                    print('We can open node %s' %
-                          (instance.dict_id_n[checked_nodes]))
-                    min_nodes += 1
-                    assign_container_node(
-                        instance.dict_id_n[checked_nodes],
-                        indiv_id
-                    )
-                    done = True
-            else:
-                n = (n + 1) % min_nodes
-            cap_node = instance.df_host_meta.loc[
-                instance.
-                df_host_meta[instance.host_field] == instance.dict_id_n[n]
-            ][instance.metrics[0]].to_numpy()[0]
-    return done
-
-
-def find_substitution(instance, indiv_id, tmin, tmax):
-    """Find a node in which we can place indiv_id by moving another indiv.
-
-    :param indiv_id: Container ID
-    :type indiv_id: str
-    :param tmin: Minimum window time
-    :type tmin: int
-    :param tmax: Maximum window time
-    :type tmax: int
-    """
-    # TODO not fully functionnal
-    cons_c = instance.df_indiv.loc[
-        (instance.df_indiv[instance.indiv_field] == indiv_id) & (
-            instance.df_indiv[instance.tick_field] >= tmin) & (
-            instance.df_indiv[instance.tick_field] <= tmax
-        )
-    ][instance.metrics[0]].to_numpy()
-
-    n = 0
-    checked_nodes = 1
-    done = False
-    while not done:
-        conso_node = instance.df_indiv.loc[
-            (instance.df_indiv[instance.host_field] == (
-                instance.dict_id_n[n]) & (
-                    instance.df_indiv[instance.tick_field] >= tmin) & (
-                    instance.df_indiv[instance.tick_field] <= tmax))
-        ][instance.metrics[0]].sum()
-        cap_node = instance.df_host_meta.loc[
-            instance.
-            df_host_meta[instance.host_field] == instance.dict_id_n[n]
-        ][instance.metrics[0]].to_numpy()[0]
-        moving_indiv = random.choice(
-            instance.df_indiv.loc[
-                (instance.df_indiv[instance.host_field] == (
-                    instance.dict_id_n[n]))
-            ][instance.indiv_field].unique())
-        conso_indiv = instance.df_indiv.loc[
-            (instance.df_indiv[instance.indiv_field] == moving_indiv) & (
-                instance.df_indiv[instance.tick_field] >= tmin) & (
-                instance.df_indiv[instance.tick_field] <= tmax)
-        ][instance.metrics[0]].to_numpy()
-        if np.all(np.less((conso_node - conso_indiv + cons_c), cap_node)):
-            done = True
-            assign_container_node(
-                instance.dict_id_n[n], indiv_id)
-            assign_indiv_available_host(moving_indiv, tmin, tmax)
-        else:
-            checked_nodes += 1
-            n = (n + 1) % instance.nb_nodes
-            if checked_nodes > instance.nb_nodes:
-                raise RuntimeError('No node to welcome %s' % indiv_id)
-
-
-def spread_containers_new(instance, list_containers, conso_nodes, total_time, min_nodes):
-    """Propose an alternative to spread technique.
-
-    :param list_containers: List of containers
-    :type list_containers: List
-    :param conso_nodes: Nodes data
-    :type conso_nodes: np.array
-    :param total_time: Total duration
-    :type total_time: int
-    :param min_nodes: Minimum number of nodes to use
-    :type min_nodes: int
-    """
-    df_indiv = instance.df_indiv
-    df_host_meta = instance.df_host_meta
-    dict_id_n = instance.dict_id_n
-    host_field = instance.host_field
-    indiv_field = instance.indiv_field
-    metrics_0 = instance.metrics[0]
-    # tick_field_min = instance.df_indiv[instance.tick_field].min()
-
-    n = 0
-    checked_nodes = 1
-
-    for c in list_containers:
-        indiv_c = c
-        cons_c = df_indiv[df_indiv[indiv_field] == indiv_c
-                          ][metrics_0].to_numpy()[:total_time]
-        cap_node = df_host_meta[df_host_meta[host_field] == dict_id_n[n]
-                                ][metrics_0].to_numpy()[0]
-        done = False
-
-        while not done:
-            if np.less(conso_nodes[n] + cons_c, cap_node).all():
-                conso_nodes[n] += cons_c
-                assign_container_node(dict_id_n[n], indiv_c)
-                done = True
-            else:
-                checked_nodes += 1
-                if checked_nodes > min_nodes:
-                    min_nodes += 1
-                    checked_nodes = 1
-                n = (n + 1) % min_nodes
-                cap_node = df_host_meta[
-                    df_host_meta[host_field] == dict_id_n[n]
-                ][metrics_0].to_numpy()[0]
-
-        n = (n + 1) % min_nodes
-
-    return n
-
-
-def spread_containers(
-        instance, list_containers, conso_nodes, total_time, min_nodes
-):
-    """Spread containers from list_containers into nodes.
-
-    :param list_containers: List of containers
-    :type list_containers: List
-    :param conso_nodes: Nodes data
-    :type conso_nodes: np.array
-    :param total_time: Total duration
-    :type total_time: int
-    :param min_nodes: Minimum number of nodes to use
-    :type min_nodes: int
-    """
-    n = 0
-    for c in list_containers:
-        cons_c = instance.df_indiv.loc[
-            instance.df_indiv[instance.indiv_field] == c
-        ][instance.metrics[0]].to_numpy()[:total_time]
-        cap_node = instance.df_host_meta.loc[
-            instance.
-            df_host_meta[instance.host_field] == instance.dict_id_n[n]
-        ][instance.metrics[0]].to_numpy()[0]
-        checked_nodes = 1
-        done = False
-        while not done:
-            # TODO check n <= min_nodes or infeasibility
-            if np.all(np.less((conso_nodes[n] + cons_c), cap_node)):
-                conso_nodes[n] += cons_c
-                done = True
-                assign_container_node(
-                    instance.dict_id_n[n], c)
-            else:
-                checked_nodes += 1
-                if checked_nodes > min_nodes:
-                    min_nodes += 1
-                    checked_nodes = 1
-                n = (n + 1) % min_nodes
-                cap_node = instance.df_host_meta.loc[
-                    instance.
-                    df_host_meta[instance.host_field] == instance.dict_id_n[n]
-                ][instance.metrics[0]].to_numpy()[0]
-        n = (n + 1) % min_nodes
-
-
-def colocalize_clusters(
-        instance, list_containers_i, list_containers_j, containers_grouped,
-        total_time, min_nodes, conso_nodes, n=0
-):
-    """Allocate containers of 2 clusters grouping by pairs.
-
-    :param list_containers_i: Containers list for 1st cluster
-    :type list_containers_i: List
-    :param list_containers_j: Containers list for 2nd cluster
-    :type list_containers_j: List
-    :param containers_grouped: List of containers colocalized
-    :type containers_grouped: List
-    :param total_time: Total duration
-    :type total_time: int
-    :param min_nodes: Minimum number of nodes to use
-    :type min_nodes: int
-    :param conso_nodes: Nodes data
-    :type conso_nodes: List
-    :param n: Current node index, defaults to 0
-    :type n: int, optional
-    :return: Remaing containers to assign
-    :rtype: int
-    """
-    for c in range(min(len(list_containers_i),
-                       len(list_containers_j))):
-        # allocate 2 containers !! TODO
-        cons_i = instance.df_indiv.loc[
-            instance.
-            df_indiv[instance.indiv_field] == list_containers_i[c]
-        ][instance.metrics[0]].to_numpy()[:total_time]
-        cons_j = instance.df_indiv.loc[
-            instance.
-            df_indiv[instance.indiv_field] == list_containers_j[c]
-        ][instance.metrics[0]].to_numpy()[:total_time]
-
-        cap_node = instance.df_host_meta.loc[
-            instance.
-            df_host_meta[instance.host_field] == instance.dict_id_n[n]
-        ][instance.metrics[0]].to_numpy()[0]
-        i_n = 0
-        if not np.all(np.less(
-                cons_i + cons_j, cap_node)):
-            # If indivs i & j can't fit together : split them
-            if not assign_indiv_initial_placement(
-                    list_containers_i[c],
-                    instance.df_indiv[instance.tick_field].min(),
-                    total_time - 1,
-                    conso_nodes, min_nodes, n):
-                raise RuntimeError('No node to welcome %s' %
-                                   list_containers_i[c])
-            n = (n + 1) % min_nodes
-            if not assign_indiv_initial_placement(
-                    list_containers_j[c],
-                    instance.df_indiv[instance.tick_field].min(),
-                    total_time - 1,
-                    conso_nodes, min_nodes, n):
-                raise RuntimeError('No node to welcome %s' %
-                                   list_containers_j[c])
-
-        else:
-            # Indivs i & j could fit together
-            done = False
-            while not done:
-                if np.all(np.less(
-                        (conso_nodes[n] + cons_i + cons_j), cap_node)):
-                    conso_nodes[n] += cons_i + cons_j
-                    assign_container_node(
-                        instance.dict_id_n[n],
-                        list_containers_i[c]
-                    )
-                    assign_container_node(
-                        instance.dict_id_n[n],
-                        list_containers_j[c]
-                    )
-                    containers_grouped.append([
-                        list_containers_i[c], list_containers_j[c]])
-                    done = True
-                else:
-                    i_n += 1
-                    if i_n >= min_nodes:
-                        min_nodes += 1
-                        n = i_n
-                    else:
-                        n = (n + 1) % min_nodes
-                    cap_node = instance.df_host_meta.loc[
-                        instance.
-                        df_host_meta[instance.host_field] == (
-                            instance.dict_id_n[n])
-                    ][instance.metrics[0]].to_numpy()[0]
-            n = (n + 1) % min_nodes
-    return c
-
-
-def colocalize_clusters_new(
-        instance, list_containers_i, list_containers_j, containers_grouped,
-        total_time, min_nodes, conso_nodes, n=0
-):
-    """Allocate containers of 2 clusters grouping by pairs.
-
-    :param list_containers_i: Containers list for 1st cluster
-    :type list_containers_i: List
-    :param list_containers_j: Containers list for 2nd cluster
-    :type list_containers_j: List
-    :param containers_grouped: List of containers colocalized
-    :type containers_grouped: List
-    :param total_time: Total duration
-    :type total_time: int
-    :param min_nodes: Minimum number of nodes to use
-    :type min_nodes: int
-    :param conso_nodes: Nodes data
-    :type conso_nodes: List
-    :param n: Current node index, defaults to 0
-    :type n: int, optional
-    :return: Remaing containers to assign
-    :rtype: int
-    """
-    df_indiv = instance.df_indiv
-    df_host_meta = instance.df_host_meta
-    dict_id_n = instance.dict_id_n
-
-    for c in range(min(len(list_containers_i), len(list_containers_j))):
-        indiv_i = list_containers_i[c]
-        indiv_j = list_containers_j[c]
-
-        cons_i = df_indiv.loc[
-            df_indiv[instance.indiv_field] == indiv_i
-        ][instance.metrics[0]].to_numpy()[:total_time]
-        cons_j = df_indiv.loc[
-            df_indiv[instance.indiv_field] == indiv_j
-        ][instance.metrics[0]].to_numpy()[:total_time]
-
-        host_field_n = dict_id_n[n]
-        cap_node = df_host_meta.loc[
-            df_host_meta[instance.host_field] == host_field_n
-        ][instance.metrics[0]].to_numpy()[0]
-
-        if not np.all(np.less(cons_i + cons_j, cap_node)):
-            # If indivs i & j can't fit together: split them
-            # start = time.time()
-            if not assign_indiv_initial_placement(
-                indiv_i, df_indiv[instance.tick_field].min(),
-                total_time - 1, conso_nodes, min_nodes, n
-            ):
-                raise RuntimeError('No node to welcome %s' % indiv_i)
-            n = (n + 1) % min_nodes
-            if not assign_indiv_initial_placement(
-                indiv_j, df_indiv[instance.tick_field].min(),
-                total_time - 1, conso_nodes, min_nodes, n
-            ):
-                raise RuntimeError('No node to welcome %s' % indiv_j)
-        else:
-            # Indivs i & j could fit together
-            done = False
-            while not done:
-                if np.all(np.less(conso_nodes[n] + cons_i + cons_j, cap_node)):
-                    conso_nodes[n] += cons_i + cons_j
-                    assign_container_node(dict_id_n[n], indiv_i)
-                    assign_container_node(dict_id_n[n], indiv_j)
-                    containers_grouped.append([indiv_i, indiv_j])
-                    done = True
-                else:
-                    n = (n + 1) % min_nodes
-                    if n >= min_nodes:
-                        min_nodes += 1
-                    cap_node = df_host_meta.loc[
-                        df_host_meta[instance.host_field] == dict_id_n[n]
-                    ][instance.metrics[0]].to_numpy()[0]
-            n = (n + 1) % min_nodes
-    return c
-
-
-def allocation_distant_pairwise(
-        instance, cluster_var_matrix, labels_, nb_nodes=None, lb=0.0
-):
-    """First placement heuristic implemented.
-
-    Idea : take two most distant clusters
-    (from their mean profile), and assign by pair (one container from each
-    cluster) on the first available node, and so on. Take the following node if
-    current one has not enough resources.
-    Return a list of containers forced to be grouped together.
-
-    :param cluster_var_matrix: Clusters variance matrix
-    :type cluster_var_matrix: np.array
-    :param labels_: Clustering result
-    :type labels_: List
-    :param nb_nodes: Numbers of nodes, defaults to None
-    :type nb_nodes: int, optional
-    :param lb: Precision threshold, defaults to 0.0
-    :type lb: float, optional
-    """
-    print('Beginning of allocation ...')
-    stop = False
-
-    total_time = instance.sep_time
-    min_nodes = nb_nodes or nb_min_nodes()
-    conso_nodes = np.zeros((instance.nb_nodes, total_time))
-    n = 0
-
-    cluster_var_matrix_copy = np.copy(cluster_var_matrix)
-    clusters_done_ = np.zeros(instance.nb_clusters, dtype=int)
-    c_it = instance.nb_clusters
-
-    containers_grouped = []
-
-    while not stop:
-        # no cluster remaining -> stop allocation
-        if (c_it == 0):
-            stop = True
-            break
-
-        # 1 cluster remaining -> spread it TODO
-        elif (c_it == 1):
-            c = np.where(clusters_done_ == 0)[0][0]
-            list_containers = [
-                instance.dict_id_c[u] for u, value in enumerate(
-                    labels_) if value == c
-            ]
-            spread_containers(list_containers, conso_nodes,
-                              total_time, min_nodes)
-            stop = True
-
-        # > 1 cluster remaining -> co-localize 2 more distant
-        else:
-            valid_idx = np.where(cluster_var_matrix_copy.flatten() >= lb)[0]
-            min_idx = valid_idx[cluster_var_matrix_copy.flatten()[
-                valid_idx].argmin()]
-            i, j = np.unravel_index(
-                min_idx, cluster_var_matrix_copy.shape)
-            list_containers_i = [
-                instance.dict_id_c[u] for u, value in
-                enumerate(labels_) if value == i]
-            list_containers_j = [
-                instance.dict_id_c[u] for u, value in
-                enumerate(labels_) if value == j]
-            it_cont = colocalize_clusters(list_containers_i, list_containers_j,
-                                          containers_grouped, total_time,
-                                          min_nodes, conso_nodes, n)
-            # TODO factorization of container allocation
-            if not (len(list_containers_i) == len(list_containers_j)):
-                # we have to place remaining containers
-                it_cont += 1
-                if it_cont < len(list_containers_j):
-                    list_containers = list_containers_j[it_cont:]
-                    spread_containers(list_containers, conso_nodes,
-                                      total_time, min_nodes)
-
-                elif it_cont < len(list_containers_i):
-                    list_containers = list_containers_i[it_cont:]
-                    spread_containers(list_containers, conso_nodes,
-                                      total_time, min_nodes)
-
-            cluster_var_matrix_copy[i, :] = -1.0
-            cluster_var_matrix_copy[:, i] = -1.0
-            cluster_var_matrix_copy[j, :] = -1.0
-            cluster_var_matrix_copy[:, j] = -1.0
-            clusters_done_[i] = 1
-            clusters_done_[j] = 1
-            c_it = c_it - 2
-
-
-def allocation_ffd(
-        instance, cluster_vars, cluster_var_matrix, labels_
-):
-    """Second placement heuristic.
-
-    Idea (based on "first-fit decreasing" bin-packing
-    heuristic) : order clusters by decreasing variance, place all containers
-    belonging to the clusters in this order.
-    For each container, try to place it on a node decreasing the node's
-    variance. If not possible, place it on the node whose variance increases
-    the least.
-
-    :param cluster_vars: List of clusters variance
-    :type cluster_vars: np.array
-    :param cluster_var_matrix: Clusters variance matrix
-    :type cluster_var_matrix: np.array
-    :param labels_: Clustering result
-    :type labels_: List
-    """
-    # TODO add open-nodes system (to run through open nodes only, and open a
-    # new one when needed / with criterion)
-
-    total_time = instance.sep_time
-
-    # find minimum number of nodes needed
-    min_nodes = nb_min_nodes()
-
-    idx_cluster_vars = np.argsort(cluster_vars)[::-1]
-    conso_nodes = np.zeros((min_nodes, total_time))
-
-    # try to place "opposite clusters" first
-    conso_nodes, cluster_done = place_opposite_clusters(
-        cluster_var_matrix, labels_,
-        min_nodes, conso_nodes)
-
-    nodes_vars = conso_nodes.var(axis=1)
-    idx_nodes_vars = np.argsort(nodes_vars)[::-1]
-
-    # We browse the clusters by variance decreasing
-    for i in range(instance.nb_clusters):
-        # check if cluster i has not be placed in init
-        if not cluster_done[idx_cluster_vars[i]]:
-            list_containers = [
-                instance.dict_id_c[j] for j, value in enumerate(
-                    labels_) if value == idx_cluster_vars[i]
-            ]
-
-            # We browse containers in cluster i
-            for container in list_containers:
-                consu_cont = instance.df_indiv.loc[
-                    instance.
-                    df_indiv[instance.indiv_field] == container
-                ][instance.metrics[0]].to_numpy()[:total_time]
-                idx_node = 0
-                min_var = math.inf
-                idx_min_var = -1
-                assign_container = 0
-
-                # we run through already open nodes
-                for idx_node in idx_nodes_vars:
-                    cap_node = instance.df_host_meta.loc[
-                        instance.
-                        df_host_meta[instance.host_field] == (
-                            instance.dict_id_n[idx_node])
-                    ][instance.metrics[0]].to_numpy()[0]
-                    new_var = (
-                        conso_nodes[idx_node] + consu_cont).var()
-
-                    # here we drop the node variance => ok
-                    if (new_var <= nodes_vars[idx_node]) and np.all(
-                        np.less(
-                            (conso_nodes[idx_node] + consu_cont), cap_node)):
-
-                        assign_container = idx_node + 1
-                        break
-
-                    # looking for the node variance grows the least
-                    else:
-                        if (new_var < min_var) and np.all(
-                            np.less(
-                                (conso_nodes[idx_node] + consu_cont),
-                                cap_node)):
-                            min_var = new_var
-                            idx_min_var = idx_node
-
-                if not assign_container:
-                    if min_var < math.inf:
-                        assign_container = idx_min_var + 1
-                    # TODO here criterion for opening new node
-                    # if criterion : open node
-                    # we open a new node
-                    else:
-                        print('Critic open new node !')
-                        idx_node += 1
-                    # TODO test nb_open nodes for feasability (raise error)
-
-                # Finally we assign the container
-                assign_container = assign_container - 1
-                conso_nodes[assign_container] += consu_cont
-                nodes_vars[assign_container
-                           ] = conso_nodes[assign_container].var()
-                idx_nodes_vars = np.argsort(nodes_vars)[::-1]
-                assign_container_node(
-                    instance.dict_id_n[assign_container], container)
-
-
-def allocation_spread(instance, min_nodes=None):
-    """Spread technique for placement.
-
-    :param min_nodes: Minimum number of nodes to use, defaults to None
-    :type min_nodes: int, optional
-    """
-    total_time = instance.sep_time
-    min_nodes = min_nodes or nb_min_nodes()
-    conso_nodes = np.zeros((instance.nb_nodes, total_time))
-    spread_containers(
-        instance.df_indiv[instance.indiv_field].unique(),
-        conso_nodes, total_time, min_nodes
-    )
-
-
-# TODO consider 85% usage now ? maybe add parameter
-# TODO make it generic with metrics
-def nb_min_nodes(instance, ):
-    """Compute the minimum number of nodes needed to support the load.
-
-    :return: Minimum number of nodes to use
-    :rtype: float
-    """
-    # TODO consider nodes with different capacities
-    # cap_cpu = instance.df_host_meta[instance.metrics[0]].to_numpy()[0]
-    # cap_mem = instance.df_host_meta['mem'].to_numpy()[0]
-    # min_nodes_cpu = math.ceil(max_cpu / cap_cpu)
-    # min_nodes_mem = math.ceil(max_mem / cap_mem)
-    # return max(min_nodes_cpu, min_nodes_mem)
-
-    max_metric = 0.0
-    for t in instance.working_df_indiv[instance.tick_field].unique():
-        max_t_metric = instance.working_df_indiv[
-            instance.working_df_indiv[instance.tick_field] == t
-        ][instance.metrics[0]].sum()
-        if max_t_metric > max_metric:
-            max_metric = max_t_metric
-
-    cap_metric = instance.df_host_meta[instance.metrics[0]].to_numpy()[0]
-    return (math.ceil(max_metric / cap_metric))
-
-
-# TODO integrate upper bound for considering all clusters sum variance < ub
-def place_opposite_clusters(
-        instance, cluster_var_matrix, labels_, min_nodes, conso_nodes
-):
-    """Initialize allocation heuristic by co-localizing distant clusters.
-
-    :param cluster_var_matrix: Clustering variance matrix
-    :type cluster_var_matrix: np.array
-    :param labels_: Clustering result
-    :type labels_: List
-    :param min_nodes: Minimum number of nodes to use
-    :type min_nodes: int
-    :param conso_nodes: Nodes data
-    :type conso_nodes: np.array
-    :return: Nodes data and clusters considered for placement
-    :rtype: Tuple[np.array, np.array]
-    """
-    total_time = instance.sep_time
-    lb = 0.0
-    valid_idx = np.where(cluster_var_matrix.flatten() > lb)[0]
-    min_idx = valid_idx[cluster_var_matrix.flatten()[valid_idx].argmin()]
-    i, j = np.unravel_index(
-        min_idx, cluster_var_matrix.shape)
-    cluster_done = np.zeros(instance.nb_clusters)
-
-    list_containers_i = [instance.dict_id_c[u] for u, value in enumerate(
-        labels_) if value == i]
-    list_containers_j = [instance.dict_id_c[u] for u, value in enumerate(
-        labels_) if value == j]
-
-    it_cont = colocalize_clusters(list_containers_i, list_containers_j,
-                                  total_time, min_nodes,
-                                  conso_nodes)
-
-    if not (len(list_containers_i) == len(list_containers_j)):
-        # we have to place remaining containers
-
-        if it_cont < len(list_containers_j):
-            list_containers = list_containers_j[it_cont:]
-            spread_containers(list_containers, conso_nodes,
-                              total_time, min_nodes)
-
-        elif it_cont < len(list_containers_i):
-            list_containers = list_containers_i[it_cont:]
-            spread_containers(list_containers, conso_nodes,
-                              total_time, min_nodes)
-
-    cluster_done[i] = 1
-    cluster_done[j] = 1
-    return conso_nodes, cluster_done
-
-
-def move_list_containers(instance, mvg_conts, tmin, tmax, order='max'):
-    """Move the list of containers to move.
-
-    :param mvg_conts: Containers to move list
-    :type mvg_conts: List
-    :param tmin: Minimum window time
-    :type tmin: int
-    :param tmax: Maximum window time
-    :type tmax: int
-    :param order: Order to consider the list, defaults to 'max'
-    :type order: str, optional
-    :return: Effective moved containers list
-    :rtype: List
-    """
-    # Remove all moving containers from nodes first
-    moves_list = []
-    old_ids = {}
-    for mvg_cont in mvg_conts:
-        old_ids[mvg_cont] = instance.df_indiv.loc[
-            instance.df_indiv[instance.indiv_field] == (
-                instance.dict_id_c[mvg_cont])
-        ][instance.host_field].to_numpy()[0]
-        remove_container_node(
-            old_ids[mvg_cont], instance.dict_id_c[mvg_cont])
-    # TODO developp smart method for replace containers (based on clustering)
-    # Assign them to a new node
-    mvg_conts_cons = {}
-    for mvg_cont in mvg_conts:
-        mvg_conts_cons[mvg_cont] = instance.df_indiv.loc[
-            instance.df_indiv[instance.indiv_field] == (
-                instance.dict_id_c[mvg_cont])
-        ][instance.metrics[0]].to_numpy()
-    order_indivs = ()
-    if order == 'max':
-        order_indivs = ((max(cons), c) for c, cons in mvg_conts_cons.items())
-    elif order == 'mean':
-        order_indivs = (
-            (sum(cons) / len(cons), c) for c, cons in mvg_conts_cons.items()
-        )
-    for val, mvg_cont in sorted(order_indivs, reverse=True):
-        move_container(mvg_cont, tmin, tmax, old_ids[mvg_cont], moves_list)
-
-    return moves_list
-
-
-# TODO what to do if can't open another node
-def move_container(instance, mvg_cont, tmin, tmax, old_id, moves_list):
-    """Move `mvg_cont` to another node.
-
-    :param mvg_cont: Container index to move
-    :type mvg_cont: int
-    :param tmin: Minimum window time
-    :type tmin: int
-    :param tmax: Maximum window time
-    :type tmax: int
-    :param old_id: Old node ID
-    :type old_id: str
-    :param moves_list: Effective moved containers list
-    :type moves_list: List
-    """
-    print('Moving container :', instance.dict_id_c[mvg_cont])
-    working_df_indiv = instance.df_indiv[
-        (instance.
-         df_indiv[instance.tick_field] >= tmin) & (
-            instance.df_indiv[instance.tick_field] <= tmax)]
-    nb_open_nodes = working_df_indiv[instance.host_field].nunique()
-    cons_c = working_df_indiv.loc[
-        working_df_indiv[
-            instance.indiv_field] == instance.dict_id_c[mvg_cont]
-    ][instance.metrics[0]].to_numpy()
-    n = working_df_indiv.loc[
-        working_df_indiv[
-            instance.indiv_field] == instance.dict_id_c[mvg_cont]
-    ][instance.host_field].to_numpy()[0]
-    cap_node = instance.df_host_meta.loc[
-        instance.df_host_meta[instance.host_field] == n
-    ][instance.metrics[0]].to_numpy()[0]
-    nodes = working_df_indiv[instance.host_field].unique()
-    n_int = 0
-    new_n = None
-    min_var = float('inf')
-    for node in nodes:
-        node_data = instance.df_host.loc[
-            (instance.df_host[instance.tick_field] >= tmin) & (
-                instance.df_host[instance.tick_field] <= tmax) & (
-                instance.df_host[instance.host_field] == node
-            )
-        ].groupby(
-            instance.df_host[instance.tick_field]
-        )[instance.metrics[0]].sum().to_numpy()
-        if (np.all(np.less((node_data + cons_c), cap_node))) and (
-                (node_data + cons_c).var() < min_var):
-            new_n = node
-            min_var = (node_data + cons_c).var()
-        n_int += 1
-    if new_n is None:
-        print('Impossible to move %s on another existing node.' %
-              instance.dict_id_c[mvg_cont])
-        print('We need to open a new node')
-        nb_open_nodes += 1
-        n_int += 1
-        new_n = instance.dict_id_n[n_int]
-
-    assign_container_node(
-        new_n,
-        instance.dict_id_c[mvg_cont],
-        remove=False)
-
-    # n = working_df_indiv.loc[
-    #     working_df_indiv[
-    #         instance.indiv_field] == instance.dict_id_c[mvg_cont]
-    # ][instance.host_field].to_numpy()[0]
-    # print(working_df_indiv.loc[
-    #     working_df_indiv[
-    #         instance.indiv_field] == instance.dict_id_c[mvg_cont]
-    # ][instance.host_field].to_numpy()[0])
-    # input()
-    # n_int = ([k for k, v in instance.
-    #           dict_id_n.items() if v == n][0] + 1) % nb_open_nodes
-    # print('He was on %s' % n)
-    # done = False
-    # n_count = 1
-    # while not done:
-    #     # TODO check n <= min_nodes or infeasibility
-    #     if np.all(np.less((conso_nodes[n_int] + cons_c), cap_node)):
-    #         assign_container_node(
-    #             instance.dict_id_n[n_int],
-    #             instance.dict_id_c[mvg_cont],
-    #         )
-    #         done = True
-    #     else:
-    #         n_count += 1
-    #         if n_count > nb_open_nodes:
-    #             print('We need to open a new node')
-    #             nb_open_nodes += 1
-    #             conso_nodes = np.append(
-    #                 conso_nodes, [np.zeros(duration)], axis=0)
-    #             n_int = nb_open_nodes - 1
-    #         else:
-    #             n_int = (n_int + 1) % nb_open_nodes
-    #         cap_node = instance.df_host_meta.loc[
-    #             instance.
-    #             df_host_meta[instance.host_field] ==
-    #               instance.dict_id_n[n_int]
-    #         ][instance.metrics[0]].to_numpy()[0]
-    print('He can go on %s (old is %s)' % (new_n, old_id))
-    if new_n != old_id:
-        moves_list.append({
-            'container_name': instance.dict_id_c[mvg_cont],
-            'old_host': old_id,
-            'new_host': new_n
-        })
-
-
-def build_placement_adj_matrix(instance, df_indiv, dict_id_c):
-    """Build the adjacency matrix of placement.
-
-    :param df_indiv: Containers data
-    :type df_indiv: pd.DataFrame
-    :param dict_id_c: Mapping dict container ID / numerical ID
-    :type dict_id_c: Dict
-    :return: Adjacency matrix
-    :rtype: np.array
-    """
-    nodes_ = [None] * df_indiv[instance.indiv_field].nunique()
-    for c in range(len(nodes_)):
-        nodes_[c] = df_indiv.loc[
-            df_indiv[instance.indiv_field] == dict_id_c[c]][
-                instance.host_field].to_numpy()[0]
-    v = np.zeros((len(nodes_), len(nodes_)))
-    for (i, j) in combinations(range(len(nodes_)), 2):
-        if nodes_[i] == nodes_[j]:
-            v[i, j] = 1
-            v[j, i] = 1
-    return v
+        moves: List[Dict[str, Any]] = []
+        # iterate from most constrained to least constrained
+        for worst_host, rem in hosts_sorted:
+            # pick the heaviest container on worst_host
+            rows = self.instance.df_indiv[self.instance.df_indiv[f.host] == worst_host]
+            if rows.empty:
+                continue
+            # heaviest by max demand
+            rows = rows.copy()
+            rows["_peak"] = rows[f.metric].map(lambda a: float(np.max(_get_ts(a, T))))
+            rows.sort_values("_peak", ascending=False, inplace=True)
+
+            for _, r in rows.iterrows():
+                cid = r[f.indiv]
+                d = indiv_dem[cid]
+                # try to move to a host with highest remaining slack where it fits
+                candidate = None
+                best_slack = None
+                for dst, rdst in host_remaining.items():
+                    if dst == worst_host:
+                        continue
+                    if _fits(rdst, d):
+                        slack = float(np.min(rdst - d))
+                        if best_slack is None or slack > best_slack:
+                            best_slack = slack
+                            candidate = dst
+                if candidate is not None:
+                    moves.append({"container": cid, "src": worst_host, "dst": candidate})
+                    # update remaining
+                    host_remaining[worst_host] = host_remaining[worst_host] + d
+                    host_remaining[candidate] = host_remaining[candidate] - d
+                    break  # take one move per host in this pass
+
+        return moves
+
+    # Additional helpers translated from legacy surface (lightweight stubs)
+    def free_full_nodes(self) -> List[Dict[str, Any]]:
+        """Try to free nodes that are over capacity by using `allocation_spread`."""
+        return self.allocation_spread(self.instance.df_indiv, self.instance.df_host)
+
+    def assign_indiv_available_host(self, container_id: Any, tick: int) -> Optional[Dict[str, Any]]:
+        """Find any feasible host for a container at a given tick (one-slot view)."""
+        f = self._f
+        df_indiv = self.instance.df_indiv
+        df_host = self.instance.df_host
+
+        row = df_indiv[df_indiv[f.indiv] == container_id]
+        if row.empty:
+            return None
+        demand = _get_ts(_safe_first(row[f.metric].to_numpy()), tick + 1)[tick:tick+1]
+
+        for _, h in df_host.iterrows():
+            cap = _get_ts(h[f.metric], tick + 1)[tick:tick+1]
+            if _fits(cap, demand):
+                cur = _safe_first(row[f.host].to_numpy())
+                if cur != h[f.host]:
+                    return {"container": container_id, "src": cur, "dst": h[f.host]}
+                return None
+        return None
+
+    def nb_min_nodes(
+        self, df_indiv: pd.DataFrame, df_host_meta: pd.DataFrame, time_horizon: Optional[int] = None
+    ) -> int:
+        """Lower bound on required nodes: sum demand per tick / max capacity per tick, rounded up."""
+        f = self._f
+        T = self._time_horizon(df_indiv, df_host_meta, time_horizon)
+
+        total = np.zeros(T)
+        for _, r in df_indiv.iterrows():
+            total += self._demand_for_container(r, T)
+
+        cap = np.zeros(T)
+        for _, h in df_host_meta.iterrows():
+            cap += self._capacity_for_host(h, T)
+
+        # avoid division by zero
+        cap[cap == 0] = np.inf
+        need = np.max(np.ceil(total / cap))
+        if not np.isfinite(need):
+            return 0
+        return int(need)
+
+    # Placeholders for compatibility with prior surface. They can be
+    # specialized later as needed.
+    def find_substitution(self, *args, **kwargs) -> List[Dict[str, Any]]:
+        return []
+
+    def spread_containers_new(self, df_indiv: pd.DataFrame, tick: int) -> List[Dict[str, Any]]:
+        return []
+
+    def spread_containers(self, df_indiv: pd.DataFrame, tick: int) -> List[Dict[str, Any]]:
+        return []
+
+    def colocalize_clusters(
+        self, df_indiv: pd.DataFrame, df_host_meta: pd.DataFrame, labels: pd.Series, n_clusters: int
+    ) -> List[Dict[str, Any]]:
+        return []
+
+    def colocalize_clusters_new(
+        self, df_indiv: pd.DataFrame, df_host_meta: pd.DataFrame, labels: pd.Series, n_clusters: int
+    ) -> List[Dict[str, Any]]:
+        return []
+
+    def allocation_distant_pairwise(
+        self, df_indiv: pd.DataFrame, df_host_meta: pd.DataFrame, labels: pd.Series, distance_mat: np.ndarray
+    ) -> List[Dict[str, Any]]:
+        return []
+
+    def place_opposite_clusters(
+        self, df_indiv: pd.DataFrame, df_host_meta: pd.DataFrame, labels: pd.Series, clusters_to_separate: Sequence[int]
+    ) -> List[Dict[str, Any]]:
+        return []
+
+    def build_placement_adj_matrix(self, df_indiv: pd.DataFrame, dict_id_c: Dict[int, Any]) -> np.ndarray:
+        """Build adjacency matrix where A[i,j] = 1 if containers i and j share host."""
+        f = self._f
+        # map container index -> host
+        hosts = {}
+        for i, cid in dict_id_c.items():
+            row = df_indiv[df_indiv[f.indiv] == cid]
+            hosts[i] = _safe_first(row[f.host].to_numpy())
+        n = len(dict_id_c)
+        A = np.zeros((n, n), dtype=int)
+        for i in range(n):
+            for j in range(i + 1, n):
+                if hosts.get(i) == hosts.get(j) and hosts.get(i) is not None:
+                    A[i, j] = 1
+                    A[j, i] = 1
+        return A

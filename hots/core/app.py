@@ -43,7 +43,7 @@ class App:
         cls_name = f'{problem_type.title()}Plugin'
         mod = importlib.import_module(module_path)
         problem_cls = getattr(mod, cls_name)
-        self.problem = problem_cls(config.problem.parameters, self.instance)
+        self.problem = problem_cls(self.instance)
 
         setup_signal_handlers(self.shutdown)
 

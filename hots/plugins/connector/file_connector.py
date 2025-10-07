@@ -3,8 +3,8 @@
 """File‑based connector plugin for HOTS."""
 
 import json
-import os
 from pathlib import Path
+from typing import Any, Dict, Iterable
 
 from hots.core.interfaces import ConnectorPlugin
 
@@ -12,23 +12,34 @@ from hots.core.interfaces import ConnectorPlugin
 class FileConnector(ConnectorPlugin):
     """Connector plugin that writes moves to a JSONL file."""
 
-    def __init__(self, params, instance):
+    # process-level guard so we only truncate once per path per run
+    _initialized_paths: set[str] = set()
+
+    def __init__(self, params):
         """Initialize with output file path."""
-        self.outfile = params.get('outfile', 'moves.jsonl')
-        from pathlib import Path
-        Path(self.outfile).parent.mkdir(parents=True, exist_ok=True)
+        self.outfile = Path(params.get('outfile', 'moves.jsonl'))
+        self.reset_on_start: bool = params.get('reset_on_start', True)
+
+        self.outfile.parent.mkdir(parents=True, exist_ok=True)
+        self._prepare_outfile_once()
+
+    def _prepare_outfile_once(self) -> None:
+        key = str(self.outfile.resolve())
+        if key in self._initialized_paths:
+            return
+
+        if self.reset_on_start:
+            self.outfile.write_text('', encoding='utf-8')
+
+        self._initialized_paths.add(key)
 
     def apply_moves(self, solution):
         """Write moves (list of dicts) to the output file."""
         # solution may be a list of move dicts, or a model with extract_moves()
-        if isinstance(solution, list):
-            moves = solution
-        else:
-            moves = solution.extract_moves()
-        # ensure output directory exists
-        outdir = Path(self.outfile).parent
-        outdir.mkdir(parents=True, exist_ok=True)
-        with open(self.outfile, 'a') as f:
+        moves: Iterable[Dict[str, Any]]
+        moves = solution if isinstance(solution, list) else solution.extract_moves()
+
+        # always append during the run
+        with self.outfile.open('a', encoding='utf-8') as f:
             for move in moves:
-                # one JSON per line
-                f.write(json.dumps(move) + os.linesep)
+                f.write(json.dumps(move, ensure_ascii=False) + '\n')

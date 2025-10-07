@@ -14,8 +14,9 @@ from hots.plugins import (
     ConnectorFactory,
     OptimizationFactory,
 )
-from hots.reporting.writer import write_metrics
 from hots.utils.signals import setup_signal_handlers
+
+import pandas as pd
 
 
 class App:
@@ -118,8 +119,11 @@ class App:
             'Writing out metrics history (%d records)',
             len(self.instance.metrics_history)
         )
-        for m in self.instance.metrics_history:
-            write_metrics(m, self.instance.results_file)
+        pd.DataFrame(self.instance.metrics_history).to_csv(
+            self.instance.results_file,
+            index=False,
+            mode='w',
+        )
 
         t_total = time.time() - t_start
         logging.info('Finished HOTS run in %.3f seconds', t_total)

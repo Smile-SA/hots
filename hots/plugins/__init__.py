@@ -88,5 +88,5 @@ class ConnectorFactory:
         if t == 'kafka':
             return KafkaConnector(cfg.parameters, instance)
         if t == 'file':
-            return FileConnector(cfg.parameters, instance)
+            return FileConnector(cfg.parameters)
         raise ValueError(f'Unknown connector type: {cfg.type}')

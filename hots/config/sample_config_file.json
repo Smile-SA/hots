@@ -3,7 +3,7 @@
   "tick_field": "timestamp",
   "host_field": "machine_id",
   "individual_field": "container_id",
-  "metrics": ["cpu_usage"],
+  "metrics": ["cpu"],
   "reader": {
     "type": "csv",
     "parameters": {
@@ -12,7 +12,7 @@
       "tick_field": "timestamp",
       "individual_field": "container_id",
       "host_field": "machine_id",
-      "metrics": ["cpu_usage"],
+      "metrics": ["cpu"],
       "sep_time": 3,
       "tick_increment": 3
     }

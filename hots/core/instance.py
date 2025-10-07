@@ -42,7 +42,6 @@ class Instance:
             df_indiv,
             tick_field=self.config.tick_field,
             host_field=self.config.host_field,
-            individual_field=self.config.individual_field,
             metrics=self.config.metrics,
         )
         return df_indiv, df_host, df_meta
@@ -62,7 +61,6 @@ class Instance:
             self.df_indiv,
             tick_field=self.config.tick_field,
             host_field=self.config.host_field,
-            individual_field=self.config.individual_field,
             metrics=self.config.metrics,
         )
 

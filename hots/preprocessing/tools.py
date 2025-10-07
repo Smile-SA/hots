@@ -9,54 +9,37 @@ def build_df_from_containers(
     df_indiv: pd.DataFrame,
     tick_field: str,
     host_field: str,
-    individual_field: str,
     metrics: List[str]
 ) -> pd.DataFrame:
-    """Aggregate individual consumption into host‑level time‑series.
-
+    """Aggregate individual consumption into host-level time-series.
     Ensures each host has an entry for every tick (filling missing values
-    with zeros) and flattens any MultiIndex columns.
+    with zeros).
     """
-    # 1) Pivot to wide
-    df_pivot = (
+    # Group by timestamp and host, then sum the metrics
+    df_agg = (
         df_indiv
-        .pivot_table(
-            index=[tick_field, host_field],
-            columns=individual_field,
-            values=metrics,
-            aggfunc='sum'
-        )
-        .fillna(0)
+        .groupby([tick_field, host_field])[metrics]
+        .sum()
+        .reset_index()
     )
 
-    # 2) Reset index → all columns become MultiIndex
-    df_pivot = df_pivot.reset_index()
+    # Ensure all timestamp-host combinations exist (fill missing with 0)
+    unique_ticks = df_indiv[tick_field].unique()
+    unique_hosts = df_indiv[host_field].unique()
 
-    # 3) Flatten columns
-    flat_cols = []
-    for col in df_pivot.columns:
-        if isinstance(col, tuple):
-            metric, cid = col
-            if cid in (None, ''):
-                flat_cols.append(metric)
-            else:
-                flat_cols.append(f'{cid}_{metric}')
-        else:
-            flat_cols.append(col)
-    df_pivot.columns = flat_cols
+    # Create all combinations
+    all_combinations = pd.MultiIndex.from_product(
+        [unique_ticks, unique_hosts],
+        names=[tick_field, host_field]
+    ).to_frame(index=False)
 
-    # 4) Build full tick list
-    unique_ticks = df_pivot[tick_field].unique()
-    all_ticks = pd.DataFrame({tick_field: unique_ticks})
-    hosts = df_pivot[host_field].unique()
+    # Merge and fill missing values with 0
+    df_result = (
+        all_combinations
+        .merge(df_agg, on=[tick_field, host_field], how='left')
+        .fillna(0)
+        .sort_values([tick_field, host_field])
+        .reset_index(drop=True)
+    )
 
-    # 5) For each host, merge full ticks (fills NaN → 0)
-    rows = []
-    for host in hosts:
-        df_h = df_pivot[df_pivot[host_field] == host]
-        df_full = all_ticks.merge(df_h, on=tick_field, how='left')
-        df_full[host_field] = host
-        rows.append(df_full.fillna(0))
-
-    # 6) Concat and return
-    return pd.concat(rows, ignore_index=True)
+    return df_result

@@ -49,7 +49,6 @@ def eval_solutions(
 
     # 5) Conflict detection & pick moving containers
     pb = instance.config.optimization.parameters.get('pb_number', 1)
-    pb = instance.config.optimization.parameters.get('pb_number', 1)
     if pb == 1:
         moving, nodes, edges, max_deg, mean_deg = get_moving_containers_clust(
             model,

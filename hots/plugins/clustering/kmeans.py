@@ -17,7 +17,7 @@ class StreamKMeans(ClusteringPlugin):
 
     def __init__(self, params: Dict[str, Any], instance):
         """Initialize the streaming k-means plugin."""
-        self.n_clusters = params.get('n_clusters', 8)
+        self.n_clusters = params.get('nb_clusters', 5)
         self.batch_size = params.get('batch_size', 100)
         self.random_state = params.get('random_state', None)
         self.tick_field = instance.config.tick_field
@@ -46,4 +46,9 @@ class StreamKMeans(ClusteringPlugin):
             random_state=self.random_state,
         )
         labels = self.model.fit_predict(x)
+        print(df)
+        print(mat)
+        print(x)
+        print(labels)
+        input()
         return pd.Series(labels, index=mat.index)

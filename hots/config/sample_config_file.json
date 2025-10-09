@@ -18,7 +18,7 @@
     }
   },
   "clustering": {
-    "method": "stream_kmeans",
+    "method": "kmeans",
     "nb_clusters": 3,
     "parameters": {
       "nb_clusters": 3

@@ -97,7 +97,7 @@ class App:
             sol2, metrics = eval_solutions(
                 self.instance.df_indiv,
                 self.instance.df_host,
-                self.clustering.fit(self.instance.df_indiv),
+                labels,
                 self.clustering,
                 self.optimization,
                 self.problem,

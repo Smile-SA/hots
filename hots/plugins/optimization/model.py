@@ -216,6 +216,7 @@ class Model:
 
         elif self.pb_number == 2:
             # --- Placement variables ---
+            # place(i, n) = 1 if container i is placed on node n
             self.mdl.place = pe.Var(
                 self.mdl.C,
                 self.mdl.N,
@@ -224,6 +225,23 @@ class Model:
                 bounds=(0, 1),
                 initialize=0,
                 doc='Container-to-node-time placement',
+            )
+            # a(n) = 1 if node n is used
+            self.mdl.a = pe.Var(
+                self.mdl.N,
+                domain=pe.NonNegativeReals,
+                bounds=(0, 1),
+                initialize=0,
+                doc='Node-open indicator'
+            )
+            # v(i,j) = 1 if containers i and j are placed on the same node
+            self.mdl.v = pe.Var(
+                self.mdl.C,
+                self.mdl.C,
+                domain=pe.NonNegativeReals,
+                bounds=(0, 1),
+                initialize=0,
+                doc='Pairwise node adjacency'
             )
             self.mdl.load = pe.Var(
                 self.mdl.N,
@@ -266,10 +284,18 @@ class Model:
             self.mdl.capacity = pe.Constraint(
                 self.mdl.N, self.mdl.T, rule=self._capacity_rule
             )
-            # (2) flow conservation: consumption matches load
-            self.mdl.flow_conservation = pe.Constraint(
-                self.mdl.Ccons, self.mdl.T, rule=self._flow_conservation_rule
+            # (2) open node if at least one container is in it
+            self.mdl.open_node = pe.Constraint(
+                self.mdl.C, self.mdl.N, rule=self._open_node
             )
+            # (3) each container placed to exactly one node
+            self.mdl.assignment = pe.Constraint(
+                self.mdl.C, rule=self._assignment
+            )
+            # (3) flow conservation: consumption matches load
+            # self.mdl.flow_conservation = pe.Constraint(
+            #     self.mdl.Ccons, self.mdl.T, rule=self._flow_conservation_rule
+            # )
         else:
             raise ValueError(f'Unsupported pb_number: {self.pb_number}')
 
@@ -298,9 +324,9 @@ class Model:
     def build_objective(self):
         """Build the objective."""
         if self.pb_number == 1:
-            self.mdl.obj = pe.Objective(rule=min_dissim_, sense=pe.minimize)
+            self.mdl.obj = pe.Objective(rule=self.min_dissim_, sense=pe.minimize)
         elif self.pb_number == 2:
-            self.mdl.obj = pe.Objective(rule=min_coloc_cluster_, sense=pe.minimize)
+            self.mdl.obj = pe.Objective(rule=self.min_coloc_cluster_, sense=pe.minimize)
 
     def create_data(self):
         """
@@ -385,6 +411,7 @@ class Model:
         if fname is None:
             fname = './py_clustering.lp' if self.pb_number == 1 else './py_placement.lp'
         self.instance_model.write(fname, io_options={'symbolic_solver_labels': True})
+        input('optim file written')
 
     def solve(self, solver: str = 'glpk'):
         """
@@ -408,6 +435,7 @@ class Model:
                 # Optionally, also log bounds close/infeasible:
                 # from pyomo.util.infeasible import log_close_to_bounds
                 # log_close_to_bounds(self.instance_model)
+        input('solve done')
         return self
 
     def _attempt_solve(self, opt):
@@ -693,35 +721,17 @@ class Model:
         # load[node,t] = sum(place[c,node,t] * cons[c,t])
         return mdl.load[node, t] <= mdl.cap[node]
 
+    def _open_node(self, mdl, c, n):
+        # place[container,node] <= a[node]
+        return mdl.place[c, n] <= mdl.a[n]
+
+    def _assignment(self, mdl, c):
+        # sum of place[container,node] over nodes = 1 (each container placed on 1 node)
+        return sum(mdl.place[c, n] for n in mdl.N) == 1
+
     def _flow_conservation_rule(self, mdl, c, t):
         # sum of place[c,node,t] over nodes = 1 (each container runs somewhere)
         return sum(mdl.place[c, n, t] for n in mdl.N) == 1
-
-    def open_node_(self, mdl, container, node):
-        """Express the opening node constraint.
-
-        :param mdl: Pyomo model object
-        :type mdl: pe.AbstractModel
-        :param container: Container index
-        :type container: int
-        :param node: Node index
-        :type node: int
-        :return: Expression for opening node constraint
-        :rtype: Expression
-        """
-        return mdl.x[container, node] <= mdl.a[node]
-
-    def assignment_(self, mdl, container):
-        """Express the assignment constraint.
-
-        :param mdl: Pyomo model object
-        :type mdl: pe.AbstractModel
-        :param container: Container index
-        :type container: int
-        :return: Expression for container assignment
-        :rtype: Expression
-        """
-        return sum(mdl.x[container, node] for node in mdl.N) == 1
 
     def open_nodes_(self, mdl):
         """Express the numbers of open nodes.
@@ -790,34 +800,32 @@ class Model:
                             moves.append({'container_id': c, 'node': n, 'tick': t})
         return moves
 
+    def min_dissim_(self, mdl):
+        """Express the within clusters dissimilarities.
 
-def min_dissim_(mdl):
-    """Express the within clusters dissimilarities.
+        :param mdl: Pyomo model object
+        :type mdl: pe.AbstractModel
+        :return: Within clusters dissimilarities
+        :rtype: float
+        """
+        return sum(
+            [mdl.u[(i, j)] * mdl.w[(i, j)] for i, j in product(mdl.C, mdl.C) if i < j]
+        )
 
-    :param mdl: Pyomo model object
-    :type mdl: pe.AbstractModel
-    :return: Within clusters dissimilarities
-    :rtype: float
-    """
-    return sum(
-        [mdl.u[(i, j)] * mdl.w[(i, j)] for i, j in product(mdl.C, mdl.C) if i < j]
-    )
+    def min_coloc_cluster_(self, mdl):
+        """Express the placement minimization objective from clustering.
 
-
-def min_coloc_cluster_(mdl):
-    """Express the placement minimization objective from clustering.
-
-    :param mdl: Pyomo model object
-    :type mdl: pe.AbstractModel
-    :return: Objective for placement optimization
-    :rtype: Expression
-    """
-    return sum(
-        [mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in product(mdl.C, mdl.C) if i < j]
-    ) + sum(
-        [
-            ((1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)])
-            for i, j in product(mdl.C, mdl.C)
-            if i < j
-        ]
-    )
+        :param mdl: Pyomo model object
+        :type mdl: pe.AbstractModel
+        :return: Objective for placement optimization
+        :rtype: Expression
+        """
+        return sum(
+            [mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in product(mdl.C, mdl.C) if i < j]
+        ) + sum(
+            [
+                ((1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)])
+                for i, j in product(mdl.C, mdl.C)
+                if i < j
+            ]
+        )

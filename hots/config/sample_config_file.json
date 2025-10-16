@@ -29,7 +29,7 @@
     "parameters": {
       "pb_number": 1,
       "solver": "glpk",
-      "verbose": 1
+      "verbose": 0
     }
   },
   "problem": {

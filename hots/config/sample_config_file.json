@@ -1,5 +1,5 @@
 {
-  "data_folder": "./tests/data/thesis_ex_10",
+  "data_folder": "./tests/data/min_test_3",
   "tick_field": "timestamp",
   "host_field": "machine_id",
   "individual_field": "container_id",
@@ -7,14 +7,14 @@
   "reader": {
     "type": "csv",
     "parameters": {
-      "data_folder": "./tests/data/thesis_ex_10",
+      "data_folder": "./tests/data/min_test_3",
       "file_name": "container_usage.csv",
       "tick_field": "timestamp",
       "individual_field": "container_id",
       "host_field": "machine_id",
       "metrics": ["cpu"],
-      "sep_time": 3,
-      "tick_increment": 3
+      "sep_time": 1,
+      "tick_increment": 2
     }
   },
   "clustering": {
@@ -28,7 +28,8 @@
     "solver": "pyomo",
     "parameters": {
       "pb_number": 1,
-      "solver": "glpk"
+      "solver": "glpk",
+      "verbose": 1
     }
   },
   "problem": {

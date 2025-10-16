@@ -30,22 +30,28 @@ class CSVReader(IngestionPlugin):
         self.queue = queue.Queue()
         self.current_time = 0
 
-    def load_initial(self) -> pd.DataFrame:
-        """Load the first batch of rows from the CSV."""
-        df = self._get_batch()
-        self.current_time += self.sep_time
+    def load_initial(self):
+        """Load the first batch of rows from [0, sep_time]."""
+        df = self._get_batch(window_end=self.sep_time)
+        self.current_time = self.sep_time
         return df, None, None
 
-    def load_next(self) -> pd.DataFrame:
-        """Load the next time‐window batch of rows from the CSV."""
-        df = self._get_batch()
+    def load_next(self):
+        """Load the next time‐window batch of rows of size tick_increment."""
+        next_window_end = self.current_time + self.tick_increment
+        df = self._get_batch(window_end=next_window_end)
         if df.empty:
             return None
-        self.current_time += self.tick_increment
+        self.current_time = next_window_end
         return df
 
-    def _get_batch(self) -> pd.DataFrame:
-        """Collect rows up to the current time window."""
+    def _get_batch(self, window_end: int) -> pd.DataFrame:
+        """
+        Collect rows with timestamp <= window_end.
+
+        Uses an internal queue as a small buffer for the next unread CSV row.
+        Assumes the CSV is sorted by timestamp in ascending order.
+        """
         rows = []
         while True:
             if self.queue.empty():
@@ -54,8 +60,11 @@ class CSVReader(IngestionPlugin):
                     break
                 self.queue.put(row)
 
+            # Peek at next row's timestamp (first column in the CSV)
             ts = int(self.queue.queue[0][0])
-            if ts <= self.current_time + self.tick_increment:
+
+            # Include rows up to the provided window end (inclusive)
+            if ts <= window_end:
                 row = self.queue.get()
                 rows.append({
                     self.tick_field: ts,

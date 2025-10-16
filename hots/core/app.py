@@ -14,7 +14,14 @@ from hots.plugins import (
     ConnectorFactory,
     OptimizationFactory,
 )
+from hots.plugins.clustering.builder import (
+    build_adjacency_matrix,
+    build_matrix_indiv_attr,
+    build_similarity_matrix
+)
 from hots.utils.signals import setup_signal_handlers
+
+import numpy as np
 
 import pandas as pd
 
@@ -57,8 +64,8 @@ class App:
         self.instance.clear_kafka_topics()
 
         logging.info('Analysis period')
-        labels = self.clustering.fit(self.instance.df_indiv)
-        n_clusters = int(labels.nunique())
+        labels = np.asarray(self.clustering.fit(self.instance.df_indiv))
+        n_clusters = int(len(np.unique(labels)))
         logging.info('First clustering complete: %d clusters', n_clusters)
 
         if self.config.problem.parameters.get('initial_placement', True):
@@ -76,11 +83,24 @@ class App:
         self.connector.apply_moves(initial_moves)
         logging.info('Applied initial placement moves')
 
-        # record a minimal “initial” metric
-        self.instance.metrics_history.append({
-            'initial_clusters': n_clusters,
-            'initial_moves': len(initial_moves),
-        })
+        # Pre-loop
+        logging.info('Building first clustering model...')
+        mat = build_matrix_indiv_attr(
+            self.instance.df_indiv,
+            self.instance.config.tick_field,
+            self.instance.config.individual_field,
+            self.instance.config.metrics,
+            self.instance.get_id_map()
+        )
+        u_mat = build_adjacency_matrix(labels)
+        w_mat = build_similarity_matrix(mat)
+        model = self.optimization.build(u_mat, w_mat)
+        model.solve(
+            solver=self.instance.config.optimization.parameters.get('solver', 'glpk'),
+        )
+
+        # 3) Extract dual values
+        _ = model.fill_dual_values()
 
         # Streaming loop
         loop_nb = 1

@@ -2,7 +2,11 @@
 
 from typing import Any, Dict, List, Tuple
 
-from hots.plugins.clustering.builder import build_matrix_indiv_attr
+from hots.plugins.clustering.builder import (
+    build_adjacency_matrix,
+    build_matrix_indiv_attr,
+    build_similarity_matrix
+)
 
 import networkx as nx
 
@@ -16,7 +20,7 @@ from sklearn.metrics import silhouette_score
 def eval_solutions(
     df_indiv: pd.DataFrame,
     df_host: pd.DataFrame,
-    labels: pd.Series,
+    labels,
     clustering,
     optimization,
     problem,
@@ -31,13 +35,15 @@ def eval_solutions(
         instance.config.metrics,
         instance.get_id_map()
     )
+    u_mat = build_adjacency_matrix(labels)
+    w_mat = build_similarity_matrix(mat)
     sil = silhouette_score(mat.values, labels)
 
-    # 2) Solve the optimization model
-    model = optimization.solve(df_host, labels)
+    # 2) Update & Solve the optimization model
+    model = optimization.build(u_mat, w_mat)
+    # model = optimization.solve(df_host, labels)
     model.solve(
         solver=instance.config.optimization.parameters.get('solver', 'glpk'),
-        verbose=False
     )
 
     # 3) Extract dual values
@@ -58,6 +64,10 @@ def eval_solutions(
             df_clust=df_indiv,
             profiles=None,
         )
+        print(clustering)
+        print(labels)
+        print(df_indiv)
+        print(moving)
     else:
         moving, nodes, edges, max_deg, mean_deg = get_moving_containers_place(
             model,
@@ -98,6 +108,7 @@ def get_conflict_graph(
         must_link = getattr(inst, 'must_link_n', {})
 
     g = nx.Graph()
+    print('must_link', must_link)
     for idx_pair, con in must_link.items():
         prev = prev_duals.get(idx_pair, 0.0)
         if prev <= 0:
@@ -120,6 +131,9 @@ def get_moving_containers_clust(
     g = get_conflict_graph(model, prev_duals, tol)
     n_nodes, n_edges = g.number_of_nodes(), g.number_of_edges()
     degrees = sorted(g.degree(), key=lambda x: x[1], reverse=True)
+    print(degrees)
+    print(g)
+    input()
     if not degrees:
         return [], n_nodes, n_edges, 0, 0.0
     max_deg = degrees[0][1]
@@ -127,6 +141,11 @@ def get_moving_containers_clust(
 
     moving = []
     budget = len(model.dict_id_c) * tol_move
+    print(budget)
+    print(model.dict_id_c)
+    print(tol_move)
+    print(tol)
+    input()
     while degrees and len(moving) < budget:
         cid, deg = degrees[0]
         if deg > 1:

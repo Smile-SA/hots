@@ -3,15 +3,15 @@
 from itertools import product
 from typing import Any, Dict, List
 
-from hots.plugins.clustering.builder import build_matrix_indiv_attr, build_similarity_matrix
-
 import numpy as np
 
 import pandas as pd
 
 from pyomo import environ as pe
 from pyomo.common.errors import ApplicationError
+from pyomo.common.numeric_types import value as pyo_value
 from pyomo.opt import TerminationCondition
+from pyomo.util.infeasible import log_infeasible_constraints
 
 
 class Model:
@@ -27,6 +27,9 @@ class Model:
         df_indiv: pd.DataFrame,
         metric: str,
         dict_id_c: dict,
+        u_mat: np.array = None,
+        w_mat: np.array = None,
+        v_mat: np.array = None,
         df_meta: pd.DataFrame = None,
         nb_clusters: int = None,
         verbose: bool = False,
@@ -47,6 +50,9 @@ class Model:
         self.df_indiv = df_indiv
         self.metric = metric
         self.dict_id_c = dict_id_c
+        self.u_mat = u_mat
+        self.w_mat = w_mat
+        self.v_mat = v_mat
         self.df_meta = df_meta
         self.nb_clusters = nb_clusters
         self.verbose = verbose
@@ -57,17 +63,12 @@ class Model:
         self.host_field = 'machine_id'
         self.metrics = [metric]
 
-        # suppose you have numpy arrays u_prev, v_prev
-        # model.u_matrix = u_prev
-        # model.v_matrix = v_prev
-
         # --- Build the Pyomo model object ---
         self.mdl = pe.AbstractModel()
         self._build_model()
 
         # Build the data and create a concrete model
         self.create_data()
-
         if verbose:
             self.write_infile(fname=f'./debug_pb{self.pb_number}.lp')
 
@@ -77,6 +78,7 @@ class Model:
         self.build_parameters()
         self.build_variables()
         self.build_constraints()
+        self.add_mustlink()
         self.build_objective()
 
     def build_parameters(self):
@@ -86,50 +88,40 @@ class Model:
           - variance/distance matrix dv
           - clustering adjacency u (defaults to zeros)
           - placement adjacency v (defaults to zeros)
-        from self.df_indiv and any injected self.u_matrix/self.v_matrix.
+        from self.df_indiv.
         """
         # 1) Build the container×tick matrix and similarity/variance
-        mat = build_matrix_indiv_attr(
-            self.df_indiv,
-            self.tick_field,
-            self.indiv_field,
-            self.metrics,
-            self.dict_id_c,
-        )
-        n = mat.shape[0]
-        w = build_similarity_matrix(mat)
-        dv = build_similarity_matrix(mat)  # or your own variance func
+        # mat = build_matrix_indiv_attr(
+        #     self.df_indiv,
+        #     self.tick_field,
+        #     self.indiv_field,
+        #     self.metrics,
+        #     self.dict_id_c,
+        # )
+        n = self.u_mat.shape[0]
+        # dv = build_similarity_matrix(self.u_mat)  # TODO really?
 
         # 2) Prepare list of container IDs in correct order
         #    dict_id_c maps ID → integer index 0..n-1
-        id_list = [None] * n
+        self.id_list = [None] * n
         for cid, idx in self.dict_id_c.items():
-            id_list[idx] = cid
+            self.id_list[idx] = cid
 
         # 3) Retrieve prior-solution adjacency or zeros
-        u = getattr(self, 'u_matrix', np.zeros((n, n), dtype=int))
-        v = getattr(self, 'v_matrix', np.zeros((n, n), dtype=int))
+        u = getattr(self, 'u_mat', np.zeros((n, n), dtype=int))
+        v = getattr(self, 'v_mat', np.zeros((n, n), dtype=int))
 
         # --- Define Sets & Params on container IDs ---
-        self.mdl.C = pe.Set(initialize=id_list, doc='Container IDs')
+        self.mdl.C = pe.Set(initialize=self.id_list, doc='Container IDs')
         self.mdl.c = pe.Param(within=pe.NonNegativeIntegers, mutable=True)
 
         # sol_u: clustering adjacency param indexed by (container_j, container_i)
         sol_u_dict = {
-            (id_list[j], id_list[i]): int(u[i][j])
+            (self.id_list[j], self.id_list[i]): int(u[i][j])
             for i, j in product(range(n), range(n))
         }
         self.mdl.sol_u = pe.Param(
             self.mdl.C, self.mdl.C, initialize=sol_u_dict, mutable=True
-        )
-
-        # sol_v: placement adjacency
-        sol_v_dict = {
-            (id_list[j], id_list[i]): int(v[i][j])
-            for i, j in product(range(n), range(n))
-        }
-        self.mdl.sol_v = pe.Param(
-            self.mdl.C, self.mdl.C, initialize=sol_v_dict, mutable=True
         )
 
         # --- Problem‑specific parameters ---
@@ -138,7 +130,7 @@ class Model:
             self.mdl.K = pe.Set(initialize=list(range(self.nb_clusters)))
             self.mdl.k = pe.Param(within=pe.NonNegativeIntegers)
             w_dict = {
-                (id_list[j], id_list[i]): float(w[i][j])
+                (self.id_list[j], self.id_list[i]): float(self.w_mat[i][j])
                 for i, j in product(range(n), range(n))
             }
             self.mdl.w = pe.Param(
@@ -161,13 +153,21 @@ class Model:
                 initialize=self.data[None]['cons'],
                 mutable=True,
             )
-
+            # TODO w_mat -> dv
             dv_dict = {
-                (id_list[j], id_list[i]): float(dv[i][j])
+                (self.id_list[j], self.id_list[i]): float(self.w_mat[i][j])
                 for i, j in product(range(n), range(n))
             }
             self.mdl.dv = pe.Param(
                 self.mdl.C, self.mdl.C, initialize=dv_dict, mutable=True
+            )
+            # sol_v: placement adjacency
+            sol_v_dict = {
+                (self.id_list[j], self.id_list[i]): int(v[i][j])
+                for i, j in product(range(n), range(n))
+            }
+            self.mdl.sol_v = pe.Param(
+                self.mdl.C, self.mdl.C, initialize=sol_v_dict, mutable=True
             )
 
         else:
@@ -182,13 +182,19 @@ class Model:
             # --- Clustering variables ---
             # yc[k] = 1 if cluster k is opened
             self.mdl.yc = pe.Var(
-                self.mdl.K, domain=pe.Binary, doc='Cluster-open indicator'
+                self.mdl.K,
+                domain=pe.NonNegativeReals,
+                bounds=(0, 1),
+                initialize=0,
+                doc='Cluster-open indicator'
             )
             # assign[c,k] = 1 if container c is assigned to cluster k
             self.mdl.assign = pe.Var(
                 self.mdl.C,
                 self.mdl.K,
-                domain=pe.Binary,
+                domain=pe.NonNegativeReals,
+                bounds=(0, 1),
+                initialize=0,
                 doc='Container-to-cluster assignment',
             )
             # dist[i,j] = distance between containers i and j
@@ -202,7 +208,9 @@ class Model:
             self.mdl.u = pe.Var(
                 self.mdl.C,
                 self.mdl.C,
-                domain=pe.Binary,
+                domain=pe.NonNegativeReals,
+                bounds=(0, 1),
+                initialize=0,
                 doc='Pairwise cluster adjacency',
             )
 
@@ -212,7 +220,9 @@ class Model:
                 self.mdl.C,
                 self.mdl.N,
                 self.mdl.T,
-                domain=pe.Binary,
+                domain=pe.NonNegativeReals,
+                bounds=(0, 1),
+                initialize=0,
                 doc='Container-to-node-time placement',
             )
             self.mdl.load = pe.Var(
@@ -245,10 +255,10 @@ class Model:
                 self.mdl.C, self.mdl.C, self.mdl.K, rule=self._link_u1_rule
             )
             self.mdl.link_u2 = pe.Constraint(
-                self.mdl.C, self.mdl.C, self.mdl.K, rule=self._link_u2_rule
+                self.mdl.C, self.mdl.C, rule=self._link_u2_rule
             )
             self.mdl.link_u3 = pe.Constraint(
-                self.mdl.C, self.mdl.C, self.mdl.K, rule=self._link_u3_rule
+                self.mdl.C, self.mdl.C, rule=self._link_u3_rule
             )
 
         elif self.pb_number == 2:
@@ -376,49 +386,52 @@ class Model:
             fname = './py_clustering.lp' if self.pb_number == 1 else './py_placement.lp'
         self.instance_model.write(fname, io_options={'symbolic_solver_labels': True})
 
-    def solve(self, solver: str = 'glpk', verbose: bool = False):
+    def solve(self, solver: str = 'glpk'):
         """
         Solve the concrete instance_model with the given solver.
 
         :param solver: Name of the Pyomo solver to use (e.g. 'glpk').
-        :param verbose: If True, prints constraint checks, status, and objective.
         :return: self, with instance_model solved and suffixes/duals populated.
         """
         opt = pe.SolverFactory(solver)
-        results = self._attempt_solve(opt, verbose)
-
-        if verbose:
-            # Check each constraint for violations
-            self._check_constraints()
-            # Print solver termination status
+        results = self._attempt_solve(opt)
+        if self.verbose:
             self._print_solver_status(results)
-            # Print the final objective value
-            self._print_objective_value()
 
+            tc = results.solver.termination_condition if results else None
+            if tc in (TerminationCondition.optimal, TerminationCondition.feasible):
+                self._print_objective_value()
+                self._check_constraints(evaluate=True)
+            else:
+                print('\nModel not solved to a feasible status; listing infeasible constraints:')
+                log_infeasible_constraints(self.instance_model, log_expression=True, tol=1e-6)
+                # Optionally, also log bounds close/infeasible:
+                # from pyomo.util.infeasible import log_close_to_bounds
+                # log_close_to_bounds(self.instance_model)
         return self
 
-    def _attempt_solve(self, opt, verbose):
+    def _attempt_solve(self, opt):
         """Attempt to solve the model and handles solver errors.
 
         :param opt: Pyomo solver object.
         :type opt: pe.SolverFactory
-        :param verbose: Enable / disable logs during solve process.
-        :type verbose: bool
         """
         try:
-            return opt.solve(self.instance_model, tee=verbose)
+            return opt.solve(self.instance_model, tee=self.verbose)
         except ApplicationError as e:
             print(f'Solver error: {e}')
             return None
 
-    def _check_constraints(self):
+    def _check_constraints(self, evaluate: bool = True):
         """Check constraint violations in the model."""
         for c in self.instance_model.component_objects(pe.Constraint, active=True):
             print(f'\n🔍 Checking Constraint: {c.name}')
             for index in c:
-                self._check_constraint_violation(c, index)
+                self._check_constraint_violation(c, index, evaluate=evaluate)
 
-    def _check_constraint_violation(self, constraint, index):
+    from pyomo.common.numeric_types import value as pyo_value
+
+    def _check_constraint_violation(self, constraint, index, evaluate: bool):
         """Check if a specific constraint is violated.
 
         :param constraint: Pyomo constraint object
@@ -426,17 +439,27 @@ class Model:
         :param index: Index of the constraint
         :type index: int
         """
-        lhs = constraint[index].body()
-        upper, lower = constraint[index].upper, constraint[index].lower
+        con = constraint[index]
+        expr = con.body
 
-        if upper is not None and lhs > upper:
-            print(f'  ❌ Constraint {constraint.name}[{index}] is violated!')
-            print(f'     Expected: LHS ≤ {upper}, Got: LHS = {lhs} (TOO HIGH!)')
-        elif lower is not None and lhs < lower:
-            print(f'  ❌ Constraint {constraint.name}[{index}] is violated!')
-            print(f'     Expected: LHS ≥ {lower}, Got: LHS = {lhs} (TOO LOW!)')
+        if not evaluate:
+            print(
+                f'(symbolic) {constraint.name}[{index}]: {expr} <= {con.upper}  and >= {con.lower}'
+            )
+            return
+
+        lhs = pyo_value(expr, exception=False)
+        if lhs is None:
+            print(f'  ⚠️ {constraint.name}[{index}] has uninitialized variables; skipping.')
+            return
+
+        upper, lower = con.upper, con.lower
+        if upper is not None and lhs > upper + 1e-8:
+            print(f'  ❌ {constraint.name}[{index}] violated: LHS={lhs} > UB={upper}')
+        elif lower is not None and lhs < lower - 1e-8:
+            print(f'  ❌ {constraint.name}[{index}] violated: LHS={lhs} < LB={lower}')
         else:
-            print(f'  ✅ Constraint {constraint.name}[{index}] holds. (LHS = {lhs})')
+            print(f'  ✅ {constraint.name}[{index}] holds. (LHS = {lhs})')
 
     def _print_solver_status(self, results):
         """Print solver termination condition.
@@ -470,14 +493,36 @@ class Model:
         self.update_sol_u(u)
         self.add_mustlink_instance()
 
+    def _assert_sol_u_keys_match(self):
+        mdl = self.instance_model
+        expected_keys = {
+            (self.id_list[j], self.id_list[i])
+            for i in range(len(self.id_list))
+            for j in range(len(self.id_list))
+        }
+        model_keys = set(mdl.sol_u.keys())
+        missing = expected_keys - model_keys
+        extra = model_keys - expected_keys
+        if missing or extra:
+            raise KeyError(
+                f'sol_u key mismatch. \
+                Missing: {sorted(missing)[:5]}... Extra: {sorted(extra)[:5]}...'
+            )
+
     def update_sol_u(self, u):
         """Update directly the sol_u param in instance from new u matrix.
 
         :param u: Clustering adjacency matrix
         :type u: np.array
         """
-        for i, j in product(range(len(u)), range(len(u[0]))):
-            self.instance_model.sol_u[(i, j)] = u[i][j]
+        n = len(self.id_list)
+        assert len(u) == n and len(u[0]) == n, 'u dimensions must match id_list length'
+
+        for i in range(n):
+            for j in range(n):
+                cj = self.id_list[j]  # container_j
+                ci = self.id_list[i]  # container_i
+                self.instance_model.sol_u[(cj, ci)] = int(u[i][j])
 
     # TODO generalize with others constraints than mustlink
     def update_adjacency_place_constraints(self, v_matrix):
@@ -490,12 +535,9 @@ class Model:
 
         # 2) update the sol_v param in the _instance_, using ID keys
         n = len(self.dict_id_c)
-        id_list = [None] * n
-        for cid, idx in self.dict_id_c.items():
-            id_list[idx] = cid
 
         for i, j in product(range(n), range(n)):
-            key = (id_list[j], id_list[i])
+            key = (self.id_list[j], self.id_list[i])
             self.instance_model.sol_v[key] = int(v_matrix[i][j])
 
         # 3) rebuild the must_link constraint under the new data
@@ -504,12 +546,9 @@ class Model:
     def update_sol_v(self, v_matrix):
         """Directly overwrite the concrete model’s sol_v param values."""
         n = len(self.dict_id_c)
-        id_list = [None] * n
-        for cid, idx in self.dict_id_c.items():
-            id_list[idx] = cid
 
         for i, j in product(range(n), range(n)):
-            key = (id_list[j], id_list[i])
+            key = (self.id_list[j], self.id_list[i])
             self.instance_model.sol_v[key] = int(v_matrix[i][j])
 
     def update_obj_clustering(self, w_matrix):
@@ -521,13 +560,10 @@ class Model:
 
         # Update the w param in the ABSTRACT instance_model
         n = len(self.dict_id_c)
-        id_list = [None] * n
-        for cid, idx in self.dict_id_c.items():
-            id_list[idx] = cid
 
         # 1) overwrite each entry of w in the concrete model
         for i, j in product(range(n), range(n)):
-            key = (id_list[j], id_list[i])
+            key = (self.id_list[j], self.id_list[i])
             self.instance_model.w[key] = float(w_matrix[i][j])
 
         # 2) rebuild the objective (if it’s data‐dependent)
@@ -615,7 +651,6 @@ class Model:
         Returns a mapping from index (container or node tuple) to its dual value.
         """
         dual = self.instance_model.dual
-        # pick the right constraint component
         if self.pb_number == 1:
             con = getattr(self.instance_model, 'must_link_c', None)
         else:
@@ -624,7 +659,6 @@ class Model:
         if con is None:
             return {}
 
-        # build the mapping
         return {
             idx: dual[con[idx]]
             for idx in con  # iterates over all index tuples in the Constraint
@@ -647,13 +681,13 @@ class Model:
         # u[i,j] ≥ assign[i,k] + assign[j,k] – 1
         return mdl.u[i, j] >= mdl.assign[i, k] + mdl.assign[j, k] - 1
 
-    def _link_u2_rule(self, mdl, i, j, k):
+    def _link_u2_rule(self, mdl, i, j):
         # u[i,j] ≤ assign[i,k]
-        return mdl.u[i, j] <= mdl.assign[i, k]
+        return mdl.u[i, j] <= sum(mdl.assign[i, k] for k in mdl.K)
 
-    def _link_u3_rule(self, mdl, i, j, k):
+    def _link_u3_rule(self, mdl, i, j):
         # u[i,j] ≤ assign[j,k]
-        return mdl.u[i, j] <= mdl.assign[j, k]
+        return mdl.u[i, j] <= sum(mdl.assign[j, k] for k in mdl.K)
 
     def _capacity_rule(self, mdl, node, t):
         # load[node,t] = sum(place[c,node,t] * cons[c,t])

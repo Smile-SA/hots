@@ -88,7 +88,7 @@ class PlacementPlugin(ProblemPlugin):
 
     def initial(
         self,
-        labels: pd.Series,
+        labels,
         df_indiv: pd.DataFrame,
         df_host: pd.DataFrame,
     ) -> List[Dict[str, Any]]:
@@ -110,7 +110,7 @@ class PlacementPlugin(ProblemPlugin):
         w = build_similarity_matrix(mat)
 
         return self.allocation_distant_pairwise(
-            df_indiv, df_host, w, labels.values.tolist()
+            df_indiv, df_host, w, labels.tolist()
         )
 
     # ---------- basic move constructors --------------------------------------

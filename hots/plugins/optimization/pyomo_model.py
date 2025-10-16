@@ -2,7 +2,7 @@
 
 from hots.core.interfaces import OptimizationPlugin
 
-from .model import Model as PyomoModelClass
+from .model import Model
 
 
 class PyomoModel(OptimizationPlugin):
@@ -17,7 +17,7 @@ class PyomoModel(OptimizationPlugin):
 
     def solve(self, df_host, labels):
         """Build, solve, and return a HOTS Model."""
-        model = PyomoModelClass(
+        model = Model(
             self.pb_number,
             self.instance.df_indiv,
             self.instance.config.metrics[0],
@@ -28,4 +28,22 @@ class PyomoModel(OptimizationPlugin):
         )
         model.solve(solver=self.solver)
         model.labels = labels
+        return model
+
+    def build(self, u_mat=None, w_mat=None):
+        """Build the HOTS Optimization Model."""
+        model = Model(
+            self.pb_number,
+            self.instance.df_indiv,
+            self.instance.config.metrics[0],
+            self.instance.get_id_map(),
+            u_mat, w_mat,
+            self.instance.df_meta,
+            nb_clusters=self.instance.config.clustering.nb_clusters,
+            verbose=self.verbose,
+        )
+        if self.pb_number == 1:
+            model.update_adjacency_clust_constraints(u_mat)
+        elif self.pb_number == 2:
+            model.update_adjacency_place_constraints(u_mat)
         return model

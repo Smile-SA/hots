@@ -46,9 +46,5 @@ class StreamKMeans(ClusteringPlugin):
             random_state=self.random_state,
         )
         labels = self.model.fit_predict(x)
-        print(df)
-        print(mat)
-        print(x)
         print(labels)
-        input()
         return pd.Series(labels, index=mat.index)

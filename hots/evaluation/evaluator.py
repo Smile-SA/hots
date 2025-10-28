@@ -1,6 +1,7 @@
 """Evaluation utilities for HOTS."""
 
-from typing import Any, Dict, List, Tuple
+from dataclasses import dataclass
+from typing import Any, Dict, List, Optional, Tuple
 
 from hots.plugins.clustering.builder import (
     build_adjacency_matrix,
@@ -17,6 +18,67 @@ import pandas as pd
 from sklearn.metrics import silhouette_score
 
 
+@dataclass(frozen=True)
+class EvalSnapshot:
+    """All the info we need to compare two consecutive evaluations."""
+
+    labels: np.ndarray                 # shape (n_indiv,)
+    placement: Dict[Any, Any]          # mapping indiv/container -> host/node
+    tick: int                          # current time tick for traceability
+
+
+def _safe_labels_array(labels) -> np.ndarray:
+    """Ensure labels are a 1D numpy array."""
+    if isinstance(labels, np.ndarray):
+        return labels
+    # pandas Series or list-like
+    return np.asarray(labels).reshape(-1)
+
+
+def _kpi_clustering(labels_now: np.ndarray, labels_prev: Optional[np.ndarray]) -> Dict[str, float]:
+    """Compare clustering KPIs + delta vs previous."""
+    kpi: Dict[str, float] = {
+        'clusters_now': float(len(np.unique(labels_now))),
+    }
+    if labels_prev is None:
+        kpi.update({
+            'clusters_prev': 0.0,
+            'clustered_change_ratio': 0.0,
+            'reassigned_ratio': 0.0,
+        })
+        return kpi
+
+    labels_prev = _safe_labels_array(labels_prev)
+    same_len = min(len(labels_prev), len(labels_now))
+    reassigned = np.sum(labels_prev[:same_len] != labels_now[:same_len])
+    kpi.update({
+        'clusters_prev': float(len(np.unique(labels_prev))),
+        'clustered_change_ratio': float(
+            abs(len(np.unique(labels_now)) - len(np.unique(labels_prev)))
+        ),
+        'reassigned_ratio': float(reassigned) / float(same_len) if same_len else 0.0,
+    })
+    return kpi
+
+
+def _kpi_placement(
+    placement_now: Dict[Any, Any],
+    placement_prev: Optional[Dict[Any, Any]],
+) -> Dict[str, float]:
+    """Placement KPIs + delta vs previous (e.g., % moved)."""
+    moved_ratio = 0.0
+    if placement_prev:
+        common = set(placement_now.keys()) & set(placement_prev.keys())
+        moved = sum(1 for k in common if placement_now[k] != placement_prev[k])
+        moved_ratio = float(moved) / float(len(common)) if common else 0.0
+
+    return {
+        'assigned_now': float(len(placement_now)),
+        'assigned_prev': float(len(placement_prev) if placement_prev else 0),
+        'moved_ratio': moved_ratio,
+    }
+
+
 def eval_solutions(
     df_indiv: pd.DataFrame,
     df_host: pd.DataFrame,
@@ -26,8 +88,9 @@ def eval_solutions(
     problem,
     instance
 ) -> Tuple[Any, Dict[str, Any]]:
-    """Run the full pipeline and collect evaluation metrics."""
-    # 1) Silhouette on individual‑level profiles
+    """Run the evaluation pipeline and collect evaluation metrics."""
+    # 1) Build & solve clustering problem
+    # TODO update and no build
     mat = build_matrix_indiv_attr(
         df_indiv,
         instance.config.tick_field,
@@ -232,3 +295,50 @@ def get_container_tomove(
     c1_ts = working_df[working_df[nf] == c1][metric].sort_index().values
     c2_ts = working_df[working_df[nf] == c2][metric].sort_index().values
     return c1 if np.var(node_ts - c1_ts) > np.var(node_ts - c2_ts) else c2
+
+
+def eval_bilevel_step(
+    instance,
+    labels,
+    placement,
+    prev_snapshot: Optional[EvalSnapshot],
+    tick: int,
+) -> Tuple[EvalSnapshot, Dict[str, Any]]:
+    """
+    Evaluate the two-stage result at this tick, comparing to previous snapshot.
+
+    Returns:
+        (snapshot, metrics_dict)
+    """
+    labels_now = _safe_labels_array(labels)
+    placement_now = placement or {}
+
+    # ---- Compute KPIs
+    clustering_kpi = _kpi_clustering(
+        labels_now=labels_now,
+        labels_prev=(prev_snapshot.labels if prev_snapshot else None),
+    )
+    placement_kpi = _kpi_placement(
+        placement_now=placement_now,
+        placement_prev=(prev_snapshot.placement if prev_snapshot else None),
+    )
+
+    # Optional: incorporate similarity/adjacency metrics if useful
+    # (kept here for parity with your previous evaluator helpers)
+    # u = build_adjacency_matrix(labels_now)        # np.ndarray n x n
+    # sim = build_similarity_matrix(instance.df_indiv, instance.metrics)
+    # attr = build_matrix_indiv_attr(instance.df_indiv, instance.indiv_field)
+    # You can add metrics using these matrices and merge into metrics below.
+
+    metrics: Dict[str, Any] = {
+        'tick': tick,
+        **{f'clst__{k}': v for k, v in clustering_kpi.items()},
+        **{f'plc__{k}': v for k, v in placement_kpi.items()},
+    }
+
+    snapshot = EvalSnapshot(
+        labels=labels_now,
+        placement=placement_now,
+        tick=tick,
+    )
+    return snapshot, metrics

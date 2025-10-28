@@ -8,7 +8,7 @@ from .connector.file_connector import FileConnector
 from .connector.kafka_connector import KafkaConnector
 from .ingestion.csv_reader import CSVReader
 from .ingestion.kafka_reader import KafkaReader
-from .optimization.pyomo_model import PyomoModel
+from .optimization.factory import OptimizationFactory
 
 
 class ReaderFactory:
@@ -66,18 +66,6 @@ class ClusteringFactory:
         raise ValueError(f'Unknown clustering method: {cfg.method}')
 
 
-class OptimizationFactory:
-    """Factory for optimization plugins."""
-
-    @staticmethod
-    def create(cfg, instance):
-        """Create and return an optimization plugin based on config."""
-        s = cfg.solver.lower()
-        if s == 'pyomo':
-            return PyomoModel(cfg.parameters, instance)
-        raise ValueError(f'Unknown optimization solver: {cfg.solver}')
-
-
 class ConnectorFactory:
     """Factory for connector plugins."""
 
@@ -90,3 +78,6 @@ class ConnectorFactory:
         if t == 'file':
             return FileConnector(cfg.parameters)
         raise ValueError(f'Unknown connector type: {cfg.type}')
+
+
+__all__ = ['OptimizationFactory']

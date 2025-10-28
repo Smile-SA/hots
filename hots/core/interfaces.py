@@ -32,11 +32,23 @@ class ClusteringPlugin(ABC):
 
 
 class OptimizationPlugin(ABC):
-    """Interface for optimization plugins."""
+    """Interface for optimization backends (Pyomo, OR-Tools, ...)."""
 
     @abstractmethod
-    def solve(self, df_host: pd.DataFrame, labels: pd.Series) -> Any:
-        """Solve the optimization problem with given data and labels."""
+    def build(
+        self,
+        *,
+        pb_number: int,
+        u_mat=None,
+        w_mat=None,
+        v_mat=None,
+    ):
+        """Create and return a model handle (e.g., a Pyomo model wrapper)."""
+        pass
+
+    @abstractmethod
+    def solve(self, *, labels, instance):
+        """Solve the problem using current data."""
         pass
 
 

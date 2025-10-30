@@ -25,7 +25,7 @@
     }
   },
   "optimization": {
-    "solver": "pyomo",
+    "backend": "pyomo",
     "parameters": {
       "pb_number": 1,
       "solver": "glpk"

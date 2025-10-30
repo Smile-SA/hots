@@ -7,8 +7,6 @@ from hots.core.interfaces import OptimizationPlugin
 
 import numpy as np
 
-import pandas as pd
-
 from pyomo import environ as pe
 from pyomo.common.errors import ApplicationError
 from pyomo.common.numeric_types import value as pyo_value
@@ -43,6 +41,7 @@ class PyomoModel(OptimizationPlugin):
         self.u_mat = None
         self.w_mat = None
         self.v_mat = None
+        self.dv_mat = None
 
         # pyomo objects
         self.mdl = None
@@ -51,12 +50,15 @@ class PyomoModel(OptimizationPlugin):
         self.data = None
 
     # -- OptimizationPlugin API --
-    def build(self, *, u_mat=None, w_mat=None, v_mat=None):
+    def build(self, *, u_mat=None, w_mat=None, v_mat=None, dv_mat=None):
         """Create and store a concrete Pyomo model instance for this pb_number."""
-        # hold matrices (optional depending on pb)
+        # hold matrices
         self.u_mat = u_mat
-        self.w_mat = w_mat
-        self.v_mat = v_mat
+        if self.pb_number == 1:
+            self.w_mat = w_mat
+        elif self.pb_number == 2:
+            self.v_mat = v_mat
+            self.dv_mat = dv_mat
 
         # abstract model
         self.mdl = pe.AbstractModel()
@@ -72,7 +74,7 @@ class PyomoModel(OptimizationPlugin):
         # enable duals
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
 
-    def solve(self, *, labels=None, instance=None, solver: str | None = None):
+    def solve(self, *, solver: str | None = None):
         """Solve the current concrete instance (labels optional for compatibility)."""
         opt = pe.SolverFactory(solver or self.solver)
         results = self._attempt_solve(opt)
@@ -98,7 +100,6 @@ class PyomoModel(OptimizationPlugin):
     def build_parameters(self):
         """Build all Pyomo Params and Sets from data."""
         n = self.u_mat.shape[0]
-        # dv = build_similarity_matrix(self.u_mat)  # TODO really?
 
         # 2) Prepare list of container IDs in correct order
         #    dict_id_c maps ID → integer index 0..n-1
@@ -139,22 +140,20 @@ class PyomoModel(OptimizationPlugin):
         elif self.pb_number == 2:
             # Placement: nodes N, ticks T, capacities, consumption, and dv
             # (assumes create_data has already loaded cap, cons, etc.)
-            self.mdl.N = pe.Set(initialize=self.data[None]['N'])
+            self.mdl.N = pe.Set(dimen=1)
             self.mdl.n = pe.Param(within=pe.NonNegativeIntegers)
             self.mdl.cap = pe.Param(self.mdl.N)
 
-            self.mdl.T = pe.Set(initialize=self.data[None]['T'])
+            self.mdl.T = pe.Set(dimen=1)
             self.mdl.t = pe.Param(within=pe.NonNegativeIntegers)
-            self.mdl.Ccons = pe.Set(initialize=self.data[None]['Ccons'])
+            self.mdl.Ccons = pe.Set(dimen=1)
             self.mdl.cons = pe.Param(
                 self.mdl.Ccons,
                 self.mdl.T,
-                initialize=self.data[None]['cons'],
                 mutable=True,
             )
-            # TODO w_mat -> dv
             dv_dict = {
-                (self.id_list[j], self.id_list[i]): float(self.w_mat[i][j])
+                (self.id_list[j], self.id_list[i]): float(self.dv_mat[i][j])
                 for i, j in product(range(n), range(n))
             }
             self.mdl.dv = pe.Param(
@@ -216,11 +215,10 @@ class PyomoModel(OptimizationPlugin):
             self.mdl.place = pe.Var(
                 self.mdl.C,
                 self.mdl.N,
-                self.mdl.T,
                 domain=pe.NonNegativeReals,
                 bounds=(0, 1),
                 initialize=0,
-                doc='Container-to-node-time placement',
+                doc='Container-to-node placement',
             )
             # a(n) = 1 if node n is used
             self.mdl.a = pe.Var(
@@ -239,7 +237,7 @@ class PyomoModel(OptimizationPlugin):
                 initialize=0,
                 doc='Pairwise node adjacency'
             )
-            self.mdl.load = pe.Var(
+            self.mdl.node_load = pe.Var(
                 self.mdl.N,
                 self.mdl.T,
                 domain=pe.NonNegativeReals,
@@ -285,6 +283,15 @@ class PyomoModel(OptimizationPlugin):
             self.mdl.assignment = pe.Constraint(
                 self.mdl.C, rule=_assignment
             )
+            self.mdl.link_v1 = pe.Constraint(
+                self.mdl.C, self.mdl.C, self.mdl.N, rule=_link_v1_rule
+            )
+            self.mdl.link_v2 = pe.Constraint(
+                self.mdl.C, self.mdl.C, rule=_link_v2_rule
+            )
+            self.mdl.link_v3 = pe.Constraint(
+                self.mdl.C, self.mdl.C, rule=_link_v3_rule
+            )
             # (3) flow conservation: consumption matches load
             # self.mdl.flow_conservation = pe.Constraint(
             #     self.mdl.Ccons, self.mdl.T, rule=_flow_conservation_rule
@@ -310,7 +317,7 @@ class PyomoModel(OptimizationPlugin):
         """Build data dictionnary to instanciate abstract model and build ready-to-solve model."""
         # Shortcuts
         df_indiv = self.df_indiv
-        df_meta = self.df_meta or pd.DataFrame()
+        df_meta = self.df_meta
         metric = self.metric
         id_map = self.dict_id_c
         nf = self.indiv_field
@@ -529,7 +536,7 @@ def _link_u3_rule(mdl, i, j):
 
 
 def _capacity_rule(mdl, node, t):
-    return mdl.load[node, t] <= mdl.cap[node]
+    return mdl.node_load[node, t] <= mdl.cap[node]
 
 
 def _open_node(mdl, c, n):
@@ -538,6 +545,18 @@ def _open_node(mdl, c, n):
 
 def _assignment(mdl, c):
     return sum(mdl.place[c, n] for n in mdl.N) == 1
+
+
+def _link_v1_rule(mdl, i, j, n):
+    return mdl.v[i, j] >= mdl.place[i, n] + mdl.place[j, n] - 1
+
+
+def _link_v2_rule(mdl, i, j):
+    return mdl.v[i, j] <= sum(mdl.place[i, n] for n in mdl.N)
+
+
+def _link_v3_rule(mdl, i, j):
+    return mdl.v[i, j] <= sum(mdl.place[j, n] for n in mdl.N)
 
 
 def _must_link_c(mdl, i, j):

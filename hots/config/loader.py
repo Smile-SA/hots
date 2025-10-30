@@ -35,9 +35,9 @@ class ClusteringConfig:
 
 @dataclass
 class OptimizationConfig:
-    """Configuration for the optimization plugin: solver and its parameters."""
+    """Configuration for the optimization plugin: backend and its parameters."""
 
-    solver: str
+    backend: str
     parameters: Dict[str, Any]
 
 

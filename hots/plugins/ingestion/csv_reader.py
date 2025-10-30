@@ -16,6 +16,7 @@ class CSVReader(IngestionPlugin):
         """Initialize reader with file path and field mappings."""
         fname = parameters.get('file_name', 'container_usage.csv')
         self.csv_path = Path(parameters['data_folder']) / fname
+        self.meta_path = Path(parameters['data_folder']) / 'node_meta.csv'
         self.tick_field = parameters['tick_field']
         self.indiv_field = parameters['individual_field']
         self.host_field = parameters['host_field']
@@ -32,9 +33,10 @@ class CSVReader(IngestionPlugin):
 
     def load_initial(self):
         """Load the first batch of rows from [0, sep_time]."""
-        df = self._get_batch(window_end=self.sep_time)
+        df_indiv = self._get_batch(window_end=self.sep_time)
         self.current_time = self.sep_time
-        return df, None, None
+        df_meta = pd.read_csv(self.meta_path, index_col=False)
+        return df_indiv, None, df_meta
 
     def load_next(self):
         """Load the next time‐window batch of rows of size tick_increment."""

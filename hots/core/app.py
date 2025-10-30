@@ -19,9 +19,8 @@ from hots.plugins import (
     OptimizationFactory,
 )
 from hots.plugins.clustering.builder import (
-    build_adjacency_matrix,
-    build_matrix_indiv_attr,
-    build_similarity_matrix
+    build_post_clust_matrices,
+    build_pre_clust_matrices
 )
 from hots.utils.signals import setup_signal_handlers
 
@@ -141,29 +140,33 @@ class App:
 
     def pre_loop(self, labels):
         """Build and solve optimization models before performing streaming loop."""
-        logging.info('Building first clustering model...')
-        mat = build_matrix_indiv_attr(
+        logging.info('Building first optimization models...')
+        # Clustering model
+        (clust_mat, u_mat, w_mat) = build_pre_clust_matrices(
             self.instance.df_indiv,
             self.instance.config.tick_field,
             self.instance.config.individual_field,
             self.instance.config.metrics,
-            self.instance.get_id_map()
+            self.instance.get_id_map(),
+            labels
         )
-        u_mat = build_adjacency_matrix(labels)
-        w_mat = build_similarity_matrix(mat)
+
         self.clust_opt.build(u_mat=u_mat, w_mat=w_mat)
-        self.clust_opt.solve(
-            solver=self.config.optimization.parameters.get('solver', 'glpk'),
-        )
-
-        # 3) Extract dual values
+        self.clust_opt.solve()
         clust_dual = self.clust_opt.fill_dual_values()
-        print(clust_dual)
-        input('dual')
+        print('clust_dual', clust_dual)
+        # Problem model
+        v_mat = self.problem.build_place_adj_matrix(
+            self.instance.df_indiv,
+            self.instance.get_id_map())
+        dv_mat = build_post_clust_matrices(clust_mat)
+        self.problem_opt.build(u_mat=u_mat, v_mat=v_mat, dv_mat=dv_mat)
+        self.problem_opt.solve()
+        problem_dual = self.problem_opt.fill_dual_values()
+        print('place_dual', problem_dual)
+        input()
 
-    # -------------------------
     # Helpers
-    # -------------------------
     def _solve_problem(self, labels):
         """Solve the problem problem given clustering labels."""
         if hasattr(self.problem_opt, 'solve'):

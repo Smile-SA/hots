@@ -952,16 +952,16 @@ class PlacementPlugin(ProblemPlugin):
         ]
 
     # ----- Graph helpers ------------------------------------------------------
-    def build_placement_adj_matrix(
-        self, df_indiv: pd.DataFrame, dict_id_c: Dict[int, Any]
+    def build_place_adj_matrix(
+        self, df_indiv: pd.DataFrame, id_map: Dict[int, Any]
     ) -> np.ndarray:
         """Build adjacency matrix where A[i,j] = 1 if containers i and j share host."""
         f = self._f
         hosts = {}
-        for i, cid in dict_id_c.items():
+        for cid, i in id_map.items():
             row = df_indiv[df_indiv[f.indiv] == cid]
             hosts[i] = _safe_first(row[f.host].to_numpy())
-        n = len(dict_id_c)
+        n = len(id_map)
         a = np.zeros((n, n), dtype=int)
         for i in range(n):
             for j in range(i + 1, n):

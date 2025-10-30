@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 
 from hots.config.loader import AppConfig
 from hots.plugins import KafkaPlugin, ReaderFactory
-from hots.preprocessing.tools import build_df_from_containers
+from hots.utils.tools import build_df_from_containers
 
 import pandas as pd
 

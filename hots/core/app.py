@@ -67,6 +67,9 @@ class App:
     def run(self):
         """Run the initial evaluation and streaming update loop."""
         t_start = time.time()
+        end_time = 0
+        if self.config.time_limit is not None:
+            end_time = t_start + self.config.time_limit
         logging.info('Starting HOTS run – preprocessing')
 
         # Clear any residual offsets/state
@@ -119,10 +122,8 @@ class App:
         tmax = self.instance.df_indiv[self.config.tick_field].max()
         loop_nb = 1
         while True:
-            # TODO fix end
-            if time_limit is not None and time.time() >= end_time:
-                it.end = True
-                it.s_entry = False
+            if self.config.time_limit is not None and time.time() >= end_time:
+                self.shutdown()
                 break
             logging.info('Starting loop #%d', loop_nb)
             df_new = self.instance.reader.load_next()

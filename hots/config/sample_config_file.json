@@ -1,9 +1,10 @@
 {
-  "data_folder": "./tests/data/min_test_3",
+  "data_folder": "./tests/data/thesis_ex_10",
   "tick_field": "timestamp",
   "host_field": "machine_id",
   "individual_field": "container_id",
   "metrics": ["cpu"],
+  "time_limit": 1,
   "reader": {
     "type": "csv",
     "parameters": {

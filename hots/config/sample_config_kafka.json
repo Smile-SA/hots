@@ -4,6 +4,7 @@
   "host_field": "machine_id",
   "individual_field": "container_id",
   "metrics": ["cpu"],
+  "time_limit": null,
   "reader": {
     "type": "csv",
     "parameters": {

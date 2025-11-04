@@ -84,6 +84,7 @@ class AppConfig:
     host_field: str
     individual_field: str
     metrics: List[str]
+    time_limit: int
     reader: ReaderConfig
     kafka: Optional[KafkaConfig]
     clustering: ClusteringConfig
@@ -128,6 +129,7 @@ def load_config(path: Path) -> AppConfig:
         host_field=raw['host_field'],
         individual_field=raw['individual_field'],
         metrics=raw['metrics'],
+        time_limit=raw['time_limit'],
         reader=reader,
         kafka=kafka,
         clustering=clustering,

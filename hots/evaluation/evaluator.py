@@ -84,11 +84,12 @@ def eval_solutions(
     clust_opt,
     problem_opt,
     problem,
+    working_df
 ) -> Tuple[Any, Dict[str, Any]]:
     """Run the evaluation pipeline and collect evaluation metrics."""
     # 1) Build & solve clustering problem
     (clust_mat, u_mat, w_mat) = build_pre_clust_matrices(
-        instance.df_indiv,
+        working_df,
         instance.config.tick_field,
         instance.config.individual_field,
         instance.config.metrics,
@@ -97,7 +98,7 @@ def eval_solutions(
     )
     sil = silhouette_score(clust_mat.values, clustering.labels)
     # TODO update and no build
-    clust_opt.build(u_mat, w_mat)
+    clust_opt.build(u_mat=u_mat, w_mat=w_mat)
     clust_opt.solve(
         solver=instance.config.optimization.parameters.get('solver', 'glpk'),
     )
@@ -115,7 +116,7 @@ def eval_solutions(
         clust_duals,
         tol,
         tol_move,
-        df_clust=df_indiv,
+        df_clust=clust_mat,
         profiles=None,
     )
     # TODO move containers clustering
@@ -123,7 +124,7 @@ def eval_solutions(
 
     # 6) Build & solve business problem
     v_mat = problem.build_place_adj_matrix(
-        instance.df_indiv,
+        working_df,
         instance.get_id_map())
     dv_mat = build_post_clust_matrices(clust_mat)
     # TODO update not build
@@ -137,11 +138,12 @@ def eval_solutions(
         problem_duals,
         tol,
         tol_move,
-        working_df=df_indiv,
+        working_df=working_df,
     )
     # TODO replace duals inside optim problem
 
     # 6) Apply business‑problem logic
+    # TODO redo
     solution2 = problem.adjust(problem_opt, moving)
 
     # 7) Collect metrics

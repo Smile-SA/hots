@@ -124,7 +124,6 @@ class App:
         while True:
             if self.config.time_limit is not None and time.time() >= end_time:
                 self.shutdown()
-                break
             logging.info('Starting loop #%d', loop_nb)
             df_new = self.instance.reader.load_next()
             if df_new is None:
@@ -159,33 +158,33 @@ class App:
 
 
         # ===== Streaming loop =====
-        logging.info('Entering streaming update loop')
-        for batch in self.connector.stream():  # yields new dataframes or payloads
-            # 1) Ingest/merge new data into the instance
-            print(self.instance.df_indiv)
-            self.instance.update_with_batch(batch)
-            print(self.instance.df_indiv)
-            input()
+        # logging.info('Entering streaming update loop')
+        # for batch in self.connector.stream():  # yields new dataframes or payloads
+        #     # 1) Ingest/merge new data into the instance
+        #     print(self.instance.df_indiv)
+        #     self.instance.update_with_batch(batch)
+        #     print(self.instance.df_indiv)
+        #     input()
 
-            # 2) Re-run clustering on new state
-            labels = np.asarray(self.clustering.fit(self.instance.df_indiv))
-            n_clusters = int(len(np.unique(labels)))
-            logging.info('Re-clustered: %d clusters', n_clusters)
+        #     # 2) Re-run clustering on new state
+        #     labels = np.asarray(self.clustering.fit(self.instance.df_indiv))
+        #     n_clusters = int(len(np.unique(labels)))
+        #     logging.info('Re-clustered: %d clusters', n_clusters)
 
-            # 3) Re-solve problem using clustering output
-            problem = self._solve_problem(labels)
+        #     # 3) Re-solve problem using clustering output
+        #     problem = self._solve_problem(labels)
 
-            # 4) Evaluate bi-level (compare to previous)
-            snapshot, metrics = eval_bilevel_step(
-                instance=self.instance,
-                labels=labels,
-                problem=problem,
-                prev_snapshot=self.prev_snapshot,
-                tick=self.instance.current_tick if hasattr(self.instance, 'current_tick') else 0,
-            )
-            self.prev_snapshot = snapshot
-            self.metrics_history.append(metrics)
-            self._persist_metrics()
+        #     # 4) Evaluate bi-level (compare to previous)
+        #     snapshot, metrics = eval_bilevel_step(
+        #         instance=self.instance,
+        #         labels=labels,
+        #         problem=problem,
+        #         prev_snapshot=self.prev_snapshot,
+        #         tick=self.instance.current_tick if hasattr(self.instance, 'current_tick') else 0,
+        #     )
+        #     self.prev_snapshot = snapshot
+        #     self.metrics_history.append(metrics)
+        #     self._persist_metrics()
 
         t_total = time.time() - t_start
         logging.info('Finished HOTS run in %.3f seconds', t_total)
@@ -223,7 +222,7 @@ class App:
         out.to_csv(self.instance.results_file, index=False, mode='w')
         logging.debug('Metrics written to %s', self.instance.results_file)
 
-    def shutdown(self, signum, frame):
+    def shutdown(self, signum=None, frame=None):
         """Handle shutdown signals gracefully."""
         print('Shutting down...')
-        exit(0)
+        raise SystemExit(0)

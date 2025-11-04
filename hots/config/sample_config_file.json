@@ -1,10 +1,10 @@
 {
-  "data_folder": "./tests/data/thesis_ex_10",
+  "data_folder": "./tests/data/min_test_3",
   "tick_field": "timestamp",
   "host_field": "machine_id",
   "individual_field": "container_id",
   "metrics": ["cpu"],
-  "time_limit": 1,
+  "time_limit": null,
   "reader": {
     "type": "csv",
     "parameters": {
@@ -31,7 +31,7 @@
     "parameters": {
       "pb_number": 1,
       "solver": "glpk",
-      "verbose": 1
+      "verbose": 0
     }
   },
   "problem": {

@@ -72,7 +72,8 @@ class PlacementPlugin(ProblemPlugin):
         return the final list of move‐dicts.
         """
         # start with the solver’s own moves
-        moves: List[Dict[str, Any]] = model.extract_moves()
+        # moves: List[Dict[str, Any]] = model.extract_moves()
+        moves: List[Dict[str, Any]] = []
 
         # compute the time window
         df = self.instance.df_indiv

@@ -3,6 +3,7 @@
 """Clustering builder utilities for HOTS."""
 
 from itertools import combinations
+import logging
 
 import numpy as np
 
@@ -137,3 +138,72 @@ def get_far_container(c1, c2, df_clust: pd.DataFrame, profiles: np.ndarray) -> s
     d1 = dist_from_mean(df_clust, profiles, c1)
     d2 = dist_from_mean(df_clust, profiles, c2)
     return c1 if d1 > d2 else c2
+
+
+def change_clustering(
+    mvg_containers,
+    df_clust: pd.DataFrame,
+    clustering,
+    dict_id_c: dict,
+    tol_open_clust: float = None
+):
+    """
+    Reassign each container in mvg_containers to the closest existing cluster
+    (by Euclidean distance to the cluster mean profile).
+    """
+    nb_changes = 0
+
+    # Work only on moved-out base set to compute centroids (don’t include movers)
+    df_clust_new = df_clust.loc[~df_clust.index.isin(mvg_containers)]
+    if df_clust_new.empty:
+        # No reference data to compute centroids -> nothing to do
+        return df_clust, nb_changes
+
+    profiles = cluster_mean_profile(df_clust_new)
+    if profiles is None or (isinstance(profiles, np.ndarray) and profiles.size == 0):
+        return df_clust, nb_changes
+
+    # Columns that are features (everything except 'cluster')
+    feature_cols = [c for c in df_clust.columns if c != 'cluster']
+
+    for indiv in mvg_containers:
+        # Skip if the container isn’t present
+        if indiv not in df_clust.index:
+            continue
+
+        # Extract feature vector for this container
+        row = df_clust.loc[indiv]
+        x = row[feature_cols].to_numpy(dtype=float)
+
+        # Distances to each cluster centroid
+        # profiles[k] must be same length as x
+        dists = np.linalg.norm(profiles - x, axis=1)
+        new_cluster = int(np.argmin(dists))
+
+        # --- Optional "open a new cluster" logic ---
+        # min_dist = float(dists[new_cluster])
+        # if tol_open_clust is not None and min_dist >= tol_open_clust:
+        #     # create new cluster with this container as its centroid
+        #     new_cluster = profiles.shape[0]
+        #     profiles = np.vstack([profiles, x[None, :]])
+
+        old_cluster = int(row['cluster'])
+        if new_cluster != old_cluster:
+            try:
+                logging.info(
+                    f'{indiv} changes cluster : from {old_cluster} to {new_cluster}\n'
+                )
+            except Exception:
+                pass
+            print(f'{indiv} changes cluster : from {old_cluster} to {new_cluster}')
+
+            # Update df and labels_
+            df_clust.loc[indiv, 'cluster'] = new_cluster
+            nb_changes += 1
+
+            # Update labels_ only if we can resolve the integer id
+            c_int = dict_id_c.get(indiv, None)
+            if c_int is not None and 0 <= c_int < len(clustering.labels):
+                clustering.labels[c_int] = new_cluster
+
+    return df_clust, nb_changes

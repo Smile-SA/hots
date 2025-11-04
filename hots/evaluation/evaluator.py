@@ -7,6 +7,7 @@ from typing import Any, Dict, List, Optional, Tuple
 from hots.plugins.clustering.builder import (
     build_post_clust_matrices,
     build_pre_clust_matrices,
+    change_clustering,
     cluster_mean_profile,
     get_far_container
 )
@@ -124,11 +125,10 @@ def eval_solutions(
         df_clust=clust_mat,
         profiles=clustering.profiles,
     )
-    print(clust_mat)
-    print('moving clust')
-    print(moving)
-    input()
-    # TODO move containers clustering
+
+    (clust_mat, clust_nb_changes) = change_clustering(
+        moving, clust_mat, clustering, instance.get_id_map()
+    )
 
     # 6) Build & solve business problem
     v_mat = problem.build_place_adj_matrix(

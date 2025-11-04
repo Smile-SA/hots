@@ -11,7 +11,8 @@ from hots.config.loader import AppConfig
 from hots.core.instance import Instance
 from hots.evaluation.evaluator import (
     EvalSnapshot,
-    eval_bilevel_step
+    eval_bilevel_step,
+    eval_solutions
 )
 from hots.plugins import (
     ClusteringFactory,
@@ -94,26 +95,64 @@ class App:
 
         self.pre_loop(labels)
 
-        # Placement uses clustering labels
-        problem = self._solve_problem(labels)
-
         # Evaluate (no "previous" yet, so deltas will be None/0)
-        snapshot, metrics = eval_bilevel_step(
-            instance=self.instance,
-            labels=labels,
-            problem=problem,
-            prev_snapshot=None,
-            tick=self.instance.current_tick if hasattr(self.instance, 'current_tick') else 0,
-        )
-        self.prev_snapshot = snapshot
-        self.metrics_history.append(metrics)
-        self._persist_metrics()
+        # snapshot, metrics = eval_bilevel_step(
+        #     instance=self.instance,
+        #     labels=labels,
+        #     problem=problem,
+        #     prev_snapshot=None,
+        #     tick=self.instance.current_tick if hasattr(self.instance, 'current_tick') else 0,
+        # )
+        # self.prev_snapshot = snapshot
+        # self.metrics_history.append(metrics)
+        # self._persist_metrics()
+
+        # record a minimal “initial” metric
+        self.instance.metrics_history.append({
+            'initial_clusters': n_clusters,
+            'initial_moves': len(initial_moves),
+        })
+
+        # Streaming loop
+        loop_nb = 1
+        while True:
+            logging.info('Starting loop #%d', loop_nb)
+            df_new = self.instance.reader.load_next()
+            if df_new is None:
+                break
+
+            # Update ingestion state
+            self.instance.update_data(df_new)
+
+            # Evaluate new solution + metrics
+            sol2, metrics = eval_solutions(
+                self.instance,
+                self.clustering,
+                self.clust_opt,
+                self.problem_opt
+                self.problem,
+            )
+            logging.info(
+                'Loop %d moves: %d containers', loop_nb, len(metrics['moving_containers'])
+            )
+
+            logging.info('Applying moves for loop #%d', loop_nb)
+            self.connector.apply_moves(sol2)
+            logging.info('Moves applied for loop #%d', loop_nb)
+
+            self.instance.metrics_history.append(metrics)
+
+            loop_nb += 1
+
 
         # ===== Streaming loop =====
         logging.info('Entering streaming update loop')
         for batch in self.connector.stream():  # yields new dataframes or payloads
             # 1) Ingest/merge new data into the instance
+            print(self.instance.df_indiv)
             self.instance.update_with_batch(batch)
+            print(self.instance.df_indiv)
+            input()
 
             # 2) Re-run clustering on new state
             labels = np.asarray(self.clustering.fit(self.instance.df_indiv))
@@ -153,8 +192,8 @@ class App:
 
         self.clust_opt.build(u_mat=u_mat, w_mat=w_mat)
         self.clust_opt.solve()
-        clust_dual = self.clust_opt.fill_dual_values()
-        print('clust_dual', clust_dual)
+        clust_duals = self.clust_opt.fill_dual_values()
+        print('clust_dual', clust_duals)
         # Problem model
         v_mat = self.problem.build_place_adj_matrix(
             self.instance.df_indiv,
@@ -162,19 +201,8 @@ class App:
         dv_mat = build_post_clust_matrices(clust_mat)
         self.problem_opt.build(u_mat=u_mat, v_mat=v_mat, dv_mat=dv_mat)
         self.problem_opt.solve()
-        problem_dual = self.problem_opt.fill_dual_values()
-        print('place_dual', problem_dual)
-        input()
-
-    # Helpers
-    def _solve_problem(self, labels):
-        """Solve the problem problem given clustering labels."""
-        if hasattr(self.problem_opt, 'solve'):
-            return self.problem_opt.solve(labels=labels, instance=self.instance)
-
-        raise RuntimeError(
-            'Placement optimizer must implement .solve(labels=..., instance=...).'
-        )
+        problem_duals = self.problem_opt.fill_dual_values()
+        print('place_dual', problem_duals)
 
     def _persist_metrics(self):
         """Append metrics to CSV and keep an in-memory history."""

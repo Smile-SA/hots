@@ -24,6 +24,7 @@ class PyomoModel(OptimizationPlugin):
         self.pb_number = params.get('pb_number', 1)
         self.solver = params.get('solver', 'glpk')
         self.verbose = params.get('verbose', False)
+        self.last_duals = None
 
         # derived shortcuts from instance/config
         self.df_indiv = instance.df_indiv

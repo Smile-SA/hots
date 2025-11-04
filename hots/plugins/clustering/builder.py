@@ -4,7 +4,6 @@
 
 from itertools import combinations
 
-from hots.utils.tools import check_missing_entries_df
 import numpy as np
 
 import pandas as pd
@@ -27,8 +26,6 @@ def build_matrix_indiv_attr(
         rows.append(row)
     mat = pd.DataFrame(rows).fillna(0).set_index(indiv_field)
     sorted_idx = sorted(mat.index, key=lambda x: id_map[x])
-    print(df)
-    print(mat.loc[sorted_idx])
     return mat.loc[sorted_idx]
 
 

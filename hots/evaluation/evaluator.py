@@ -4,9 +4,8 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from hots.plugins.clustering.builder import (
-    build_adjacency_matrix,
-    build_matrix_indiv_attr,
-    build_similarity_matrix
+    build_pre_clust_matrices,
+    build_post_clust_matrices
 )
 
 import networkx as nx
@@ -80,64 +79,70 @@ def _kpi_placement(
 
 
 def eval_solutions(
-    df_indiv: pd.DataFrame,
-    df_host: pd.DataFrame,
-    labels,
+    instance,
     clustering,
-    optimization,
+    clust_opt,
+    problem_opt,
     problem,
-    instance
 ) -> Tuple[Any, Dict[str, Any]]:
     """Run the evaluation pipeline and collect evaluation metrics."""
     # 1) Build & solve clustering problem
-    # TODO update and no build
-    mat = build_matrix_indiv_attr(
-        df_indiv,
+    (clust_mat, u_mat, w_mat) = build_pre_clust_matrices(
+        instance.df_indiv,
         instance.config.tick_field,
         instance.config.individual_field,
         instance.config.metrics,
-        instance.get_id_map()
+        instance.get_id_map(),
+        clustering.labels
     )
-    u_mat = build_adjacency_matrix(labels)
-    w_mat = build_similarity_matrix(mat)
-    sil = silhouette_score(mat.values, labels)
-
-    # 2) Update & Solve the optimization model
-    model = optimization.build(u_mat, w_mat)
-    # model = optimization.solve(df_host, labels)
-    model.solve(
+    sil = silhouette_score(clust_mat.values, clustering.labels)
+    # TODO update and no build
+    clust_opt.build(u_mat, w_mat)
+    clust_opt.solve(
         solver=instance.config.optimization.parameters.get('solver', 'glpk'),
     )
 
     # 3) Extract dual values
-    duals = model.fill_dual_values()
+    clust_duals = clust_opt.fill_dual_values()
 
     # 4) Read tolerances
     tol = instance.config.problem.parameters.get('tol', 0.1)
     tol_move = instance.config.problem.parameters.get('tol_move', 0.1)
 
-    # 5) Conflict detection & pick moving containers
-    pb = instance.config.optimization.parameters.get('pb_number', 1)
-    if pb == 1:
-        moving, nodes, edges, max_deg, mean_deg = get_moving_containers_clust(
-            model,
-            duals,
-            tol,
-            tol_move,
-            df_clust=df_indiv,
-            profiles=None,
-        )
-    else:
-        moving, nodes, edges, max_deg, mean_deg = get_moving_containers_place(
-            model,
-            duals,
-            tol,
-            tol_move,
-            working_df=df_indiv,
-        )
+    # 5) Conflict detection & pick moving containers for clustering
+    moving, nodes, edges, max_deg, mean_deg = get_moving_containers_clust(
+        clust_opt,
+        clust_duals,
+        tol,
+        tol_move,
+        df_clust=df_indiv,
+        profiles=None,
+    )
+    # TODO move containers clustering
+    # TODO replace old duals inside optim problem
+
+    # 6) Build & solve business problem
+    v_mat = problem.build_place_adj_matrix(
+        instance.df_indiv,
+        instance.get_id_map())
+    dv_mat = build_post_clust_matrices(clust_mat)
+    # TODO update not build
+    problem_opt.build(u_mat=u_mat, v_mat=v_mat, dv_mat=dv_mat)
+    problem_opt.solve()
+    problem_duals = problem_opt.fill_dual_values()
+    # 7) Conflict detection & pick moving containers for problem
+    # TODO use problem factory for this method
+    moving, nodes, edges, max_deg, mean_deg = get_moving_containers_place(
+        problem_opt,
+        problem_duals,
+        tol,
+        tol_move,
+        working_df=df_indiv,
+    )
+    # TODO replace duals inside optim problem
 
     # 6) Apply business‑problem logic
-    solution2 = problem.adjust(model, moving)
+    solution2 = problem.adjust(problem_opt, moving)
 
     # 7) Collect metrics
     metrics: Dict[str, Any] = {

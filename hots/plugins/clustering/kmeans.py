@@ -25,6 +25,7 @@ class StreamKMeans(ClusteringPlugin):
         self.metrics = instance.config.metrics
         self.id_map = instance.get_id_map()
         self.model = None
+        self.labels = None
 
     def fit(self, df: pd.DataFrame) -> pd.Series:
         """
@@ -45,5 +46,5 @@ class StreamKMeans(ClusteringPlugin):
             batch_size=self.batch_size,
             random_state=self.random_state,
         )
-        labels = self.model.fit_predict(x)
-        return pd.Series(labels, index=mat.index)
+        self.labels = self.model.fit_predict(x)
+        return pd.Series(self.labels, index=mat.index)

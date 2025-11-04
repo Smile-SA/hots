@@ -90,6 +90,7 @@ class App:
             logging.info('Skipping first placement (keeping existing)')
             initial_moves = []
 
+        # TODO not really
         self.connector.apply_moves(initial_moves)
         logging.info('Applied initial placement moves')
 
@@ -114,8 +115,15 @@ class App:
         })
 
         # Streaming loop
+        tmin = self.instance.df_indiv[self.config.tick_field].min()
+        tmax = self.instance.df_indiv[self.config.tick_field].max()
         loop_nb = 1
         while True:
+            # TODO fix end
+            if time_limit is not None and time.time() >= end_time:
+                it.end = True
+                it.s_entry = False
+                break
             logging.info('Starting loop #%d', loop_nb)
             df_new = self.instance.reader.load_next()
             if df_new is None:
@@ -123,14 +131,16 @@ class App:
 
             # Update ingestion state
             self.instance.update_data(df_new)
+            working_df = self.instance.get_working_df(tmin, tmax)
 
             # Evaluate new solution + metrics
             sol2, metrics = eval_solutions(
                 self.instance,
                 self.clustering,
                 self.clust_opt,
-                self.problem_opt
+                self.problem_opt,
                 self.problem,
+                working_df
             )
             logging.info(
                 'Loop %d moves: %d containers', loop_nb, len(metrics['moving_containers'])
@@ -142,6 +152,8 @@ class App:
 
             self.instance.metrics_history.append(metrics)
 
+            tmax += self.config.reader.parameters.get('tick_increment', 2)
+            tmin = tmax - (self.config.reader.parameters.get('tick_increment', 2) - 1)
             loop_nb += 1
 
 

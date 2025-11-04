@@ -70,3 +70,13 @@ class Instance:
             self.df_indiv[self.config.individual_field].unique()
         )
         return {cid: idx for idx, cid in enumerate(unique)}
+
+    def get_working_df(self, tmin, tmax, inclusive=True):
+        """Get data for the current time window."""
+        df = self.df_indiv
+        tick_field = self.config.tick_field
+        if inclusive:
+            mask = (df[tick_field] >= tmin) & (df[tick_field] <= tmax)
+        else:
+            mask = (df[tick_field] > tmin) & (df[tick_field] < tmax)
+        return df.loc[mask]

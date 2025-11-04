@@ -14,7 +14,8 @@
       "host_field": "machine_id",
       "metrics": ["cpu"],
       "sep_time": 10,
-      "tick_increment": 3
+      "tick_increment": 3,
+      "window_duration" : 3
     }
   },
   "clustering": {

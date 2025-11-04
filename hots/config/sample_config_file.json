@@ -8,13 +8,13 @@
   "reader": {
     "type": "csv",
     "parameters": {
-      "data_folder": "./tests/data/min_test_3",
+      "data_folder": "./tests/data/thesis_ex_10",
       "file_name": "container_usage.csv",
       "tick_field": "timestamp",
       "individual_field": "container_id",
       "host_field": "machine_id",
       "metrics": ["cpu"],
-      "sep_time": 1,
+      "sep_time": 3,
       "tick_increment": 2,
       "window_duration" : 3
     }
@@ -38,7 +38,7 @@
     "type": "placement",
     "parameters": {
       "tol": 0.1,
-      "tol_move": 0.2
+      "tol_move": 0.5
     }
   },
   "connector": {

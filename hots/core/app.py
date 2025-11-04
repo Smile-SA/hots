@@ -118,8 +118,9 @@ class App:
         })
 
         # Streaming loop
-        tmin = self.instance.df_indiv[self.config.tick_field].min()
         tmax = self.instance.df_indiv[self.config.tick_field].max()
+        tmax += self.config.reader.parameters.get('tick_increment', 2)
+        tmin = tmax - (self.config.reader.parameters.get('tick_increment', 2) - 1)
         loop_nb = 1
         while True:
             if self.config.time_limit is not None and time.time() >= end_time:
@@ -147,7 +148,8 @@ class App:
             )
 
             logging.info('Applying moves for loop #%d', loop_nb)
-            self.connector.apply_moves(sol2)
+            # TODO redo
+            # self.connector.apply_moves(sol2)
             logging.info('Moves applied for loop #%d', loop_nb)
 
             self.instance.metrics_history.append(metrics)
@@ -204,8 +206,7 @@ class App:
 
         self.clust_opt.build(u_mat=u_mat, w_mat=w_mat)
         self.clust_opt.solve()
-        clust_duals = self.clust_opt.fill_dual_values()
-        print('clust_dual', clust_duals)
+        self.clust_opt.fill_dual_values()
         # Problem model
         v_mat = self.problem.build_place_adj_matrix(
             self.instance.df_indiv,
@@ -213,8 +214,7 @@ class App:
         dv_mat = build_post_clust_matrices(clust_mat)
         self.problem_opt.build(u_mat=u_mat, v_mat=v_mat, dv_mat=dv_mat)
         self.problem_opt.solve()
-        problem_duals = self.problem_opt.fill_dual_values()
-        print('place_dual', problem_duals)
+        self.problem_opt.fill_dual_values()
 
     def _persist_metrics(self):
         """Append metrics to CSV and keep an in-memory history."""

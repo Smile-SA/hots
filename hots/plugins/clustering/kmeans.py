@@ -26,6 +26,7 @@ class StreamKMeans(ClusteringPlugin):
         self.id_map = instance.get_id_map()
         self.model = None
         self.labels = None
+        self.profiles = None
 
     def fit(self, df: pd.DataFrame) -> pd.Series:
         """

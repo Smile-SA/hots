@@ -507,8 +507,8 @@ class PyomoModel(OptimizationPlugin):
             self.instance_model, 'must_link_c' if self.pb_number == 1 else 'must_link_n', None
         )
         if con is None:
-            return {}
-        return {idx: dual[con[idx]] for idx in con}
+            self.last_duals = {}
+        self.last_duals = {idx: dual[con[idx]] for idx in con}
 
 
 # ----- rules -----

@@ -1,11 +1,14 @@
 """Evaluation utilities for HOTS."""
 
 from dataclasses import dataclass
+import math
 from typing import Any, Dict, List, Optional, Tuple
 
 from hots.plugins.clustering.builder import (
+    build_post_clust_matrices,
     build_pre_clust_matrices,
-    build_post_clust_matrices
+    cluster_mean_profile,
+    get_far_container
 )
 
 import networkx as nx
@@ -104,23 +107,28 @@ def eval_solutions(
     )
 
     # 3) Extract dual values
-    clust_duals = clust_opt.fill_dual_values()
+    prev_duals = clust_opt.last_duals
+    clust_opt.fill_dual_values()
 
     # 4) Read tolerances
     tol = instance.config.problem.parameters.get('tol', 0.1)
     tol_move = instance.config.problem.parameters.get('tol_move', 0.1)
 
     # 5) Conflict detection & pick moving containers for clustering
+    clustering.profiles = cluster_mean_profile(clust_mat)
     moving, nodes, edges, max_deg, mean_deg = get_moving_containers_clust(
-        clust_opt,
-        clust_duals,
+        instance, clust_opt,
+        prev_duals,
         tol,
         tol_move,
         df_clust=clust_mat,
-        profiles=None,
+        profiles=clustering.profiles,
     )
+    print(clust_mat)
+    print('moving clust')
+    print(moving)
+    input()
     # TODO move containers clustering
-    # TODO replace old duals inside optim problem
 
     # 6) Build & solve business problem
     v_mat = problem.build_place_adj_matrix(
@@ -130,12 +138,13 @@ def eval_solutions(
     # TODO update not build
     problem_opt.build(u_mat=u_mat, v_mat=v_mat, dv_mat=dv_mat)
     problem_opt.solve()
-    problem_duals = problem_opt.fill_dual_values()
+    prev_duals = problem_opt.last_duals
+    problem_opt.fill_dual_values()
     # 7) Conflict detection & pick moving containers for problem
     # TODO use problem factory for this method
     moving, nodes, edges, max_deg, mean_deg = get_moving_containers_place(
-        problem_opt,
-        problem_duals,
+        instance, problem_opt,
+        prev_duals,
         tol,
         tol_move,
         working_df=working_df,
@@ -144,7 +153,8 @@ def eval_solutions(
 
     # 6) Apply business‑problem logic
     # TODO redo
-    solution2 = problem.adjust(problem_opt, moving)
+    # solution2 = problem.adjust(problem_opt, moving)
+    solution2 = None
 
     # 7) Collect metrics
     metrics: Dict[str, Any] = {
@@ -185,7 +195,7 @@ def get_conflict_graph(
 
 
 def get_moving_containers_clust(
-    model,
+    instance, model,
     prev_duals: Dict[Any, float],
     tol: float,
     tol_move: float,
@@ -193,36 +203,53 @@ def get_moving_containers_clust(
     profiles: np.ndarray
 ) -> Tuple[List[Any], int, int, int, float]:
     """Select containers to move from clustering conflict graph."""
+    print('prev_duals', prev_duals)
     g = get_conflict_graph(model, prev_duals, tol)
+    print('graph', g)
     n_nodes, n_edges = g.number_of_nodes(), g.number_of_edges()
     degrees = sorted(g.degree(), key=lambda x: x[1], reverse=True)
+    print(n_nodes, n_edges, degrees)
     if not degrees:
         return [], n_nodes, n_edges, 0, 0.0
     max_deg = degrees[0][1]
     mean_deg = sum(d for _, d in degrees) / len(degrees)
 
     moving = []
-    budget = len(model.dict_id_c) * tol_move
+    budget = max(0, int(math.ceil(len(df_clust) * tol_move)))
+    print(tol, tol_move, budget)
     while degrees and len(moving) < budget:
         cid, deg = degrees[0]
-        if deg > 1:
+
+        if deg == 0:
+            # isolated node: just drop it from the graph
+            g.remove_node(cid)
+
+        elif deg > 1:
+            # high-degree node: move it
             moving.append(cid)
             g.remove_node(cid)
+
         else:
+            # deg == 1: pick its single neighbor as partner
             partner = next(iter(g.neighbors(cid)))
-            to_move = get_far_container(model, cid, partner, df_clust, profiles)
+            to_move = get_far_container(cid, partner, df_clust, profiles)
             moving.append(to_move)
             g.remove_node(cid)
             if partner in g:
                 g.remove_node(partner)
-        g.remove_nodes_from(nx.isolates(g))
+
+        isolates = list(nx.isolates(g))
+        if isolates:
+            g.remove_nodes_from(isolates)
+
+        # recompute degrees after mutations
         degrees = sorted(g.degree(), key=lambda x: x[1], reverse=True)
 
     return moving, n_nodes, n_edges, max_deg, mean_deg
 
 
 def get_moving_containers_place(
-    model,
+    instance, model,
     prev_duals: Dict[Any, float],
     tol: float,
     tol_move: float,
@@ -241,67 +268,136 @@ def get_moving_containers_place(
     budget = len(model.dict_id_c) * tol_move
     while degrees and len(moving) < budget:
         cid, deg = degrees[0]
-        if deg > 1:
+
+        if deg == 0:
+            # isolated node: just drop it from the graph
+            g.remove_node(cid)
+
+        elif deg > 1:
+            # high-degree node: move it
             moving.append(cid)
             g.remove_node(cid)
+
         else:
+            # deg == 1: pick its single neighbor as partner
             partner = next(iter(g.neighbors(cid)))
-            to_move = get_container_tomove(model, cid, partner, working_df)
+            to_move = get_container_tomove(instance, cid, partner, working_df)
             moving.append(to_move)
             g.remove_node(cid)
             if partner in g:
                 g.remove_node(partner)
-        g.remove_nodes_from(nx.isolates(g))
+
+        isolates = list(nx.isolates(g))
+        if isolates:
+            g.remove_nodes_from(isolates)
+
+        # recompute degrees after mutations
         degrees = sorted(g.degree(), key=lambda x: x[1], reverse=True)
 
     return moving, n_nodes, n_edges, max_deg, mean_deg
 
 
-def get_far_container(
-    model,
-    c1: Any,
-    c2: Any,
-    df_clust: pd.DataFrame,
-    profiles: np.ndarray
-) -> Any:
-    """Pick between two containers by variance from cluster profile."""
-    nf, hf, tf, metric = (
-        model.indiv_field,
-        model.host_field,
-        model.tick_field,
-        model.metrics[0]
-    )
-    host = df_clust.loc[df_clust[nf] == c1, hf].iloc[0]
-    node_ts = (
-        df_clust[df_clust[hf] == host]
-        .groupby(tf)[metric].sum().sort_index().values
-    )
-    c1_ts = df_clust[df_clust[nf] == c1][metric].sort_index().values
-    c2_ts = df_clust[df_clust[nf] == c2][metric].sort_index().values
-    return c1 if np.var(node_ts - c1_ts) > np.var(node_ts - c2_ts) else c2
+# def get_far_container(
+#     instance,
+#     c1: Any,
+#     c2: Any,
+#     df_clust: pd.DataFrame,
+#     profiles: np.ndarray
+# ) -> Any:
+#     """Pick between two containers by variance from cluster profile."""
+#     nf, hf, tf, metric = (
+#         instance.config.individual_field,
+#         instance.config.host_field,
+#         instance.config.tick_field,
+#         instance.config.metrics[0]
+#     )
+#     host = df_clust.loc[df_clust[nf] == c1, hf].iloc[0]
+#     node_ts = (
+#         df_clust[df_clust[hf] == host]
+#         .groupby(tf)[metric].sum().sort_index().values
+#     )
+#     c1_ts = df_clust[df_clust[nf] == c1][metric].sort_index().values
+#     c2_ts = df_clust[df_clust[nf] == c2][metric].sort_index().values
+#     return c1 if np.var(node_ts - c1_ts) > np.var(node_ts - c2_ts) else c2
 
 
-def get_container_tomove(
-    model,
-    c1: Any,
-    c2: Any,
-    working_df: pd.DataFrame
-) -> Any:
-    """Pick between two containers by variance on placement node."""
+def get_container_tomove(instance, c1, c2, working_df: pd.DataFrame):
+    """Pick between two containers by variance on c1's placement node.
+
+    Chooses the container whose removal makes the node's time series smoother
+    (i.e., smaller variance of node_ts - container_ts).
+    """
     nf, hf, tf, metric = (
-        model.indiv_field,
-        model.host_field,
-        model.tick_field,
-        model.metrics[0]
+        instance.config.individual_field,
+        instance.config.host_field,
+        instance.config.tick_field,
+        instance.config.metrics[0],
     )
-    host = working_df.loc[working_df[nf] == c1, hf].iloc[0]
+
+    df = working_df[[nf, hf, tf, metric]].copy()
+
+    # Determine c1's host (fallback: pick c2 if c1 has no rows)
+    host_rows = df.loc[df[nf] == c1, hf]
+    if host_rows.empty:
+        return c2
+    host = host_rows.iloc[0]
+
+    # Node time series on c1's host, indexed by time
     node_ts = (
-        working_df[working_df[hf] == host]
-        .groupby(tf)[metric].sum().sort_index().values
+        df[df[hf] == host]
+        .groupby(tf, sort=True)[metric]
+        .sum()
+        .sort_index()
     )
-    c1_ts = working_df[working_df[nf] == c1][metric].sort_index().values
-    c2_ts = working_df[working_df[nf] == c2][metric].sort_index().values
-    return c1 if np.var(node_ts - c1_ts) > np.var(node_ts - c2_ts) else c2
+
+    idx = node_ts.index
+
+    def cont_ts(cid):
+        s = (
+            df[df[nf] == cid]
+            .groupby(tf, sort=True)[metric]
+            .sum()
+            .sort_index()
+        )
+        # align to node timeline; missing ticks -> 0
+        return s.reindex(idx, fill_value=0)
+
+    c1_ts = cont_ts(c1)
+    c2_ts = cont_ts(c2)
+
+    # Residual node load after removing each container
+    res1 = node_ts - c1_ts
+    res2 = node_ts - c2_ts
+
+    # Population variance (ddof=0) to avoid small-sample weirdness
+    var1 = float(res1.var(ddof=0))
+    var2 = float(res2.var(ddof=0))
+
+    # Pick the removal that yields *lower* variance (smoother)
+    return c1 if var1 < var2 else c2
+
+
+# def get_container_tomove(
+#     instance,
+#     c1: Any,
+#     c2: Any,
+#     working_df: pd.DataFrame
+# ) -> Any:
+#     """Pick between two containers by variance on placement node."""
+#     nf, hf, tf, metric = (
+#         instance.indiv_field,
+#         instance.host_field,
+#         instance.tick_field,
+#         instance.metrics[0]
+#     )
+#     host = working_df.loc[working_df[nf] == c1, hf].iloc[0]
+#     node_ts = (
+#         working_df[working_df[hf] == host]
+#         .groupby(tf)[metric].sum().sort_index().values
+#     )
+#     c1_ts = working_df[working_df[nf] == c1][metric].sort_index().values
+#     c2_ts = working_df[working_df[nf] == c2][metric].sort_index().values
+#     return c1 if np.var(node_ts - c1_ts) > np.var(node_ts - c2_ts) else c2
 
 
 def eval_bilevel_step(

@@ -121,3 +121,19 @@ def build_var_delta_cluster_matrix(df_clust, cluster_var_matrix, *, zero_diag=Tr
     if zero_diag:
         np.fill_diagonal(vars_matrix, 0.0)
     return vars_matrix
+
+
+def dist_from_mean(df_clust, profiles, cid: str) -> float:
+    """Return distance from cid to its cluster mean profile."""
+    row = df_clust.loc[cid]           # Series for that container
+    k = int(row['cluster'])           # cluster id
+    x = row.drop(labels='cluster').to_numpy(dtype=float)  # features only
+    mu = np.asarray(profiles[k], dtype=float)             # cluster mean
+    return np.linalg.norm(x - mu)
+
+
+def get_far_container(c1, c2, df_clust: pd.DataFrame, profiles: np.ndarray) -> str:
+    """Return c1 if it's farther from its cluster mean than c2 is, else return c2."""
+    d1 = dist_from_mean(df_clust, profiles, c1)
+    d2 = dist_from_mean(df_clust, profiles, c2)
+    return c1 if d1 > d2 else c2

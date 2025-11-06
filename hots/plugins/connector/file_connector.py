@@ -119,19 +119,29 @@ class FileConnector(ConnectorPlugin):
         `moves` is [(container_id, target_node), ...]. Last one wins for same container/time.
         """
         # Coalesce duplicate containers in this batch so "last one wins"
-        last = {}
-        for c, _, n in moves:
-            last[c] = n
-        for c, n in last.items():
-            lst = self._moves[c]
-            # keep list sorted by time; append if strictly increasing time (fast path)
+        if not moves:
+            return
+
+        # Last move for a container at this timestamp wins
+        last_new_host: Dict[str, str] = {}
+        for m in moves:
+            c = m.get('container_name')
+            new_h = m.get('new_host')
+            if not c or new_h is None:
+                continue  # skip malformed entries
+            last_new_host[c] = new_h
+
+        for c, new_h in last_new_host.items():
+            lst: List[Tuple[int, str]] = self._moves[c]
+
+            # Fast path: append if times are non-decreasing
             if not lst or current_time >= lst[-1][0]:
-                # avoid duplicates (same target as previous) to keep it compact
-                if not lst or lst[-1][0] != current_time or lst[-1][1] != n:
-                    lst.append((current_time, n))
+                # Avoid exact duplicates (same time & same target)
+                if not lst or lst[-1][0] != current_time or lst[-1][1] != new_h:
+                    lst.append((current_time, new_h))
             else:
-                # rare case: late insertion; keep it sorted
-                lst.append((current_time, n))
+                # Rare late insertion: keep list sorted
+                lst.append((current_time, new_h))
                 lst.sort(key=lambda x: x[0])
 
     def host_at(self, container_id: str, ts: int, original_host: str) -> str:

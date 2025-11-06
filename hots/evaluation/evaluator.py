@@ -89,7 +89,7 @@ def eval_solutions(
     problem_opt,
     problem,
     working_df
-) -> Tuple[Any, Dict[str, Any]]:
+) -> Dict[str, Any]:
     """Run the evaluation pipeline and collect evaluation metrics."""
     # 1) Build & solve clustering problem
     (clust_mat, u_mat, w_mat) = build_pre_clust_matrices(
@@ -152,13 +152,13 @@ def eval_solutions(
     print(working_df)
     print('moving', moving)
 
-    # 6) Apply business‑problem logic
-    # TODO redo
-    solution2 = problem.adjust(
-        problem_opt, moving, working_df
+    # 8) Apply business‑problem changes
+    moves = problem.adjust(
+        problem_opt, moving, working_df, instance
     )
-    print('sol2', solution2)
-    input()
+
+    # 9) Update and solve opti models
+    # TODO
 
     # 7) Collect metrics
     # TODO better handle this (clust vs place)
@@ -168,10 +168,10 @@ def eval_solutions(
         'conflict_edges': edges,
         'max_conf_degree': max_deg,
         'mean_conf_degree': mean_deg,
-        'moving_containers': moving
+        'moving_containers': moves
     }
 
-    return solution2, metrics
+    return moves, metrics
 
 
 def get_conflict_graph(

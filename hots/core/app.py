@@ -135,7 +135,7 @@ class App:
             working_df = self.instance.get_working_df(tmin, tmax)
 
             # Evaluate new solution + metrics
-            sol2, metrics = eval_solutions(
+            moves, metrics = eval_solutions(
                 self.instance,
                 self.clustering,
                 self.clust_opt,
@@ -148,8 +148,7 @@ class App:
             )
 
             logging.info('Applying moves for loop #%d', loop_nb)
-            # TODO redo
-            # self.connector.apply_moves(sol2)
+            self.connector.apply_moves(moves)
             logging.info('Moves applied for loop #%d', loop_nb)
 
             self.instance.metrics_history.append(metrics)

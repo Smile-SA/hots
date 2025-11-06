@@ -3,6 +3,9 @@
 import csv
 import queue
 from pathlib import Path
+from bisect import bisect_right
+from collections import defaultdict
+from typing import Dict, List, Tuple
 
 from hots.core.interfaces import IngestionPlugin
 
@@ -30,6 +33,8 @@ class CSVReader(IngestionPlugin):
 
         self.queue = queue.Queue()
         self.current_time = 0
+        # container_id -> sorted list of (move_time, target_node)
+        self._moves: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
 
     def load_initial(self):
         """Load the first batch of rows from [0, sep_time]."""
@@ -68,10 +73,13 @@ class CSVReader(IngestionPlugin):
             # Include rows up to the provided window end (inclusive)
             if ts <= window_end:
                 row = self.queue.get()
+                indiv = row[1]
+                host = row[2]
+                host = self.host_at(indiv, ts, host)
                 rows.append({
                     self.tick_field: ts,
-                    self.indiv_field: row[1],
-                    self.host_field: row[2],
+                    self.indiv_field: indiv,
+                    self.host_field: host,
                     self.metrics[0]: float(row[3]),
                 })
             else:
@@ -82,3 +90,35 @@ class CSVReader(IngestionPlugin):
     def close(self) -> None:
         """Close the underlying CSV file."""
         self.csv_file.close()
+
+    def add_moves(self, current_time: int, moves: List[Tuple[str, str]]):
+        """
+        Register moves happening at `current_time`.
+        `moves` is [(container_id, target_node), ...]. Last one wins for same container/time.
+        """
+        # Coalesce duplicate containers in this batch so "last one wins"
+        last = {}
+        for c, n in moves:
+            last[c] = n
+        for c, n in last.items():
+            lst = self._moves[c]
+            # keep list sorted by time; append if strictly increasing time (fast path)
+            if not lst or current_time >= lst[-1][0]:
+                # avoid duplicates (same target as previous) to keep it compact
+                if not lst or lst[-1][0] != current_time or lst[-1][1] != n:
+                    lst.append((current_time, n))
+            else:
+                # rare case: late insertion; keep it sorted
+                lst.append((current_time, n))
+                lst.sort(key=lambda x: x[0])
+
+    def host_at(self, container_id: str, ts: int, original_host: str) -> str:
+        """Return host to use at timestamp ts, applying latest move with time <= ts."""
+        lst = self._moves.get(container_id)
+        if not lst:
+            return original_host
+        # binary search rightmost index where move_time <= ts
+        idx = bisect_right(lst, (ts, chr(0x10FFFF))) - 1
+        if idx >= 0:
+            return lst[idx][1]
+        return original_host

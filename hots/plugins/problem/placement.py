@@ -16,6 +16,7 @@ import pandas as pd
 class _Fields:
     indiv: str
     host: str
+    tick: str
     metric: str  # we use the first metric
 
 
@@ -61,17 +62,15 @@ class PlacementPlugin(ProblemPlugin):
         self._f = _Fields(
             indiv=cfg.individual_field,
             host=cfg.host_field,
+            tick=cfg.tick_field,
             metric=cfg.metrics[0],
         )
+        self.pending_changes = {}
 
     # ---------- ProblemPlugin API --------------------------------------------
-    def adjust(self, model: Any, moving: List[Any], working_df) -> List[Dict[str, Any]]:
-        """Finalize move list by post-processing solver decisions.
-
-        Given the Pyomo model and list of container IDs to move,
-        return the final list of move‐dicts.
-        """
-        tick = self.instance.config.tick_field
+    def adjust(self, moving: List[Any], working_df):
+        """Finalize move list by finding new targets and apply moves."""
+        tick = self._f.tick
         tmin, tmax = int(working_df[tick].min()), int(working_df[tick].max())
         order = getattr(self, 'params', {}).get('order', 'max')
 

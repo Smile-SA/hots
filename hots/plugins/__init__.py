@@ -6,23 +6,7 @@ from .clustering.kmeans import StreamKMeans
 from .clustering.spectral import SpectralClustering
 from .connector.file_connector import FileConnector
 from .connector.kafka_connector import KafkaConnector
-from .ingestion.csv_reader import CSVReader
-from .ingestion.kafka_reader import KafkaReader
 from .optimization.factory import OptimizationFactory
-
-
-class ReaderFactory:
-    """Factory for data ingestion plugins."""
-
-    @staticmethod
-    def create(cfg, instance):
-        """Create and return an ingestion plugin based on the config."""
-        t = cfg.type.lower()
-        if t == 'csv':
-            return CSVReader(cfg.parameters, instance)
-        if t == 'kafka':
-            return KafkaReader(cfg.parameters, instance)
-        raise ValueError(f'Unknown reader type: {cfg.type}')
 
 
 class KafkaPlugin:

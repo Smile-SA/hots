@@ -120,7 +120,7 @@ class FileConnector(ConnectorPlugin):
         """
         # Coalesce duplicate containers in this batch so "last one wins"
         last = {}
-        for c, n in moves:
+        for c, _, n in moves:
             last[c] = n
         for c, n in last.items():
             lst = self._moves[c]

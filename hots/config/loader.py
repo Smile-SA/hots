@@ -17,14 +17,6 @@ class KafkaConfig:
 
 
 @dataclass
-class ReaderConfig:
-    """Configuration for the data reader: type ('csv', 'kafka', etc.) and parameters."""
-
-    type: str
-    parameters: Dict[str, Any]
-
-
-@dataclass
 class ClusteringConfig:
     """Configuration for the clustering plugin: method name and its parameters."""
 
@@ -85,7 +77,6 @@ class AppConfig:
     individual_field: str
     metrics: List[str]
     time_limit: int
-    reader: ReaderConfig
     kafka: Optional[KafkaConfig]
     clustering: ClusteringConfig
     optimization: OptimizationConfig
@@ -103,8 +94,6 @@ def load_config(path: Path) -> AppConfig:
     :return: An AppConfig instance populated from the file.
     """
     raw = json.loads(Path(path).read_text())
-
-    reader = ReaderConfig(**raw['reader'])
 
     kafka = None
     if raw.get('kafka') is not None:
@@ -130,7 +119,6 @@ def load_config(path: Path) -> AppConfig:
         individual_field=raw['individual_field'],
         metrics=raw['metrics'],
         time_limit=raw['time_limit'],
-        reader=reader,
         kafka=kafka,
         clustering=clustering,
         optimization=optimization,

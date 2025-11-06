@@ -153,9 +153,7 @@ def eval_solutions(
     print('moving', moving)
 
     # 8) Apply business‑problem changes
-    moves = problem.adjust(
-        problem_opt, moving, working_df, instance
-    )
+    moves = problem.adjust(moving, working_df)
 
     # 9) Update and solve opti models
     # TODO

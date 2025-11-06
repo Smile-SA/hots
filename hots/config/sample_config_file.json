@@ -5,20 +5,6 @@
   "individual_field": "container_id",
   "metrics": ["cpu"],
   "time_limit": null,
-  "reader": {
-    "type": "csv",
-    "parameters": {
-      "data_folder": "./tests/data/thesis_ex_10",
-      "file_name": "container_usage.csv",
-      "tick_field": "timestamp",
-      "individual_field": "container_id",
-      "host_field": "machine_id",
-      "metrics": ["cpu"],
-      "sep_time": 3,
-      "tick_increment": 2,
-      "window_duration" : 3
-    }
-  },
   "clustering": {
     "method": "kmeans",
     "nb_clusters": 3,
@@ -37,6 +23,7 @@
   "problem": {
     "type": "placement",
     "parameters": {
+      "initial_placement": 0,
       "tol": 0.1,
       "tol_move": 0.5
     }
@@ -44,6 +31,15 @@
   "connector": {
     "type": "file",
     "parameters": {
+      "data_folder": "./tests/data/thesis_ex_10",
+      "file_name": "container_usage.csv",
+      "tick_field": "timestamp",
+      "individual_field": "container_id",
+      "host_field": "machine_id",
+      "metrics": ["cpu"],
+      "sep_time": 3,
+      "tick_increment": 2,
+      "window_duration" : 3,
       "outfile": "./out/moves.log"
     }
   },

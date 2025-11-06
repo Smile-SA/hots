@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from hots.config.loader import AppConfig
-from hots.plugins import KafkaPlugin, ReaderFactory
+from hots.plugins import KafkaPlugin
 from hots.utils.tools import build_df_from_containers
 
 import pandas as pd
@@ -21,30 +21,31 @@ class Instance:
         self.metrics_history: List[Dict[str, Any]] = []
         self.results_file: Path = config.reporting.metrics_file
 
-        self.reader = ReaderFactory.create(config.reader, self)
         self.kafka_producer = None
         self.kafka_consumer = None
         if config.kafka:
             self.kafka_producer = KafkaPlugin.create_producer(config.kafka)
             self.kafka_consumer = KafkaPlugin.create_consumer(config.kafka)
 
-        self.df_indiv, self.df_host, self.df_meta = self._load_initial_data()
+        self.df_indiv, self.df_host, self.df_meta = None, None, None
         self.current_solution = None
         self.cluster_labels = None
 
-    def _load_initial_data(self):
+    def _load_initial_data(self, connector):
         """
         Load the raw individual-level data via the reader
         and derive the host-level DataFrame by aggregation.
         """
-        df_indiv, _, df_meta = self.reader.load_initial()
-        df_host = build_df_from_containers(
-            df_indiv,
+        self.df_indiv, _, self.df_meta = connector.load_initial()
+        self.df_host = build_df_from_containers(
+            self.df_indiv,
             tick_field=self.config.tick_field,
             host_field=self.config.host_field,
             metrics=self.config.metrics,
         )
-        return df_indiv, df_host, df_meta
+        print(self.df_indiv)
+        print(self.df_host)
+        print(self.df_meta)
 
     @staticmethod
     def clear_kafka_topics() -> None:

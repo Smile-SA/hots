@@ -11,7 +11,6 @@ from hots.config.loader import AppConfig
 from hots.core.instance import Instance
 from hots.evaluation.evaluator import (
     EvalSnapshot,
-    eval_bilevel_step,
     eval_solutions
 )
 from hots.plugins import (
@@ -40,6 +39,7 @@ class App:
 
         # Factories
         self.connector = ConnectorFactory.create(config.connector, self.instance)
+        self.instance._load_initial_data(self.connector)
         self.clustering = ClusteringFactory.create(config.clustering, self.instance)
         self.clust_opt = OptimizationFactory.create(
             config.optimization, self.instance, pb_number=1
@@ -88,14 +88,14 @@ class App:
                 self.instance.df_indiv,
                 self.instance.df_host,
             )
+            self.connector.apply_moves(
+                initial_moves, self.config.connector.parameters.get('sep_time')
+            )
+            logging.info('Applied initial placement moves')
             logging.info('First placement produced %d moves', len(initial_moves))
         else:
             logging.info('Skipping first placement (keeping existing)')
             initial_moves = []
-
-        # TODO not really
-        self.connector.apply_moves(initial_moves)
-        logging.info('Applied initial placement moves')
 
         self.pre_loop(labels)
 
@@ -119,14 +119,14 @@ class App:
 
         # Streaming loop
         tmax = self.instance.df_indiv[self.config.tick_field].max()
-        tmax += self.config.reader.parameters.get('tick_increment', 2)
-        tmin = tmax - (self.config.reader.parameters.get('tick_increment', 2) - 1)
+        tmax += self.connector.tick_increment
+        tmin = tmax - (self.config.connector.parameters.get('window_duration') - 1)
         loop_nb = 1
         while True:
             if self.config.time_limit is not None and time.time() >= end_time:
                 self.shutdown()
             logging.info('Starting loop #%d', loop_nb)
-            df_new = self.instance.reader.load_next()
+            df_new = self.connector.load_next()
             if df_new is None:
                 break
 
@@ -148,34 +148,17 @@ class App:
             )
 
             logging.info('Applying moves for loop #%d', loop_nb)
-            self.connector.apply_moves(moves)
+            self.connector.apply_moves(moves, tmax)
             logging.info('Moves applied for loop #%d', loop_nb)
 
             self.instance.metrics_history.append(metrics)
 
-            tmax += self.config.reader.parameters.get('tick_increment', 2)
-            tmin = tmax - (self.config.reader.parameters.get('tick_increment', 2) - 1)
+            tmax += self.connector.tick_increment
+            tmin = tmax - (self.config.connector.parameters.get('window_duration') - 1)
             loop_nb += 1
 
-
-        # ===== Streaming loop =====
-        # logging.info('Entering streaming update loop')
-        # for batch in self.connector.stream():  # yields new dataframes or payloads
-        #     # 1) Ingest/merge new data into the instance
-        #     print(self.instance.df_indiv)
-        #     self.instance.update_with_batch(batch)
-        #     print(self.instance.df_indiv)
-        #     input()
-
-        #     # 2) Re-run clustering on new state
-        #     labels = np.asarray(self.clustering.fit(self.instance.df_indiv))
-        #     n_clusters = int(len(np.unique(labels)))
-        #     logging.info('Re-clustered: %d clusters', n_clusters)
-
-        #     # 3) Re-solve problem using clustering output
-        #     problem = self._solve_problem(labels)
-
-        #     # 4) Evaluate bi-level (compare to previous)
+        # TODO
+        #     # Evaluate bi-level (compare to previous)
         #     snapshot, metrics = eval_bilevel_step(
         #         instance=self.instance,
         #         labels=labels,

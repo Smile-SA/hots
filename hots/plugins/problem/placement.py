@@ -106,125 +106,142 @@ class PlacementPlugin(ProblemPlugin):
             df_indiv, df_host, w, labels.tolist()
         )
 
-    # ---------- basic move constructors --------------------------------------
-    # TODO makes no sense..
-    def assign_container_node(
-        self, node_id: Any, container_id: Any
-    ) -> Dict[str, Any]:
-        """Return the move dict placing `container_id` on `node_id`."""
-        f = self._f
-        df_indiv = self.instance.df_indiv
-        current = _safe_first(
-            df_indiv.loc[df_indiv[f.indiv] == container_id][f.host].to_numpy()
-        )
-        if current == node_id:
-            return {'container': container_id, 'src': current, 'dst': current}
-        return {
-            'container': container_id,
-            'src': current,
-            'dst': node_id,
-        }
-
-    def move_container(self, inst, container_id, tmin, tmax, old_id, working_df):
-        """
-        Move `container_id` to the best node in [tmin, tmax], choosing the candidate node
-        that remains feasible (capacity per tick) and minimizes the variance of
-        (node_ts + container_ts). Falls back to "open a new node" if none is feasible.
-        """
-        # --- Short names / cached handles ---
+    @staticmethod
+    def _window_frames(inst, working_df: pd.DataFrame, tmin: int, tmax: int
+                       ) -> Tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
         nf, hf, tf = inst.config.individual_field, inst.config.host_field, inst.config.tick_field
         metric = inst.config.metrics[0]
 
-        print('Moving container:', container_id)
-
-        # ---- Windowed data once (avoid repeated scans) ----
         indiv = working_df[[nf, hf, tf, metric]]
         host = inst.df_host[[hf, tf, metric]]
 
         mask_indiv = (indiv[tf] >= tmin) & (indiv[tf] <= tmax)
         mask_host = (host[tf] >= tmin) & (host[tf] <= tmax)
 
-        working_df_indiv = indiv.loc[mask_indiv]
-        working_df_host = host.loc[mask_host]
+        w_indiv = indiv.loc[mask_indiv]
+        w_host = host.loc[mask_host]
 
-        # Reference timeline: all ticks in window (ensures aligned ops)
-        ticks = np.sort(working_df_host[tf].unique())
-        if ticks.size == 0:
-            # Nothing to do if no data in window
-            return
+        ticks = np.sort(w_host[tf].unique())
+        return w_indiv, w_host, ticks
 
-        # Container time series on the window (aligned to `ticks`)
-        c_ts = (
-            working_df_indiv[working_df_indiv[nf] == container_id]
+    @staticmethod
+    def _container_ts(w_indiv: pd.DataFrame, ticks: np.ndarray,
+                      inst, container_id) -> pd.Series:
+        tf = inst.config.tick_field
+        nf = inst.config.individual_field
+        metric = inst.config.metrics[0]
+
+        return (
+            w_indiv[w_indiv[nf] == container_id]
             .groupby(tf, sort=True)[metric].sum()
             .reindex(ticks, fill_value=0.0)
         )
 
-        # Host where the container currently runs (old_id is passed in)
-        # Ensure it's consistent with data if needed:
-        # old_id = working_df_indiv.loc[working_df_indiv[nf]==container_id, hf].iloc[0]
+    @staticmethod
+    def _candidate_nodes(w_indiv: pd.DataFrame, inst, old_id) -> List:
+        hf = inst.config.host_field
+        nodes = w_indiv[hf].unique()
+        return [n for n in nodes if n != old_id]
 
-        # Candidate nodes: all open nodes except the current one
-        nodes = working_df_indiv[hf].unique()
-        candidates = [n for n in nodes if n != old_id]
+    @staticmethod
+    def _capacity_map(inst) -> Dict:
+        hf = inst.config.host_field
+        metric = inst.config.metrics[0]
+        # capacity per node assumed scalar here
+        return inst.df_meta.set_index(hf)[metric].to_dict()
 
-        best_node = None
-        best_var = np.inf
+    @staticmethod
+    def _node_ts(w_host: pd.DataFrame, inst, node, ticks: np.ndarray) -> pd.Series:
+        tf = inst.config.tick_field
+        hf = inst.config.host_field
+        metric = inst.config.metrics[0]
 
-        # Pre-fetch capacities as a dict: host -> capacity scalar
-        # (capacity is assumed constant per node; adjust if yours is time-varying)
-        caps = (
-            inst.df_meta.set_index(hf)[metric]
-            .to_dict()
+        return (
+            w_host[w_host[hf] == node]
+            .groupby(tf, sort=True)[metric].sum()
+            .reindex(ticks, fill_value=0.0)
         )
 
-        # Evaluate each candidate node (vectorized, with aligned indices)
+    def _choose_best_existing_node(
+        self,
+        candidates: List,
+        w_host: pd.DataFrame,
+        ticks: np.ndarray,
+        caps: Dict,
+        c_ts: pd.Series,
+        inst,
+    ):
+        best_node, best_var = None, np.inf
         for node in candidates:
-            # Node time series on the window (sum over all containers on that node)
-            node_ts = (
-                working_df_host[working_df_host[hf] == node]
-                .groupby(tf, sort=True)[metric].sum()
-                .reindex(ticks, fill_value=0.0)
-            )
-
-            cap_node = caps.get(node, None)
+            cap_node = caps.get(node)
             if cap_node is None:
-                # If capacity missing for this node, skip (or treat as infeasible)
                 continue
 
-            # Feasibility: adding the container must respect capacity at every tick
+            node_ts = self._node_ts(w_host, inst, node, ticks)
             combined = node_ts + c_ts
+
+            # feasibility check
             if np.any(combined.values > cap_node):
                 continue
 
-            # Score: variance of the resulting node load (population variance)
             v = float(combined.var(ddof=0))
             if v < best_var:
-                best_var = v
-                best_node = node
+                best_var, best_node = v, node
+        return best_node
 
-        # If no feasible existing node was found, 'open' a new node
+    @staticmethod
+    def _pick_new_node(inst, used_nodes: set, fallback):
+        hf = inst.config.host_field
+        for nid in inst.df_meta[hf].unique():
+            if nid not in used_nodes:
+                return nid
+        return fallback
+
+    # --- simplified public method ---------------------------------------------
+
+    def move_container(
+        self,
+        inst,
+        container_id,
+        tmin: int,
+        tmax: int,
+        old_id,
+        working_df: pd.DataFrame,
+    ):
+        """
+        Move `container_id` to the best node in [tmin, tmax], choosing a feasible
+        candidate (capacity per tick) that minimizes the variance of
+        (node_ts + container_ts). Falls back to opening a new node if needed.
+        Returns a move dict or None.
+        """
+        _, hf = inst.config.individual_field, inst.config.host_field
+        print('Moving container:', container_id)
+
+        w_indiv, w_host, ticks = self._window_frames(inst, working_df, tmin, tmax)
+        if ticks.size == 0:
+            return None  # no data in window
+
+        c_ts = self._container_ts(w_indiv, ticks, inst, container_id)
+        candidates = self._candidate_nodes(w_indiv, inst, old_id)
+        caps = self._capacity_map(inst)
+
+        best_node = self._choose_best_existing_node(
+            candidates=candidates,
+            w_host=w_host,
+            ticks=ticks,
+            caps=caps,
+            c_ts=c_ts,
+            inst=inst,
+        )
+
         if best_node is None:
             print(
                 f'Impossible to move {container_id} on existing nodes. We need to open a new node.'
             )
-            # Heuristic: pick the first node id from dict_id_n that's not already in use
-            in_use = set(nodes.tolist())
-            best_node = None
-            all_nodes = inst.df_meta[hf].unique()
-            for nid in all_nodes:
-                if nid not in in_use:
-                    best_node = nid
-                    break
-            # If still None, fall back to previous node
-            if best_node is None:
+            in_use = set(w_indiv[hf].unique().tolist())
+            best_node = self._pick_new_node(inst, in_use, fallback=old_id)
+            if best_node == old_id:
                 print('Impossible to open a new node: we keep the old node.')
-                best_node = old_id
-
-        # Apply the reassignment (mutates df_host/df_indiv consistently)
-        # TODO should be only temporary add container cons on node for other moves
-        # and then apply all moves (on CSV VS on real env)
-        self.assign_container_node(best_node, container_id)
 
         print(f'He can go on {best_node} (old is {old_id})')
         if best_node != old_id:
@@ -233,6 +250,7 @@ class PlacementPlugin(ProblemPlugin):
                 'old_host': old_id,
                 'new_host': best_node,
             }
+        return None
 
     def move_list_containers(
         self, instance: Any, working_df, moving: List[int],

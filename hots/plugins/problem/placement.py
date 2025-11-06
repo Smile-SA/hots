@@ -65,26 +65,19 @@ class PlacementPlugin(ProblemPlugin):
         )
 
     # ---------- ProblemPlugin API --------------------------------------------
-    def adjust(self, model: Any, moving: List[Any]) -> List[Dict[str, Any]]:
+    def adjust(self, model: Any, moving: List[Any], working_df) -> List[Dict[str, Any]]:
         """Finalize move list by post-processing solver decisions.
 
         Given the Pyomo model and list of container IDs to move,
         return the final list of move‐dicts.
         """
-        # start with the solver’s own moves
-        # moves: List[Dict[str, Any]] = model.extract_moves()
-        moves: List[Dict[str, Any]] = []
-
-        # compute the time window
-        df = self.instance.df_indiv
         tick = self.instance.config.tick_field
-        tmin, tmax = int(df[tick].min()), int(df[tick].max())
+        tmin, tmax = int(working_df[tick].min()), int(working_df[tick].max())
         order = getattr(self, 'params', {}).get('order', 'max')
 
-        extra = self.move_list_containers(
-            self.instance, moving, tmin, tmax, order=order
+        moves = self.move_list_containers(
+            self.instance, working_df, moving, tmin, tmax, order=order
         )
-        moves.extend(extra)
         return moves
 
     def initial(
@@ -115,14 +108,11 @@ class PlacementPlugin(ProblemPlugin):
         )
 
     # ---------- basic move constructors --------------------------------------
+    # TODO makes no sense..
     def assign_container_node(
-        self, node_id: Any, container_id: Any, remove: bool = True
+        self, node_id: Any, container_id: Any
     ) -> Dict[str, Any]:
-        """Return the move dict placing `container_id` on `node_id`.
-
-        If `remove` is True, capture the current host as `src`; otherwise
-        `src` is set to None.
-        """
+        """Return the move dict placing `container_id` on `node_id`."""
         f = self._f
         df_indiv = self.instance.df_indiv
         current = _safe_first(
@@ -132,20 +122,122 @@ class PlacementPlugin(ProblemPlugin):
             return {'container': container_id, 'src': current, 'dst': current}
         return {
             'container': container_id,
-            'src': current if remove else None,
+            'src': current,
             'dst': node_id,
         }
 
-    def remove_container_node(self, node_id: Any, container_id: Any) -> Dict[str, Any]:
-        """Represent removing a container from a node (dst=None)."""
-        return {'container': container_id, 'src': node_id, 'dst': None}
+    def move_container(self, inst, container_id, tmin, tmax, old_id, working_df):
+        """
+        Move `container_id` to the best node in [tmin, tmax], choosing the candidate node
+        that remains feasible (capacity per tick) and minimizes the variance of
+        (node_ts + container_ts). Falls back to "open a new node" if none is feasible.
+        """
+        # --- Short names / cached handles ---
+        nf, hf, tf = inst.config.individual_field, inst.config.host_field, inst.config.tick_field
+        metric = inst.config.metrics[0]
 
-    def move_container(self, host_src: Any, host_dst: Any, container_id: Any) -> Dict[str, Any]:
-        """Move `container_id` from `host_src` to `host_dst`."""
-        return {'container': container_id, 'src': host_src, 'dst': host_dst}
+        print('Moving container:', container_id)
+
+        # ---- Windowed data once (avoid repeated scans) ----
+        indiv = working_df[[nf, hf, tf, metric]]
+        host = inst.df_host[[hf, tf, metric]]
+
+        mask_indiv = (indiv[tf] >= tmin) & (indiv[tf] <= tmax)
+        mask_host = (host[tf] >= tmin) & (host[tf] <= tmax)
+
+        working_df_indiv = indiv.loc[mask_indiv]
+        working_df_host = host.loc[mask_host]
+
+        # Reference timeline: all ticks in window (ensures aligned ops)
+        ticks = np.sort(working_df_host[tf].unique())
+        if ticks.size == 0:
+            # Nothing to do if no data in window
+            return
+
+        # Container time series on the window (aligned to `ticks`)
+        c_ts = (
+            working_df_indiv[working_df_indiv[nf] == container_id]
+            .groupby(tf, sort=True)[metric].sum()
+            .reindex(ticks, fill_value=0.0)
+        )
+
+        # Host where the container currently runs (old_id is passed in)
+        # Ensure it's consistent with data if needed:
+        # old_id = working_df_indiv.loc[working_df_indiv[nf]==container_id, hf].iloc[0]
+
+        # Candidate nodes: all open nodes except the current one
+        nodes = working_df_indiv[hf].unique()
+        candidates = [n for n in nodes if n != old_id]
+
+        best_node = None
+        best_var = np.inf
+
+        # Pre-fetch capacities as a dict: host -> capacity scalar
+        # (capacity is assumed constant per node; adjust if yours is time-varying)
+        caps = (
+            inst.df_meta.set_index(hf)[metric]
+            .to_dict()
+        )
+
+        # Evaluate each candidate node (vectorized, with aligned indices)
+        for node in candidates:
+            # Node time series on the window (sum over all containers on that node)
+            node_ts = (
+                working_df_host[working_df_host[hf] == node]
+                .groupby(tf, sort=True)[metric].sum()
+                .reindex(ticks, fill_value=0.0)
+            )
+
+            cap_node = caps.get(node, None)
+            if cap_node is None:
+                # If capacity missing for this node, skip (or treat as infeasible)
+                continue
+
+            # Feasibility: adding the container must respect capacity at every tick
+            combined = node_ts + c_ts
+            if np.any(combined.values > cap_node):
+                continue
+
+            # Score: variance of the resulting node load (population variance)
+            v = float(combined.var(ddof=0))
+            if v < best_var:
+                best_var = v
+                best_node = node
+
+        # If no feasible existing node was found, 'open' a new node
+        if best_node is None:
+            print(
+                f'Impossible to move {container_id} on existing nodes. We need to open a new node.'
+            )
+            # Heuristic: pick the first node id from dict_id_n that's not already in use
+            in_use = set(nodes.tolist())
+            best_node = None
+            all_nodes = inst.df_meta[hf].unique()
+            for nid in all_nodes:
+                if nid not in in_use:
+                    best_node = nid
+                    break
+            # If still None, fall back to previous node
+            if best_node is None:
+                print('Impossible to open a new node: we keep the old node.')
+                best_node = old_id
+
+        # Apply the reassignment (mutates df_host/df_indiv consistently)
+        # TODO should be only temporary add container cons on node for other moves
+        # and then apply all moves (on CSV VS on real env)
+        self.assign_container_node(best_node, container_id)
+
+        print(f'He can go on {best_node} (old is {old_id})')
+        if best_node != old_id:
+            return {
+                'container_name': container_id,
+                'old_host': old_id,
+                'new_host': best_node,
+            }
 
     def move_list_containers(
-        self, instance: Any, moving: List[int], tmin: int, tmax: int, order: str = 'max'
+        self, instance: Any, working_df, moving: List[int],
+        tmin: int, tmax: int, order: str = 'max'
     ) -> List[Dict[str, Any]]:
         """Move the list of containers to move.
 
@@ -168,21 +260,19 @@ class PlacementPlugin(ProblemPlugin):
 
         # Step 1: Remove all moving containers and store old hosts
         for mvg_cont in moving:
-            container_id = instance.dict_id_c[mvg_cont]
             old_host = _safe_first(
-                instance.df_indiv.loc[
-                    instance.df_indiv[f.indiv] == container_id
+                working_df.loc[
+                    working_df[f.indiv] == mvg_cont
                 ][f.host].to_numpy()
             )
             old_ids[mvg_cont] = old_host
             # Remove from tracking (capacity will be freed)
 
         # Step 2: Compute consumption for each container
-        mvg_conts_cons: Dict[int, np.ndarray] = {}
+        mvg_conts_cons: Dict[Any, np.ndarray] = {}
         for mvg_cont in moving:
-            container_id = instance.dict_id_c[mvg_cont]
-            mvg_conts_cons[mvg_cont] = instance.df_indiv.loc[
-                instance.df_indiv[f.indiv] == container_id
+            mvg_conts_cons[mvg_cont] = working_df.loc[
+                working_df[f.indiv] == mvg_cont
             ][f.metric].to_numpy()
 
         # Step 3: Order containers by consumption
@@ -194,8 +284,10 @@ class PlacementPlugin(ProblemPlugin):
             order_indivs = ((0.0, c) for c in mvg_conts_cons.keys())
 
         # Step 4: Move each container to best destination
-        for _, mvg_cont in sorted(order_indivs, reverse=True):
-            move = self.move_container(instance, mvg_cont, tmin, tmax, old_ids[mvg_cont])
+        for temp, mvg_cont in sorted(order_indivs, reverse=True):
+            move = self.move_container(
+                instance, mvg_cont, tmin, tmax, old_ids[mvg_cont], working_df
+            )
             if move is not None:
                 moves_list.append(move)
 

@@ -149,14 +149,19 @@ def eval_solutions(
         tol_move,
         working_df=working_df,
     )
-    # TODO replace duals inside optim problem
+    print(working_df)
+    print('moving', moving)
 
     # 6) Apply business‑problem logic
     # TODO redo
-    # solution2 = problem.adjust(problem_opt, moving)
-    solution2 = None
+    solution2 = problem.adjust(
+        problem_opt, moving, working_df
+    )
+    print('sol2', solution2)
+    input()
 
     # 7) Collect metrics
+    # TODO better handle this (clust vs place)
     metrics: Dict[str, Any] = {
         'silhouette': sil,
         'conflict_nodes': nodes,
@@ -203,12 +208,9 @@ def get_moving_containers_clust(
     profiles: np.ndarray
 ) -> Tuple[List[Any], int, int, int, float]:
     """Select containers to move from clustering conflict graph."""
-    print('prev_duals', prev_duals)
     g = get_conflict_graph(model, prev_duals, tol)
-    print('graph', g)
     n_nodes, n_edges = g.number_of_nodes(), g.number_of_edges()
     degrees = sorted(g.degree(), key=lambda x: x[1], reverse=True)
-    print(n_nodes, n_edges, degrees)
     if not degrees:
         return [], n_nodes, n_edges, 0, 0.0
     max_deg = degrees[0][1]
@@ -216,7 +218,6 @@ def get_moving_containers_clust(
 
     moving = []
     budget = max(0, int(math.ceil(len(df_clust) * tol_move)))
-    print(tol, tol_move, budget)
     while degrees and len(moving) < budget:
         cid, deg = degrees[0]
 

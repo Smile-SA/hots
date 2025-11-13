@@ -17,12 +17,13 @@ class StreamKMeans(ClusteringPlugin):
 
     def __init__(self, params: Dict[str, Any], instance):
         """Initialize the streaming k-means plugin."""
+        connector_params = instance.config.connector.parameters
         self.n_clusters = params.get('nb_clusters', 5)
         self.batch_size = params.get('batch_size', 100)
         self.random_state = params.get('random_state', None)
-        self.tick_field = instance.config.tick_field
-        self.indiv_field = instance.config.individual_field
-        self.metrics = instance.config.metrics
+        self.tick_field = connector_params.get('tick_field')
+        self.indiv_field = connector_params.get('individual_field')
+        self.metrics = connector_params.get('metrics')
         self.id_map = instance.get_id_map()
         self.model = None
         self.labels = None

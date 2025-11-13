@@ -29,14 +29,12 @@ class PyomoModel(OptimizationPlugin):
         # derived shortcuts from instance/config
         self.df_indiv = instance.df_indiv
         self.df_meta = getattr(instance, 'df_meta', None)
-        self.metric = instance.config.metrics[0]
         self.nb_clusters = getattr(instance.config.clustering, 'nb_clusters', None)
         self.dict_id_c = instance.get_id_map()
-
-        # schema (can be made configurable later)
-        self.tick_field = getattr(instance.config, 'tick_field', 'timestamp')
-        self.indiv_field = getattr(instance.config, 'individual_field', 'container_id')
-        self.host_field = getattr(instance.config, 'host_field', 'machine_id')
+        self.tick_field = instance.config.connector.parameters.get('tick_field', 'timestamp')
+        self.indiv_field = instance.config.connector.parameters.get('individual_field', 'container_id')
+        self.host_field = instance.config.connector.parameters.get('host_field', 'machine_id')
+        self.metric = instance.config.connector.parameters.get('metrics')[0]
 
         # matrices (passed at build time)
         self.u_mat = None

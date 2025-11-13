@@ -92,11 +92,12 @@ def eval_solutions(
 ) -> Dict[str, Any]:
     """Run the evaluation pipeline and collect evaluation metrics."""
     # 1) Build & solve clustering problem
+    cfg = instance.config.connector.parameters
     (clust_mat, u_mat, w_mat) = build_pre_clust_matrices(
         working_df,
-        instance.config.tick_field,
-        instance.config.individual_field,
-        instance.config.metrics,
+        cfg.get('tick_field'),
+        cfg.get('individual_field'),
+        cfg.get('metrics'),
         instance.get_id_map(),
         clustering.labels
     )

@@ -1,9 +1,4 @@
 {
-  "data_folder": "./tests/data/min_test_3",
-  "tick_field": "timestamp",
-  "host_field": "machine_id",
-  "individual_field": "container_id",
-  "metrics": ["cpu"],
   "time_limit": null,
   "clustering": {
     "method": "kmeans",
@@ -15,7 +10,6 @@
   "optimization": {
     "backend": "pyomo",
     "parameters": {
-      "pb_number": 1,
       "solver": "glpk",
       "verbose": 0
     }

@@ -36,12 +36,13 @@ class Instance:
         Load the raw individual-level data via the reader
         and derive the host-level DataFrame by aggregation.
         """
+        params = self.config.connector.parameters
         self.df_indiv, _, self.df_meta = connector.load_initial()
         self.df_host = build_df_from_containers(
             self.df_indiv,
-            tick_field=self.config.tick_field,
-            host_field=self.config.host_field,
-            metrics=self.config.metrics,
+            tick_field=params.get('tick_field'),
+            host_field=params.get('host_field'),
+            metrics=params.get('metrics')
         )
 
     @staticmethod
@@ -51,28 +52,30 @@ class Instance:
 
     def update_data(self, new_df_indiv: pd.DataFrame) -> None:
         """Update the dataframes with newly ingested individual-level data."""
+        params = self.config.connector.parameters
         self.df_indiv = pd.concat(
             [self.df_indiv, new_df_indiv],
             ignore_index=True,
         )
         self.df_host = build_df_from_containers(
             self.df_indiv,
-            tick_field=self.config.tick_field,
-            host_field=self.config.host_field,
-            metrics=self.config.metrics,
+            tick_field=params.get('tick_field'),
+            host_field=params.get('host_field'),
+            metrics=params.get('metrics')
         )
 
     def get_id_map(self) -> Dict[Any, int]:
         """Get a mapping from container IDs to integer indices."""
+        indiv_field = self.config.connector.parameters.get('individual_field')
         unique = sorted(
-            self.df_indiv[self.config.individual_field].unique()
+            self.df_indiv[indiv_field].unique()
         )
         return {cid: idx for idx, cid in enumerate(unique)}
 
     def get_working_df(self, tmin, tmax, inclusive=True):
         """Get data for the current time window."""
         df = self.df_indiv
-        tick_field = self.config.tick_field
+        tick_field = self.config.connector.parameters.get('tick_field')
         if inclusive:
             mask = (df[tick_field] >= tmin) & (df[tick_field] <= tmax)
         else:

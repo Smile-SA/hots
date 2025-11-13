@@ -71,11 +71,6 @@ class ReportingConfig:
 class AppConfig:
     """Top‑level application configuration, combining all sub‑configs."""
 
-    data_folder: Path
-    tick_field: str
-    host_field: str
-    individual_field: str
-    metrics: List[str]
     time_limit: int
     kafka: Optional[KafkaConfig]
     clustering: ClusteringConfig
@@ -113,11 +108,6 @@ def load_config(path: Path) -> AppConfig:
     )
 
     return AppConfig(
-        data_folder=Path(raw['data_folder']),
-        tick_field=raw['tick_field'],
-        host_field=raw['host_field'],
-        individual_field=raw['individual_field'],
-        metrics=raw['metrics'],
         time_limit=raw['time_limit'],
         kafka=kafka,
         clustering=clustering,

@@ -118,7 +118,8 @@ class App:
         })
 
         # Streaming loop
-        tmax = self.instance.df_indiv[self.config.tick_field].max()
+        tmax = self.instance.df_indiv[
+            self.config.connector.parameters.get('tick_field')].max()
         tmax += self.connector.tick_increment
         tmin = tmax - (self.config.connector.parameters.get('window_duration') - 1)
         loop_nb = 1
@@ -176,12 +177,13 @@ class App:
     def pre_loop(self, labels):
         """Build and solve optimization models before performing streaming loop."""
         logging.info('Building first optimization models...')
+        cfg = self.instance.config.connector.parameters
         # Clustering model
         (clust_mat, u_mat, w_mat) = build_pre_clust_matrices(
             self.instance.df_indiv,
-            self.instance.config.tick_field,
-            self.instance.config.individual_field,
-            self.instance.config.metrics,
+            cfg.get('tick_field'),
+            cfg.get('individual_field'),
+            cfg.get('metrics'),
             self.instance.get_id_map(),
             labels
         )

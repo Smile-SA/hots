@@ -1,7 +1,7 @@
 """Pyomo-based optimization plugin for HOTS (single concrete implementation)."""
 
 from itertools import product
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from hots.core.interfaces import OptimizationPlugin
 
@@ -75,7 +75,7 @@ class PyomoModel(OptimizationPlugin):
         # enable duals
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
 
-    def solve(self, *, solver: str | None = None):
+    def solve(self, *, solver: Optional[str] = None):
         """Solve the current concrete instance (labels optional for compatibility)."""
         opt = pe.SolverFactory(solver or self.solver)
         results = self._attempt_solve(opt)

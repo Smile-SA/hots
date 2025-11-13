@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 from hots.core.interfaces import ProblemPlugin
@@ -215,7 +216,7 @@ class PlacementPlugin(ProblemPlugin):
         Returns a move dict or None.
         """
         _, hf = inst.config.individual_field, inst.config.host_field
-        print('Moving container:', container_id)
+        logging.info(f'Moving container: {container_id}')
 
         w_indiv, w_host, ticks = self._window_frames(inst, working_df, tmin, tmax)
         if ticks.size == 0:
@@ -235,15 +236,15 @@ class PlacementPlugin(ProblemPlugin):
         )
 
         if best_node is None:
-            print(
+            logging.info(
                 f'Impossible to move {container_id} on existing nodes. We need to open a new node.'
             )
             in_use = set(w_indiv[hf].unique().tolist())
             best_node = self._pick_new_node(inst, in_use, fallback=old_id)
             if best_node == old_id:
-                print('Impossible to open a new node: we keep the old node.')
+                logging.info('Impossible to open a new node: we keep the old node.')
 
-        print(f'He can go on {best_node} (old is {old_id})')
+        logging.info(f'He can go on {best_node} (old is {old_id})')
         if best_node != old_id:
             return {
                 'container_name': container_id,

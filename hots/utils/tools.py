@@ -1,5 +1,6 @@
 """HOTS preprocessing tools."""
 
+import logging
 from typing import List
 
 import numpy as np
@@ -91,7 +92,7 @@ def build_matrices(instance, tmin, tmax, labels_, clust_model, place_model, verb
 
     # 5) update models if topology changed
     if containers_changed:
-        print("\n🔍 New containers detected: updating optimization models 🔍\n")
+        logging.info("\n🔍 New containers detected: updating optimization models 🔍\n")
         clust_model.update_size_model(
             new_df_indiv=working_df_indiv,
             w=w,

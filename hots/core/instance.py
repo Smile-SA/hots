@@ -43,9 +43,6 @@ class Instance:
             host_field=self.config.host_field,
             metrics=self.config.metrics,
         )
-        print(self.df_indiv)
-        print(self.df_host)
-        print(self.df_meta)
 
     @staticmethod
     def clear_kafka_topics() -> None:

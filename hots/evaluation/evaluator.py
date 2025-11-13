@@ -149,8 +149,6 @@ def eval_solutions(
         tol_move,
         working_df=working_df,
     )
-    print(working_df)
-    print('moving', moving)
 
     # 8) Apply business‑problem changes
     moves = problem.adjust(moving, working_df)

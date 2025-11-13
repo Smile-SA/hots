@@ -195,7 +195,6 @@ def change_clustering(
                 )
             except Exception:
                 pass
-            print(f'{indiv} changes cluster : from {old_cluster} to {new_cluster}')
 
             # Update df and labels_
             df_clust.loc[indiv, 'cluster'] = new_cluster

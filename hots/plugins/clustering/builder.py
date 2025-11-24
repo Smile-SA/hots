@@ -71,9 +71,15 @@ def build_pre_clust_matrices(
     w_mat = build_similarity_matrix(clust_mat)
 
     inv = {v: k for k, v in id_map.items()}
-    idx = [inv[i] for i in range(len(labels))]
-    labels_s = pd.Series(labels, index=idx, name='cluster')
-    clust_mat = clust_mat.join(labels_s, how='left')
+    labeled_idx = [inv[i] for i in range(len(labels)) if i in inv]
+    labels_s = pd.Series(
+        labels[:len(labeled_idx)],
+        index=labeled_idx,
+        name='cluster'
+    )
+
+    clust_mat['cluster'] = -1
+    clust_mat.loc[labels_s.index, 'cluster'] = labels_s
 
     return (
         clust_mat, u_mat, w_mat

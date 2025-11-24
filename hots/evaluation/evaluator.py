@@ -101,7 +101,12 @@ def eval_solutions(
         instance.get_id_map(),
         clustering.labels
     )
-    sil = silhouette_score(clust_mat.values, clustering.labels)
+    id_map = instance.get_id_map()
+    inv = {v: k for k, v in id_map.items()}
+    idx = [inv[i] for i in range(len(clustering.labels))]
+    X = clust_mat.loc[idx].drop(columns=['cluster'])
+    sil = silhouette_score(X.values, clustering.labels)
+
     # TODO update and no build
     clust_opt.build(u_mat=u_mat, w_mat=w_mat)
     clust_opt.solve(

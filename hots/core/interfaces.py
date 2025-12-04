@@ -3,23 +3,9 @@
 """HOTS core interfaces: plugin base classes."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List
 
 import pandas as pd
-
-
-class IngestionPlugin(ABC):
-    """Interface for ingestion plugins."""
-
-    @abstractmethod
-    def load_initial(self) -> Tuple[pd.DataFrame, pd.DataFrame, Any]:
-        """Load initial batch: returns individual, host, and metadata."""
-        pass
-
-    @abstractmethod
-    def load_next(self) -> pd.DataFrame:
-        """Load the next batch of individual-level data."""
-        pass
 
 
 class ClusteringPlugin(ABC):
@@ -38,16 +24,16 @@ class OptimizationPlugin(ABC):
     def build(
         self,
         *,
-        pb_number: int,
         u_mat=None,
         w_mat=None,
         v_mat=None,
+        dv_mat=None
     ):
         """Create and return a model handle (e.g., a Pyomo model wrapper)."""
         pass
 
     @abstractmethod
-    def solve(self, *, labels, instance):
+    def solve(self, *, solver=None):
         """Solve the problem using current data."""
         pass
 

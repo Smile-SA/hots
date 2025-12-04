@@ -119,7 +119,6 @@ def eval_solutions(
             u_mat=clustering.u_mat, w_mat=clustering.w_mat
         )
     else:
-        # TODO update no build
         clust_opt.build(u_mat=clustering.u_mat, w_mat=clustering.w_mat)
     clust_opt.solve(
         solver=instance.config.optimization.parameters.get('solver', 'glpk'),
@@ -166,7 +165,6 @@ def eval_solutions(
             u_mat=clustering.u_mat, v_mat=v_mat, dv_mat=dv_mat
         )
     else:
-        # TODO update not build
         problem_opt.build(u_mat=clustering.u_mat, v_mat=v_mat, dv_mat=dv_mat)
     problem_opt.solve()
     prev_duals = problem_opt.last_duals
@@ -192,10 +190,7 @@ def eval_solutions(
     problem_opt.solve()
     problem_opt.fill_dual_values()
 
-    # 9) Update and solve opti models
-    # TODO
-
-    # 7) Collect metrics
+    # 9) Collect metrics
     # TODO better handle this (clust vs place)
     metrics: Dict[str, Any] = {
         'conflict_nodes': nodes,

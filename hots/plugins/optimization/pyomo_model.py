@@ -61,11 +61,7 @@ class PyomoModel(OptimizationPlugin):
             self.v_mat = v_mat
             self.dv_mat = dv_mat
 
-        # abstract model
-        self.mdl = pe.AbstractModel()
-
-        # build sets/params/vars/cons/obj
-        self._build_model()
+        self._build_abstract_model_if_needed()
 
         # instantiate with data
         self.create_data()
@@ -74,6 +70,12 @@ class PyomoModel(OptimizationPlugin):
 
         # enable duals
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
+
+    def _build_abstract_model_if_needed(self):
+        """Build the AbstractModel structure only once."""
+        if getattr(self, 'mdl', None) is None:
+            self.mdl = pe.AbstractModel()
+            self._build_model()
 
     def solve(self, *, solver: Optional[str] = None):
         """Solve the current concrete instance (labels optional for compatibility)."""

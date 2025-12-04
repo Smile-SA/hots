@@ -1,7 +1,7 @@
 """Pyomo-based optimization plugin for HOTS (single concrete implementation)."""
 
 from itertools import product
-from typing import Any, Dict, Optional
+from typing import Optional
 
 from hots.core.interfaces import OptimizationPlugin
 
@@ -32,7 +32,9 @@ class PyomoModel(OptimizationPlugin):
         self.nb_clusters = getattr(instance.config.clustering, 'nb_clusters', None)
         self.dict_id_c = instance.get_id_map()
         self.tick_field = instance.config.connector.parameters.get('tick_field', 'timestamp')
-        self.indiv_field = instance.config.connector.parameters.get('individual_field', 'container_id')
+        self.indiv_field = instance.config.connector.parameters.get(
+            'individual_field', 'container_id'
+        )
         self.host_field = instance.config.connector.parameters.get('host_field', 'machine_id')
         self.metric = instance.config.connector.parameters.get('metrics')[0]
 
@@ -482,8 +484,8 @@ class PyomoModel(OptimizationPlugin):
             self.instance_model.dv[(self.id_list[j], self.id_list[i])] = float(dv[i][j])
 
     def update_size_model(
-            self, dict_id_c, new_df_indiv=None, u_mat=None, w_mat=None, v_mat=None, dv_mat=None
-        ):
+        self, dict_id_c, new_df_indiv=None, u_mat=None, w_mat=None, v_mat=None, dv_mat=None
+    ):
         """
         Rebuild the abstract & concrete models when the set of containers
         changes (e.g. new/deleted containers).

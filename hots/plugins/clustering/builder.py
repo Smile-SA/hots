@@ -2,8 +2,8 @@
 
 """Clustering builder utilities for HOTS."""
 
-from itertools import combinations
 import logging
+from itertools import combinations
 
 import numpy as np
 
@@ -225,7 +225,7 @@ def assign_new_containers_to_nearest_cluster(
     """
     # Features are all columns except the label column
     feature_cols = [c for c in clust_mat.columns if c != label_col]
-    X = clust_mat[feature_cols].values
+    x = clust_mat[feature_cols].values
 
     labels = clust_mat[label_col].to_numpy()
     existing_mask = labels != -1
@@ -235,21 +235,21 @@ def assign_new_containers_to_nearest_cluster(
     if not new_mask.any():
         return clust_mat
 
-    X_existing = X[existing_mask]
+    x_existing = x[existing_mask]
     labels_existing = labels[existing_mask]
 
     # Safety: if for some reason all are -1, we can't do anything
-    if X_existing.shape[0] == 0:
+    if x_existing.shape[0] == 0:
         return clust_mat
 
-    X_new = X[new_mask]
+    x_new = x[new_mask]
     new_index = clust_mat.index[new_mask]
 
     # For each new container, find nearest existing container
     for i, cid in enumerate(new_index):
-        x_new = X_new[i]
+        x_new_i = x_new[i]
         # Euclidean distance to all existing points
-        dists = np.linalg.norm(X_existing - x_new, axis=1)
+        dists = np.linalg.norm(x_existing - x_new_i, axis=1)
         nearest_label = labels_existing[np.argmin(dists)]
         clust_mat.at[cid, label_col] = nearest_label
 

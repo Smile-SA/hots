@@ -1,8 +1,8 @@
 """Evaluation utilities for HOTS."""
 
-from dataclasses import dataclass
 import logging
 import math
+from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from hots.plugins.clustering.builder import (
@@ -112,10 +112,10 @@ def eval_solutions(
     )
 
     if new_containers:
-        logging.info("\n🔍 New containers detected: updating optimization models 🔍\n")
+        logging.info('\n🔍 New containers detected: updating optimization models 🔍\n')
         clust_opt.update_size_model(
             instance.get_id_map(), working_df,
-            u_mat=clustering.u_mat, w_mat=clustering.w_mat 
+            u_mat=clustering.u_mat, w_mat=clustering.w_mat
         )
     else:
         # TODO update and no build
@@ -156,7 +156,7 @@ def eval_solutions(
     if new_containers:
         problem_opt.update_size_model(
             instance.get_id_map(), working_df,
-            u_mat=clustering.u_mat, v_mat=v_mat, dv_mat=dv_mat 
+            u_mat=clustering.u_mat, v_mat=v_mat, dv_mat=dv_mat
         )
     else:
         # TODO update not build

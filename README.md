@@ -29,6 +29,89 @@ A Makefile is provided, which creates a virtual environment and install HOTS. Yo
 make
 ```
 
+## Configuration file
+
+HOTS is configured via a single JSON file that you pass to the CLI.
+
+A minimal example using the file connector looks like this:
+
+```json
+{
+  "time_limit": null,
+  "clustering": {
+    "method": "kmeans",
+    "nb_clusters": 3,
+    "parameters": {
+      "nb_clusters": 3
+    }
+  },
+  "optimization": {
+    "backend": "pyomo",
+    "parameters": {
+      "solver": "glpk",
+      "verbose": 0
+    }
+  },
+  "problem": {
+    "type": "placement",
+    "parameters": {
+      "initial_placement": 0,
+      "tol": 0.1,
+      "tol_move": 0.5
+    }
+  },
+  "connector": {
+    "type": "file",
+    "parameters": {
+      "data_folder": "./tests/data/thesis_ex_10",
+      "file_name": "container_usage.csv",
+      "host_field": "machine_id",
+      "individual_field": "container_id",
+      "tick_field": "timestamp",
+      "tick_increment": 2,
+      "window_duration": 3,
+      "sep_time": 3,
+      "metrics": ["cpu"],
+      "outfile": "./out/moves.log"
+    }
+  },
+  "logging": {
+    "level": "INFO",
+    "filename": "./out/hots.log",
+    "fmt": "%(asctime)s %(levelname)s: %(message)s"
+  },
+  "reporting": {
+    "results_folder": "./out",
+    "metrics_file": "./out/metrics.csv",
+    "plots_folder": "./out/plots"
+  }
+}
+```
+
+For a Kafka-based setup, the structure is the same but the `connector` section uses `"type": "kafka"` and Kafka-specific parameters:
+
+```json
+"connector": {
+  "type": "kafka",
+  "parameters": {
+    "connector_url": "http://localhost:8080",
+    "bootstrap.servers": "localhost:9092",
+    "topics": ["hots_moves"],
+    "data_folder": "./tests/data/thesis_ex_10",
+    "file_name": "container_usage.csv",
+    "host_field": "machine_id",
+    "individual_field": "container_id",
+    "tick_field": "timestamp",
+    "tick_increment": 3,
+    "window_duration": 3,
+    "sep_time": 10,
+    "metrics": ["cpu"],
+    "outfile": "./out/moves.log"
+  }
+}
+```
+See the User manual in the documentation for a full description of each field.
+
 ## Configuring Kafka
 
 Before running the application, you need to configure the Kafka broker information and the topic name in the `params.json` file. Open the file and make the following changes:
@@ -54,7 +137,7 @@ Before running the application, you need to configure the Kafka broker informati
 The application can be used simply by running :
 
 ```bash
-hots /path/to/config/file
+hots --config path/to/config.json
 ```
 
 Make sure to activate the virtual environment before running HOTS with :
@@ -63,21 +146,18 @@ Make sure to activate the virtual environment before running HOTS with :
 source venv/bin/activate
 ```
 
-Some parameters can be defined with the `hots` command, such as :
- * `k` : the number of clusters used in clustering ;
- * `tau` : the window size during the loop process ;
- * `time_limit` : the maximum time to run the application.
+The only mandatory argument is the path to the JSON configuration file.
+You can inspect available options with:
 
-All the CLI options are found running the `help` option :
 ```bash
 hots --help
 ```
 
-More parameters can be defined through a `.JSON` file, for which an example is provided in the `tests` folder. See the documentation, section `User manual`, for more details about all the parameters.  
+A small test dataset and example configs are provided in the package (see `hots/config/sample_config_file.json` and `hots/config/sample_config_kafka.json`).
+You can quickly test your installation with:
 
-Note that a test data is provided within the package, so you can easily test the installation with :
 ```bash
-hots /tests/data/thesis_ex_10/params.json
+hots --config hots/config/sample_config_file.json
 ```
 
 ### Via Docker

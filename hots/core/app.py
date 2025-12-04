@@ -97,19 +97,7 @@ class App:
             logging.info('Skipping first placement (keeping existing)')
             initial_moves = []
 
-        self.pre_loop(labels)
-
-        # Evaluate (no "previous" yet, so deltas will be None/0)
-        # snapshot, metrics = eval_bilevel_step(
-        #     instance=self.instance,
-        #     labels=labels,
-        #     problem=problem,
-        #     prev_snapshot=None,
-        #     tick=self.instance.current_tick if hasattr(self.instance, 'current_tick') else 0,
-        # )
-        # self.prev_snapshot = snapshot
-        # self.metrics_history.append(metrics)
-        # self._persist_metrics()
+        self.pre_loop()
 
         # record a minimal “initial” metric
         self.instance.metrics_history.append({
@@ -158,23 +146,10 @@ class App:
             tmin = tmax - (self.config.connector.parameters.get('window_duration') - 1)
             loop_nb += 1
 
-        # TODO
-        #     # Evaluate bi-level (compare to previous)
-        #     snapshot, metrics = eval_bilevel_step(
-        #         instance=self.instance,
-        #         labels=labels,
-        #         problem=problem,
-        #         prev_snapshot=self.prev_snapshot,
-        #         tick=self.instance.current_tick if hasattr(self.instance, 'current_tick') else 0,
-        #     )
-        #     self.prev_snapshot = snapshot
-        #     self.metrics_history.append(metrics)
-        #     self._persist_metrics()
-
         t_total = time.time() - t_start
         logging.info('Finished HOTS run in %.3f seconds', t_total)
 
-    def pre_loop(self, labels):
+    def pre_loop(self):
         """Build and solve optimization models before performing streaming loop."""
         logging.info('Building first optimization models...')
         cfg = self.instance.config.connector.parameters

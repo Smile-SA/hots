@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Tuple
 
 from hots.plugins.clustering.builder import (
+    build_adjacency_matrix,
     build_post_clust_matrices,
     build_pre_clust_matrices,
     change_clustering,
@@ -118,7 +119,7 @@ def eval_solutions(
             u_mat=clustering.u_mat, w_mat=clustering.w_mat
         )
     else:
-        # TODO update and no build
+        # TODO update no build
         clust_opt.build(u_mat=clustering.u_mat, w_mat=clustering.w_mat)
     clust_opt.solve(
         solver=instance.config.optimization.parameters.get('solver', 'glpk'),
@@ -146,6 +147,12 @@ def eval_solutions(
     (clustering.clust_mat, clust_nb_changes) = change_clustering(
         moving, clustering, instance.get_id_map()
     )
+    clustering.u_mat = build_adjacency_matrix(clustering.labels)
+    clust_opt.update_adjacency_constraints(clustering.u_mat)
+    clust_opt.solve(
+        solver=instance.config.optimization.parameters.get('solver', 'glpk'),
+    )
+    clust_opt.fill_dual_values()
 
     # 6) Build & solve business problem
     v_mat = problem.build_place_adj_matrix(
@@ -164,6 +171,7 @@ def eval_solutions(
     problem_opt.solve()
     prev_duals = problem_opt.last_duals
     problem_opt.fill_dual_values()
+
     # 7) Conflict detection & pick moving containers for problem
     # TODO use problem factory for this method
     moving, nodes, edges, max_deg, mean_deg = get_moving_containers_place(
@@ -177,6 +185,12 @@ def eval_solutions(
 
     # 8) Apply business‑problem changes
     moves = problem.adjust(moving, working_df)
+    v_mat = problem.build_place_adj_matrix(
+        working_df,
+        instance.get_id_map())
+    problem_opt.update_adjacency_constraints(v_mat)
+    problem_opt.solve()
+    problem_opt.fill_dual_values()
 
     # 9) Update and solve opti models
     # TODO
@@ -377,29 +391,6 @@ def get_container_tomove(instance, c1, c2, working_df: pd.DataFrame):
 
     # Pick the removal that yields *lower* variance (smoother)
     return c1 if var1 < var2 else c2
-
-
-# def get_container_tomove(
-#     instance,
-#     c1: Any,
-#     c2: Any,
-#     working_df: pd.DataFrame
-# ) -> Any:
-#     """Pick between two containers by variance on placement node."""
-#     nf, hf, tf, metric = (
-#         instance.indiv_field,
-#         instance.host_field,
-#         instance.tick_field,
-#         instance.metrics[0]
-#     )
-#     host = working_df.loc[working_df[nf] == c1, hf].iloc[0]
-#     node_ts = (
-#         working_df[working_df[hf] == host]
-#         .groupby(tf)[metric].sum().sort_index().values
-#     )
-#     c1_ts = working_df[working_df[nf] == c1][metric].sort_index().values
-#     c2_ts = working_df[working_df[nf] == c2][metric].sort_index().values
-#     return c1 if np.var(node_ts - c1_ts) > np.var(node_ts - c2_ts) else c2
 
 
 def eval_bilevel_step(

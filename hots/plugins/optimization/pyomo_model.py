@@ -430,12 +430,6 @@ class PyomoModel(OptimizationPlugin):
                 self.instance_model.C, self.instance_model.C, rule=_must_link_n
             )
 
-    def update_adjacency_clust_constraints(self, u):
-        """Update constraints fixing u variables from new adjacency matrix."""
-        self.instance_model.del_component(self.instance_model.must_link_c)
-        self.update_sol_u(u)
-        self.add_mustlink_instance()
-
     def update_sol_u(self, u):
         """Update directly u variable from new adjacency matrix."""
         n = len(self.id_list)
@@ -445,13 +439,25 @@ class PyomoModel(OptimizationPlugin):
                 ci = self.id_list[i]
                 self.instance_model.sol_u[(cj, ci)] = int(u[i][j])
 
-    def update_adjacency_place_constraints(self, v_matrix):
-        """Update constraints fixing v variables from new adjacency matrix."""
-        self.instance_model.del_component('must_link_n')
-        n = len(self.dict_id_c)
-        for i, j in product(range(n), range(n)):
-            key = (self.id_list[j], self.id_list[i])
-            self.instance_model.sol_v[key] = int(v_matrix[i][j])
+    def update_adjacency_constraints(self, matrix):
+        """Update constraints fixing u or v variables from new solution."""
+        m = self.instance_model
+        if self.pb_number == 1:
+            if hasattr(m, 'must_link_c'):
+                m.del_component(m.must_link_c)
+        elif self.pb_number == 2:
+            if hasattr(m, 'must_link_n'):
+                m.del_component('must_link_n')
+        else:
+            raise ValueError(f'Unsupported pb_number={self.pb_number} (expected 1 or 2)')
+
+        if self.pb_number == 1:
+            self.update_sol_u(matrix)
+        elif self.pb_number == 2:
+            n = len(self.dict_id_c)
+            for i, j in product(range(n), range(n)):
+                key = (self.id_list[j], self.id_list[i])
+                m.sol_v[key] = int(matrix[i][j])
         self.add_mustlink_instance()
 
     def update_sol_v(self, v_matrix):

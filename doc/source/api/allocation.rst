@@ -1,8 +1,10 @@
 .. _allocation_module:
 
-===============
-hots.allocation
-===============
+=========================
+hots.evaluation.evaluator
+=========================
 
-.. automodule:: hots.allocation
+.. automodule:: hots.evaluation.evaluator
    :members:
+   :undoc-members:
+   :show-inheritance:

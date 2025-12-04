@@ -7,126 +7,154 @@ User manual
 Preparing the parameters
 ========================
 
-The configuration file is the only mandatory argument to run HOTS. It is provided
-through a .JSON file, which has the following format :
+The configuration file is the only mandatory argument to run :term:`hots`. It is a JSON
+file passed to the CLI with the :code:`--config` option.
 
-.. code-block:: JSON
+A minimal example using the file connector is the following:
+
+.. code-block:: json
 
    {
-      "analysis": {
-         "window_duration": "default",
-         "step": 1
-      },
-      "clustering": {
-         "algo": "hierarchical",
-         "nb_clusters": 4
-      },
-      "heuristic": {
-         "algo": "distant_pairwise"
-      }
+     "time_limit": null,
+     "clustering": {
+       "method": "kmeans",
+       "nb_clusters": 3,
+       "parameters": {
+         "nb_clusters": 3
+       }
+     },
+     "optimization": {
+       "backend": "pyomo",
+       "parameters": {
+         "solver": "glpk",
+         "verbose": 0
+       }
+     },
+     "problem": {
+       "type": "placement",
+       "parameters": {
+         "initial_placement": 0,
+         "tol": 0.1,
+         "tol_move": 0.5
+       }
+     },
+     "connector": {
+       "type": "file",
+       "parameters": {
+         "data_folder": "./tests/data/thesis_ex_10",
+         "file_name": "container_usage.csv",
+         "host_field": "machine_id",
+         "individual_field": "container_id",
+         "tick_field": "timestamp",
+         "tick_increment": 2,
+         "window_duration": 3,
+         "sep_time": 3,
+         "metrics": ["cpu"],
+         "outfile": "./out/moves.log"
+       }
+     },
+     "logging": {
+       "level": "INFO",
+       "filename": "./out/hots.log",
+       "fmt": "%(asctime)s %(levelname)s: %(message)s"
+     },
+     "reporting": {
+       "results_folder": "./out",
+       "metrics_file": "./out/metrics.csv",
+       "plots_folder": "./out/plots"
+     }
    }
 
-Here are all the possible parameters with a small description :
+Configuration sections
+----------------------
 
-- :code:`csv` use historical data as CSV or not
+The top-level keys of the configuration file map to the fields of
+:class:`hots.config.loader.AppConfig`:
 
-- :code:`host_meta_path` path to node capacity if needed
+- :code:`time_limit`:
+  maximum wall-clock time (in seconds) for the application run.
+  If :code:`null`, :term:`hots` processes all available data.
 
-- :code:`data` parameters dealing with data 
+- :code:`clustering`:
+  configuration of the clustering plugin.
 
-  - :code:`individuals_file` filename for containers consumption 
-  - :code:`hosts_meta_file` filename for nodes information
-  - :code:`individual_field` field name for containers ID in data
-  - :code:`host_field` field name for nodes ID in data
-  - :code:`tick_field` field name for timestamps ID in data
-  - :code:`metrics` resources to take into account from data
+  - :code:`method`: name of the clustering algorithm to use, e.g.
+    :code:`"kmeans"`, :code:`"hierarchical"`, :code:`"spectral"`.
+  - :code:`nb_clusters`: target number of clusters.
+  - :code:`parameters`: free-form dict of method-specific parameters.
 
-- :code:`analysis` parameters dealing with analysis period
+- :code:`optimization`:
+  configuration of the optimization backend.
 
-  - :code:`sep_time` time dividing data between analysis and running period
-  - :code:`placement_recompute` compute a placement solution in analysis period
+  - :code:`backend`: optimization backend to use. Currently :code:`"pyomo"` is
+    supported and maps to :class:`hots.plugins.optimization.pyomo_model.PyomoModel`.
+  - :code:`parameters`: solver-related parameters such as:
 
-- :code:`clustering` parameters dealing with first clustering problem
+    - :code:`solver`: solver name (e.g. :code:`"glpk"`).
+    - :code:`verbose`: integer verbosity level.
 
-  - :code:`algo` algorithm to use for first clustering (between `kmeans`, `hierarchical` and `spectral`)
-  - :code:`nb_clusters` number of clusters to use
+- :code:`problem`:
+  configuration of the business (domain) problem plugin (see
+  :mod:`hots.plugins.problem.placement`).
 
-- :code:`heuristic` parameters dealing with placement heuristic during analysis period
+  - :code:`type`: problem type. The default implementation is :code:`"placement"`.
+  - :code:`parameters`: problem-specific parameters, for example:
 
-  - :code:`algo` heuristic algorithm used to have first placement solution (between `distant_pairwise`, `ffd` and `spread`)
+    - :code:`initial_placement`: whether to compute an initial placement
+      (:code:`0` or :code:`1`).
+    - :code:`tol`: tolerance used to decide when a node is overloaded.
+    - :code:`tol_move`: tolerance for deciding when to move a container.
 
-- :code:`optimization` parameters dealing with optimization models solve
+- :code:`connector`:
+  configuration of the data connector plugin.
 
-  - :code:`solver` the solver to use for solving problems
-  - :code:`verbose` display all solving information
+  - :code:`type`: connector type. The built-in types are:
 
-- :code:`loop` parameters dealing with loop process
+    - :code:`"file"`: read data from CSV files.
+    - :code:`"kafka"`: read data from a Kafka topic.
 
-  - :code:`mode` triggering loop mode (between `event`, `sequential` and `hybrid`)
-  - :code:`window_duration` window size for the loop process
-  - :code:`tick` number of datapoints used to progress in time before triggering a new loop
-  - :code:`constraints_dual` list of constraints used for dual variables comparison during solutions evaluation
-  - :code:`tol_dual_clust` tolerance threshold for dual variables comparison during clustering evaluation
-  - :code:`tol_move_clust` maximum allowed moves for clustering update
-  - :code:`tol_dual_place` tolerance threshold for dual variables comparison during placeent evaluation
-  - :code:`tol_move_place` maximum allowed moves for placement update
-  - :code:`tol_step` tolerance increment factor for each loop
+  - :code:`parameters`: connector-specific parameters. For both connectors,
+    the following keys are usually required:
 
-- :code:`placement` parameters dealing with container placement problem
+    - :code:`data_folder`: folder containing the input data.
+    - :code:`file_name`: CSV file containing container-level metrics.
+    - :code:`individual_field`: column name for container IDs.
+    - :code:`host_field`: column name for host (node) IDs.
+    - :code:`tick_field`: column name for timestamps.
+    - :code:`tick_increment`: step between two timestamps in the stream.
+    - :code:`window_duration`: window size used for sliding-window analysis.
+    - :code:`sep_time`: time separating the analysis period from the running period.
+    - :code:`metrics`: list of metric names to use (e.g. :code:`["cpu"]`).
+    - :code:`outfile`: file where proposed moves will be written.
 
-  - :code:`enable` enable or disable the placement mechanism
-  - :code:`allocation_support` enable or disable support for resource allocation
-  - :code:`allocation_objectives` objectives related to resource allocation
+    For the Kafka connector, the following additional keys can be used:
 
-    - :code:`open_nodes` number of used nodes
+    - :code:`bootstrap.servers`: Kafka bootstrap servers string.
+    - :code:`topics`: list of topic names used to publish moves.
+    - :code:`connector_url`: optional URL of an external connector service.
 
-- :code:`allocation` parameters dealing with adjustment of resources allocated to containers 
+- :code:`logging`:
+  logging configuration used by :func:`hots.utils.logging_config.setup_logging`.
 
-  - :code:`enable` enable or disable the dynamic adjustment of containers resources
-  - :code:`constraints` constraints used for resources dynamic adjustment
+  - :code:`level`: log level (:code:`"DEBUG"`, :code:`"INFO"`, ...).
+  - :code:`filename`: log file path.
+  - :code:`fmt`: log message format.
 
-    - :code:`load_threshold` maximum nodes load threshold  
-    - :code:`max_amplitude` maximum nodes resource consumption amplitude 
+- :code:`reporting`:
+  configuration of result files and plots.
 
-  - :code:`objective` allocation problem objectives
+  - :code:`results_folder`: base output folder.
+  - :code:`metrics_file`: CSV file for aggregated metrics.
+  - :code:`plots_folder`: folder where plots will be saved.
 
-    - :code:`open_nodes` number of used nodes
-    - :code:`target_load_CPU` nodes load (CPU)
+Additional top-level keys
+-------------------------
 
-- :code:`kafkaConf` Kafka configuration parameters
-
-  - :code:`topics` Kafka topics used for message exchange
-
-    - :code:`docker_topic` topic name for Docker placement
-    - :code:`docker_replacer` topic name for Docker replacement testing
-    - :code:`mock_topic` topic name for mock placement
-
-  - :code:`Producer` Kafka producer configuration
-
-    - :code:`brokers` list of broker addresses for producing messages
-
-  - :code:`Consumer` Kafka consumer configuration
-
-    - :code:`group` consumer group name
-    - :code:`brokers` list of broker addresses for consuming messages
-
-  - :code:`schema` Avro schema definition for container data
-
-    - :code:`type` schema type
-    - :code:`name` schema name
-    - :code:`namespace` schema namespace
-    - :code:`fields` list of fields in the schema
-
-      - :code:`containers` array of container records
-
-        - :code:`timestamp` integer representing the timestamp
-        - :code:`container_id` string representing the container identifier
-        - :code:`machine_id` string representing the machine identifier
-        - :code:`cpu` float representing CPU usage
-
-  - :code:`schema_url` URL of the schema registry
-
-A parameter example file can be found in  :file:`~/tests/data/thesis_ex_10/params.json` file.
+For convenience, some examples also define :code:`data_folder`,
+:code:`individual_field`, :code:`host_field`, :code:`tick_field` and
+:code:`metrics` at the top level. These are redundant copies of the values
+stored inside :code:`connector.parameters` and are kept for backward
+compatibility.
 
 Preparing data
 ==============
@@ -169,27 +197,25 @@ the directory, it will be built using :file:`container_usage.csv` data.
 Running the app
 ===============
 
-HOTS can be run using the following command:
+Once the configuration file is prepared, :term:`hots` is started by:
 
 .. code:: console
 
-   hots ~/path/to/config/file
+   hots --config /path/to/config.json
 
-The :code:`hots` can be used with the following options :
+The :code:`--config` (or :code:`-c`) option is mandatory and must point to a valid
+JSON configuration file.
 
-- :code:`-k` : number of clusters used in clustering
-- :code:`-t, --tau` : window size for the loop process
-- :code:`-m, --method` : global method used for placement problem
-- :code:`-c, --cluster_method` : method used to update the clustering
-- :code:`-o, --output` : specific directory for --output
-- :code:`-C, --tolclust` : value for epsilonC (building the conflict graph for clustering)
-- :code:`-A, --tolplace` : value for epsilonA (building the conflict graph for placement)
-- :code:`-K, --use_kafka` : use Kafka streaming platform for data processing
-- :code:`-T, --time_limit` : Provide a time limit for data processing (in seconds)
-- :code:`--help` : display these options and exit
+You can view the available command-line options with:
 
-Note that some parameters can be redundant with the parameter file (e.g. :code:`k` and :code:`tau`)
-: in this case the value from CLI is used. 
+.. code:: console
+
+   hots --help
+
+Typical options include the standard :code:`--help` and :code:`--version` flags.
+All runtime behaviour is controlled by the configuration file rather than
+individual CLI flags (number of clusters, window size, problem type, connector,
+etc.).
 
 Output explanation
 ===================

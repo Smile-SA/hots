@@ -1,8 +1,10 @@
 .. _init_module:
 
-=========
-hots.init
-=========
+========
+hots API
+========
 
-.. automodule:: hots.init
+.. automodule:: hots
    :members:
+   :undoc-members:
+   :show-inheritance:

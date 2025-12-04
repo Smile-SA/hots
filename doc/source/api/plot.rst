@@ -1,8 +1,10 @@
 .. _plot_module:
 
-=========
-hots.plot
-=========
+===========================
+hots.visualization.plot API
+===========================
 
-.. automodule:: hots.plot
+.. automodule:: hots.visualization.plot
    :members:
+   :undoc-members:
+   :show-inheritance:

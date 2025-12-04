@@ -1,8 +1,10 @@
 .. _container_module:
 
-==============
-hots.container
-==============
+======================
+hots.config.loader API
+======================
 
-.. automodule:: hots.container
+.. automodule:: hots.config.loader
    :members:
+   :undoc-members:
+   :show-inheritance:

@@ -18,14 +18,12 @@ for more information about it.
 How is it used ?
 ================
 
-In :term:`hots` package, all the Pyomo related work is located in :file:`model.py`. Pyomo allows us
-to create optimization models (see section :ref:`process` for more details about the optimization
-models use), in our case modeling the clustering and the containers placement problem.
-
-We define an abstraction of the optimization model and their use at a higher level, allowing the
-user to customize the optimization part as he wants, either by providing small changes on
-optimization models in the same file or bigger changes, like completely different models and / or
-different use, defined in his own file.
+In the :term:`hots` package, Pyomo-based optimization models are implemented in
+:mod:`hots.plugins.optimization.pyomo_model` and are instantiated through
+:class:`hots.plugins.optimization.factory.OptimizationFactory`. This plugin
+architecture allows :term:`hots` to support multiple optimization backends
+(only Pyomo for now) while keeping the application logic independent from the
+concrete modeling library.
 
 The optimization models need a solver to be solved, and the use of Pyomo allows a wide variety of
 solvers to be used (`see here
@@ -33,17 +31,17 @@ solvers to be used (`see here
 :term:`hots`, this solver is simply indicated in the parameter file (see section
 :ref:`usermanual`).
 
-Inside the :file:`pyomo.py` file, all the model definition and creation (described next) are
-specified inside a class named :file:`Model`. All the functions outside this class define how these
+Inside the :file:`pyomo_model.py` file, all the model definition and creation (described next) are
+specified inside a class named :file:`PyomoModel`. All the functions outside this class define how these
 models are used. 
 
 Optimization models description
 ===============================
 
-In the :file:`model.py` provided file, 2 optimization models are created, representing our use case
+In the :file:`pyomo_model.py` provided file, 2 optimization models are created, representing our use case
 : the clustering problem and the placement problem.
 
-The process followed in the :file:`model.py` file to build the optimization models is as follow :
+The process followed in the :file:`pyomo_model.py` file to build the optimization models is as follow :
 
 #. Create an Pyomo abstract model to handle your model at a high level 
 #. Define the parameters that will help building the abstract model (objects from which variables and constraints will be created)
@@ -53,7 +51,7 @@ The process followed in the :file:`model.py` file to build the optimization mode
 
 See the Pyomo documentation for more details about all these objects.
 
-Finally, the clustering optimization model provided in the :file:`model.py` is as follow :
+Finally, the clustering optimization model provided in the :file:`pyomo_model.py` is as follow :
 
 .. math::
     \begin{alignat}{3}

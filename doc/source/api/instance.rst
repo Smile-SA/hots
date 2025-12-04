@@ -1,8 +1,10 @@
 .. _instance_module:
 
-=============
-hots.instance
-=============
+===================
+hots.core.instance
+===================
 
-.. automodule:: hots.instance
+.. automodule:: hots.core.instance
    :members:
+   :undoc-members:
+   :show-inheritance:

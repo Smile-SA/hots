@@ -1,8 +1,10 @@
 .. _placement_module:
 
-==============
-hots.placement
-==============
+================================
+hots.plugins.problem.placement
+================================
 
-.. automodule:: hots.placement
+.. automodule:: hots.plugins.problem.placement
    :members:
+   :undoc-members:
+   :show-inheritance:

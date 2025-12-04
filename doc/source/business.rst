@@ -15,7 +15,9 @@ Optimization models modularity
 
 In order to evaluate the current solutions, :term:`hots` use some optimization models to find the
 way to update these solutions (more details in :ref:`pyomo`). In the package, the currently used
-optimization models are described in the :file:`model.py` and tackle two problems :
+optimization models are implemented in the
+:mod:`hots.plugins.optimization` package (see in particular
+:mod:`hots.plugins.optimization.pyomo_model`) and tackle two problems:
 
   - the clustering problem
   - the containers placement problem, using clustering information
@@ -23,6 +25,10 @@ optimization models are described in the :file:`model.py` and tackle two problem
 The user has the possibility to provide his own file (or modifying the provided one), in order to
 adapt the optimization constraints, variables and / or objectives to his use case, being related
 to containers placement or not.
+The application selects and instantiates these models through the
+:class:`hots.plugins.optimization.factory.OptimizationFactory`, based on the
+:code:`optimization` section of the configuration file.
+
 
 Business components modularity
 ==============================

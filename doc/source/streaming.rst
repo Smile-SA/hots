@@ -1,60 +1,85 @@
 .. _streaming:
 
 ==============
-Streaming Data
+Streaming data
 ==============
 
-This document describes how the Kafka streaming platform is integrated into the application, detailing the steps involved in producing and consuming messages.
+This document describes how streaming data is integrated into :term:`hots` in
+the refactored architecture.
 
 Overview
---------
-The main function in the application is responsible for reading data from a CSV file, creating a Kafka producer and consumer, and publishing messages to a Kafka topic. The following steps outline the integration process:
+========
 
-1. The CSV file is read row by row.
-2. Data from each row is extracted and used to create a message.
-3. The message is published to Kafka using the `Publish` function.
-4. The message follows an Avro schema defined in the `schema_str` variable.
+Streaming is handled by *connector plugins* implementing the
+:class:`hots.core.interfaces.ConnectorPlugin` interface. A connector is
+responsible for:
 
-Kafka Components
-----------------
+* loading the initial data used during the analysis phase,
+* providing new data for each step of the streaming loop,
+* applying the moves decided by the optimization/heuristics layer (for instance
+  by sending them to Kafka or writing them to a file).
 
-Producer and Consumer Initialization
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+The connector to use is selected via the :code:`connector` section of the
+configuration file (see :ref:`usermanual`).
 
-- **`GetProducer` Function**
+Connector plugin interface
+==========================
 
-  - Initializes and returns a Kafka producer object.
+The :class:`hots.core.interfaces.ConnectorPlugin` class defines the methods that
+every connector must implement:
 
-- **`GetConsumer` Function**
+* :meth:`load_initial`: load the initial batch of data and return the
+  individual-level dataframe, the host-level dataframe, and optional metadata.
 
-  - Initializes and returns a Kafka consumer object.
+* :meth:`next_batch`: return the next batch of individual-level data for the
+  current streaming window or :code:`None` when no more data is available.
 
-Message Publishing
-~~~~~~~~~~~~~~~~~~
+* :meth:`apply_moves`: apply a list of move dictionaries produced by the
+  placement plugin. For example, a move can be represented as::
 
-- **`Publish` Function**
+      {"container_name": "c_001", "old_host": "h_01", "new_host": "h_03"}
 
-  - Accepts a producer object, a message, a topic, and an Avro serializer.
-  - Extracts data from the message and serializes it using the Avro schema.
-  - Publishes the message to the specified Kafka topic.
-  - Uses the message's timestamp as the key.
+  The connector decides how to persist or forward these moves (to a file, a
+  Kafka topic, an external orchestrator, etc.).
 
-Delivery Reporting
-~~~~~~~~~~~~~~~~~~
+Built-in connectors
+===================
 
-- **`delivery_report` Function**
+File connector
+--------------
 
-  - A callback function triggered when a message is delivered to Kafka.
-  - Checks whether the delivery was successful.
-  - Updates the `last_offset` variable with the offset of the delivered message.
+:mod:`hots.plugins.connector.file_connector` implements the
+:class:`hots.plugins.connector.file_connector.FileConnector` class, which:
 
-Consumer Offset Balancing
-~~~~~~~~~~~~~~~~~~~~~~~~~
+* reads historical data from CSV files located in :code:`data_folder`,
+* exposes them as :class:`pandas.DataFrame` objects to the rest of the
+  application,
+* simulates a streaming process by returning successive time windows in
+  :meth:`next_batch`,
+* writes computed moves to a log file, using the :code:`outfile` path provided
+  in :code:`connector.parameters`.
 
-- **`balance_offset` Function**
+Kafka connector
+---------------
 
-  - Retrieves the latest committed offset for the partition being consumed.
-  - Compares the latest offset with `last_offset`.
-  - Ensures the consumer has processed all messages up to the committed offset.
+:mod:`hots.plugins.connector.kafka_connector` implements the
+:class:`hots.plugins.connector.kafka_connector.KafkaConnector` class, which:
 
-This integration ensures efficient message processing using Kafka while maintaining data consistency and offset balancing for consumers.
+* consumes container usage data from one or several Kafka :code:`topics`,
+* keeps track of offsets for robust consumption,
+* converts messages into :class:`pandas.DataFrame` rows compatible with the rest
+  of the pipeline,
+* publishes move messages back to Kafka in :meth:`apply_moves`.
+
+The Kafka connection details (bootstrap servers, topic names, etc.) are
+configured through the :code:`connector.parameters` and optional top-level
+:code:`kafka` section of the configuration file.
+
+Integration in the main loop
+============================
+
+The main application class :class:`hots.core.app.App` interacts only with the
+connector interface. This means you can implement your own connector (for
+instance, to integrate with another streaming platform or REST API) by
+subclassing :class:`ConnectorPlugin` and configuring :code:`connector.type`
+accordingly, without changing the rest of the code base.

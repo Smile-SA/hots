@@ -1,8 +1,10 @@
 .. _main_module:
 
-=========
-hots.main
-=========
+========
+hots.cli
+========
 
-.. automodule:: hots.main
+.. automodule:: hots.cli
    :members:
+   :undoc-members:
+   :show-inheritance:

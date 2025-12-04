@@ -1,8 +1,15 @@
 .. _node_module:
 
-=========
-hots.node
-=========
+=======================
+Core app & interfaces
+=======================
 
-.. automodule:: hots.node
+.. automodule:: hots.core.app
    :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. automodule:: hots.core.interfaces
+   :members:
+   :undoc-members:
+   :show-inheritance:

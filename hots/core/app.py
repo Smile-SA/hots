@@ -179,24 +179,24 @@ class App:
         logging.info('Building first optimization models...')
         cfg = self.instance.config.connector.parameters
         # Clustering model
-        (clust_mat, u_mat, w_mat) = build_pre_clust_matrices(
+        build_pre_clust_matrices(
             self.instance.df_indiv,
             cfg.get('tick_field'),
             cfg.get('individual_field'),
             cfg.get('metrics'),
             self.instance.get_id_map(),
-            labels
+            self.clustering
         )
 
-        self.clust_opt.build(u_mat=u_mat, w_mat=w_mat)
+        self.clust_opt.build(u_mat=self.clustering.u_mat, w_mat=self.clustering.w_mat)
         self.clust_opt.solve()
         self.clust_opt.fill_dual_values()
         # Problem model
         v_mat = self.problem.build_place_adj_matrix(
             self.instance.df_indiv,
             self.instance.get_id_map())
-        dv_mat = build_post_clust_matrices(clust_mat)
-        self.problem_opt.build(u_mat=u_mat, v_mat=v_mat, dv_mat=dv_mat)
+        dv_mat = build_post_clust_matrices(self.clustering.clust_mat)
+        self.problem_opt.build(u_mat=self.clustering.u_mat, v_mat=v_mat, dv_mat=dv_mat)
         self.problem_opt.solve()
         self.problem_opt.fill_dual_values()
 

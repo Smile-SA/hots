@@ -1,6 +1,7 @@
 """Evaluation utilities for HOTS."""
 
 from dataclasses import dataclass
+import logging
 import math
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -11,14 +12,13 @@ from hots.plugins.clustering.builder import (
     cluster_mean_profile,
     get_far_container
 )
+from hots.utils.tools import check_missing_entries_df
 
 import networkx as nx
 
 import numpy as np
 
 import pandas as pd
-
-from sklearn.metrics import silhouette_score
 
 
 @dataclass(frozen=True)
@@ -93,22 +93,33 @@ def eval_solutions(
     """Run the evaluation pipeline and collect evaluation metrics."""
     # 1) Build & solve clustering problem
     cfg = instance.config.connector.parameters
-    (clust_mat, u_mat, w_mat) = build_pre_clust_matrices(
-        working_df,
-        cfg.get('tick_field'),
-        cfg.get('individual_field'),
-        cfg.get('metrics'),
-        instance.get_id_map(),
-        clustering.labels
-    )
-    id_map = instance.get_id_map()
-    inv = {v: k for k, v in id_map.items()}
-    idx = [inv[i] for i in range(len(clustering.labels))]
-    X = clust_mat.loc[idx].drop(columns=['cluster'])
-    sil = silhouette_score(X.values, clustering.labels)
+    nf, hf, tf = cfg.get('individual_field'), cfg.get('host_field'), cfg.get('tick_field')
+    metrics = cfg.get('metrics')
 
-    # TODO update and no build
-    clust_opt.build(u_mat=u_mat, w_mat=w_mat)
+    new_containers = False
+    if len(clustering.labels) < working_df[nf].nunique():
+        working_df = check_missing_entries_df(
+            working_df, tf, nf, hf, metrics
+        )
+        new_containers = True
+
+    build_pre_clust_matrices(
+        working_df,
+        tf, nf, metrics,
+        instance.get_id_map(),
+        clustering,
+        new_containers
+    )
+
+    if new_containers:
+        logging.info("\n🔍 New containers detected: updating optimization models 🔍\n")
+        clust_opt.update_size_model(
+            instance.get_id_map(), working_df,
+            u_mat=clustering.u_mat, w_mat=clustering.w_mat 
+        )
+    else:
+        # TODO update and no build
+        clust_opt.build(u_mat=clustering.u_mat, w_mat=clustering.w_mat)
     clust_opt.solve(
         solver=instance.config.optimization.parameters.get('solver', 'glpk'),
     )
@@ -122,34 +133,42 @@ def eval_solutions(
     tol_move = instance.config.problem.parameters.get('tol_move', 0.1)
 
     # 5) Conflict detection & pick moving containers for clustering
-    clustering.profiles = cluster_mean_profile(clust_mat)
+    clustering.profiles = cluster_mean_profile(clustering.clust_mat)
     moving, nodes, edges, max_deg, mean_deg = get_moving_containers_clust(
-        instance, clust_opt,
+        clust_opt.last_duals,
         prev_duals,
         tol,
         tol_move,
-        df_clust=clust_mat,
+        df_clust=clustering.clust_mat,
         profiles=clustering.profiles,
     )
 
-    (clust_mat, clust_nb_changes) = change_clustering(
-        moving, clust_mat, clustering, instance.get_id_map()
+    (clustering.clust_mat, clust_nb_changes) = change_clustering(
+        moving, clustering, instance.get_id_map()
     )
 
     # 6) Build & solve business problem
     v_mat = problem.build_place_adj_matrix(
         working_df,
         instance.get_id_map())
-    dv_mat = build_post_clust_matrices(clust_mat)
-    # TODO update not build
-    problem_opt.build(u_mat=u_mat, v_mat=v_mat, dv_mat=dv_mat)
+    dv_mat = build_post_clust_matrices(clustering.clust_mat)
+
+    if new_containers:
+        problem_opt.update_size_model(
+            instance.get_id_map(), working_df,
+            u_mat=clustering.u_mat, v_mat=v_mat, dv_mat=dv_mat 
+        )
+    else:
+        # TODO update not build
+        problem_opt.build(u_mat=clustering.u_mat, v_mat=v_mat, dv_mat=dv_mat)
     problem_opt.solve()
     prev_duals = problem_opt.last_duals
     problem_opt.fill_dual_values()
     # 7) Conflict detection & pick moving containers for problem
     # TODO use problem factory for this method
     moving, nodes, edges, max_deg, mean_deg = get_moving_containers_place(
-        instance, problem_opt,
+        instance,
+        problem_opt.last_duals,
         prev_duals,
         tol,
         tol_move,
@@ -165,7 +184,6 @@ def eval_solutions(
     # 7) Collect metrics
     # TODO better handle this (clust vs place)
     metrics: Dict[str, Any] = {
-        'silhouette': sil,
         'conflict_nodes': nodes,
         'conflict_edges': edges,
         'max_conf_degree': max_deg,
@@ -177,32 +195,40 @@ def eval_solutions(
 
 
 def get_conflict_graph(
-    model,
+    cur_duals: Dict[Any, float],
     prev_duals: Dict[Any, float],
     tol: float
 ) -> nx.Graph:
     """Build conflict graph where edges represent dual increases above tolerance."""
-    inst = model.instance_model
-    dual = inst.dual
-
-    if model.pb_number == 1:
-        must_link = getattr(inst, 'must_link_c', {})
-    else:
-        must_link = getattr(inst, 'must_link_n', {})
-
     g = nx.Graph()
-    for idx_pair, con in must_link.items():
-        prev = prev_duals.get(idx_pair, 0.0)
-        if prev <= 0:
+
+    cur_duals = cur_duals or {}
+    prev_duals = prev_duals or {}
+
+    # Work with the union of keys from previous and current iterations
+    all_idx = set(cur_duals.keys()) | set(prev_duals.keys())
+
+    for idx in all_idx:
+        cur = cur_duals.get(idx, 0.0)
+        prev = prev_duals.get(idx, 0.0)
+        delta = abs(cur - prev)
+
+        if delta <= tol:
             continue
-        curr = dual[con]
-        if curr > prev * (1 + tol):
-            g.add_edge(idx_pair[0], idx_pair[1])
+
+        # idx is usually a tuple like (c_i, c_j) for must_link constraints
+        if isinstance(idx, tuple) and len(idx) == 2:
+            a, b = idx
+            g.add_edge(a, b, weight=delta)
+        else:
+            # Fallback: single node constraint, or unexpected index type
+            g.add_node(idx, weight=delta)
+
     return g
 
 
 def get_moving_containers_clust(
-    instance, model,
+    cur_duals: Dict[Any, float],
     prev_duals: Dict[Any, float],
     tol: float,
     tol_move: float,
@@ -210,7 +236,7 @@ def get_moving_containers_clust(
     profiles: np.ndarray
 ) -> Tuple[List[Any], int, int, int, float]:
     """Select containers to move from clustering conflict graph."""
-    g = get_conflict_graph(model, prev_duals, tol)
+    g = get_conflict_graph(cur_duals, prev_duals, tol)
     n_nodes, n_edges = g.number_of_nodes(), g.number_of_edges()
     degrees = sorted(g.degree(), key=lambda x: x[1], reverse=True)
     if not degrees:
@@ -252,14 +278,14 @@ def get_moving_containers_clust(
 
 
 def get_moving_containers_place(
-    instance, model,
+    instance, cur_duals,
     prev_duals: Dict[Any, float],
     tol: float,
     tol_move: float,
     working_df: pd.DataFrame
 ) -> Tuple[List[Any], int, int, int, float]:
     """Select containers to move from placement conflict graph."""
-    g = get_conflict_graph(model, prev_duals, tol)
+    g = get_conflict_graph(cur_duals, prev_duals, tol)
     n_nodes, n_edges = g.number_of_nodes(), g.number_of_edges()
     degrees = sorted(g.degree(), key=lambda x: x[1], reverse=True)
     if not degrees:
@@ -268,7 +294,7 @@ def get_moving_containers_place(
     mean_deg = sum(d for _, d in degrees) / len(degrees)
 
     moving = []
-    budget = len(model.dict_id_c) * tol_move
+    budget = len(instance.get_id_map()) * tol_move
     while degrees and len(moving) < budget:
         cid, deg = degrees[0]
 
@@ -300,42 +326,15 @@ def get_moving_containers_place(
     return moving, n_nodes, n_edges, max_deg, mean_deg
 
 
-# def get_far_container(
-#     instance,
-#     c1: Any,
-#     c2: Any,
-#     df_clust: pd.DataFrame,
-#     profiles: np.ndarray
-# ) -> Any:
-#     """Pick between two containers by variance from cluster profile."""
-#     nf, hf, tf, metric = (
-#         instance.config.individual_field,
-#         instance.config.host_field,
-#         instance.config.tick_field,
-#         instance.config.metrics[0]
-#     )
-#     host = df_clust.loc[df_clust[nf] == c1, hf].iloc[0]
-#     node_ts = (
-#         df_clust[df_clust[hf] == host]
-#         .groupby(tf)[metric].sum().sort_index().values
-#     )
-#     c1_ts = df_clust[df_clust[nf] == c1][metric].sort_index().values
-#     c2_ts = df_clust[df_clust[nf] == c2][metric].sort_index().values
-#     return c1 if np.var(node_ts - c1_ts) > np.var(node_ts - c2_ts) else c2
-
-
 def get_container_tomove(instance, c1, c2, working_df: pd.DataFrame):
     """Pick between two containers by variance on c1's placement node.
 
     Chooses the container whose removal makes the node's time series smoother
     (i.e., smaller variance of node_ts - container_ts).
     """
-    nf, hf, tf, metric = (
-        instance.config.individual_field,
-        instance.config.host_field,
-        instance.config.tick_field,
-        instance.config.metrics[0],
-    )
+    cfg = instance.config.connector.parameters
+    nf, hf, tf = cfg.get('individual_field'), cfg.get('host_field'), cfg.get('tick_field')
+    metric = cfg.get('metrics')[0]
 
     df = working_df[[nf, hf, tf, metric]].copy()
 

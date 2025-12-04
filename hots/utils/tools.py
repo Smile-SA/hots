@@ -53,83 +53,8 @@ def slice_by_time(df, col, tmin, tmax):
     return df[(df[col] >= tmin) & (df[col] <= tmax)]
 
 
-def build_matrices(instance, tmin, tmax, labels_, clust_model, place_model, verbose=False):
-    """Build period dataframe and matrices to be used."""
-    # 1) slice data
-    df_indiv = instance.df_indiv
-    tick_col = instance.tick_field
-    working_df_indiv = df_indiv[(df_indiv[tick_col] >= tmin) & (df_indiv[tick_col] <= tmax)]
-
-    # 2) build clustering features
-    df_clust = clt.build_matrix_indiv_attr(working_df_indiv)
-
-    containers_changed = False
-
-    # 3) align labels with current containers
-    if len(labels_) < len(df_clust):
-        # fix source df first
-        working_df_indiv = tools.check_missing_entries_df(working_df_indiv)
-        containers_changed = True
-
-        # rebuild matrix after fix
-        df_clust = clt.build_matrix_indiv_attr(working_df_indiv)
-
-        # pad labels with a sentinel
-        unknown_label = -1
-        labels_ = np.pad(
-            labels_,
-            (0, len(df_clust) - len(labels_)),
-            constant_values=unknown_label,
-        )
-
-    # 4) build matrices
-    w = clt.build_similarity_matrix(df_clust)
-    df_clust = df_clust.copy()
-    df_clust["cluster"] = labels_
-
-    u = clt.build_adjacency_matrix(labels_)
-    v = place.build_placement_adj_matrix(working_df_indiv, instance.dict_id_c)
-
-    # 5) update models if topology changed
-    if containers_changed:
-        logging.info("\n🔍 New containers detected: updating optimization models 🔍\n")
-        clust_model.update_size_model(
-            new_df_indiv=working_df_indiv,
-            w=w,
-            u=u,
-            verbose=verbose,
-        )
-
-        cluster_profiles = clt.get_cluster_mean_profile(df_clust)
-        cluster_var_matrix = clt.get_sum_cluster_variance(cluster_profiles)
-        dv = ctnr.build_var_delta_matrix_cluster(
-            df_clust,
-            cluster_var_matrix,
-            instance.dict_id_c,
-        )
-
-        place_model.update_size_model(
-            new_df_indiv=working_df_indiv,
-            u=u,
-            dv=dv,
-            v=v,
-            verbose=verbose,
-        )
-
-    return {
-        "df_indiv": working_df_indiv,
-        "df_clust": df_clust,
-        "w": w,
-        "u": u,
-        "v": v,
-        "labels": labels_,
-        "containers_changed": containers_changed,
-    }
-
-
 def check_missing_entries_df(
     df: pd.DataFrame,
-    *,
     tick_field: str,
     indiv_field: str,
     host_field: str,

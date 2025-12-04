@@ -25,15 +25,15 @@
   "connector": {
     "type": "file",
     "parameters": {
-      "data_folder": "./tests/data/thesis_ex_10",
+      "data_folder": "./tests/data/min_test_3",
       "file_name": "container_usage.csv",
       "tick_field": "timestamp",
       "individual_field": "container_id",
       "host_field": "machine_id",
       "metrics": ["cpu"],
-      "sep_time": 3,
-      "tick_increment": 2,
-      "window_duration" : 3,
+      "sep_time": 2,
+      "tick_increment": 1,
+      "window_duration" : 2,
       "outfile": "./out/moves.log"
     }
   },

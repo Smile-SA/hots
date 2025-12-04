@@ -28,20 +28,23 @@ class StreamKMeans(ClusteringPlugin):
         self.model = None
         self.labels = None
         self.profiles = None
+        self.clust_mat = None
+        self.u_mat = None
+        self.w_mat = None
 
     def fit(self, df: pd.DataFrame) -> pd.Series:
         """
         Rebuild and fit a MiniBatchKMeans on the current data, then return labels.
         This avoids any mismatch in expected feature dimension.
         """
-        mat = build_matrix_indiv_attr(
+        self.clust_mat = build_matrix_indiv_attr(
             df,
             self.tick_field,
             self.indiv_field,
             self.metrics,
             self.id_map,
         )
-        x = mat.values
+        x = self.clust_mat.values
         # rebuild the model now that X.shape[1] is known
         self.model = MiniBatchKMeans(
             n_clusters=self.n_clusters,
@@ -49,4 +52,4 @@ class StreamKMeans(ClusteringPlugin):
             random_state=self.random_state,
         )
         self.labels = self.model.fit_predict(x)
-        return pd.Series(self.labels, index=mat.index)
+        return pd.Series(self.labels, index=self.clust_mat.index)

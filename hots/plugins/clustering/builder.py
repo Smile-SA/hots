@@ -57,33 +57,42 @@ def build_pre_clust_matrices(
     indiv_field,
     metrics,
     id_map,
-    labels
+    clustering,
+    new_containers: bool = False
 ):
     """Build period clustering dataframes and matrices to be used."""
-    clust_mat = build_matrix_indiv_attr(
+    clustering.clust_mat = build_matrix_indiv_attr(
         df,
         tick_field,
         indiv_field,
         metrics,
         id_map
     )
-    u_mat = build_adjacency_matrix(labels)
-    w_mat = build_similarity_matrix(clust_mat)
 
     inv = {v: k for k, v in id_map.items()}
-    labeled_idx = [inv[i] for i in range(len(labels)) if i in inv]
+    labeled_idx = [inv[i] for i in range(len(clustering.labels)) if i in inv]
     labels_s = pd.Series(
-        labels[:len(labeled_idx)],
+        clustering.labels[:len(labeled_idx)],
         index=labeled_idx,
         name='cluster'
     )
+    clustering.clust_mat['cluster'] = -1
+    clustering.clust_mat.loc[labels_s.index, 'cluster'] = labels_s
+    print('before')
+    print(clustering.clust_mat)
+    print(clustering.labels)
+    if new_containers:
+        clustering.clust_mat = assign_new_containers_to_nearest_cluster(clustering.clust_mat)
+        clustering.labels = clustering.clust_mat['cluster'].astype(int).to_numpy()
 
-    clust_mat['cluster'] = -1
-    clust_mat.loc[labels_s.index, 'cluster'] = labels_s
-
-    return (
-        clust_mat, u_mat, w_mat
-    )
+    clustering.u_mat = build_adjacency_matrix(clustering.labels)
+    clustering.w_mat = build_similarity_matrix(clustering.clust_mat)
+        
+    print('after')
+    print(clustering.clust_mat)
+    print(clustering.labels)
+    print(clustering.u_mat)
+    print(clustering.w_mat)
 
 
 def build_post_clust_matrices(clust_mat):
@@ -148,7 +157,6 @@ def get_far_container(c1, c2, df_clust: pd.DataFrame, profiles: np.ndarray) -> s
 
 def change_clustering(
     mvg_containers,
-    df_clust: pd.DataFrame,
     clustering,
     dict_id_c: dict,
     tol_open_clust: float = None
@@ -160,25 +168,25 @@ def change_clustering(
     nb_changes = 0
 
     # Work only on moved-out base set to compute centroids (don’t include movers)
-    df_clust_new = df_clust.loc[~df_clust.index.isin(mvg_containers)]
+    df_clust_new = clustering.clust_mat.loc[~clustering.clust_mat.index.isin(mvg_containers)]
     if df_clust_new.empty:
         # No reference data to compute centroids -> nothing to do
-        return df_clust, nb_changes
+        return clustering.clust_mat, nb_changes
 
     profiles = cluster_mean_profile(df_clust_new)
     if profiles is None or (isinstance(profiles, np.ndarray) and profiles.size == 0):
-        return df_clust, nb_changes
+        return clustering.clust_mat, nb_changes
 
     # Columns that are features (everything except 'cluster')
-    feature_cols = [c for c in df_clust.columns if c != 'cluster']
+    feature_cols = [c for c in clustering.clust_mat.columns if c != 'cluster']
 
     for indiv in mvg_containers:
         # Skip if the container isn’t present
-        if indiv not in df_clust.index:
+        if indiv not in clustering.clust_mat.index:
             continue
 
         # Extract feature vector for this container
-        row = df_clust.loc[indiv]
+        row = clustering.clust_mat.loc[indiv]
         x = row[feature_cols].to_numpy(dtype=float)
 
         # Distances to each cluster centroid
@@ -203,7 +211,7 @@ def change_clustering(
                 pass
 
             # Update df and labels_
-            df_clust.loc[indiv, 'cluster'] = new_cluster
+            clustering.clust_mat.loc[indiv, 'cluster'] = new_cluster
             nb_changes += 1
 
             # Update labels_ only if we can resolve the integer id
@@ -211,4 +219,47 @@ def change_clustering(
             if c_int is not None and 0 <= c_int < len(clustering.labels):
                 clustering.labels[c_int] = new_cluster
 
-    return df_clust, nb_changes
+    return clustering.clust_mat, nb_changes
+
+
+def assign_new_containers_to_nearest_cluster(
+    clust_mat: pd.DataFrame,
+    label_col: str = 'cluster',
+) -> pd.DataFrame:
+    """
+    For any row with cluster == -1, assign it to the cluster of its
+    nearest existing container.
+
+    Mutates and returns `clust_mat`.
+    """
+    # Features are all columns except the label column
+    feature_cols = [c for c in clust_mat.columns if c != label_col]
+    X = clust_mat[feature_cols].values
+
+    labels = clust_mat[label_col].to_numpy()
+    existing_mask = labels != -1
+    new_mask = labels == -1
+
+    # If there are no new containers, nothing to do
+    if not new_mask.any():
+        return clust_mat
+
+    X_existing = X[existing_mask]
+    labels_existing = labels[existing_mask]
+
+    # Safety: if for some reason all are -1, we can't do anything
+    if X_existing.shape[0] == 0:
+        return clust_mat
+
+    X_new = X[new_mask]
+    new_index = clust_mat.index[new_mask]
+
+    # For each new container, find nearest existing container
+    for i, cid in enumerate(new_index):
+        x_new = X_new[i]
+        # Euclidean distance to all existing points
+        dists = np.linalg.norm(X_existing - x_new, axis=1)
+        nearest_label = labels_existing[np.argmin(dists)]
+        clust_mat.at[cid, label_col] = nearest_label
+
+    return clust_mat

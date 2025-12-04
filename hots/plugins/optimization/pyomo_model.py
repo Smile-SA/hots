@@ -481,32 +481,35 @@ class PyomoModel(OptimizationPlugin):
         for i, j in product(range(len(dv)), range(len(dv[0]))):
             self.instance_model.dv[(self.id_list[j], self.id_list[i])] = float(dv[i][j])
 
-    def update_size_model(self, new_df_indiv=None, verbose=False):
+    def update_size_model(
+            self, dict_id_c, new_df_indiv=None, u_mat=None, w_mat=None, v_mat=None, dv_mat=None
+        ):
         """
         Rebuild the abstract & concrete models when the set of containers
         changes (e.g. new/deleted containers).
         """
+        self.dict_id_c = dict_id_c
         if new_df_indiv is not None:
             self.df_indiv = new_df_indiv
-        self.mdl = pe.AbstractModel()
-        self._build_model()
-        self.create_data()
-        if verbose:
-            self.write_infile(fname=f'./debug_pb{self.pb_number}.lp')
-        self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
+        self.build(
+            u_mat=u_mat, w_mat=w_mat, v_mat=v_mat, dv_mat=dv_mat
+        )
 
-    def fill_dual_values(self) -> Dict[Any, float]:
+    def fill_dual_values(self):
         """
         Extract duals for the 'must_link' constraints after solve().
         Returns a mapping from index (container tuple) to its dual value.
         """
         dual = self.instance_model.dual
         con = getattr(
-            self.instance_model, 'must_link_c' if self.pb_number == 1 else 'must_link_n', None
+            self.instance_model,
+            'must_link_c' if self.pb_number == 1 else 'must_link_n',
+            None,
         )
+
         if con is None:
             self.last_duals = {}
-        self.last_duals = {idx: dual[con[idx]] for idx in con}
+        self.last_duals = {idx: dual.get(con[idx], 0.0) for idx in con}
 
 
 # ----- rules -----

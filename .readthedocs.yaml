@@ -30,3 +30,4 @@ python:
   install:
    - method: pip
      path: .
+   - requirements: doc/requirements-doc.txt

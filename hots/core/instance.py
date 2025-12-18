@@ -2,7 +2,6 @@
 
 """HOTS core functionality: manage state and data ingestion."""
 
-from pathlib import Path
 from typing import Any, Dict, List
 
 from hots.config.loader import AppConfig
@@ -19,7 +18,6 @@ class Instance:
         """Initialize the Instance with configuration and initial data."""
         self.config = config
         self.metrics_history: List[Dict[str, Any]] = []
-        self.results_file: Path = config.reporting.metrics_file
 
         self.kafka_producer = None
         self.kafka_consumer = None

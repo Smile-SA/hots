@@ -5,6 +5,7 @@
 import importlib
 import logging
 import time
+from pathlib import Path
 from typing import Optional
 
 from hots.config.loader import AppConfig
@@ -57,7 +58,7 @@ class App:
 
         # State that persists across iterations
         self.prev_snapshot: Optional[EvalSnapshot] = None
-        self.metrics_history = []
+        self.results_file: Path = config.reporting.metrics_file
 
         setup_signal_handlers(self.shutdown)
 
@@ -113,7 +114,7 @@ class App:
         loop_nb = 1
         while True:
             if self.config.time_limit is not None and time.time() >= end_time:
-                self.shutdown()
+                break
             logging.info('Starting loop #%d', loop_nb)
             df_new = self.connector.load_next()
             if df_new is None:
@@ -136,9 +137,7 @@ class App:
                 'Loop %d moves: %d containers', loop_nb, len(metrics['moving_containers'])
             )
 
-            logging.info('Applying moves for loop #%d', loop_nb)
             self.connector.apply_moves(moves, tmax)
-            logging.info('Moves applied for loop #%d', loop_nb)
 
             self.instance.metrics_history.append(metrics)
 
@@ -146,6 +145,7 @@ class App:
             tmin = tmax - (self.config.connector.parameters.get('window_duration') - 1)
             loop_nb += 1
 
+        self._persist_metrics()
         t_total = time.time() - t_start
         logging.info('Finished HOTS run in %.3f seconds', t_total)
 
@@ -177,9 +177,9 @@ class App:
 
     def _persist_metrics(self):
         """Append metrics to CSV and keep an in-memory history."""
-        out = pd.DataFrame(self.metrics_history)
-        out.to_csv(self.instance.results_file, index=False, mode='w')
-        logging.debug('Metrics written to %s', self.instance.results_file)
+        out = pd.DataFrame(self.instance.metrics_history)
+        out.to_csv(self.results_file, index=False, mode='w')
+        logging.info('Metrics written to %s', self.results_file)
 
     def shutdown(self, signum=None, frame=None):
         """Handle shutdown signals gracefully."""

@@ -158,6 +158,8 @@ def change_clustering(
     """
     nb_changes = 0
 
+    logging.info('List of moving containers (clustering):')
+    logging.info(mvg_containers)
     # Work only on moved-out base set to compute centroids (don’t include movers)
     df_clust_new = clustering.clust_mat.loc[~clustering.clust_mat.index.isin(mvg_containers)]
     if df_clust_new.empty:

@@ -278,7 +278,8 @@ class PlacementPlugin(ProblemPlugin):
         f = self._f
         moves_list: List[Dict[str, Any]] = []
         old_ids: Dict[int, Any] = {}
-
+        logging.info('List of moving containers (placement):')
+        logging.info(moving)
         # Step 1: Remove all moving containers and store old hosts
         for mvg_cont in moving:
             old_host = _safe_first(

@@ -123,3 +123,6 @@ testpaths = [
     "tests",
 ]
 addopts = "--verbosity=2"
+markers = [
+    "e2e: end-to-end tests",
+]

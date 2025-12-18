@@ -61,7 +61,8 @@ class PyomoModel(OptimizationPlugin):
             self.v_mat = v_mat
             self.dv_mat = dv_mat
 
-        self._build_abstract_model_if_needed()
+        self.mdl = pe.AbstractModel()
+        self._build_model()
 
         # instantiate with data
         self.create_data()

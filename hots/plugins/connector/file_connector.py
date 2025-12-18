@@ -4,6 +4,7 @@
 
 import csv
 import json
+import logging
 import queue
 from bisect import bisect_right
 from collections import defaultdict
@@ -160,11 +161,17 @@ class FileConnector(ConnectorPlugin):
         # solution may be a list of move dicts, or a model with extract_moves()
 
         if not moves:
+            logging.info('No move to apply.')
             return  # nothing to do
 
+        logging.info('Applying moves for time %d', current_time)
         self.add_moves(current_time, moves)
 
         # always append during the run
         with self.outfile.open('a', encoding='utf-8') as f:
             for move in moves:
-                f.write(json.dumps(move, ensure_ascii=False) + '\n')
+                move_with_time = dict(move)
+                move_with_time['time'] = str(current_time)
+                f.write(json.dumps(move_with_time, ensure_ascii=False) + '\n')
+
+        logging.info('Moves applied for time %d', current_time)

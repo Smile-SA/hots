@@ -27,21 +27,20 @@ classifiers = [
 authors = [
     { name = "Smile R&D team", email = "rnd@smile.fr" },
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 license = "MIT"
 license-files = ["LICENSE.txt"]
 dependencies = [
     "click>=8.0",
-    "confluent-kafka",
     "matplotlib",
     "networkx",
     "numpy",
     "pandas",
     "psutil",
     "pyomo",
+    "pydantic>=2.6",
     "scikit-learn",
     "scipy",
-    "tqdm",
 ]
 dynamic = [
     "version",
@@ -58,15 +57,11 @@ Documentation = "https://hots.readthedocs.io/en/latest/"
 [project.optional-dependencies]
 dev = [
     "pytest",
-    "flake8",
-    "flake8-comprehensions",
-    "flake8-docstrings",
-    "flake8-quotes",
-    "flake8-import-order",
-    "pep8-naming",
+    "ruff",
 ]
 doc = [
-    "sphinx",
+  "sphinx>=8",
+  "sphinx-rtd-theme>=2",
 ]
 kafka = [
     "confluent-kafka",
@@ -75,6 +70,9 @@ kafka = [
 ]
 testing = [
     "pytest",
+]
+parquet = [
+    "pyarrow>=14"
 ]
 
 [project.scripts]
@@ -104,19 +102,36 @@ file = [
 [tool.distutils.bdist_wheel]
 universal = true
 
-[tool.flake8]
-max-complexity = 10
-max-line-length = 100
-ignore = ['D205', 'D400', 'W503']
-exclude = [
+[tool.ruff]
+line-length = 100
+extend-exclude = [
     ".git",
-    "__pycache__",
     ".tox",
-    ".eggs",
-    "*.egg",
+    "venv",
     "build",
-    "venv"
+    ".eggs",
+    "__pycache__",
 ]
+
+[tool.ruff.lint]
+select = [
+    "F",    # Pyflakes (undefined names, unused imports, etc.)
+    "E",    # Pycodestyle errors
+    "W",    # Pycodestyle warnings
+    "I",    # isort (imports)
+    "N",    # pep8-naming
+    "C4",   # flake8-comprehensions
+    "Q",    # flake8-quotes
+    "C90",  # mccabe complexity
+    "UP",   # pyupgrade (modern Python)
+    "B",    # flake8-bugbear (common bugs)
+]
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.isort]
+known-first-party = ["hots"]
 
 [tool.pytest.ini_options]
 testpaths = [

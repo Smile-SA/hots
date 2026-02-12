@@ -5,7 +5,6 @@ from .clustering.hierarchical import HierarchicalClustering
 from .clustering.kmeans import StreamKMeans
 from .clustering.spectral import SpectralClustering
 from .connector.file_connector import FileConnector
-from .connector.kafka_connector import KafkaConnector
 from .optimization.factory import OptimizationFactory
 
 
@@ -16,14 +15,16 @@ class KafkaPlugin:
     def create_producer(cfg):
         """Create and return a Kafka producer."""
         from confluent_kafka import Producer
-        return Producer({'bootstrap.servers': cfg.parameters['bootstrap.servers']})
+
+        return Producer({"bootstrap.servers": cfg.parameters["bootstrap.servers"]})
 
     @staticmethod
     def create_consumer(cfg):
         """Create and return a Kafka consumer subscribed to topics."""
         from confluent_kafka import Consumer
-        consumer = Consumer(cfg.parameters['consumer_conf'])
-        consumer.subscribe(cfg.parameters['topics'])
+
+        consumer = Consumer(cfg.parameters["consumer_conf"])
+        consumer.subscribe(cfg.parameters["topics"])
         return consumer
 
     @staticmethod
@@ -39,15 +40,15 @@ class ClusteringFactory:
     def create(cfg, instance):
         """Create and return a clustering plugin based on config."""
         m = cfg.method.lower()
-        if m in ('kmeans', 'stream_kmeans'):
+        if m in ("kmeans", "stream_kmeans"):
             return StreamKMeans(cfg.parameters, instance)
-        if m == 'hierarchical':
+        if m == "hierarchical":
             return HierarchicalClustering(cfg.parameters, instance)
-        if m == 'spectral':
+        if m == "spectral":
             return SpectralClustering(cfg.parameters, instance)
-        if m == 'custom_spectral':
+        if m == "custom_spectral":
             return CustomSpectralClustering(cfg.parameters, instance)
-        raise ValueError(f'Unknown clustering method: {cfg.method}')
+        raise ValueError(f"Unknown clustering method: {cfg.method}")
 
 
 class ConnectorFactory:
@@ -57,11 +58,18 @@ class ConnectorFactory:
     def create(cfg, instance):
         """Create and return a connector plugin based on config."""
         t = cfg.type.lower()
-        if t == 'kafka':
+        if t == "kafka":
+            try:
+                from hots.plugins.connector.kafka_connector import KafkaConnector
+            except ImportError as e:
+                raise ImportError(
+                    "Kafka connector requires the optional 'kafka' extra. "
+                    "Install with: uv sync --extra kafka (or pip install .[kafka])."
+                ) from e
             return KafkaConnector(cfg.parameters, instance)
-        if t == 'file':
+        if t == "file":
             return FileConnector(cfg.parameters)
-        raise ValueError(f'Unknown connector type: {cfg.type}')
+        raise ValueError(f"Unknown connector type: {cfg.type}")
 
 
-__all__ = ['OptimizationFactory']
+__all__ = ["OptimizationFactory"]

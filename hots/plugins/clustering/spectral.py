@@ -2,15 +2,14 @@
 
 """Clustering plugin: spectral clustering with precomputed affinity."""
 
+import pandas as pd
+from sklearn.cluster import SpectralClustering as SkSpectral
+
 from hots.core.interfaces import ClusteringPlugin
 from hots.plugins.clustering.builder import (
     build_matrix_indiv_attr,
     build_similarity_matrix,
 )
-
-import pandas as pd
-
-from sklearn.cluster import SpectralClustering as SkSpectral
 
 
 class SpectralClustering(ClusteringPlugin):
@@ -19,7 +18,7 @@ class SpectralClustering(ClusteringPlugin):
     def __init__(self, parameters: dict, instance):
         """Initialize with number of clusters and instance config."""
         self.n_clusters = parameters.get(
-            'nb_clusters',
+            "nb_clusters",
             instance.config.clustering.nb_clusters,
         )
         self.tick_field = instance.config.tick_field
@@ -37,6 +36,6 @@ class SpectralClustering(ClusteringPlugin):
             self.id_map,
         )
         sim = build_similarity_matrix(mat)
-        model = SkSpectral(n_clusters=self.n_clusters, affinity='precomputed')
+        model = SkSpectral(n_clusters=self.n_clusters, affinity="precomputed")
         labels = model.fit_predict(sim)
         return pd.Series(labels, index=mat.index)

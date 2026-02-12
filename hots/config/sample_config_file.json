@@ -46,5 +46,50 @@
     "results_folder": "./out",
     "metrics_file": "./out/metrics.csv",
     "plots_folder": "./out/plots"
+  },
+  "visualization": {
+    "enabled": false,
+    "default_metric": "cpu",
+    "save": {
+      "enabled": true,
+      "plots_folder": "./out/plots",
+      "default_format": "png",
+      "dpi": 150,
+      "bbox_inches": "tight",
+      "close_on_save": true
+    },
+    "colors": {
+      "clusters": [
+        "blue", "orange", "green", "red", "purple",
+        "brown", "pink", "gray", "olive", "cyan",
+        "turquoise", "chocolate", "navy", "lightcoral", "violet"
+      ],
+      "highlight": ["violet", "lightcoral", "navy", "chocolate", "turquoise"]
+    },
+    "dendrogram": {
+      "leaf_rotation": 90.0,
+      "leaf_font_size": 8.0
+    },
+    "graphs": {
+      "spring_layout": {
+        "k": 0.15,
+        "iterations": 20
+      },
+      "show_edge_weights": true
+    },
+    "nodes": {
+      "capacity_margin_ratio": 0.2,
+      "sep_time_color": "red",
+      "sep_time_style": "--",
+      "capacity_color": "red"
+    },
+    "live": {
+      "pause_seconds": 0.5
+    },
+    "naming": {
+      "prefix": "",
+      "suffix": "",
+      "slugify": true
+    }
   }
 }

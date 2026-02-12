@@ -5,8 +5,8 @@ import importlib.util
 import pytest
 
 # Skip the whole module if pytest-benchmark isn't installed
-_has_bench = importlib.util.find_spec('pytest_benchmark') is not None
-pytestmark = pytest.mark.skipif(not _has_bench, reason='pytest-benchmark not installed')
+_has_bench = importlib.util.find_spec("pytest_benchmark") is not None
+pytestmark = pytest.mark.skipif(not _has_bench, reason="pytest-benchmark not installed")
 
 
 def test_perf_example(benchmark):

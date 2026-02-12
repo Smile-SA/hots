@@ -6,23 +6,17 @@ import logging
 from itertools import combinations
 
 import numpy as np
-
 import pandas as pd
-
 from scipy.spatial.distance import pdist, squareform
 
 
 def build_matrix_indiv_attr(
-    df: pd.DataFrame,
-    tick_field: str,
-    indiv_field: str,
-    metrics: list,
-    id_map: dict
+    df: pd.DataFrame, tick_field: str, indiv_field: str, metrics: list, id_map: dict
 ) -> pd.DataFrame:
     """Build a container×time matrix from individual‐level DataFrame."""
     rows = []
     for cid, group in df.groupby(indiv_field):
-        row = dict(zip(group[tick_field], group[metrics[0]]))
+        row = dict(zip(group[tick_field], group[metrics[0]], strict=True))
         row[indiv_field] = cid
         rows.append(row)
     mat = pd.DataFrame(rows).fillna(0).set_index(indiv_field)
@@ -39,7 +33,7 @@ def build_adjacency_matrix(labels_):
     :rtype: np.array
     """
     u = np.zeros((len(labels_), len(labels_)))
-    for (i, j) in combinations(range(len(labels_)), 2):
+    for i, j in combinations(range(len(labels_)), 2):
         if labels_[i] == labels_[j]:
             u[i, j] = 1
             u[j, i] = 1
@@ -48,39 +42,23 @@ def build_adjacency_matrix(labels_):
 
 def build_similarity_matrix(mat: pd.DataFrame) -> pd.DataFrame:
     """Compute pairwise Euclidean distance matrix from input matrix."""
-    return squareform(pdist(mat.values, 'euclidean'))
+    return squareform(pdist(mat.values, "euclidean"))
 
 
 def build_pre_clust_matrices(
-    df,
-    tick_field,
-    indiv_field,
-    metrics,
-    id_map,
-    clustering,
-    new_containers: bool = False
+    df, tick_field, indiv_field, metrics, id_map, clustering, new_containers: bool = False
 ):
     """Build period clustering dataframes and matrices to be used."""
-    clustering.clust_mat = build_matrix_indiv_attr(
-        df,
-        tick_field,
-        indiv_field,
-        metrics,
-        id_map
-    )
+    clustering.clust_mat = build_matrix_indiv_attr(df, tick_field, indiv_field, metrics, id_map)
 
     inv = {v: k for k, v in id_map.items()}
     labeled_idx = [inv[i] for i in range(len(clustering.labels)) if i in inv]
-    labels_s = pd.Series(
-        clustering.labels[:len(labeled_idx)],
-        index=labeled_idx,
-        name='cluster'
-    )
-    clustering.clust_mat['cluster'] = -1
-    clustering.clust_mat.loc[labels_s.index, 'cluster'] = labels_s
+    labels_s = pd.Series(clustering.labels[: len(labeled_idx)], index=labeled_idx, name="cluster")
+    clustering.clust_mat["cluster"] = -1
+    clustering.clust_mat.loc[labels_s.index, "cluster"] = labels_s
     if new_containers:
         clustering.clust_mat = assign_new_containers_to_nearest_cluster(clustering.clust_mat)
-        clustering.labels = clustering.clust_mat['cluster'].astype(int).to_numpy()
+        clustering.labels = clustering.clust_mat["cluster"].astype(int).to_numpy()
 
     clustering.u_mat = build_adjacency_matrix(clustering.labels)
     clustering.w_mat = build_similarity_matrix(clustering.clust_mat)
@@ -88,15 +66,13 @@ def build_pre_clust_matrices(
 
 def build_post_clust_matrices(clust_mat):
     """Build result clustering dataframes and matrices to be used."""
-    cluster_profiles = cluster_mean_profile(
-        clust_mat)
-    cluster_var_matrix = pairwise_sum_profile_var(
-        cluster_profiles)
+    cluster_profiles = cluster_mean_profile(clust_mat)
+    cluster_var_matrix = pairwise_sum_profile_var(cluster_profiles)
     dv_mat = build_var_delta_cluster_matrix(clust_mat, cluster_var_matrix)
     return dv_mat
 
 
-def cluster_mean_profile(df_clust: pd.DataFrame, cluster_col: str = 'cluster') -> np.ndarray:
+def cluster_mean_profile(df_clust: pd.DataFrame, cluster_col: str = "cluster") -> np.ndarray:
     """Compute the mean profile of each cluster."""
     # pick only numeric feature columns
     feature_cols = df_clust.columns.drop(cluster_col)
@@ -122,7 +98,7 @@ def pairwise_sum_profile_var(profiles: np.ndarray) -> np.ndarray:
 def build_var_delta_cluster_matrix(df_clust, cluster_var_matrix, *, zero_diag=True):
     """Build variance of deltas matrix from cluster."""
     # labels[i] = cluster id for the i-th row in df_clust (must be ints in [0..K-1])
-    labels = df_clust['cluster'].to_numpy()
+    labels = df_clust["cluster"].to_numpy()
     # Broadcast-select the (cluster_i, cluster_j) entry for all pairs
     vars_matrix = cluster_var_matrix[np.ix_(labels, labels)].astype(float, copy=False)
     if zero_diag:
@@ -132,10 +108,10 @@ def build_var_delta_cluster_matrix(df_clust, cluster_var_matrix, *, zero_diag=Tr
 
 def dist_from_mean(df_clust, profiles, cid: str) -> float:
     """Return distance from cid to its cluster mean profile."""
-    row = df_clust.loc[cid]           # Series for that container
-    k = int(row['cluster'])           # cluster id
-    x = row.drop(labels='cluster').to_numpy(dtype=float)  # features only
-    mu = np.asarray(profiles[k], dtype=float)             # cluster mean
+    row = df_clust.loc[cid]  # Series for that container
+    k = int(row["cluster"])  # cluster id
+    x = row.drop(labels="cluster").to_numpy(dtype=float)  # features only
+    mu = np.asarray(profiles[k], dtype=float)  # cluster mean
     return np.linalg.norm(x - mu)
 
 
@@ -146,19 +122,14 @@ def get_far_container(c1, c2, df_clust: pd.DataFrame, profiles: np.ndarray) -> s
     return c1 if d1 > d2 else c2
 
 
-def change_clustering(
-    mvg_containers,
-    clustering,
-    dict_id_c: dict,
-    tol_open_clust: float = None
-):
+def change_clustering(mvg_containers, clustering, dict_id_c: dict, tol_open_clust: float = None):
     """
     Reassign each container in mvg_containers to the closest existing cluster
     (by Euclidean distance to the cluster mean profile).
     """
     nb_changes = 0
 
-    logging.info('List of moving containers (clustering):')
+    logging.info("List of moving containers (clustering):")
     logging.info(mvg_containers)
     # Work only on moved-out base set to compute centroids (don’t include movers)
     df_clust_new = clustering.clust_mat.loc[~clustering.clust_mat.index.isin(mvg_containers)]
@@ -171,7 +142,7 @@ def change_clustering(
         return clustering.clust_mat, nb_changes
 
     # Columns that are features (everything except 'cluster')
-    feature_cols = [c for c in clustering.clust_mat.columns if c != 'cluster']
+    feature_cols = [c for c in clustering.clust_mat.columns if c != "cluster"]
 
     for indiv in mvg_containers:
         # Skip if the container isn’t present
@@ -194,17 +165,15 @@ def change_clustering(
         #     new_cluster = profiles.shape[0]
         #     profiles = np.vstack([profiles, x[None, :]])
 
-        old_cluster = int(row['cluster'])
+        old_cluster = int(row["cluster"])
         if new_cluster != old_cluster:
             try:
-                logging.info(
-                    f'{indiv} changes cluster : from {old_cluster} to {new_cluster}\n'
-                )
+                logging.info(f"{indiv} changes cluster : from {old_cluster} to {new_cluster}\n")
             except Exception:
                 pass
 
             # Update df and labels_
-            clustering.clust_mat.loc[indiv, 'cluster'] = new_cluster
+            clustering.clust_mat.loc[indiv, "cluster"] = new_cluster
             nb_changes += 1
 
             # Update labels_ only if we can resolve the integer id
@@ -217,7 +186,7 @@ def change_clustering(
 
 def assign_new_containers_to_nearest_cluster(
     clust_mat: pd.DataFrame,
-    label_col: str = 'cluster',
+    label_col: str = "cluster",
 ) -> pd.DataFrame:
     """
     For any row with cluster == -1, assign it to the cluster of its

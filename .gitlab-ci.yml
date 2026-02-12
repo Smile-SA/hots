@@ -4,6 +4,16 @@ image: docker:stable
 services:
   - docker:dind
 
+variables:
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.uv-cache"
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+
+cache:
+  key: "uv-$CI_COMMIT_REF_SLUG"
+  paths:
+    - .uv-cache/
+    - .tox/
+
 .docker_login: &docker_login |
   echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
 
@@ -17,9 +27,9 @@ run-tests-py310:
   image: python:3.10-slim-bullseye
   script:
     - apt update
-    - apt install -y python-dev build-essential libopenblas-dev gfortran libboost-thread-dev
-    - pip install wheel tox
-    - tox -e py310,flake8,safety
+    - apt install -y curl python-dev build-essential libopenblas-dev gfortran libboost-thread-dev
+    - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
+    - uvx --with tox-uv tox -e py310,ruff,safety
 
 build-master:
   stage: build
@@ -43,11 +53,6 @@ build:
 
 publish:
   stage: publish
-  image: python:3.10
-  only:
-    refs:
-      - main
   script:
-    - pip install --upgrade build twine
-    - python -m build
-    - python -m twine upload --non-interactive --username __token__ --password $PYPI_API_TOKEN dist/*
+    - echo "No publish step configured."
+  when: manual

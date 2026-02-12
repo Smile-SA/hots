@@ -2,28 +2,27 @@
 
 """Clustering plugin: mini‐batch KMeans streaming."""
 
-from typing import Any, Dict
+from typing import Any
+
+import pandas as pd
+from sklearn.cluster import MiniBatchKMeans
 
 from hots.core.interfaces import ClusteringPlugin
 from hots.plugins.clustering.builder import build_matrix_indiv_attr
-
-import pandas as pd
-
-from sklearn.cluster import MiniBatchKMeans
 
 
 class StreamKMeans(ClusteringPlugin):
     """StreamKMeans plugin using scikit‐learn’s MiniBatchKMeans."""
 
-    def __init__(self, params: Dict[str, Any], instance):
+    def __init__(self, params: dict[str, Any], instance):
         """Initialize the streaming k-means plugin."""
         connector_params = instance.config.connector.parameters
-        self.n_clusters = params.get('nb_clusters', 5)
-        self.batch_size = params.get('batch_size', 100)
-        self.random_state = params.get('random_state', None)
-        self.tick_field = connector_params.get('tick_field')
-        self.indiv_field = connector_params.get('individual_field')
-        self.metrics = connector_params.get('metrics')
+        self.n_clusters = params.get("nb_clusters", 5)
+        self.batch_size = params.get("batch_size", 100)
+        self.random_state = params.get("random_state", None)
+        self.tick_field = connector_params.get("tick_field")
+        self.indiv_field = connector_params.get("individual_field")
+        self.metrics = connector_params.get("metrics")
         self.id_map = instance.get_id_map()
         self.model = None
         self.labels = None

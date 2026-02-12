@@ -4,11 +4,10 @@
 
 import json
 
+import pandas as pd
 from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
 
 from hots.core.interfaces import ConnectorPlugin
-
-import pandas as pd
 
 
 class KafkaConnector(ConnectorPlugin):
@@ -16,18 +15,16 @@ class KafkaConnector(ConnectorPlugin):
 
     def __init__(self, params):
         """Initialize Kafka producer and topic."""
-        self.consumer = Consumer(params['consumer_conf'])
-        self.consumer.subscribe(params['topics'])
-        self.tick_field = params['tick_field']
-        self.indiv_field = params['individual_field']
-        self.host_field = params['host_field']
-        self.metrics = params['metrics']
-        self.batch_size = params.get('batch_size', 1)
+        self.consumer = Consumer(params["consumer_conf"])
+        self.consumer.subscribe(params["topics"])
+        self.tick_field = params["tick_field"]
+        self.indiv_field = params["individual_field"]
+        self.host_field = params["host_field"]
+        self.metrics = params["metrics"]
+        self.batch_size = params.get("batch_size", 1)
 
-        self.producer = Producer(
-            {'bootstrap.servers': params['bootstrap.servers']}
-        )
-        self.topic = params['topics'][0]
+        self.producer = Producer({"bootstrap.servers": params["bootstrap.servers"]})
+        self.topic = params["topics"][0]
         self.pending_changes = {}
 
     def load_initial(self) -> pd.DataFrame:
@@ -47,13 +44,15 @@ class KafkaConnector(ConnectorPlugin):
                 raise KafkaException(msg.error())
 
             rec = json.loads(msg.value())
-            for c in rec.get('containers', []):
-                records.append({
-                    self.tick_field: c['timestamp'],
-                    self.indiv_field: c['container_id'],
-                    self.host_field: c['machine_id'],
-                    self.metrics[0]: c[self.metrics[0]],
-                })
+            for c in rec.get("containers", []):
+                records.append(
+                    {
+                        self.tick_field: c["timestamp"],
+                        self.indiv_field: c["container_id"],
+                        self.host_field: c["machine_id"],
+                        self.metrics[0]: c[self.metrics[0]],
+                    }
+                )
 
         if not records:
             return None
@@ -67,7 +66,7 @@ class KafkaConnector(ConnectorPlugin):
             #     tcol: str(current_time),
             # }
             # send JSON over Kafka topic
-            msg = json.dumps(move).encode('utf-8')
+            msg = json.dumps(move).encode("utf-8")
             self.producer.produce(self.topic, msg)
         self.producer.flush()
         # print('Sending these moving containers (real-time):')

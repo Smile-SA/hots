@@ -2,12 +2,11 @@
 
 """Clustering plugin: agglomerative (hierarchical) clustering."""
 
+import pandas as pd
+from scipy.cluster.hierarchy import fcluster, linkage
+
 from hots.core.interfaces import ClusteringPlugin
 from hots.plugins.clustering.builder import build_matrix_indiv_attr
-
-import pandas as pd
-
-from scipy.cluster.hierarchy import fcluster, linkage
 
 
 class HierarchicalClustering(ClusteringPlugin):
@@ -15,7 +14,7 @@ class HierarchicalClustering(ClusteringPlugin):
 
     def __init__(self, parameters: dict, instance):
         """Initialize with linkage method and number of clusters."""
-        self.method = parameters.get('method', 'ward')
+        self.method = parameters.get("method", "ward")
         self.n_clusters = instance.config.clustering.nb_clusters
         self.tick_field = instance.config.tick_field
         self.indiv_field = instance.config.individual_field
@@ -32,5 +31,5 @@ class HierarchicalClustering(ClusteringPlugin):
             self.id_map,
         )
         z = linkage(mat.values, method=self.method)
-        labels = fcluster(z, t=self.n_clusters, criterion='maxclust') - 1
+        labels = fcluster(z, t=self.n_clusters, criterion="maxclust") - 1
         return pd.Series(labels, index=mat.index)

@@ -9,10 +9,12 @@ from hots.utils.logging_config import setup_logging
 
 @click.command()
 @click.option(
-    '--config', '-c', 'config_path',
+    "--config",
+    "-c",
+    "config_path",
     required=True,
     type=click.Path(exists=True),
-    help='Path to the JSON config file'
+    help="Path to the JSON config file",
 )
 def main(config_path):
     """Load the configuration and run the HOTS application."""
@@ -28,5 +30,5 @@ def main(config_path):
     app.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

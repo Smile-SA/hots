@@ -1,17 +1,16 @@
 """Pyomo-based optimization plugin for HOTS (single concrete implementation)."""
 
+import logging
 from itertools import product
-from typing import Optional
-
-from hots.core.interfaces import OptimizationPlugin
 
 import numpy as np
-
 from pyomo import environ as pe
 from pyomo.common.errors import ApplicationError
 from pyomo.common.numeric_types import value as pyo_value
 from pyomo.opt import TerminationCondition
 from pyomo.util.infeasible import log_infeasible_constraints
+
+from hots.core.interfaces import OptimizationPlugin
 
 
 class PyomoModel(OptimizationPlugin):
@@ -21,22 +20,22 @@ class PyomoModel(OptimizationPlugin):
     def __init__(self, params: dict, instance):
         """Initialize the optimization model."""
         self.instance = instance
-        self.pb_number = params.get('pb_number', 1)
-        self.solver = params.get('solver', 'glpk')
-        self.verbose = params.get('verbose', False)
+        self.pb_number = params.get("pb_number", 1)
+        self.solver = params.get("solver", "glpk")
+        self.verbose = params.get("verbose", False)
         self.last_duals = None
 
         # derived shortcuts from instance/config
         self.df_indiv = instance.df_indiv
-        self.df_meta = getattr(instance, 'df_meta', None)
-        self.nb_clusters = getattr(instance.config.clustering, 'nb_clusters', None)
+        self.df_meta = getattr(instance, "df_meta", None)
+        self.nb_clusters = getattr(instance.config.clustering, "nb_clusters", None)
         self.dict_id_c = instance.get_id_map()
-        self.tick_field = instance.config.connector.parameters.get('tick_field', 'timestamp')
+        self.tick_field = instance.config.connector.parameters.get("tick_field", "timestamp")
         self.indiv_field = instance.config.connector.parameters.get(
-            'individual_field', 'container_id'
+            "individual_field", "container_id"
         )
-        self.host_field = instance.config.connector.parameters.get('host_field', 'machine_id')
-        self.metric = instance.config.connector.parameters.get('metrics')[0]
+        self.host_field = instance.config.connector.parameters.get("host_field", "machine_id")
+        self.metric = instance.config.connector.parameters.get("metrics")[0]
 
         # matrices (passed at build time)
         self.u_mat = None
@@ -67,18 +66,18 @@ class PyomoModel(OptimizationPlugin):
         # instantiate with data
         self.create_data()
         if self.verbose:
-            self.write_infile(fname=f'./debug_pb{self.pb_number}.lp')
+            self.write_infile(fname=f"./debug_pb{self.pb_number}.lp")
 
         # enable duals
         self.instance_model.dual = pe.Suffix(direction=pe.Suffix.IMPORT)
 
     def _build_abstract_model_if_needed(self):
         """Build the AbstractModel structure only once."""
-        if getattr(self, 'mdl', None) is None:
+        if getattr(self, "mdl", None) is None:
             self.mdl = pe.AbstractModel()
             self._build_model()
 
-    def solve(self, *, solver: Optional[str] = None):
+    def solve(self, *, solver: str | None = None):
         """Solve the current concrete instance (labels optional for compatibility)."""
         opt = pe.SolverFactory(solver or self.solver)
         results = self._attempt_solve(opt)
@@ -90,7 +89,9 @@ class PyomoModel(OptimizationPlugin):
                 self._print_objective_value()
                 self._check_constraints(evaluate=True)
             else:
-                print('\nModel not solved to a feasible status; listing infeasible constraints:')
+                logging.info(
+                    "\nModel not solved to a feasible status; listing infeasible constraints:"
+                )
                 log_infeasible_constraints(self.instance_model, log_expression=True, tol=1e-6)
 
     # ---------- model build ----------
@@ -112,21 +113,18 @@ class PyomoModel(OptimizationPlugin):
             self.id_list[idx] = cid
 
         # 3) Retrieve prior-solution adjacency or zeros
-        u = getattr(self, 'u_mat', np.zeros((n, n), dtype=int))
-        v = getattr(self, 'v_mat', np.zeros((n, n), dtype=int))
+        u = getattr(self, "u_mat", np.zeros((n, n), dtype=int))
+        v = getattr(self, "v_mat", np.zeros((n, n), dtype=int))
 
         # --- Define Sets & Params on container IDs ---
-        self.mdl.C = pe.Set(initialize=self.id_list, doc='Container IDs')
+        self.mdl.C = pe.Set(initialize=self.id_list, doc="Container IDs")
         self.mdl.c = pe.Param(within=pe.NonNegativeIntegers, mutable=True)
 
         # sol_u: clustering adjacency param indexed by (container_j, container_i)
         sol_u_dict = {
-            (self.id_list[j], self.id_list[i]): int(u[i][j])
-            for i, j in product(range(n), range(n))
+            (self.id_list[j], self.id_list[i]): int(u[i][j]) for i, j in product(range(n), range(n))
         }
-        self.mdl.sol_u = pe.Param(
-            self.mdl.C, self.mdl.C, initialize=sol_u_dict, mutable=True
-        )
+        self.mdl.sol_u = pe.Param(self.mdl.C, self.mdl.C, initialize=sol_u_dict, mutable=True)
 
         # --- Problem‑specific parameters ---
         if self.pb_number == 1:
@@ -137,9 +135,7 @@ class PyomoModel(OptimizationPlugin):
                 (self.id_list[j], self.id_list[i]): float(self.w_mat[i][j])
                 for i, j in product(range(n), range(n))
             }
-            self.mdl.w = pe.Param(
-                self.mdl.C, self.mdl.C, initialize=w_dict, mutable=True
-            )
+            self.mdl.w = pe.Param(self.mdl.C, self.mdl.C, initialize=w_dict, mutable=True)
 
         elif self.pb_number == 2:
             # Placement: nodes N, ticks T, capacities, consumption, and dv
@@ -160,20 +156,16 @@ class PyomoModel(OptimizationPlugin):
                 (self.id_list[j], self.id_list[i]): float(self.dv_mat[i][j])
                 for i, j in product(range(n), range(n))
             }
-            self.mdl.dv = pe.Param(
-                self.mdl.C, self.mdl.C, initialize=dv_dict, mutable=True
-            )
+            self.mdl.dv = pe.Param(self.mdl.C, self.mdl.C, initialize=dv_dict, mutable=True)
             # sol_v: placement adjacency
             sol_v_dict = {
                 (self.id_list[j], self.id_list[i]): int(v[i][j])
                 for i, j in product(range(n), range(n))
             }
-            self.mdl.sol_v = pe.Param(
-                self.mdl.C, self.mdl.C, initialize=sol_v_dict, mutable=True
-            )
+            self.mdl.sol_v = pe.Param(self.mdl.C, self.mdl.C, initialize=sol_v_dict, mutable=True)
 
         else:
-            raise ValueError(f'Unsupported pb_number: {self.pb_number}')
+            raise ValueError(f"Unsupported pb_number: {self.pb_number}")
 
     def build_variables(self):
         """Define decision variables for clustering (1) or business problem (2)."""
@@ -185,7 +177,7 @@ class PyomoModel(OptimizationPlugin):
                 domain=pe.NonNegativeReals,
                 bounds=(0, 1),
                 initialize=0,
-                doc='Cluster-open indicator'
+                doc="Cluster-open indicator",
             )
             # assign[c,k] = 1 if container c is assigned to cluster k
             self.mdl.assign = pe.Var(
@@ -194,14 +186,14 @@ class PyomoModel(OptimizationPlugin):
                 domain=pe.NonNegativeReals,
                 bounds=(0, 1),
                 initialize=0,
-                doc='Container-to-cluster assignment',
+                doc="Container-to-cluster assignment",
             )
             # dist[i,j] = distance between containers i and j
             self.mdl.dist = pe.Var(
                 self.mdl.C,
                 self.mdl.C,
                 domain=pe.NonNegativeReals,
-                doc='Inter-container distance',
+                doc="Inter-container distance",
             )
             # u[c1,c2] = 1 if containers c1 and c2 are assigned to the same cluster
             self.mdl.u = pe.Var(
@@ -210,7 +202,7 @@ class PyomoModel(OptimizationPlugin):
                 domain=pe.NonNegativeReals,
                 bounds=(0, 1),
                 initialize=0,
-                doc='Pairwise cluster adjacency',
+                doc="Pairwise cluster adjacency",
             )
 
         elif self.pb_number == 2:
@@ -222,7 +214,7 @@ class PyomoModel(OptimizationPlugin):
                 domain=pe.NonNegativeReals,
                 bounds=(0, 1),
                 initialize=0,
-                doc='Container-to-node placement',
+                doc="Container-to-node placement",
             )
             # a(n) = 1 if node n is used
             self.mdl.a = pe.Var(
@@ -230,7 +222,7 @@ class PyomoModel(OptimizationPlugin):
                 domain=pe.NonNegativeReals,
                 bounds=(0, 1),
                 initialize=0,
-                doc='Node-open indicator'
+                doc="Node-open indicator",
             )
             # v(i,j) = 1 if containers i and j are placed on the same node
             self.mdl.v = pe.Var(
@@ -239,69 +231,47 @@ class PyomoModel(OptimizationPlugin):
                 domain=pe.NonNegativeReals,
                 bounds=(0, 1),
                 initialize=0,
-                doc='Pairwise node adjacency'
+                doc="Pairwise node adjacency",
             )
             self.mdl.node_load = pe.Var(
                 self.mdl.N,
                 self.mdl.T,
                 domain=pe.NonNegativeReals,
-                doc='Node load over time',
+                doc="Node load over time",
             )
 
         else:
-            raise ValueError(f'Unsupported pb_number: {self.pb_number}')
+            raise ValueError(f"Unsupported pb_number: {self.pb_number}")
 
     def build_constraints(self):
         """Build all the constraints."""
         if self.pb_number == 1:
             # (1) each container assigned to exactly one cluster
-            self.mdl.clust_assign = pe.Constraint(
-                self.mdl.C, rule=_clust_assign_rule
-            )
+            self.mdl.clust_assign = pe.Constraint(self.mdl.C, rule=_clust_assign_rule)
             # (2) you can only open a cluster if at least one container is in it
-            self.mdl.open_cluster = pe.Constraint(
-                self.mdl.C, self.mdl.K, rule=_open_cluster_rule
-            )
+            self.mdl.open_cluster = pe.Constraint(self.mdl.C, self.mdl.K, rule=_open_cluster_rule)
             # (3) limit on total open clusters
             self.mdl.max_clusters = pe.Constraint(rule=_max_clusters_rule)
-            self.mdl.link_u1 = pe.Constraint(
-                self.mdl.C, self.mdl.C, self.mdl.K, rule=_link_u1_rule
-            )
-            self.mdl.link_u2 = pe.Constraint(
-                self.mdl.C, self.mdl.C, rule=_link_u2_rule
-            )
-            self.mdl.link_u3 = pe.Constraint(
-                self.mdl.C, self.mdl.C, rule=_link_u3_rule
-            )
+            self.mdl.link_u1 = pe.Constraint(self.mdl.C, self.mdl.C, self.mdl.K, rule=_link_u1_rule)
+            self.mdl.link_u2 = pe.Constraint(self.mdl.C, self.mdl.C, rule=_link_u2_rule)
+            self.mdl.link_u3 = pe.Constraint(self.mdl.C, self.mdl.C, rule=_link_u3_rule)
 
         elif self.pb_number == 2:
             # (1) capacity constraint: load on each node ≤ cap
-            self.mdl.capacity = pe.Constraint(
-                self.mdl.N, self.mdl.T, rule=_capacity_rule
-            )
+            self.mdl.capacity = pe.Constraint(self.mdl.N, self.mdl.T, rule=_capacity_rule)
             # (2) open node if at least one container is in it
-            self.mdl.open_node = pe.Constraint(
-                self.mdl.C, self.mdl.N, rule=_open_node
-            )
+            self.mdl.open_node = pe.Constraint(self.mdl.C, self.mdl.N, rule=_open_node)
             # (3) each container placed to exactly one node
-            self.mdl.assignment = pe.Constraint(
-                self.mdl.C, rule=_assignment
-            )
-            self.mdl.link_v1 = pe.Constraint(
-                self.mdl.C, self.mdl.C, self.mdl.N, rule=_link_v1_rule
-            )
-            self.mdl.link_v2 = pe.Constraint(
-                self.mdl.C, self.mdl.C, rule=_link_v2_rule
-            )
-            self.mdl.link_v3 = pe.Constraint(
-                self.mdl.C, self.mdl.C, rule=_link_v3_rule
-            )
+            self.mdl.assignment = pe.Constraint(self.mdl.C, rule=_assignment)
+            self.mdl.link_v1 = pe.Constraint(self.mdl.C, self.mdl.C, self.mdl.N, rule=_link_v1_rule)
+            self.mdl.link_v2 = pe.Constraint(self.mdl.C, self.mdl.C, rule=_link_v2_rule)
+            self.mdl.link_v3 = pe.Constraint(self.mdl.C, self.mdl.C, rule=_link_v3_rule)
             # (3) flow conservation: consumption matches load
             # self.mdl.flow_conservation = pe.Constraint(
             #     self.mdl.Ccons, self.mdl.T, rule=_flow_conservation_rule
             # )
         else:
-            raise ValueError(f'Unsupported pb_number: {self.pb_number}')
+            raise ValueError(f"Unsupported pb_number: {self.pb_number}")
 
     def add_mustlink(self):
         """Add mustLink constraints for fixing solution."""
@@ -332,10 +302,10 @@ class PyomoModel(OptimizationPlugin):
             # Clustering formulation
             self.data = {
                 None: {
-                    'c': {None: df_indiv[nf].nunique()},
-                    'C': {None: list(id_map.keys())},
-                    'k': {None: self.nb_clusters},
-                    'K': {None: list(range(self.nb_clusters))},
+                    "c": {None: df_indiv[nf].nunique()},
+                    "C": {None: list(id_map.keys())},
+                    "k": {None: self.nb_clusters},
+                    "K": {None: list(range(self.nb_clusters))},
                 }
             }
 
@@ -354,19 +324,19 @@ class PyomoModel(OptimizationPlugin):
 
             self.data = {
                 None: {
-                    'n': {None: df_meta[hf].nunique()},
-                    'c': {None: df_indiv[nf].nunique()},
-                    't': {None: df_indiv[tf].nunique()},
-                    'N': {None: df_meta[hf].unique().tolist()},
-                    'C': {None: list(id_map.keys())},
-                    'Ccons': {None: df_indiv[nf].unique().tolist()},
-                    'cap': cap,
-                    'T': {None: df_indiv[tf].unique().tolist()},
-                    'cons': cons,
+                    "n": {None: df_meta[hf].nunique()},
+                    "c": {None: df_indiv[nf].nunique()},
+                    "t": {None: df_indiv[tf].nunique()},
+                    "N": {None: df_meta[hf].unique().tolist()},
+                    "C": {None: list(id_map.keys())},
+                    "Ccons": {None: df_indiv[nf].unique().tolist()},
+                    "cap": cap,
+                    "T": {None: df_indiv[tf].unique().tolist()},
+                    "cons": cons,
                 }
             }
         else:
-            raise ValueError(f'Unsupported pb_number: {self.pb_number!r}')
+            raise ValueError(f"Unsupported pb_number: {self.pb_number!r}")
 
         # Finally, instantiate the model with data:
         self.instance_model = self.mdl.create_instance(self.data)
@@ -375,14 +345,14 @@ class PyomoModel(OptimizationPlugin):
     def write_infile(self, fname=None):
         """Export optimization model in file."""
         if fname is None:
-            fname = './py_clustering.lp' if self.pb_number == 1 else './py_placement.lp'
-        self.instance_model.write(fname, io_options={'symbolic_solver_labels': True})
+            fname = "./py_clustering.lp" if self.pb_number == 1 else "./py_placement.lp"
+        self.instance_model.write(fname, io_options={"symbolic_solver_labels": True})
 
     def _attempt_solve(self, opt):
         try:
             return opt.solve(self.instance_model, tee=self.verbose)
         except ApplicationError as e:
-            print(f'Solver error: {e}')
+            logging.error(f"Solver error: {e}")
             return None
 
     def _check_constraints(self, evaluate: bool = True):
@@ -394,8 +364,8 @@ class PyomoModel(OptimizationPlugin):
         con = constraint[index]
         expr = con.body
         if not evaluate:
-            print(
-                f'(symbolic) {constraint.name}[{index}]: {expr} <= {con.upper}  and >= {con.lower}'
+            logging.info(
+                f"(symbolic) {constraint.name}[{index}]: {expr} <= {con.upper}  and >= {con.lower}"
             )
             return
         lhs = pyo_value(expr, exception=False)
@@ -403,23 +373,21 @@ class PyomoModel(OptimizationPlugin):
             return
         upper, lower = con.upper, con.lower
         if upper is not None and lhs > upper + 1e-8:
-            print(f'  ❌ {constraint.name}[{index}] violated: LHS={lhs} > UB={upper}')
+            logging.info(f"  ❌ {constraint.name}[{index}] violated: LHS={lhs} > UB={upper}")
         elif lower is not None and lhs < lower - 1e-8:
-            print(f'  ❌ {constraint.name}[{index}] violated: LHS={lhs} < LB={lower}')
+            logging.info(f"  ❌ {constraint.name}[{index}] violated: LHS={lhs} < LB={lower}")
 
     def _print_solver_status(self, results):
-        print('--------------------------------------------------')
         condition = results.solver.termination_condition if results else None
         status_messages = {
-            TerminationCondition.infeasible: 'Problem is infeasible!',
-            TerminationCondition.unbounded: 'Problem is unbounded!',
-            TerminationCondition.optimal: 'Solution found.',
+            TerminationCondition.infeasible: "Problem is infeasible!",
+            TerminationCondition.unbounded: "Problem is unbounded!",
+            TerminationCondition.optimal: "Solution found.",
         }
-        print(status_messages.get(condition, f'Solver status: {condition}'))
-        print('--------------------------------------------------')
+        logging.info(status_messages.get(condition, f"Solver status: {condition}"))
 
     def _print_objective_value(self):
-        print(f'Objective function value: {pe.value(self.instance_model.obj)}')
+        logging.info(f"Objective function value: {pe.value(self.instance_model.obj)}")
 
     # updates / mustlink (kept)
     def add_mustlink_instance(self):
@@ -446,13 +414,13 @@ class PyomoModel(OptimizationPlugin):
         """Update constraints fixing u or v variables from new solution."""
         m = self.instance_model
         if self.pb_number == 1:
-            if hasattr(m, 'must_link_c'):
+            if hasattr(m, "must_link_c"):
                 m.del_component(m.must_link_c)
         elif self.pb_number == 2:
-            if hasattr(m, 'must_link_n'):
-                m.del_component('must_link_n')
+            if hasattr(m, "must_link_n"):
+                m.del_component("must_link_n")
         else:
-            raise ValueError(f'Unsupported pb_number={self.pb_number} (expected 1 or 2)')
+            raise ValueError(f"Unsupported pb_number={self.pb_number} (expected 1 or 2)")
 
         if self.pb_number == 1:
             self.update_sol_u(matrix)
@@ -480,11 +448,14 @@ class PyomoModel(OptimizationPlugin):
         self.update_dv(dv)
         self.instance_model.obj = sum(
             self.instance_model.sol_u[(i, j)] * self.instance_model.v[(i, j)]
-            for i, j in product(self.instance_model.C, self.instance_model.C) if i < j
+            for i, j in product(self.instance_model.C, self.instance_model.C)
+            if i < j
         ) + sum(
-            (1 - self.instance_model.sol_u[(i, j)]
-             ) * self.instance_model.v[(i, j)] * self.instance_model.dv[(i, j)]
-            for i, j in product(self.instance_model.C, self.instance_model.C) if i < j
+            (1 - self.instance_model.sol_u[(i, j)])
+            * self.instance_model.v[(i, j)]
+            * self.instance_model.dv[(i, j)]
+            for i, j in product(self.instance_model.C, self.instance_model.C)
+            if i < j
         )
 
     def update_dv(self, dv):
@@ -502,9 +473,7 @@ class PyomoModel(OptimizationPlugin):
         self.dict_id_c = dict_id_c
         if new_df_indiv is not None:
             self.df_indiv = new_df_indiv
-        self.build(
-            u_mat=u_mat, w_mat=w_mat, v_mat=v_mat, dv_mat=dv_mat
-        )
+        self.build(u_mat=u_mat, w_mat=w_mat, v_mat=v_mat, dv_mat=dv_mat)
 
     def fill_dual_values(self):
         """
@@ -514,7 +483,7 @@ class PyomoModel(OptimizationPlugin):
         dual = self.instance_model.dual
         con = getattr(
             self.instance_model,
-            'must_link_c' if self.pb_number == 1 else 'must_link_n',
+            "must_link_c" if self.pb_number == 1 else "must_link_n",
             None,
         )
 
@@ -595,6 +564,8 @@ def _min_dissim(mdl):
 
 def _min_coloc_cluster(mdl):
     """Express the placement minimization objective from clustering."""
-    return sum(mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in product(mdl.C, mdl.C) if i < j) + \
-        sum((1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)]
-            for i, j in product(mdl.C, mdl.C) if i < j)
+    return sum(mdl.sol_u[(i, j)] * mdl.v[(i, j)] for i, j in product(mdl.C, mdl.C) if i < j) + sum(
+        (1 - mdl.sol_u[(i, j)]) * mdl.v[(i, j)] * mdl.dv[(i, j)]
+        for i, j in product(mdl.C, mdl.C)
+        if i < j
+    )

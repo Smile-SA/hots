@@ -9,11 +9,10 @@ import queue
 from bisect import bisect_right
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Tuple
-
-from hots.core.interfaces import ConnectorPlugin
 
 import pandas as pd
+
+from hots.core.interfaces import ConnectorPlugin
 
 
 class FileConnector(ConnectorPlugin):
@@ -24,15 +23,15 @@ class FileConnector(ConnectorPlugin):
 
     def __init__(self, params):
         """Initialize with output file path."""
-        fname = params.get('file_name', 'container_usage.csv')
-        self.csv_path = Path(params['data_folder']) / fname
-        self.meta_path = Path(params['data_folder']) / 'node_meta.csv'
-        self.tick_field = params['tick_field']
-        self.indiv_field = params['individual_field']
-        self.host_field = params['host_field']
-        self.metrics = params['metrics']
-        self.sep_time = params.get('sep_time', 5)
-        self.tick_increment = params.get('tick_increment', 1)
+        fname = params.get("file_name", "container_usage.csv")
+        self.csv_path = Path(params["data_folder"]) / fname
+        self.meta_path = Path(params["data_folder"]) / "node_meta.csv"
+        self.tick_field = params["tick_field"]
+        self.indiv_field = params["individual_field"]
+        self.host_field = params["host_field"]
+        self.metrics = params["metrics"]
+        self.sep_time = params.get("sep_time", 5)
+        self.tick_increment = params.get("tick_increment", 1)
 
         self.csv_file = open(self.csv_path)
         self.csv_reader = csv.reader(self.csv_file)
@@ -41,10 +40,10 @@ class FileConnector(ConnectorPlugin):
         self.queue = queue.Queue()
         self.current_time = 0
         # container_id -> sorted list of (move_time, target_node)
-        self._moves: Dict[str, List[Tuple[int, str]]] = defaultdict(list)
+        self._moves: dict[str, list[tuple[int, str]]] = defaultdict(list)
 
-        self.outfile = Path(params.get('outfile', 'moves.jsonl'))
-        self.reset_on_start: bool = params.get('reset_on_start', True)
+        self.outfile = Path(params.get("outfile", "moves.jsonl"))
+        self.reset_on_start: bool = params.get("reset_on_start", True)
 
         self.outfile.parent.mkdir(parents=True, exist_ok=True)
         self._prepare_outfile_once()
@@ -55,7 +54,7 @@ class FileConnector(ConnectorPlugin):
             return
 
         if self.reset_on_start:
-            self.outfile.write_text('', encoding='utf-8')
+            self.outfile.write_text("", encoding="utf-8")
 
         self._initialized_paths.add(key)
 
@@ -99,12 +98,14 @@ class FileConnector(ConnectorPlugin):
                 indiv = row[1]
                 host = row[2]
                 host = self.host_at(indiv, ts, host)
-                rows.append({
-                    self.tick_field: ts,
-                    self.indiv_field: indiv,
-                    self.host_field: host,
-                    self.metrics[0]: float(row[3]),
-                })
+                rows.append(
+                    {
+                        self.tick_field: ts,
+                        self.indiv_field: indiv,
+                        self.host_field: host,
+                        self.metrics[0]: float(row[3]),
+                    }
+                )
             else:
                 break
 
@@ -114,7 +115,7 @@ class FileConnector(ConnectorPlugin):
         """Close the underlying CSV file."""
         self.csv_file.close()
 
-    def add_moves(self, current_time: int, moves: List[Tuple[str, str]]):
+    def add_moves(self, current_time: int, moves: list[tuple[str, str]]):
         """
         Register moves happening at `current_time`.
         `moves` is [(container_id, target_node), ...]. Last one wins for same container/time.
@@ -124,16 +125,16 @@ class FileConnector(ConnectorPlugin):
             return
 
         # Last move for a container at this timestamp wins
-        last_new_host: Dict[str, str] = {}
+        last_new_host: dict[str, str] = {}
         for m in moves:
-            c = m.get('container_name')
-            new_h = m.get('new_host')
+            c = m.get("container_name")
+            new_h = m.get("new_host")
             if not c or new_h is None:
                 continue  # skip malformed entries
             last_new_host[c] = new_h
 
         for c, new_h in last_new_host.items():
-            lst: List[Tuple[int, str]] = self._moves[c]
+            lst: list[tuple[int, str]] = self._moves[c]
 
             # Fast path: append if times are non-decreasing
             if not lst or current_time >= lst[-1][0]:
@@ -161,17 +162,17 @@ class FileConnector(ConnectorPlugin):
         # solution may be a list of move dicts, or a model with extract_moves()
 
         if not moves:
-            logging.info('No move to apply.')
+            logging.info("No move to apply.")
             return  # nothing to do
 
-        logging.info('Applying moves for time %d', current_time)
+        logging.info("Applying moves for time %d", current_time)
         self.add_moves(current_time, moves)
 
         # always append during the run
-        with self.outfile.open('a', encoding='utf-8') as f:
+        with self.outfile.open("a", encoding="utf-8") as f:
             for move in moves:
                 move_with_time = dict(move)
-                move_with_time['time'] = str(current_time)
-                f.write(json.dumps(move_with_time, ensure_ascii=False) + '\n')
+                move_with_time["time"] = str(current_time)
+                f.write(json.dumps(move_with_time, ensure_ascii=False) + "\n")
 
-        logging.info('Moves applied for time %d', current_time)
+        logging.info("Moves applied for time %d", current_time)

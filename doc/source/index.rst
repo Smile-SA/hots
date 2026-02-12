@@ -19,6 +19,7 @@ Contents
    pyomo
    streaming
    api/index
+   kpis
    legal
    glossary
    history

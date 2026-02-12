@@ -3,7 +3,7 @@
 """HOTS core interfaces: plugin base classes."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List
+from typing import Any
 
 import pandas as pd
 
@@ -21,14 +21,7 @@ class OptimizationPlugin(ABC):
     """Interface for optimization backends (Pyomo, OR-Tools, ...)."""
 
     @abstractmethod
-    def build(
-        self,
-        *,
-        u_mat=None,
-        w_mat=None,
-        v_mat=None,
-        dv_mat=None
-    ):
+    def build(self, *, u_mat=None, w_mat=None, v_mat=None, dv_mat=None):
         """Create and return a model handle (e.g., a Pyomo model wrapper)."""
         pass
 
@@ -58,12 +51,13 @@ class ProblemPlugin(ABC):
         """
         pass
 
+    @abstractmethod
     def initial(
         self,
         labels: pd.Series,
         df_indiv: pd.DataFrame,
         df_host: pd.DataFrame,
-    ) -> List[Dict[str, Any]]:
+    ) -> list[dict[str, Any]]:
         """
         Produce the initial problem solution if needed.
 
@@ -72,3 +66,4 @@ class ProblemPlugin(ABC):
         :param df_host: host‐level data
         :return: list of move dicts to apply
         """
+        pass

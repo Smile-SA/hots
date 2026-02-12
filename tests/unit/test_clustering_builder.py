@@ -1,5 +1,8 @@
 """Unit tests for clustering builder utilities."""
 
+import numpy as np
+import pandas as pd
+
 from hots.plugins.clustering.builder import (
     build_adjacency_matrix,
     build_matrix_indiv_attr,
@@ -9,10 +12,6 @@ from hots.plugins.clustering.builder import (
     get_far_container,
     pairwise_sum_profile_var,
 )
-
-import numpy as np
-
-import pandas as pd
 
 
 def test_build_matrix_indiv_attr_basic():
@@ -25,27 +24,27 @@ def test_build_matrix_indiv_attr_basic():
     """
     df = pd.DataFrame(
         [
-            {'cid': 'a', 'tick': 1, 'cpu': 1.0},
-            {'cid': 'a', 'tick': 2, 'cpu': 2.0},
-            {'cid': 'b', 'tick': 1, 'cpu': 0.5},
+            {"cid": "a", "tick": 1, "cpu": 1.0},
+            {"cid": "a", "tick": 2, "cpu": 2.0},
+            {"cid": "b", "tick": 1, "cpu": 0.5},
         ]
     )
-    id_map = {'a': 0, 'b': 1}
+    id_map = {"a": 0, "b": 1}
 
     mat = build_matrix_indiv_attr(
         df=df,
-        tick_field='tick',
-        indiv_field='cid',
-        metrics=['cpu'],
+        tick_field="tick",
+        indiv_field="cid",
+        metrics=["cpu"],
         id_map=id_map,
     )
 
-    assert list(mat.index) == ['a', 'b']
+    assert list(mat.index) == ["a", "b"]
     # Known values
-    assert mat.loc['a', 1] == 1.0
-    assert mat.loc['a', 2] == 2.0
+    assert mat.loc["a", 1] == 1.0
+    assert mat.loc["a", 2] == 2.0
     # Missing tick 2 for 'b' should be filled with 0
-    assert mat.loc['b', 2] == 0.0
+    assert mat.loc["b", 2] == 0.0
 
 
 def test_build_adjacency_matrix_simple():
@@ -63,7 +62,7 @@ def test_build_adjacency_matrix_simple():
 
 def test_build_similarity_matrix_is_symmetric_and_zero_diag():
     """Distance matrix should be symmetric with zeros on the diagonal."""
-    mat = pd.DataFrame([[0.0, 1.0], [1.0, 2.0]], index=['a', 'b'])
+    mat = pd.DataFrame([[0.0, 1.0], [1.0, 2.0]], index=["a", "b"])
     sim = build_similarity_matrix(mat)
 
     assert sim.shape == (2, 2)
@@ -81,9 +80,9 @@ def test_cluster_mean_profile_and_pairwise_var():
     # Only numeric features + cluster label.
     df_clust = pd.DataFrame(
         [
-            {'cluster': 0, 'f1': 0.0, 'f2': 2.0},
-            {'cluster': 0, 'f1': 2.0, 'f2': 4.0},
-            {'cluster': 1, 'f1': 1.0, 'f2': 1.0},
+            {"cluster": 0, "f1": 0.0, "f2": 2.0},
+            {"cluster": 0, "f1": 2.0, "f2": 4.0},
+            {"cluster": 1, "f1": 1.0, "f2": 1.0},
         ]
     )
 
@@ -103,16 +102,16 @@ def test_dist_and_far_container():
     """
     df_clust = pd.DataFrame(
         [
-            {'cid': 'c1', 'cluster': 0, 'f1': 1.0, 'f2': 1.0},
-            {'cid': 'c2', 'cluster': 0, 'f1': 3.0, 'f2': 4.0},
+            {"cid": "c1", "cluster": 0, "f1": 1.0, "f2": 1.0},
+            {"cid": "c2", "cluster": 0, "f1": 3.0, "f2": 4.0},
         ]
-    ).set_index('cid')
+    ).set_index("cid")
 
     profiles = np.array([[0.0, 0.0]])  # mean profile for cluster 0
 
-    d1 = dist_from_mean(df_clust, profiles, 'c1')
-    d2 = dist_from_mean(df_clust, profiles, 'c2')
+    d1 = dist_from_mean(df_clust, profiles, "c1")
+    d2 = dist_from_mean(df_clust, profiles, "c2")
     assert d2 > d1
 
-    far = get_far_container('c1', 'c2', df_clust, profiles)
-    assert far == 'c2'
+    far = get_far_container("c1", "c2", df_clust, profiles)
+    assert far == "c2"

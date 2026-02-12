@@ -22,11 +22,6 @@ user needs to install the following packages (through `apt` for example) :
 * `libglpk-dev`
 * `glpk-utils`
 
-In clustering computes, we use the library `clusopt_core`, which needs the following `apt` package
-in order to be installed through `pip`:
-
-* `libboost-thread-dev`
-
 Production
 ==========
 

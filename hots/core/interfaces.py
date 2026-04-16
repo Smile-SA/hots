@@ -35,7 +35,7 @@ class ConnectorPlugin(ABC):
     """Interface for connector plugins."""
 
     @abstractmethod
-    def apply_moves(self, moves: Any) -> None:
+    def apply_moves(self, moves: Any, current_time: int | None = None) -> None:
         """Apply relocation moves to the target environment."""
         pass
 

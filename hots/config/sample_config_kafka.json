@@ -1,10 +1,5 @@
 {
-  "data_folder": "./tests/data/thesis_ex_10",
-  "tick_field": "timestamp",
-  "host_field": "machine_id",
-  "individual_field": "container_id",
-  "metrics": ["cpu"],
-  "time_limit": null,
+  "time_limit": 600,
   "clustering": {
     "method": "kmeans",
     "nb_clusters": 3,
@@ -22,6 +17,7 @@
   "problem": {
     "type": "placement",
     "parameters": {
+      "initial_placement": false,
       "tol": 0.1,
       "tol_move": 0.2
     }
@@ -29,18 +25,29 @@
   "connector": {
     "type": "kafka",
     "parameters": {
-      "data_folder": "./tests/data/thesis_ex_10",
-      "file_name": "container_usage.csv",
       "tick_field": "timestamp",
       "individual_field": "container_id",
       "host_field": "machine_id",
       "metrics": ["cpu"],
-      "sep_time": 10,
-      "tick_increment": 3,
-      "window_duration" : 3,
-      "connector_url": "http://localhost:8080",
+      "sep_time": 30,
+      "tick_increment": 10,
+      "window_duration": 3,
       "bootstrap.servers": "localhost:9092",
-      "topics": ["hots_moves"]
+      "topic_data": "hots_data",
+      "topic_moves": "hots_moves",
+      "consumer_conf": {
+        "bootstrap.servers": "localhost:9092",
+        "group.id": "hots",
+        "auto.offset.reset": "earliest"
+      },
+      "batch_size": 10,
+      "poll_timeout": 1.0,
+      "bootstrap_timeout_seconds": 120,
+      "node_capacities": {
+        "vm1": 2.0,
+        "vm2": 2.0,
+        "vm3": 2.0
+      }
     }
   },
   "logging": {

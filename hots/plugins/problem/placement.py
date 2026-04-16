@@ -95,11 +95,13 @@ class PlacementPlugin(ProblemPlugin):
         )
 
         # 1) Build the (containers × features) matrix
+        cfg = self.instance.config.connector.parameters
+
         mat = build_matrix_indiv_attr(
             df_indiv,
-            self.instance.config.tick_field,
-            self.instance.config.individual_field,
-            self.instance.config.metrics,
+            cfg.get("tick_field"),
+            cfg.get("individual_field"),
+            cfg.get("metrics"),
             self.instance.get_id_map(),
         )
         # 2) Turn it into a similarity (distance) matrix

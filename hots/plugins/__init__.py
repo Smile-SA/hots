@@ -66,7 +66,7 @@ class ConnectorFactory:
                     "Kafka connector requires the optional 'kafka' extra. "
                     "Install with: uv sync --extra kafka (or pip install .[kafka])."
                 ) from e
-            return KafkaConnector(cfg.parameters, instance)
+            return KafkaConnector(cfg.parameters)
         if t == "file":
             return FileConnector(cfg.parameters)
         raise ValueError(f"Unknown connector type: {cfg.type}")

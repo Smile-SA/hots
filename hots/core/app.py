@@ -214,7 +214,6 @@ class App:
             )
 
             self.connector.apply_moves(moves, tmax)
-            self.instance.metrics_history.append(metrics)
 
             # Advance window
             tmax += self.connector.tick_increment

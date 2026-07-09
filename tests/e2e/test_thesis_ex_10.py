@@ -4,7 +4,6 @@ import importlib.util
 from pathlib import Path
 
 import pytest
-from pyomo.opt import SolverFactory
 
 from hots.config.loader import load_config
 from hots.core.app import App
@@ -13,6 +12,12 @@ from hots.core.app import App
 _pyomo_spec = importlib.util.find_spec("pyomo.environ")
 _pyomo_installed = _pyomo_spec is not None
 pytestmark = pytest.mark.skipif(not _pyomo_installed, reason="pyomo.environ (Pyomo) not installed")
+
+if _pyomo_installed:
+    # Registers the solver plugins; without it SolverFactory('glpk')
+    # returns an UnknownSolver and the availability check always skips.
+    import pyomo.environ  # noqa: F401
+    from pyomo.opt import SolverFactory
 
 
 @pytest.mark.e2e
@@ -65,6 +70,13 @@ def test_thesis_ex_10_happy_path(tests_data_directory, tmp_path):
 
     # 1) In-memory metrics
     assert app.instance.metrics_history, "metrics_history should not be empty after a run"
+
+    # Exactly one metrics row per streaming loop (regression: rows were appended twice)
+    loop_rows = [m["loop_nb"] for m in app.instance.metrics_history if "loop_nb" in m]
+    assert loop_rows, "streaming loops should have recorded metrics"
+    assert len(loop_rows) == len(set(loop_rows)), (
+        "each streaming loop must append exactly one metrics row"
+    )
 
     # 2) Metrics CSV exists and is non-empty
     metrics_path = cfg.reporting.metrics_file

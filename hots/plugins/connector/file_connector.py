@@ -34,8 +34,8 @@ class FileConnector(ConnectorPlugin):
         self.tick_increment = params.get("tick_increment", 1)
 
         self.csv_file = open(self.csv_path)
-        self.csv_reader = csv.reader(self.csv_file)
-        next(self.csv_reader, None)
+        self.csv_reader = csv.DictReader(self.csv_file)
+        self._check_csv_columns()
 
         self.queue = queue.Queue()
         self.current_time = 0
@@ -47,6 +47,17 @@ class FileConnector(ConnectorPlugin):
 
         self.outfile.parent.mkdir(parents=True, exist_ok=True)
         self._prepare_outfile_once()
+
+    def _check_csv_columns(self) -> None:
+        """Fail fast if the CSV header lacks any configured field."""
+        header = self.csv_reader.fieldnames or []
+        required = [self.tick_field, self.indiv_field, self.host_field, *self.metrics]
+        missing = [f for f in required if f not in header]
+        if missing:
+            raise ValueError(
+                f"CSV file {self.csv_path} is missing configured columns {missing} "
+                f"(found columns: {header})"
+            )
 
     def _prepare_outfile_once(self) -> None:
         key = str(self.outfile.resolve())
@@ -89,23 +100,22 @@ class FileConnector(ConnectorPlugin):
                     break
                 self.queue.put(row)
 
-            # Peek at next row's timestamp (first column in the CSV)
-            ts = int(self.queue.queue[0][0])
+            # Peek at next row's timestamp (fields are read by name)
+            ts = int(self.queue.queue[0][self.tick_field])
 
             # Include rows up to the provided window end (inclusive)
             if ts <= window_end:
                 row = self.queue.get()
-                indiv = row[1]
-                host = row[2]
-                host = self.host_at(indiv, ts, host)
-                rows.append(
-                    {
-                        self.tick_field: ts,
-                        self.indiv_field: indiv,
-                        self.host_field: host,
-                        self.metrics[0]: float(row[3]),
-                    }
-                )
+                indiv = row[self.indiv_field]
+                host = self.host_at(indiv, ts, row[self.host_field])
+                out_row = {
+                    self.tick_field: ts,
+                    self.indiv_field: indiv,
+                    self.host_field: host,
+                }
+                for metric in self.metrics:
+                    out_row[metric] = float(row[metric])
+                rows.append(out_row)
             else:
                 break
 

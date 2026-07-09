@@ -9,6 +9,7 @@ from typing import Any
 import networkx as nx
 import numpy as np
 import pandas as pd
+from sklearn.metrics import adjusted_rand_score
 
 from hots.plugins.clustering.builder import (
     build_adjacency_matrix,
@@ -26,6 +27,7 @@ class EvalSnapshot:
     """All the info we need to compare two consecutive evaluations."""
 
     labels: np.ndarray  # shape (n_indiv,)
+    labels_by_id: dict[Any, int]  # mapping indiv/container -> cluster label
     placement: dict[Any, Any]  # mapping indiv/container -> host/node
     tick: int  # current time tick for traceability
 
@@ -38,31 +40,45 @@ def _safe_labels_array(labels) -> np.ndarray:
     return np.asarray(labels).reshape(-1)
 
 
-def _kpi_clustering(labels_now: np.ndarray, labels_prev: np.ndarray | None) -> dict[str, float]:
-    """Compare clustering KPIs + delta vs previous."""
-    kpi: dict[str, float] = {
-        "clusters_now": float(len(np.unique(labels_now))),
-    }
-    if labels_prev is None:
+def _kpi_clustering(
+    labels_now: dict[Any, int], labels_prev: dict[Any, int] | None
+) -> dict[str, float]:
+    """Compare clustering KPIs + delta vs previous, matching containers by ID."""
+    n_now = len(set(labels_now.values()))
+    kpi: dict[str, float] = {"clusters_now": float(n_now)}
+    if not labels_prev:
         kpi.update(
             {
                 "clusters_prev": 0.0,
                 "clustered_change_ratio": 0.0,
                 "reassigned_ratio": 0.0,
+                "adjusted_rand_index": 0.0,
             }
         )
         return kpi
 
-    labels_prev = _safe_labels_array(labels_prev)
-    same_len = min(len(labels_prev), len(labels_now))
-    reassigned = np.sum(labels_prev[:same_len] != labels_now[:same_len])
+    n_prev = len(set(labels_prev.values()))
+    # Only containers present in both windows can be compared
+    common = sorted(labels_now.keys() & labels_prev.keys(), key=str)
+    reassigned = sum(1 for cid in common if labels_now[cid] != labels_prev[cid])
+
+    # Cluster labels are arbitrary integers, so a raw label mismatch overstates
+    # instability; ARI is invariant to relabelling.
+    ari = 0.0
+    if common:
+        ari = float(
+            adjusted_rand_score(
+                [labels_prev[cid] for cid in common],
+                [labels_now[cid] for cid in common],
+            )
+        )
+
     kpi.update(
         {
-            "clusters_prev": float(len(np.unique(labels_prev))),
-            "clustered_change_ratio": float(
-                abs(len(np.unique(labels_now)) - len(np.unique(labels_prev)))
-            ),
-            "reassigned_ratio": float(reassigned) / float(same_len) if same_len else 0.0,
+            "clusters_prev": float(n_prev),
+            "clustered_change_ratio": float(abs(n_now - n_prev)),
+            "reassigned_ratio": float(reassigned) / float(len(common)) if common else 0.0,
+            "adjusted_rand_index": ari,
         }
     )
     return kpi
@@ -653,10 +669,16 @@ def eval_step_kpis(
     labels_now = _safe_labels_array(labels)
     placement_now = placement or {}
 
+    # Key labels by container ID so stability KPIs survive population changes
+    inv_id_map = instance.get_inv_id_map()
+    labels_by_id = {
+        inv_id_map[i]: int(lab) for i, lab in enumerate(labels_now.tolist()) if i in inv_id_map
+    }
+
     # ---- existing KPIs
     clustering_kpi = _kpi_clustering(
-        labels_now=labels_now,
-        labels_prev=(prev_snapshot.labels if prev_snapshot else None),
+        labels_now=labels_by_id,
+        labels_prev=(prev_snapshot.labels_by_id if prev_snapshot else None),
     )
     placement_kpi = _kpi_placement(
         placement_now=placement_now,
@@ -703,6 +725,7 @@ def eval_step_kpis(
 
     snapshot = EvalSnapshot(
         labels=labels_now,
+        labels_by_id=labels_by_id,
         placement=placement_now,
         tick=tick,
     )

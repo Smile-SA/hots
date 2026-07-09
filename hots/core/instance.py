@@ -36,8 +36,11 @@ class Instance:
             self.kafka_consumer = KafkaPlugin.create_consumer(config.kafka)
 
         self.df_indiv, self.df_host, self.df_meta = None, None, None
-        self._id_map: dict[Any, int] | None = None
-        self._inv_id_map: dict[int, Any] | None = None
+        # Append-only: an ID keeps its index for the whole run, so matrices and
+        # label arrays stay positionally comparable across windows.
+        self._id_map: dict[Any, int] = {}
+        self._inv_id_map: dict[int, Any] = {}
+        self._id_map_stale = True
         self.current_solution = None
         self.cluster_labels = None
         self.fields = None
@@ -68,9 +71,8 @@ class Instance:
         KafkaPlugin.clear_topics()
 
     def _invalidate_caches(self) -> None:
-        """Invalidate any cached derived structures."""
-        self._id_map = None
-        self._inv_id_map = None
+        """Mark derived structures as needing a refresh on next access."""
+        self._id_map_stale = True
 
     def update_data(self, new_df_indiv: pd.DataFrame) -> None:
         """Update the dataframes with newly ingested individual-level data."""
@@ -90,20 +92,26 @@ class Instance:
     def get_id_map(self) -> dict[Any, int]:
         """Get a mapping from container IDs to integer indices.
 
-        The mapping is cached and invalidated when `update_data()` appends new rows.
+        Indices are assigned append-only: an ID seen once keeps its index for the
+        rest of the run, and IDs first seen later take the next free indices. A
+        container arriving with an ID that sorts before existing ones therefore
+        never shifts the indices the matrices and label arrays are keyed on.
         """
-        if self._id_map is None:
+        if self._id_map_stale:
             indiv_field = self.config.connector.parameters.get("individual_field")
-            unique = sorted(self.df_indiv[indiv_field].unique())
-            self._id_map = {cid: idx for idx, cid in enumerate(unique)}
-            self._inv_id_map = {idx: cid for cid, idx in self._id_map.items()}
+            unseen = set(self.df_indiv[indiv_field].unique()) - self._id_map.keys()
+            # sorted() only to keep index assignment deterministic within a batch
+            for cid in sorted(unseen):
+                idx = len(self._id_map)
+                self._id_map[cid] = idx
+                self._inv_id_map[idx] = cid
+            self._id_map_stale = False
         return self._id_map
 
     def get_inv_id_map(self) -> dict[int, Any]:
-        """Get the inverse mapping from indices to container IDs (cached)."""
-        if self._inv_id_map is None:
-            self.get_id_map()
-        return self._inv_id_map or {}
+        """Get the inverse mapping from indices to container IDs."""
+        self.get_id_map()
+        return self._inv_id_map
 
     def get_working_df(self, tmin, tmax, inclusive=True):
         """Get data for the current time window."""

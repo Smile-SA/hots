@@ -58,7 +58,9 @@ def build_pre_clust_matrices(
     clustering.clust_mat.loc[labels_s.index, "cluster"] = labels_s
     if new_containers:
         clustering.clust_mat = assign_new_containers_to_nearest_cluster(clustering.clust_mat)
-        clustering.labels = clustering.clust_mat["cluster"].astype(int).to_numpy()
+        # copy=True: to_numpy() may return a read-only view, and change_clustering
+        # writes labels back in place.
+        clustering.labels = clustering.clust_mat["cluster"].astype(int).to_numpy(copy=True)
 
     clustering.u_mat = build_adjacency_matrix(clustering.labels)
     clustering.w_mat = build_similarity_matrix(clustering.clust_mat)

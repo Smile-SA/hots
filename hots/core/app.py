@@ -225,9 +225,12 @@ class App:
         if df.empty:
             return
 
+        # The initial-phase row carries no loop_nb and is not a streaming step
+        loops = df[df["loop_nb"].notna()] if "loop_nb" in df.columns else df.iloc[0:0]
+
         run_kpis = {
             "run_id": self.run_id,
-            "total_steps": int(len(df)),
+            "total_steps": int(len(loops)),
             "total_moves": float(
                 df.get("moves__moves_count", pd.Series(dtype=float)).fillna(0).sum()
             )

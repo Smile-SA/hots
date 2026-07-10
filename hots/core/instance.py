@@ -44,6 +44,7 @@ class Instance:
         self.current_solution = None
         self.cluster_labels = None
         self.fields = None
+        self._known_hosts: set[Any] = set()
 
     def _load_initial_data(self, connector):
         """
@@ -52,6 +53,7 @@ class Instance:
         """
         params = self.config.connector.parameters
         self.df_indiv, _, self.df_meta = connector.load_initial()
+        self._known_hosts = set(self.df_indiv[params.get("host_field")].unique())
         self.df_host = build_df_from_containers(
             self.df_indiv,
             tick_field=params.get("tick_field"),
@@ -65,6 +67,23 @@ class Instance:
         )
         self._invalidate_caches()
 
+    @property
+    def history_ticks(self) -> int | None:
+        """Number of trailing ticks retained in memory, or None to keep everything.
+
+        Defaults to the working window plus one tick increment of slack, which is
+        the most `get_working_df()` can ever ask for.
+        """
+        params = self.config.connector.parameters
+        configured = params.get("history_ticks")
+        if configured is not None:
+            return int(configured)
+
+        window_duration = params.get("window_duration")
+        if window_duration is None:
+            return None
+        return int(window_duration) + int(params.get("tick_increment", 1)) + 1
+
     @staticmethod
     def clear_kafka_topics() -> None:
         """Clear all configured Kafka topics."""
@@ -75,19 +94,52 @@ class Instance:
         self._id_map_stale = True
 
     def update_data(self, new_df_indiv: pd.DataFrame) -> None:
-        """Update the dataframes with newly ingested individual-level data."""
+        """Update the dataframes with newly ingested individual-level data.
+
+        The host aggregate is recomputed only for the ticks the new batch
+        touches, and both frames are trimmed to `history_ticks`, so memory and
+        per-loop cost stay bounded over a long online run.
+        """
+        if new_df_indiv is None or new_df_indiv.empty:
+            return
+
         params = self.config.connector.parameters
-        self.df_indiv = pd.concat(
-            [self.df_indiv, new_df_indiv],
+        tick_field = params.get("tick_field")
+        host_field = params.get("host_field")
+        metrics = params.get("metrics")
+
+        self.df_indiv = pd.concat([self.df_indiv, new_df_indiv], ignore_index=True)
+        self._known_hosts.update(new_df_indiv[host_field].unique())
+
+        # A batch may complete a tick already partially aggregated (Kafka batches
+        # do not align on tick boundaries), so re-aggregate whole affected ticks.
+        touched = new_df_indiv[tick_field].unique()
+        affected = self.df_indiv[self.df_indiv[tick_field].isin(touched)]
+        recomputed = build_df_from_containers(
+            affected,
+            tick_field=tick_field,
+            host_field=host_field,
+            metrics=metrics,
+            hosts=sorted(self._known_hosts),
+        )
+        self.df_host = pd.concat(
+            [self.df_host[~self.df_host[tick_field].isin(touched)], recomputed],
             ignore_index=True,
-        )
-        self.df_host = build_df_from_containers(
-            self.df_indiv,
-            tick_field=params.get("tick_field"),
-            host_field=params.get("host_field"),
-            metrics=params.get("metrics"),
-        )
+        ).sort_values([tick_field, host_field], ignore_index=True)
+
+        self._prune_history()
         self._invalidate_caches()
+
+    def _prune_history(self) -> None:
+        """Drop rows older than the retention window from both frames."""
+        retention = self.history_ticks
+        if retention is None:
+            return
+
+        tick_field = self.config.connector.parameters.get("tick_field")
+        cutoff = self.df_indiv[tick_field].max() - retention + 1
+        self.df_indiv = self.df_indiv[self.df_indiv[tick_field] >= cutoff].reset_index(drop=True)
+        self.df_host = self.df_host[self.df_host[tick_field] >= cutoff].reset_index(drop=True)
 
     def get_id_map(self) -> dict[Any, int]:
         """Get a mapping from container IDs to integer indices.

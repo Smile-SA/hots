@@ -5,18 +5,25 @@ import pandas as pd
 
 
 def build_df_from_containers(
-    df_indiv: pd.DataFrame, tick_field: str, host_field: str, metrics: list[str]
+    df_indiv: pd.DataFrame,
+    tick_field: str,
+    host_field: str,
+    metrics: list[str],
+    hosts: list | None = None,
 ) -> pd.DataFrame:
     """Aggregate individual consumption into host-level time-series.
     Ensures each host has an entry for every tick (filling missing values
     with zeros).
+
+    `hosts` overrides the host set to emit rows for, so an incremental
+    aggregation over a slice still covers hosts idle in that slice.
     """
     # Group by timestamp and host, then sum the metrics
     df_agg = df_indiv.groupby([tick_field, host_field])[metrics].sum().reset_index()
 
     # Ensure all timestamp-host combinations exist (fill missing with 0)
     unique_ticks = df_indiv[tick_field].unique()
-    unique_hosts = df_indiv[host_field].unique()
+    unique_hosts = df_indiv[host_field].unique() if hosts is None else hosts
 
     # Create all combinations
     all_combinations = pd.MultiIndex.from_product(

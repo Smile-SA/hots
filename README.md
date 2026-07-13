@@ -8,7 +8,7 @@
 
 ## Requirements for running HOTS
 
-HOTS works on any platform with Python 3.8 and up.
+HOTS works on any platform with Python 3.10 and up.
 
 The dev Python version must be used to install the package (for example install the package
 python3.10-dev in order to use Python 3.10).

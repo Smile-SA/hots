@@ -478,7 +478,18 @@ class PyomoModel(OptimizationPlugin):
     def fill_dual_values(self):
         """
         Extract duals for the 'must_link' constraints after solve().
+
         Returns a mapping from index (container tuple) to its dual value.
+
+        Solver note: the decision variables here are declared continuous on
+        ``[0, 1]`` (``NonNegativeReals`` with ``bounds=(0, 1)``), so each solve
+        is an LP and the ``must_link`` duals are ordinary LP shadow prices —
+        the values the conflict-detection deltas rely on. This depends on GLPK
+        reporting duals via the ``dual`` Suffix; a solver that only returns
+        duals for a MIP relaxation, or none at all (e.g. some CBC/HiGHS
+        configurations), would change or silently drop these semantics. If you
+        swap the solver, verify it populates ``instance_model.dual`` for the
+        LP relaxation before trusting the conflict graph.
         """
         dual = self.instance_model.dual
         con = getattr(

@@ -20,13 +20,15 @@ class CustomSpectralClustering(ClusteringPlugin):
 
     def __init__(self, parameters: dict, instance):
         """Initialize with cluster count and instance configuration."""
+        super().__init__()
+        connector_params = instance.config.connector.parameters
         self.n_clusters = parameters.get(
             "nb_clusters",
             instance.config.clustering.nb_clusters,
         )
-        self.tick_field = instance.config.tick_field
-        self.indiv_field = instance.config.individual_field
-        self.metrics = instance.config.metrics
+        self.tick_field = connector_params.get("tick_field")
+        self.indiv_field = connector_params.get("individual_field")
+        self.metrics = connector_params.get("metrics")
         self.id_map = instance.get_id_map()
 
     def fit(self, df: pd.DataFrame) -> pd.Series:

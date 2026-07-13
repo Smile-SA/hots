@@ -1,4 +1,4 @@
-.. _container_module:
+.. _config_module:
 
 ======================
 hots.config.loader API

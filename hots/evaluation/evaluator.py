@@ -14,7 +14,6 @@ from sklearn.metrics import adjusted_rand_score
 from hots.plugins.clustering.builder import (
     build_adjacency_matrix,
     build_post_clust_matrices,
-    build_pre_clust_matrices,
     change_clustering,
     cluster_mean_profile,
     get_far_container,
@@ -343,24 +342,29 @@ def eval_solutions(
     *,
     prev_snapshot: EvalSnapshot | None = None,
     tick: int | None = None,
-) -> dict[str, Any]:
-    """Run the evaluation pipeline and collect evaluation metrics."""
+) -> tuple[Any, dict[str, Any], EvalSnapshot]:
+    """Run the evaluation pipeline for one window.
+
+    :return: ``(moves, metrics, snapshot)`` where ``moves`` is the move list from
+        ``problem.adjust``, ``metrics`` is the per-loop KPI dict, and ``snapshot``
+        is the :class:`EvalSnapshot` to feed into the next call.
+    """
     # 1) Build & solve clustering problem
     cfg = instance.config.connector.parameters
     nf, hf, tf = cfg.get("individual_field"), cfg.get("host_field"), cfg.get("tick_field")
-    metrics = cfg.get("metrics")
+    metric_names = cfg.get("metrics")
 
     new_containers = False
     if len(clustering.labels) < working_df[nf].nunique():
-        working_df = check_missing_entries_df(working_df, tf, nf, hf, metrics)
+        working_df = check_missing_entries_df(working_df, tf, nf, hf, metric_names)
         new_containers = True
 
-    build_pre_clust_matrices(
-        working_df, tf, nf, metrics, instance.get_id_map(), clustering, new_containers
+    clustering.build_matrices(
+        working_df, tf, nf, metric_names, instance.get_id_map(), new_containers
     )
 
     if new_containers:
-        logging.info("\n🔍 New containers detected: updating optimization models 🔍\n")
+        logging.info("New containers detected: updating optimization models")
         clust_opt.update_size_model(
             instance.get_id_map(), working_df, u_mat=clustering.u_mat, w_mat=clustering.w_mat
         )

@@ -1,5 +1,7 @@
 """HOTS plugin package."""
 
+import importlib
+
 from .clustering.custom_spectral import CustomSpectralClustering
 from .clustering.hierarchical import HierarchicalClustering
 from .clustering.kmeans import StreamKMeans
@@ -26,11 +28,6 @@ class KafkaPlugin:
         consumer = Consumer(cfg.parameters["consumer_conf"])
         consumer.subscribe(cfg.parameters["topics"])
         return consumer
-
-    @staticmethod
-    def clear_topics():
-        """Clear offsets for configured Kafka topics (if needed)."""
-        pass
 
 
 class ClusteringFactory:
@@ -72,4 +69,40 @@ class ConnectorFactory:
         raise ValueError(f"Unknown connector type: {cfg.type}")
 
 
-__all__ = ["OptimizationFactory"]
+class ProblemFactory:
+    """Factory for domain problem plugins."""
+
+    # Explicit registry of built-in problem types -> "module:ClassName".
+    _REGISTRY: dict[str, str] = {
+        "placement": "hots.plugins.problem.placement:PlacementPlugin",
+    }
+
+    @classmethod
+    def register(cls, name: str, target: str) -> None:
+        """Register a problem plugin as ``"package.module:ClassName"``."""
+        cls._REGISTRY[name.lower()] = target
+
+    @classmethod
+    def create(cls, cfg, instance):
+        """Create and return a problem plugin based on config."""
+        key = cfg.type.lower()
+        target = cls._REGISTRY.get(key)
+        if target is None:
+            raise ValueError(f"Unknown problem type: {cfg.type!r} (known: {sorted(cls._REGISTRY)})")
+        module_path, cls_name = target.split(":")
+        mod = importlib.import_module(module_path)
+        return getattr(mod, cls_name)(instance)
+
+
+__all__ = [
+    "ClusteringFactory",
+    "ConnectorFactory",
+    "FileConnector",
+    "KafkaPlugin",
+    "OptimizationFactory",
+    "ProblemFactory",
+    "CustomSpectralClustering",
+    "HierarchicalClustering",
+    "SpectralClustering",
+    "StreamKMeans",
+]

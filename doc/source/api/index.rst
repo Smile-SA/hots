@@ -12,14 +12,14 @@ Python API
 .. toctree::
    :maxdepth: 1
 
-   allocation
-   clustering
-   container
    init
+   core
    instance
-   main
-   model
-   node
+   config
+   clustering
+   optimization
    placement
+   evaluator
+   cli
    plot
    tools

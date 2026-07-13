@@ -16,6 +16,7 @@ class StreamKMeans(ClusteringPlugin):
 
     def __init__(self, params: dict[str, Any], instance):
         """Initialize the streaming k-means plugin."""
+        super().__init__()
         connector_params = instance.config.connector.parameters
         self.n_clusters = params.get("nb_clusters", 5)
         self.batch_size = params.get("batch_size", 100)
@@ -25,11 +26,6 @@ class StreamKMeans(ClusteringPlugin):
         self.metrics = connector_params.get("metrics")
         self.id_map = instance.get_id_map()
         self.model = None
-        self.labels = None
-        self.profiles = None
-        self.clust_mat = None
-        self.u_mat = None
-        self.w_mat = None
 
     def fit(self, df: pd.DataFrame) -> pd.Series:
         """

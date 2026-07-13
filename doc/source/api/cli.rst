@@ -1,4 +1,4 @@
-.. _main_module:
+.. _cli_module:
 
 ========
 hots.cli

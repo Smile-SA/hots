@@ -45,27 +45,6 @@ def build_similarity_matrix(mat: pd.DataFrame) -> pd.DataFrame:
     return squareform(pdist(mat.values, "euclidean"))
 
 
-def build_pre_clust_matrices(
-    df, tick_field, indiv_field, metrics, id_map, clustering, new_containers: bool = False
-):
-    """Build period clustering dataframes and matrices to be used."""
-    clustering.clust_mat = build_matrix_indiv_attr(df, tick_field, indiv_field, metrics, id_map)
-
-    inv = {v: k for k, v in id_map.items()}
-    labeled_idx = [inv[i] for i in range(len(clustering.labels)) if i in inv]
-    labels_s = pd.Series(clustering.labels[: len(labeled_idx)], index=labeled_idx, name="cluster")
-    clustering.clust_mat["cluster"] = -1
-    clustering.clust_mat.loc[labels_s.index, "cluster"] = labels_s
-    if new_containers:
-        clustering.clust_mat = assign_new_containers_to_nearest_cluster(clustering.clust_mat)
-        # copy=True: to_numpy() may return a read-only view, and change_clustering
-        # writes labels back in place.
-        clustering.labels = clustering.clust_mat["cluster"].astype(int).to_numpy(copy=True)
-
-    clustering.u_mat = build_adjacency_matrix(clustering.labels)
-    clustering.w_mat = build_similarity_matrix(clustering.clust_mat)
-
-
 def build_post_clust_matrices(clust_mat):
     """Build result clustering dataframes and matrices to be used."""
     cluster_profiles = cluster_mean_profile(clust_mat)

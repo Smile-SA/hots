@@ -18,9 +18,6 @@ from hots.core.interfaces import ConnectorPlugin
 class FileConnector(ConnectorPlugin):
     """Connector plugin that read CSV data and writes moves to a JSONL file."""
 
-    # process-level guard so we only truncate once per path per run
-    _initialized_paths: set[str] = set()
-
     def __init__(self, params):
         """Initialize with output file path."""
         fname = params.get("file_name", "container_usage.csv")
@@ -46,7 +43,8 @@ class FileConnector(ConnectorPlugin):
         self.reset_on_start: bool = params.get("reset_on_start", True)
 
         self.outfile.parent.mkdir(parents=True, exist_ok=True)
-        self._prepare_outfile_once()
+        if self.reset_on_start:
+            self.outfile.write_text("", encoding="utf-8")
 
     def _check_csv_columns(self) -> None:
         """Fail fast if the CSV header lacks any configured field."""
@@ -58,16 +56,6 @@ class FileConnector(ConnectorPlugin):
                 f"CSV file {self.csv_path} is missing configured columns {missing} "
                 f"(found columns: {header})"
             )
-
-    def _prepare_outfile_once(self) -> None:
-        key = str(self.outfile.resolve())
-        if key in self._initialized_paths:
-            return
-
-        if self.reset_on_start:
-            self.outfile.write_text("", encoding="utf-8")
-
-        self._initialized_paths.add(key)
 
     def load_initial(self):
         """Load the first batch of rows from [0, sep_time]."""

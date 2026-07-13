@@ -1,4 +1,4 @@
-.. _model_module:
+.. _optimization_module:
 
 ======================================
 hots.plugins.optimization.pyomo_model

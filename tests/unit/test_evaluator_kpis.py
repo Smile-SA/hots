@@ -7,8 +7,8 @@ import pandas as pd
 from hots.evaluation.evaluator import (
     _entropy_from_counts,
     _gini,
-    _kpi_clustering,
     _kpi_cluster_structure,
+    _kpi_clustering,
     _kpi_conflict_graph,
     _kpi_load_balance,
     _kpi_migrations_from_moves,

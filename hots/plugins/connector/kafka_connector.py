@@ -166,3 +166,10 @@ class KafkaConnector(ConnectorPlugin):
             self.producer.produce(self.topic_moves, json.dumps(payload).encode("utf-8"))
 
         self.producer.flush()
+
+    def close(self) -> None:
+        """Flush pending moves and close the Kafka consumer."""
+        try:
+            self.producer.flush()
+        finally:
+            self.consumer.close()

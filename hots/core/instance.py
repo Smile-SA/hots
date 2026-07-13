@@ -84,11 +84,6 @@ class Instance:
             return None
         return int(window_duration) + int(params.get("tick_increment", 1)) + 1
 
-    @staticmethod
-    def clear_kafka_topics() -> None:
-        """Clear all configured Kafka topics."""
-        KafkaPlugin.clear_topics()
-
     def _invalidate_caches(self) -> None:
         """Mark derived structures as needing a refresh on next access."""
         self._id_map_stale = True

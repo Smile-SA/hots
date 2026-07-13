@@ -1,4 +1,4 @@
-.. _node_module:
+.. _core_module:
 
 =======================
 Core app & interfaces

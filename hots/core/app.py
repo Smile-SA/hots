@@ -2,7 +2,6 @@
 
 """HOTS – application main process."""
 
-import importlib
 import logging
 import time
 from pathlib import Path
@@ -17,11 +16,9 @@ from hots.plugins import (
     ClusteringFactory,
     ConnectorFactory,
     OptimizationFactory,
+    ProblemFactory,
 )
-from hots.plugins.clustering.builder import (
-    build_post_clust_matrices,
-    build_pre_clust_matrices,
-)
+from hots.plugins.clustering.builder import build_post_clust_matrices
 from hots.utils.signals import setup_signal_handlers
 from hots.visualization.plot import plot_containers_groupby_nodes
 
@@ -43,17 +40,14 @@ class App:
         self.problem_opt = OptimizationFactory.create(
             config.optimization, self.instance, pb_number=2
         )
-        # dynamically load the problem plugin (e.g. 'placement')
-        problem_type = config.problem.type.lower()
-        module_path = f"hots.plugins.problem.{problem_type}"
-        cls_name = f"{problem_type.title()}Plugin"
-        mod = importlib.import_module(module_path)
-        problem_cls = getattr(mod, cls_name)
-        self.problem = problem_cls(self.instance)
+        self.problem = ProblemFactory.create(config.problem, self.instance)
 
         # State that persists across iterations
         self.prev_snapshot: EvalSnapshot | None = None
         self.results_file: Path = config.reporting.metrics_file
+        # Set by a signal so the streaming loop can stop cleanly (and so HOTS can
+        # be embedded as a library without a signal handler raising SystemExit).
+        self._stop_requested = False
 
         setup_signal_handlers(self.shutdown)
 
@@ -69,10 +63,6 @@ class App:
         else:
             end_time = t_start + self.config.time_limit
         logging.info("Starting HOTS run – preprocessing")
-
-        if self.config.connector.type.lower() == "kafka":
-            # Clear any residual offsets/state
-            self.instance.clear_kafka_topics()
 
         # Initial window
         n_clusters, n_initial_moves = self._initial_phase()
@@ -99,9 +89,6 @@ class App:
         """Run initial clustering + optional first placement."""
         logging.info("Starting HOTS run – preprocessing")
 
-        # Clear any residual offsets/state
-        self.instance.clear_kafka_topics()
-
         # ===== Initial window =====
         logging.info("Analysis period (initial window)")
         labels = np.asarray(self.clustering.fit(self.instance.df_indiv))
@@ -125,13 +112,15 @@ class App:
             logging.info("Skipping first placement (keeping existing)")
             n_initial_moves = 0
 
-        _, _ = plot_containers_groupby_nodes(
-            self.instance.df_indiv,
-            viz=self.config.viz,
-            max_cap=self.instance.df_meta["cpu"].max(),
-            sep_time=self.config.connector.parameters.get("sep_time"),
-            fields=self.instance.fields,
-        )
+        # Skip plotting in headless/benchmark runs to keep the startup path cheap.
+        if self.config.viz.enabled:
+            plot_containers_groupby_nodes(
+                self.instance.df_indiv,
+                viz=self.config.viz,
+                max_cap=self.instance.df_meta["cpu"].max(),
+                sep_time=self.config.connector.parameters.get("sep_time"),
+                fields=self.instance.fields,
+            )
 
         return n_clusters, n_initial_moves
 
@@ -140,13 +129,12 @@ class App:
         logging.info("Building first optimization models...")
         cfg = self.instance.config.connector.parameters
         # Clustering model
-        build_pre_clust_matrices(
+        self.clustering.build_matrices(
             self.instance.df_indiv,
             cfg.get("tick_field"),
             cfg.get("individual_field"),
             cfg.get("metrics"),
             self.instance.get_id_map(),
-            self.clustering,
         )
 
         self.clust_opt.build(u_mat=self.clustering.u_mat, w_mat=self.clustering.w_mat)
@@ -173,6 +161,9 @@ class App:
 
         loop_nb = 1
         while True:
+            if self._stop_requested:
+                logging.info("Stop requested; ending streaming loop")
+                break
             if time.time() >= end_time:
                 break
 
@@ -272,9 +263,12 @@ class App:
             logging.info("Run KPIs written to %s", run_path)
 
     def shutdown(self, signum=None, frame=None):
-        """Handle shutdown signals gracefully."""
+        """Request a graceful stop.
+
+        Sets a flag the streaming loop checks each iteration instead of raising
+        SystemExit from the signal handler, so HOTS can be embedded as a library.
+        Metrics collected so far are still flushed.
+        """
         logging.info("Shutting down...")
-        try:
-            self._persist_metrics()
-        finally:
-            raise SystemExit(0)
+        self._stop_requested = True
+        self._persist_metrics()

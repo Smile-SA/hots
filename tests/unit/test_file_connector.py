@@ -63,6 +63,27 @@ def test_missing_column_fails_fast(tmp_path):
         FileConnector(_make_params(tmp_path, tmp_path))
 
 
+def test_outfile_reset_is_per_instance(tmp_path):
+    """Two connectors sharing an outfile each reset it (no process-global guard)."""
+    _write_csv(
+        tmp_path / "container_usage.csv",
+        ["timestamp", "container_id", "machine_id", "cpu"],
+        [[0, "c_1", "n_1", 1.0]],
+    )
+    _write_csv(tmp_path / "node_meta.csv", ["machine_id", "cpu"], [["n_1", 6]])
+    outfile = tmp_path / "moves.jsonl"
+
+    a = FileConnector(_make_params(tmp_path, tmp_path, outfile=str(outfile)))
+    a.apply_moves([{"container_name": "c_1", "old_host": "n_1", "new_host": "n_2"}], 0)
+    a.close()
+    assert outfile.read_text() != ""
+
+    # A second connector on the same outfile must truncate it again.
+    b = FileConnector(_make_params(tmp_path, tmp_path, outfile=str(outfile)))
+    b.close()
+    assert outfile.read_text() == ""
+
+
 def test_load_next_windows(tmp_path):
     """load_next returns rows per tick window and None when data is exhausted."""
     _write_csv(

@@ -1,4 +1,4 @@
-.. _allocation_module:
+.. _evaluator_module:
 
 =========================
 hots.evaluation.evaluator

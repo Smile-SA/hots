@@ -65,6 +65,22 @@ class ConnectorConfig(_Cfg):
     type: str
     parameters: dict[str, Any]
 
+    @model_validator(mode="after")
+    def _enforce_single_metric(self):
+        """Reject multi-metric configs: the pipeline only uses ``metrics[0]``.
+
+        The clustering matrices, the placement heuristics and both Pyomo models
+        all read a single metric column, so a config listing several would
+        silently optimize only the first. Fail loudly instead.
+        """
+        metrics = self.parameters.get("metrics")
+        if isinstance(metrics, (list, tuple)) and len(metrics) > 1:
+            raise ValueError(
+                "connector.parameters.metrics currently supports exactly one metric "
+                f"(got {list(metrics)}); multi-metric optimization is not implemented."
+            )
+        return self
+
 
 class LoggingConfig(_Cfg):
     """Configuration for application-wide logging."""

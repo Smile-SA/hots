@@ -38,6 +38,12 @@ A minimal example using the file connector looks like this:
 ```json
 {
   "time_limit": null,
+  "data": {
+    "tick_field": "timestamp",
+    "individual_field": "container_id",
+    "host_field": "machine_id",
+    "metrics": ["cpu"]
+  },
   "clustering": {
     "method": "kmeans",
     "nb_clusters": 3,
@@ -65,13 +71,9 @@ A minimal example using the file connector looks like this:
     "parameters": {
       "data_folder": "./tests/data/thesis_ex_10",
       "file_name": "container_usage.csv",
-      "host_field": "machine_id",
-      "individual_field": "container_id",
-      "tick_field": "timestamp",
       "tick_increment": 2,
       "window_duration": 3,
       "sep_time": 3,
-      "metrics": ["cpu"],
       "outfile": "./out/moves.log"
     }
   },
@@ -87,6 +89,17 @@ A minimal example using the file connector looks like this:
   }
 }
 ```
+
+The `data` section names the columns of your time series. These describe the
+*data*, not the transport, so every component reads them from there and you can
+swap connectors without touching them. Only one entry in `metrics` is supported
+today — the pipeline optimizes a single metric, and a longer list is rejected at
+load time rather than silently ignored.
+
+> **Backward compatibility:** these four keys may still be given inside
+> `connector.parameters` instead, as in older configs; they are then used to
+> populate `data` automatically. Declaring the same key in both places with
+> *different* values is a config error.
 
 For a Kafka-based setup, the structure is the same but the `connector` section uses `"type": "kafka"` and Kafka-specific parameters:
 

@@ -65,6 +65,25 @@ class ConnectorConfig(_Cfg):
     type: str
     parameters: dict[str, Any]
 
+
+#: Field names describing the input series, shared by every component.
+DATA_FIELD_KEYS = ("tick_field", "individual_field", "host_field", "metrics")
+
+
+class DataConfig(_Cfg):
+    """Names of the columns describing the input time series.
+
+    These belong to the *data*, not to whichever connector happens to deliver it,
+    so they live in a top-level ``data`` section that every component reads. For
+    backward compatibility they may still be given under
+    ``connector.parameters``; see :meth:`AppConfig._sync_data_section`.
+    """
+
+    tick_field: str = "timestamp"
+    individual_field: str = "container_id"
+    host_field: str = "machine_id"
+    metrics: list[str]
+
     @model_validator(mode="after")
     def _enforce_single_metric(self):
         """Reject multi-metric configs: the pipeline only uses ``metrics[0]``.
@@ -73,11 +92,10 @@ class ConnectorConfig(_Cfg):
         all read a single metric column, so a config listing several would
         silently optimize only the first. Fail loudly instead.
         """
-        metrics = self.parameters.get("metrics")
-        if isinstance(metrics, (list, tuple)) and len(metrics) > 1:
+        if len(self.metrics) != 1:
             raise ValueError(
-                "connector.parameters.metrics currently supports exactly one metric "
-                f"(got {list(metrics)}); multi-metric optimization is not implemented."
+                "data.metrics currently supports exactly one metric "
+                f"(got {list(self.metrics)}); multi-metric optimization is not implemented."
             )
         return self
 
@@ -207,6 +225,7 @@ class AppConfig(_Cfg):
 
     time_limit: int | None = Field(default=None, ge=0)
     kafka: KafkaConfig | None = None
+    data: DataConfig
     clustering: ClusteringConfig
     optimization: OptimizationConfig
     problem: ProblemConfig
@@ -220,6 +239,54 @@ class AppConfig(_Cfg):
         validate_assignment=True,
         populate_by_name=True,  # allows using either "viz" or "visualization" when needed
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _sync_data_section(cls, values):
+        """Keep the ``data`` section and ``connector.parameters`` in agreement.
+
+        Field names used to live under ``connector.parameters``. They now belong
+        in a top-level ``data`` section, but both spellings stay valid:
+
+        - given only under ``connector.parameters``, they populate ``data``;
+        - given only under ``data``, they are mirrored into
+          ``connector.parameters`` so connector plugins keep working unchanged;
+        - given in both places with different values, that is a config error.
+        """
+        if not isinstance(values, Mapping):
+            return values
+
+        values = dict(values)
+        connector = values.get("connector")
+        if not isinstance(connector, Mapping):
+            return values
+
+        connector = dict(connector)
+        params = dict(connector.get("parameters") or {})
+        data = dict(values.get("data") or {})
+
+        conflicts = [
+            k for k in DATA_FIELD_KEYS if k in data and k in params and data[k] != params[k]
+        ]
+        if conflicts:
+            raise ValueError(
+                f"Conflicting values for {conflicts} between the 'data' section and "
+                "'connector.parameters'. Declare them once, preferably under 'data'."
+            )
+
+        # connector.parameters -> data (legacy configs)
+        for key in DATA_FIELD_KEYS:
+            if key not in data and key in params:
+                data[key] = params[key]
+        # data -> connector.parameters (so connector plugins still find them)
+        for key in DATA_FIELD_KEYS:
+            if key in data:
+                params[key] = data[key]
+
+        connector["parameters"] = params
+        values["connector"] = connector
+        values["data"] = data
+        return values
 
 
 def load_config(path: Path) -> AppConfig:

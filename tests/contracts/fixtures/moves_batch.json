@@ -1,0 +1,15 @@
+{
+  "$comment": "SHARED CONTRACT FIXTURE - keep byte-identical in hots and hots-connector. Direction: HOTS -> hots-connector, on the topic named by connector.parameters.topic_moves. Each Kafka message is one object from `messages` below.",
+  "direction": "hots_to_connector",
+  "topic_config_key": "topic_moves",
+  "required_keys": ["container_name", "old_host", "new_host"],
+  "messages": [
+    {"container_name": "c_1", "old_host": "n_1", "new_host": "n_2", "time": 12},
+    {"container_name": "c_2", "old_host": "n_2", "new_host": "n_3", "time": 12}
+  ],
+  "notes": [
+    "`time` is stamped by the connector at publish time (the tick the move applies from), not by the placement heuristic.",
+    "The file connector writes these same objects as JSONL, one per line, with `time` as a string.",
+    "Only moves produced by PlacementPlugin.move_container reach the wire in this shape. The allocation_* heuristics currently emit {container, src, dst} instead, which no connector understands - see tests/contracts/README.md."
+  ]
+}

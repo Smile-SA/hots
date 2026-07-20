@@ -350,9 +350,9 @@ def eval_solutions(
         is the :class:`EvalSnapshot` to feed into the next call.
     """
     # 1) Build & solve clustering problem
-    cfg = instance.config.connector.parameters
-    nf, hf, tf = cfg.get("individual_field"), cfg.get("host_field"), cfg.get("tick_field")
-    metric_names = cfg.get("metrics")
+    f = instance.fields
+    nf, hf, tf = f.individual, f.host, f.tick
+    metric_names = list(f.metrics)
 
     new_containers = False
     if len(clustering.labels) < working_df[nf].nunique():
@@ -618,9 +618,9 @@ def get_container_tomove(instance, c1, c2, working_df: pd.DataFrame):
     Chooses the container whose removal makes the node's time series smoother
     (i.e., smaller variance of node_ts - container_ts).
     """
-    cfg = instance.config.connector.parameters
-    nf, hf, tf = cfg.get("individual_field"), cfg.get("host_field"), cfg.get("tick_field")
-    metric = cfg.get("metrics")[0]
+    f = instance.fields
+    nf, hf, tf = f.individual, f.host, f.tick
+    metric = f.metric
 
     df = working_df[[nf, hf, tf, metric]].copy()
 
@@ -706,9 +706,9 @@ def eval_step_kpis(
     }
 
     # ---- new KPIs: load balance (optional if working_df provided)
-    cfg = instance.config.connector.parameters
-    nf, hf = cfg.get("individual_field"), cfg.get("host_field")
-    metrics_list = cfg.get("metrics") or []
+    f = instance.fields
+    nf, hf = f.individual, f.host
+    metrics_list = list(f.metrics)
     load_kpi = {}
     if working_df is not None:
         load_kpi = _kpi_load_balance(

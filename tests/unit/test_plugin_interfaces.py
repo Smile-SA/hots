@@ -4,6 +4,7 @@ import inspect
 
 import pytest
 
+from hots.core.instance import FieldNames
 from hots.core.interfaces import (
     ClusteringPlugin,
     ConnectorPlugin,
@@ -67,20 +68,11 @@ def test_problem_factory_resolves_placement():
     class _Cfg:
         type = "placement"
 
-    # PlacementPlugin only touches instance.config.connector.parameters at init
-    class _ConnCfg:
-        parameters = {
-            "individual_field": "container_id",
-            "host_field": "machine_id",
-            "tick_field": "timestamp",
-            "metrics": ["cpu"],
-        }
-
-    class _ConfigNS:
-        connector = _ConnCfg()
-
+    # PlacementPlugin only needs the shared field names at init
     class _Instance:
-        config = _ConfigNS()
+        fields = FieldNames(
+            tick="timestamp", host="machine_id", individual="container_id", metrics=("cpu",)
+        )
 
     plugin = ProblemFactory.create(_Cfg(), _Instance())
     assert isinstance(plugin, PlacementPlugin)

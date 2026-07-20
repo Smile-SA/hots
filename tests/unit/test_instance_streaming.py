@@ -2,7 +2,7 @@
 
 import pandas as pd
 
-from hots.core.instance import Instance
+from hots.core.instance import FieldNames, Instance
 from hots.utils.tools import build_df_from_containers
 
 TICK, INDIV, HOST, METRIC = "timestamp", "container_id", "machine_id", "cpu"
@@ -10,11 +10,8 @@ TICK, INDIV, HOST, METRIC = "timestamp", "container_id", "machine_id", "cpu"
 
 class _ConnectorCfg:
     def __init__(self, **overrides):
+        # Only loop/connector concerns live here; field names come from `data`.
         self.parameters = {
-            "tick_field": TICK,
-            "individual_field": INDIV,
-            "host_field": HOST,
-            "metrics": [METRIC],
             "window_duration": 3,
             "tick_increment": 1,
         }
@@ -35,6 +32,7 @@ def _rows(specs):
 def _instance(df, **cfg_overrides):
     inst = Instance.__new__(Instance)
     inst.config = _Cfg(**cfg_overrides)
+    inst.fields = FieldNames(tick=TICK, host=HOST, individual=INDIV, metrics=(METRIC,))
     inst._id_map = {}
     inst._inv_id_map = {}
     inst._id_map_stale = True

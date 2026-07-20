@@ -2,6 +2,8 @@
 
 """HOTS core functionality: manage state and data ingestion."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -14,11 +16,32 @@ from hots.utils.tools import build_df_from_containers
 
 @dataclass(frozen=True)
 class FieldNames:
-    """Column names used across the project."""
+    """Column names used across the project.
+
+    Built from the top-level ``data`` config section; this is the single place
+    components should read field names from, rather than reaching into a
+    particular connector's parameters.
+    """
 
     tick: str
     host: str
     individual: str
+    metrics: tuple[str, ...] = ()
+
+    @classmethod
+    def from_config(cls, config) -> FieldNames:
+        """Build the field names from an :class:`AppConfig`."""
+        return cls(
+            tick=config.data.tick_field,
+            host=config.data.host_field,
+            individual=config.data.individual_field,
+            metrics=tuple(config.data.metrics),
+        )
+
+    @property
+    def metric(self) -> str:
+        """The single metric the pipeline optimizes (see DataConfig)."""
+        return self.metrics[0]
 
 
 class Instance:
@@ -43,7 +66,7 @@ class Instance:
         self._id_map_stale = True
         self.current_solution = None
         self.cluster_labels = None
-        self.fields = None
+        self.fields = FieldNames.from_config(config)
         self._known_hosts: set[Any] = set()
 
     def _load_initial_data(self, connector):
@@ -51,19 +74,14 @@ class Instance:
         Load the raw individual-level data via the reader
         and derive the host-level DataFrame by aggregation.
         """
-        params = self.config.connector.parameters
+        f = self.fields
         self.df_indiv, _, self.df_meta = connector.load_initial()
-        self._known_hosts = set(self.df_indiv[params.get("host_field")].unique())
+        self._known_hosts = set(self.df_indiv[f.host].unique())
         self.df_host = build_df_from_containers(
             self.df_indiv,
-            tick_field=params.get("tick_field"),
-            host_field=params.get("host_field"),
-            metrics=params.get("metrics"),
-        )
-        self.fields = FieldNames(
-            tick=params.get("tick_field"),
-            host=params.get("host_field"),
-            individual=params.get("individual_field"),
+            tick_field=f.tick,
+            host_field=f.host,
+            metrics=list(f.metrics),
         )
         self._invalidate_caches()
 
@@ -98,10 +116,8 @@ class Instance:
         if new_df_indiv is None or new_df_indiv.empty:
             return
 
-        params = self.config.connector.parameters
-        tick_field = params.get("tick_field")
-        host_field = params.get("host_field")
-        metrics = params.get("metrics")
+        f = self.fields
+        tick_field, host_field, metrics = f.tick, f.host, list(f.metrics)
 
         self.df_indiv = pd.concat([self.df_indiv, new_df_indiv], ignore_index=True)
         self._known_hosts.update(new_df_indiv[host_field].unique())
@@ -131,7 +147,7 @@ class Instance:
         if retention is None:
             return
 
-        tick_field = self.config.connector.parameters.get("tick_field")
+        tick_field = self.fields.tick
         cutoff = self.df_indiv[tick_field].max() - retention + 1
         self.df_indiv = self.df_indiv[self.df_indiv[tick_field] >= cutoff].reset_index(drop=True)
         self.df_host = self.df_host[self.df_host[tick_field] >= cutoff].reset_index(drop=True)
@@ -145,7 +161,7 @@ class Instance:
         never shifts the indices the matrices and label arrays are keyed on.
         """
         if self._id_map_stale:
-            indiv_field = self.config.connector.parameters.get("individual_field")
+            indiv_field = self.fields.individual
             unseen = set(self.df_indiv[indiv_field].unique()) - self._id_map.keys()
             # sorted() only to keep index assignment deterministic within a batch
             for cid in sorted(unseen):
@@ -163,7 +179,7 @@ class Instance:
     def get_working_df(self, tmin, tmax, inclusive=True):
         """Get data for the current time window."""
         df = self.df_indiv
-        tick_field = self.config.connector.parameters.get("tick_field")
+        tick_field = self.fields.tick
         if inclusive:
             mask = (df[tick_field] >= tmin) & (df[tick_field] <= tmax)
         else:

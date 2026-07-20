@@ -30,12 +30,11 @@ class PyomoModel(OptimizationPlugin):
         self.df_meta = getattr(instance, "df_meta", None)
         self.nb_clusters = getattr(instance.config.clustering, "nb_clusters", None)
         self.dict_id_c = instance.get_id_map()
-        self.tick_field = instance.config.connector.parameters.get("tick_field", "timestamp")
-        self.indiv_field = instance.config.connector.parameters.get(
-            "individual_field", "container_id"
-        )
-        self.host_field = instance.config.connector.parameters.get("host_field", "machine_id")
-        self.metric = instance.config.connector.parameters.get("metrics")[0]
+        fields = instance.fields
+        self.tick_field = fields.tick
+        self.indiv_field = fields.individual
+        self.host_field = fields.host
+        self.metric = fields.metric
 
         # matrices (passed at build time)
         self.u_mat = None

@@ -18,14 +18,14 @@ class SpectralClustering(ClusteringPlugin):
     def __init__(self, parameters: dict, instance):
         """Initialize with number of clusters and instance config."""
         super().__init__()
-        connector_params = instance.config.connector.parameters
+        fields = instance.fields
         self.n_clusters = parameters.get(
             "nb_clusters",
             instance.config.clustering.nb_clusters,
         )
-        self.tick_field = connector_params.get("tick_field")
-        self.indiv_field = connector_params.get("individual_field")
-        self.metrics = connector_params.get("metrics")
+        self.tick_field = fields.tick
+        self.indiv_field = fields.individual
+        self.metrics = list(fields.metrics)
         self.id_map = instance.get_id_map()
 
     def fit(self, df: pd.DataFrame) -> pd.Series:

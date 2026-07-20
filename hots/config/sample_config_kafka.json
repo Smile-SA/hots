@@ -1,5 +1,11 @@
 {
   "time_limit": 600,
+  "data": {
+    "tick_field": "timestamp",
+    "individual_field": "container_id",
+    "host_field": "machine_id",
+    "metrics": ["cpu"]
+  },
   "clustering": {
     "method": "kmeans",
     "nb_clusters": 3,
@@ -25,10 +31,6 @@
   "connector": {
     "type": "kafka",
     "parameters": {
-      "tick_field": "timestamp",
-      "individual_field": "container_id",
-      "host_field": "machine_id",
-      "metrics": ["cpu"],
       "sep_time": 30,
       "tick_increment": 10,
       "window_duration": 3,

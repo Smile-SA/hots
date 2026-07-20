@@ -2,16 +2,11 @@
 
 import pandas as pd
 
-from hots.core.instance import Instance
+from hots.core.instance import FieldNames, Instance
 
 
 class _ConnectorCfg:
-    parameters = {
-        "tick_field": "timestamp",
-        "individual_field": "container_id",
-        "host_field": "machine_id",
-        "metrics": ["cpu"],
-    }
+    parameters = {}
 
 
 class _Cfg:
@@ -22,6 +17,9 @@ class _Cfg:
 def _instance(df):
     inst = Instance.__new__(Instance)
     inst.config = _Cfg()
+    inst.fields = FieldNames(
+        tick="timestamp", host="machine_id", individual="container_id", metrics=("cpu",)
+    )
     inst.df_indiv = df
     inst._id_map = {}
     inst._inv_id_map = {}

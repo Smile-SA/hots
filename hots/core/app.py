@@ -127,13 +127,13 @@ class App:
     def pre_loop(self):
         """Build and solve optimization models before performing streaming loop."""
         logging.info("Building first optimization models...")
-        cfg = self.instance.config.connector.parameters
+        f = self.instance.fields
         # Clustering model
         self.clustering.build_matrices(
             self.instance.df_indiv,
-            cfg.get("tick_field"),
-            cfg.get("individual_field"),
-            cfg.get("metrics"),
+            f.tick,
+            f.individual,
+            list(f.metrics),
             self.instance.get_id_map(),
         )
 
@@ -151,7 +151,7 @@ class App:
 
     def _streaming_loop(self, *, end_time: float) -> None:
         """Streaming update loop."""
-        tick_field = self.config.connector.parameters.get("tick_field")
+        tick_field = self.instance.fields.tick
         window_duration = self.config.connector.parameters.get("window_duration")
 
         # Initial streaming bounds are derived from the last tick in the initial df

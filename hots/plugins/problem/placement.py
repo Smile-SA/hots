@@ -15,10 +15,18 @@ from hots.core.interfaces import ProblemPlugin
 
 @dataclass
 class _Fields:
+    """Local view of the shared field names (see ``Instance.fields``)."""
+
     indiv: str
     host: str
     tick: str
     metric: str  # we use the first metric
+
+    @classmethod
+    def of(cls, instance) -> _Fields:
+        """Build from the instance's canonical field names."""
+        f = instance.fields
+        return cls(indiv=f.individual, host=f.host, tick=f.tick, metric=f.metric)
 
 
 # ---------- module helpers ----------------------------------------------------
@@ -61,13 +69,7 @@ class PlacementPlugin(ProblemPlugin):
     def __init__(self, instance):
         """Initialize the PlacementPlugin with the given instance."""
         self.instance = instance
-        cfg = instance.config.connector.parameters
-        self._f = _Fields(
-            indiv=cfg.get("individual_field"),
-            host=cfg.get("host_field"),
-            tick=cfg.get("tick_field"),
-            metric=cfg.get("metrics")[0],
-        )
+        self._f = _Fields.of(instance)
         self.pending_changes = {}
 
     # ---------- ProblemPlugin API --------------------------------------------
@@ -95,13 +97,13 @@ class PlacementPlugin(ProblemPlugin):
         )
 
         # 1) Build the (containers × features) matrix
-        cfg = self.instance.config.connector.parameters
+        f = self.instance.fields
 
         mat = build_matrix_indiv_attr(
             df_indiv,
-            cfg.get("tick_field"),
-            cfg.get("individual_field"),
-            cfg.get("metrics"),
+            f.tick,
+            f.individual,
+            list(f.metrics),
             self.instance.get_id_map(),
         )
         # 2) Turn it into a similarity (distance) matrix
@@ -113,9 +115,9 @@ class PlacementPlugin(ProblemPlugin):
     def _window_frames(
         inst, working_df: pd.DataFrame, tmin: int, tmax: int
     ) -> tuple[pd.DataFrame, pd.DataFrame, np.ndarray]:
-        cfg = inst.config.connector.parameters
-        nf, hf, tf = cfg.get("individual_field"), cfg.get("host_field"), cfg.get("tick_field")
-        metric = cfg.get("metrics")[0]
+        f = inst.fields
+        nf, hf, tf = f.individual, f.host, f.tick
+        metric = f.metric
 
         indiv = working_df[[nf, hf, tf, metric]]
         host = inst.df_host[[hf, tf, metric]]
@@ -131,10 +133,10 @@ class PlacementPlugin(ProblemPlugin):
 
     @staticmethod
     def _container_ts(w_indiv: pd.DataFrame, ticks: np.ndarray, inst, container_id) -> pd.Series:
-        cfg = inst.config.connector.parameters
-        tf = cfg.get("tick_field")
-        nf = cfg.get("individual_field")
-        metric = cfg.get("metrics")[0]
+        f = inst.fields
+        tf = f.tick
+        nf = f.individual
+        metric = f.metric
 
         return (
             w_indiv[w_indiv[nf] == container_id]
@@ -145,23 +147,23 @@ class PlacementPlugin(ProblemPlugin):
 
     @staticmethod
     def _candidate_nodes(w_indiv: pd.DataFrame, inst, old_id) -> list:
-        hf = inst.config.connector.parameters.get("host_field")
+        hf = inst.fields.host
         nodes = w_indiv[hf].unique()
         return [n for n in nodes if n != old_id]
 
     @staticmethod
     def _capacity_map(inst) -> dict:
-        hf = inst.config.connector.parameters.get("host_field")
-        metric = inst.config.connector.parameters.get("metrics")[0]
+        hf = inst.fields.host
+        metric = inst.fields.metric
         # capacity per node assumed scalar here
         return inst.df_meta.set_index(hf)[metric].to_dict()
 
     @staticmethod
     def _node_ts(w_host: pd.DataFrame, inst, node, ticks: np.ndarray) -> pd.Series:
-        cfg = inst.config.connector.parameters
-        tf = cfg.get("tick_field")
-        hf = cfg.get("host_field")
-        metric = cfg.get("metrics")[0]
+        f = inst.fields
+        tf = f.tick
+        hf = f.host
+        metric = f.metric
 
         return (
             w_host[w_host[hf] == node]
@@ -199,7 +201,7 @@ class PlacementPlugin(ProblemPlugin):
 
     @staticmethod
     def _pick_new_node(inst, used_nodes: set, fallback):
-        hf = inst.config.connector.parameters.get("host_field")
+        hf = inst.fields.host
         for nid in inst.df_meta[hf].unique():
             if nid not in used_nodes:
                 return nid
@@ -222,7 +224,7 @@ class PlacementPlugin(ProblemPlugin):
         (node_ts + container_ts). Falls back to opening a new node if needed.
         Returns a move dict or None.
         """
-        hf = inst.config.connector.parameters.get("host_field")
+        hf = inst.fields.host
         logging.info(f"Moving container: {container_id}")
 
         w_indiv, w_host, ticks = self._window_frames(inst, working_df, tmin, tmax)

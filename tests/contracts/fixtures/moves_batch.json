@@ -10,6 +10,7 @@
   "notes": [
     "`time` is stamped by the connector at publish time (the tick the move applies from), not by the placement heuristic.",
     "The file connector writes these same objects as JSONL, one per line, with `time` as a string.",
-    "Only moves produced by PlacementPlugin.move_container reach the wire in this shape. The allocation_* heuristics currently emit {container, src, dst} instead, which no connector understands - see tests/contracts/README.md."
+    "Every HOTS move producer goes through placement._move(), so this is the only shape emitted; add new heuristics via that helper.",
+    "`old_host` may be null when the container had no prior placement."
   ]
 }

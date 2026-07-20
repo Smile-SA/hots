@@ -59,6 +59,20 @@ def _safe_first(values: Iterable[Any], default: Any = None) -> Any:
     return default
 
 
+def _move(container: Any, old_host: Any, new_host: Any) -> dict[str, Any]:
+    """Build a move in the single shape connectors consume.
+
+    Every heuristic in this module goes through here, so the placement output
+    and the HOTS -> connector wire format cannot drift apart. See
+    ``tests/contracts/`` for the contract these keys satisfy.
+    """
+    return {
+        "container_name": container,
+        "old_host": old_host,
+        "new_host": new_host,
+    }
+
+
 # -----------------------------------------------------------------------------
 
 
@@ -109,7 +123,9 @@ class PlacementPlugin(ProblemPlugin):
         # 2) Turn it into a similarity (distance) matrix
         w = build_similarity_matrix(mat)
 
-        return self.allocation_distant_pairwise(df_indiv, df_host, w, labels.tolist())
+        # Pass `labels` through unflattened: when it is a Series indexed by
+        # container ID, grouping matches by ID rather than by row position.
+        return self.allocation_distant_pairwise(df_indiv, df_host, w, labels)
 
     @staticmethod
     def _window_frames(
@@ -255,11 +271,7 @@ class PlacementPlugin(ProblemPlugin):
 
         logging.info(f"He can go on {best_node} (old is {old_id})")
         if best_node != old_id:
-            return {
-                "container_name": container_id,
-                "old_host": old_id,
-                "new_host": best_node,
-            }
+            return _move(container_id, old_id, best_node)
         return None
 
     def move_list_containers(
@@ -479,7 +491,7 @@ class PlacementPlugin(ProblemPlugin):
                     src = current_host.get(cid, None)
                     dst = h["id"]
                     if src != dst:
-                        moves.append({"container": cid, "src": src, "dst": dst})
+                        moves.append(_move(cid, src, dst))
                     h["remaining"] = h["remaining"] - demand
                     break  # placed
         return moves
@@ -506,7 +518,7 @@ class PlacementPlugin(ProblemPlugin):
                 dst = self._best_destination(host_remaining, worst_host, d)
                 if dst is None:
                     continue
-                moves.append({"container": cid, "src": worst_host, "dst": dst})
+                moves.append(_move(cid, worst_host, dst))
                 host_remaining[worst_host] = host_remaining[worst_host] + d
                 host_remaining[dst] = host_remaining[dst] - d
                 break  # one move per (worst) host per pass
@@ -578,7 +590,7 @@ class PlacementPlugin(ProblemPlugin):
                 src = current_host.get(cid, None)
                 dst = hosts[i]["id"]
                 if src != dst:
-                    moves.append({"container": cid, "src": src, "dst": dst})
+                    moves.append(_move(cid, src, dst))
                 hosts[i]["remaining"] = rem - d
                 return
 
@@ -607,7 +619,7 @@ class PlacementPlugin(ProblemPlugin):
         for cid, _d in ((c_i, di), (c_j, dj)):
             src = current_host.get(cid, None)
             if src != dst:
-                moves.append({"container": cid, "src": src, "dst": dst})
+                moves.append(_move(cid, src, dst))
         hosts[idx]["remaining"] = hosts[idx]["remaining"] - (di + dj)
 
     def _select_best_distant_pair(
@@ -758,7 +770,7 @@ class PlacementPlugin(ProblemPlugin):
             if dst is None:
                 continue
 
-            moves.append({"container": cid, "src": worst_host, "dst": dst})
+            moves.append(_move(cid, worst_host, dst))
             rem[worst_host] += load
             rem[dst] -= load
             df.loc[df[f.indiv] == cid, f.host] = dst
@@ -796,26 +808,27 @@ class PlacementPlugin(ProblemPlugin):
     ) -> tuple[dict[Any, list[Any]], list[Any]]:
         """Return (label -> [container_id]), and ordered list of unique labels.
 
+        `df_indiv` holds one row per (container, tick), so containers are
+        de-duplicated first: a container must be placed once, not once per tick.
+
         Works if `labels` is:
-          - Series indexed by container ids,
-          - Series aligned with df_indiv rows,
-          - list/ndarray aligned with df_indiv rows.
+          - a Series indexed by container ids (preferred: matched by ID),
+          - a list/ndarray/Series with one entry per container, in the order
+            containers first appear in `df_indiv`.
         """
         f = self._f
-        label_to_conts: dict[Any, list[Any]] = {}
-        if isinstance(labels, pd.Series):
-            if set(labels.index) >= set(df_indiv[f.indiv]):
-                for _, r in df_indiv.iterrows():
-                    cid = r[f.indiv]
-                    lab = labels.loc[cid]
-                    label_to_conts.setdefault(lab, []).append(cid)
-            else:
-                for cid, lab in zip(df_indiv[f.indiv], labels, strict=True):
-                    label_to_conts.setdefault(lab, []).append(cid)
+        # dict.fromkeys keeps first-seen order while dropping repeats
+        cids = list(dict.fromkeys(df_indiv[f.indiv].tolist()))
+
+        if isinstance(labels, pd.Series) and set(labels.index) >= set(cids):
+            pairs = [(cid, labels.loc[cid]) for cid in cids]
         else:
-            labs = np.asarray(labels)
-            for cid, lab in zip(df_indiv[f.indiv].tolist(), labs, strict=True):
-                label_to_conts.setdefault(lab, []).append(cid)
+            labs = np.asarray(labels).reshape(-1)
+            pairs = list(zip(cids, labs, strict=True))
+
+        label_to_conts: dict[Any, list[Any]] = {}
+        for cid, lab in pairs:
+            label_to_conts.setdefault(lab, []).append(cid)
         uniq = list(label_to_conts.keys())
         return label_to_conts, uniq
 
@@ -874,7 +887,7 @@ class PlacementPlugin(ProblemPlugin):
             src = cur_vals[0]
             d = demand[cid]
             if _fits(remaining[tgt], d):
-                moves.append({"container": cid, "src": src, "dst": tgt})
+                moves.append(_move(cid, src, tgt))
                 remaining[src] = remaining[src] + d
                 remaining[tgt] = remaining[tgt] - d
                 df.loc[df[self._f.indiv] == cid, self._f.host] = tgt
@@ -956,7 +969,7 @@ class PlacementPlugin(ProblemPlugin):
 
                 d = demand[cid]
                 if _fits(remaining[anchor], d):
-                    moves.append({"container": cid, "src": cur, "dst": anchor})
+                    moves.append(_move(cid, cur, anchor))
                     remaining[cur] = remaining[cur] + d
                     remaining[anchor] = remaining[anchor] - d
                     host_members[cur].remove(cid)
@@ -989,7 +1002,7 @@ class PlacementPlugin(ProblemPlugin):
                 if best_dst is None:
                     continue
 
-                moves.append({"container": cid, "src": anchor, "dst": best_dst})
+                moves.append(_move(cid, anchor, best_dst))
                 remaining[anchor] = remaining[anchor] + d
                 remaining[best_dst] = remaining[best_dst] - d
                 host_members[anchor].remove(cid)
@@ -1127,8 +1140,8 @@ class PlacementPlugin(ProblemPlugin):
         """Create move list from swap tuple."""
         a_c, ha, b_c, hb = swap
         return [
-            {"container": a_c, "src": ha, "dst": hb},
-            {"container": b_c, "src": hb, "dst": ha},
+            _move(a_c, ha, hb),
+            _move(b_c, hb, ha),
         ]
 
     # ----- Graph helpers ------------------------------------------------------

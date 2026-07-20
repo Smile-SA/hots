@@ -193,19 +193,51 @@ def test_file_connector_consumes_the_same_move_shape(moves, tmp_path):
         assert conn.host_at(move["container_name"], tick, move["old_host"]) == move["new_host"]
 
 
-@pytest.mark.xfail(
-    reason=(
-        "KNOWN GAP: the allocation_* heuristics (used by PlacementPlugin.initial) "
-        "emit {container, src, dst}, but connectors consume "
-        "{container_name, old_host, new_host}. Such moves are written to the sink "
-        "but never registered, so host_at() keeps reporting the old host. "
-        "Remove this xfail once the two shapes are unified."
-    ),
-    strict=True,
-)
+def _placement_plugin():
+    """A PlacementPlugin over a two-container / two-node toy instance."""
+    import pandas as pd
+
+    from hots.core.instance import FieldNames
+    from hots.plugins.problem.placement import PlacementPlugin
+
+    df_indiv = pd.DataFrame(
+        [
+            {TICK: 0, INDIV: "c_1", HOST: "n_1", METRIC: 3.0},
+            {TICK: 0, INDIV: "c_2", HOST: "n_1", METRIC: 2.0},
+        ]
+    )
+    df_meta = pd.DataFrame([{HOST: "n_1", METRIC: 4.0}, {HOST: "n_2", METRIC: 4.0}])
+
+    class _Instance:
+        fields = FieldNames(tick=TICK, host=HOST, individual=INDIV, metrics=(METRIC,))
+
+        def __init__(self):
+            self.df_indiv = df_indiv
+            self.df_meta = df_meta
+
+        def get_id_map(self):
+            return {"c_1": 0, "c_2": 1}
+
+    return PlacementPlugin(_Instance()), df_indiv, df_meta
+
+
+def test_allocation_heuristics_emit_the_wire_shape():
+    """Every producer of moves must use the one contract shape."""
+    plugin, df_indiv, df_meta = _placement_plugin()
+    required = {"container_name", "old_host", "new_host"}
+
+    moves = plugin.allocation_ffd(df_indiv, df_meta)
+    assert moves, "the toy instance should require at least one move"
+    for move in moves:
+        assert required == set(move), f"heuristic emitted a non-contract move: {move}"
+
+
 def test_allocation_heuristic_moves_are_understood_by_the_sink(tmp_path):
-    """The shape produced by allocation_* should satisfy the same move contract."""
+    """A heuristic's output must survive the sink: written *and* registered."""
     from hots.plugins.connector.file_connector import FileConnector
+
+    plugin, df_indiv, df_meta = _placement_plugin()
+    moves = plugin.allocation_ffd(df_indiv, df_meta)
 
     (tmp_path / "container_usage.csv").write_text(
         "timestamp,container_id,machine_id,cpu\n0,c_1,n_1,1.0\n", encoding="utf-8"
@@ -224,9 +256,12 @@ def test_allocation_heuristic_moves_are_understood_by_the_sink(tmp_path):
             "outfile": str(outfile),
         }
     )
-
-    # This is exactly what allocation_distant_pairwise/ffd/spread return.
-    conn.apply_moves([{"container": "c_1", "src": "n_1", "dst": "n_2"}], 0)
+    conn.apply_moves(moves, 0)
     conn.close()
 
-    assert conn.host_at("c_1", 0, "n_1") == "n_2"
+    written = [json.loads(line) for line in outfile.read_text().splitlines() if line.strip()]
+    assert len(written) == len(moves)
+
+    # Registered, not merely logged: the sink must report the new host afterwards.
+    for move in moves:
+        assert conn.host_at(move["container_name"], 0, move["old_host"]) == move["new_host"]

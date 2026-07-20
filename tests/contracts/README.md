@@ -42,18 +42,17 @@ The *column* names HOTS uses internally are configurable via the top-level
 contract and are not affected by that configuration. The metric key must match
 the single entry in `data.metrics`.
 
-## Known gap: two move shapes
+## One move shape
 
-`PlacementPlugin.move_container` — the streaming path — emits the wire shape
-`{container_name, old_host, new_host}` that connectors consume.
+Every producer of moves goes through `placement._move()`, which emits
+`{container_name, old_host, new_host}` — the shape both connectors consume and
+the one pinned by `moves_batch.json`. `test_allocation_heuristics_emit_the_wire_shape`
+asserts this for the `allocation_*` heuristics, and
+`test_allocation_heuristic_moves_are_understood_by_the_sink` checks a real
+heuristic's output survives the sink (written *and* registered, so `host_at()`
+reports the new host).
 
-The `allocation_*` heuristics (`allocation_distant_pairwise`, `allocation_ffd`,
-`allocation_spread`, `colocalize_clusters`, `find_substitution`) instead emit
-`{container, src, dst}`. `FileConnector.add_moves` reads `container_name` /
-`new_host`, so those moves are written to the output file but **never
-registered**, and `host_at()` keeps returning the old host. `KafkaConnector`
-would publish them verbatim, in a shape the connector does not understand.
-
-`test_allocation_heuristic_moves_are_understood_by_the_sink` is a `strict=True`
-xfail pinning this. When the shapes are unified it will start passing and fail
-the suite, prompting removal of the xfail.
+Historically the `allocation_*` heuristics emitted `{container, src, dst}`
+instead, which no connector understood: such moves were written to the output
+file but never registered. If you add a heuristic, build its moves with `_move()`
+rather than a dict literal and that class of bug cannot come back.

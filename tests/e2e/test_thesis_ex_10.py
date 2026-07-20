@@ -1,6 +1,7 @@
 """End-to-end 'happy path' test using tests/data/thesis_ex_10."""
 
 import importlib.util
+import json
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,66 @@ if _pyomo_installed:
     # returns an UnknownSolver and the availability check always skips.
     import pyomo.environ  # noqa: F401
     from pyomo.opt import SolverFactory
+
+
+def _prepared_config(tests_data_directory, tmp_path):
+    """Load the sample config and point it at the tiny test dataset."""
+    repo_root = Path(__file__).resolve().parents[2]
+    cfg = load_config(repo_root / "hots" / "config" / "sample_config_file.json")
+
+    solver_name = getattr(cfg, "solver", "glpk")
+    if not SolverFactory(solver_name).available(False):
+        pytest.skip(f"Solver '{solver_name}' not available on this runner")
+
+    params = cfg.connector.parameters
+    params["data_folder"] = str(tests_data_directory / "thesis_ex_10")
+    params.setdefault("file_name", "container_usage.csv")
+    params.setdefault("sep_time", 3)
+    params.setdefault("tick_increment", 1)
+    params["outfile"] = str(tmp_path / "moves.jsonl")
+    params["reset_on_start"] = True
+
+    cfg.reporting.results_folder = tmp_path
+    cfg.reporting.metrics_file = tmp_path / "metrics.csv"
+    cfg.reporting.plots_folder = tmp_path / "plots"
+    cfg.time_limit = None
+    return cfg
+
+
+@pytest.mark.e2e
+def test_initial_placement_path(tests_data_directory, tmp_path):
+    """Run with the first-placement heuristic enabled.
+
+    This path is disabled in the sample configs, so without this test nothing
+    exercises PlacementPlugin.initial -> allocation_distant_pairwise, and a
+    regression there is invisible.
+    """
+    cfg = _prepared_config(tests_data_directory, tmp_path)
+    cfg.problem.parameters["initial_placement"] = True
+
+    app = App(cfg)
+    app.run()
+
+    assert app.instance.metrics_history
+
+    initial = next(m for m in app.instance.metrics_history if "initial_moves" in m)
+    assert initial["initial_clusters"] > 0
+
+    moves_path = Path(cfg.connector.parameters["outfile"])
+    assert moves_path.exists()
+
+    written = [json.loads(line) for line in moves_path.read_text().splitlines() if line.strip()]
+    assert written, "the first placement should have produced moves"
+
+    # Every emitted move must satisfy the connector contract, and a container
+    # must appear at most once in the initial placement (one row per container,
+    # not one per tick).
+    initial_moves = written[: int(initial["initial_moves"])]
+    for move in initial_moves:
+        assert {"container_name", "old_host", "new_host"} <= set(move)
+
+    moved = [m["container_name"] for m in initial_moves]
+    assert len(moved) == len(set(moved)), "a container was placed more than once"
 
 
 @pytest.mark.e2e

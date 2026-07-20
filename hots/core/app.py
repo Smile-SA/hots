@@ -6,7 +6,6 @@ import logging
 import time
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 from hots.config.loader import AppConfig
@@ -91,8 +90,10 @@ class App:
 
         # ===== Initial window =====
         logging.info("Analysis period (initial window)")
-        labels = np.asarray(self.clustering.fit(self.instance.df_indiv))
-        n_clusters = int(len(np.unique(labels)))
+        # Keep the Series: it is indexed by container ID, and the placement
+        # heuristics need that index to match labels to containers.
+        labels = self.clustering.fit(self.instance.df_indiv)
+        n_clusters = int(labels.nunique())
         logging.info("Initial clustering produced %d clusters", n_clusters)
 
         if self.config.problem.parameters.get("initial_placement", True):

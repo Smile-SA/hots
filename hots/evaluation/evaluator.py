@@ -369,7 +369,13 @@ def eval_solutions(
             instance.get_id_map(), working_df, u_mat=clustering.u_mat, w_mat=clustering.w_mat
         )
     else:
-        clust_opt.build(u_mat=clustering.u_mat, w_mat=clustering.w_mat)
+        # Container set is unchanged: mutate the persistent model's params in
+        # place (sol_u, w, and the must_link_c constraint they feed) instead
+        # of rebuilding the abstract model from scratch every tick. See the
+        # reproducibility note on PyomoModel.fill_dual_values: on a
+        # degenerate LP this can affect which tied dual solution comes back.
+        clust_opt.update_w(clustering.w_mat)
+        clust_opt.update_adjacency_constraints(clustering.u_mat)
     clust_opt.solve(
         solver=instance.config.optimization.parameters.get("solver", "glpk"),
     )
@@ -414,7 +420,12 @@ def eval_solutions(
             instance.get_id_map(), working_df, u_mat=clustering.u_mat, v_mat=v_mat, dv_mat=dv_mat
         )
     else:
-        problem_opt.build(u_mat=clustering.u_mat, v_mat=v_mat, dv_mat=dv_mat)
+        # Same persistent-model update as above: sol_u/dv feed the objective
+        # symbolically (mutable Params), sol_v feeds must_link_n and needs
+        # the constraint rebuilt, which update_adjacency_constraints does.
+        problem_opt.update_sol_u(clustering.u_mat)
+        problem_opt.update_obj_place(dv_mat)
+        problem_opt.update_adjacency_constraints(v_mat)
     problem_opt.solve()
     prev_duals = problem_opt.last_duals
     problem_opt.fill_dual_values()

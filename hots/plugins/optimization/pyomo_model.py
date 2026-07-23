@@ -16,6 +16,11 @@ from hots.core.interfaces import OptimizationPlugin
 class PyomoModel(OptimizationPlugin):
     """Concrete optimization backend using Pyomo."""
 
+    #: Solvers verified to populate ``instance_model.dual`` for the LP
+    #: ``must_link`` constraints (see ``fill_dual_values``). Anything else
+    #: gets a loud warning rather than a silent, empty conflict graph.
+    _DUAL_VERIFIED_SOLVERS = {"glpk"}
+
     # ---------- lifecycle ----------
     def __init__(self, params: dict, instance):
         """Initialize the optimization model."""
@@ -24,6 +29,17 @@ class PyomoModel(OptimizationPlugin):
         self.solver = params.get("solver", "glpk")
         self.verbose = params.get("verbose", False)
         self.last_duals = None
+
+        if self.solver not in self._DUAL_VERIFIED_SOLVERS:
+            logging.warning(
+                "Solver '%s' is not in the set verified to report duals for "
+                "the 'must_link' LP constraints (%s). Conflict detection "
+                "depends on those shadow prices; if this solver doesn't "
+                "populate `instance_model.dual`, it will silently degrade to "
+                "an empty conflict graph. See PyomoModel.fill_dual_values().",
+                self.solver,
+                sorted(self._DUAL_VERIFIED_SOLVERS),
+            )
 
         # derived shortcuts from instance/config
         self.df_indiv = instance.df_indiv
@@ -489,6 +505,22 @@ class PyomoModel(OptimizationPlugin):
         configurations), would change or silently drop these semantics. If you
         swap the solver, verify it populates ``instance_model.dual`` for the
         LP relaxation before trusting the conflict graph.
+
+        Reproducibility note: these LPs are frequently degenerate (ties in
+        the optimal basis), which makes the dual solution -- not just the
+        primal one -- non-unique at a tied vertex. The evaluator reuses the
+        persistent ``instance_model`` in place (see ``update_w`` /
+        ``update_sol_u`` / ``update_adjacency_constraints`` /
+        ``update_obj_place``) rather than calling ``build`` fresh on every
+        no-new-container tick, and that changes the model's internal
+        constraint/variable construction order relative to a from-scratch
+        ``create_instance``. At a tied optimum this can be enough to flip
+        which dual solution GLPK returns, which -- because conflict
+        detection reads duals, not just the objective -- can cascade into a
+        different set of containers being flagged as moving later in the
+        run. Solve quality (objective values) is unaffected; exact
+        migration sequences are not guaranteed to reproduce byte-for-byte
+        against a run using the old rebuild-every-tick path.
         """
         dual = self.instance_model.dual
         con = getattr(
@@ -499,7 +531,21 @@ class PyomoModel(OptimizationPlugin):
 
         if con is None:
             self.last_duals = {}
+            return
         self.last_duals = {idx: dual.get(con[idx], 0.0) for idx in con}
+
+        # `con` having indices but `dual` reporting none of them means the
+        # solver didn't populate the Suffix at all (unverified solver, or a
+        # solve that didn't reach optimality) -- surface it instead of
+        # silently handing the conflict graph an all-zero dual vector.
+        if len(con) > 0 and not any(con[idx] in dual for idx in con):
+            logging.warning(
+                "Solver '%s' returned no dual values for the '%s' "
+                "constraints; conflict detection will see an all-zero dual "
+                "vector this solve. See PyomoModel.fill_dual_values().",
+                self.solver,
+                con.name,
+            )
 
 
 # ----- rules -----

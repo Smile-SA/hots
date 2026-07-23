@@ -85,6 +85,15 @@ class OptimizationPlugin(ABC):
     The two-level pipeline depends on warm-started re-solving and dual values, so
     the dual/adjacency/resize methods are part of the required surface, not just
     ``build``/``solve``. ``last_duals`` holds the most recent solve's duals.
+
+    The evaluator also mutates the persistent model in place, one Param at a
+    time (``update_w``/``update_sol_u``/``update_obj_place``), rather than
+    calling ``build`` again on every no-new-container tick -- that would
+    rebuild the whole abstract model from scratch for a solve that only
+    changes a handful of parameter values. Trade-off: on a degenerate LP this
+    can change which tied dual solution the solver returns relative to a
+    from-scratch rebuild, which conflict detection is sensitive to -- see the
+    reproducibility note on ``PyomoModel.fill_dual_values``.
     """
 
     #: Mapping constraint index -> dual value from the most recent solve.
@@ -115,6 +124,26 @@ class OptimizationPlugin(ABC):
         self, dict_id_c, new_df_indiv=None, *, u_mat=None, w_mat=None, v_mat=None, dv_mat=None
     ) -> None:
         """Rebuild the model when the set of containers changes."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_w(self, w) -> None:
+        """Update the clustering similarity param (pb 1) from a new w matrix in place."""
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_sol_u(self, u) -> None:
+        """Update the clustering-adjacency param shared by both models in place.
+
+        Distinct from ``update_adjacency_constraints``: for the placement
+        model (pb 2), ``sol_u`` only feeds the objective, not the must-link
+        constraint (that's ``sol_v``, via ``update_adjacency_constraints``).
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def update_obj_place(self, dv) -> None:
+        """Update the placement (pb 2) objective's dv param in place."""
         raise NotImplementedError
 
 

@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -148,3 +149,42 @@ def test_thesis_ex_10_happy_path(tests_data_directory, tmp_path):
     moves_path = Path(params["outfile"])
     assert moves_path.exists()
     assert moves_path.stat().st_size > 0
+
+
+@pytest.mark.e2e
+def test_streaming_loop_reuses_the_persistent_model(tests_data_directory, tmp_path):
+    """On no-new-container ticks, the loop must mutate the persistent Pyomo
+    model in place rather than rebuild it from scratch every time.
+
+    Regression guard for evaluator.eval_solutions: PyomoModel.build() should
+    only be called during pre_loop (once per pb_number), never again inside
+    the streaming loop as long as the container set doesn't change; the
+    incremental update methods should be used instead.
+    """
+    from hots.plugins.optimization.pyomo_model import PyomoModel
+
+    cfg = _prepared_config(tests_data_directory, tmp_path)
+
+    with (
+        patch.object(PyomoModel, "build", autospec=True, side_effect=PyomoModel.build) as build,
+        patch.object(
+            PyomoModel, "update_w", autospec=True, side_effect=PyomoModel.update_w
+        ) as update_w,
+        patch.object(
+            PyomoModel,
+            "update_adjacency_constraints",
+            autospec=True,
+            side_effect=PyomoModel.update_adjacency_constraints,
+        ) as update_adjacency_constraints,
+    ):
+        app = App(cfg)
+        app.run()
+
+    loop_rows = [m["loop_nb"] for m in app.instance.metrics_history if "loop_nb" in m]
+    assert loop_rows, "the toy dataset should exercise at least one streaming loop"
+
+    # pre_loop() builds both models exactly once each; no new containers appear
+    # in this dataset, so the streaming loop must never call build() again.
+    assert build.call_count == 2, "build() should only run during pre_loop"
+    assert update_w.call_count > 0, "the clustering model should be updated in place"
+    assert update_adjacency_constraints.call_count > 0

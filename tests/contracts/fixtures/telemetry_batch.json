@@ -2,14 +2,17 @@
   "$comment": "SHARED CONTRACT FIXTURE - keep byte-identical in hots and hots-connector. Direction: hots-connector -> HOTS, on the topic named by connector.parameters.topic_data. Each Kafka message is one object from `messages` below.",
   "direction": "connector_to_hots",
   "topic_config_key": "topic_data",
+  "schema_version": 1,
   "messages": [
     {
+      "v": 1,
       "containers": [
         {"timestamp": 0, "container_id": "c_1", "machine_id": "n_1", "cpu": 1.5},
         {"timestamp": 0, "container_id": "c_2", "machine_id": "n_2", "cpu": 0.75}
       ]
     },
     {
+      "v": 1,
       "containers": [
         {"timestamp": 1, "container_id": "c_1", "machine_id": "n_1", "cpu": 2.25},
         {"timestamp": 1, "container_id": "c_2", "machine_id": "n_2", "cpu": 0.5}
@@ -25,6 +28,7 @@
   "notes": [
     "Field names are configurable via the top-level `data` config section; the payload keys themselves (timestamp/container_id/machine_id) are fixed by this contract.",
     "The metric key ('cpu' here) must match the single entry of data.metrics.",
-    "A container whose metric key is absent or null is skipped, not defaulted to zero."
+    "A container whose metric key is absent or null is skipped, not defaulted to zero.",
+    "`v` is the message schema version (currently 1). Consumers must tolerate it being absent (a pre-versioning sender) but should warn on an unrecognized value rather than fail outright."
   ]
 }

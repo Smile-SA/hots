@@ -45,7 +45,7 @@ def test_telemetry_fixture_shape(telemetry):
     assert telemetry["messages"], "fixture must carry at least one message"
 
     for msg in telemetry["messages"]:
-        assert set(msg) == {"containers"}
+        assert set(msg) == {"v", "containers"}
         for c in msg["containers"]:
             assert {"timestamp", "container_id", "machine_id"} <= set(c)
             assert isinstance(c["timestamp"], int)
@@ -61,7 +61,7 @@ def test_moves_fixture_shape(moves):
 
     for msg in moves["messages"]:
         assert required <= set(msg)
-        assert set(msg) <= required | {"time"}
+        assert set(msg) <= required | {"time", "v"}
 
 
 # --------------------------------------------------------------------------
@@ -147,8 +147,10 @@ def test_hots_publishes_the_move_fixture_shape(moves):
     conn = _connector()
     tick = moves["messages"][0]["time"]
 
-    # Publish the heuristic's output (the move without the connector's timestamp)
-    payloads = [{k: m[k] for k in moves["required_keys"]} for m in moves["messages"]]
+    # Publish the heuristic's output (the move without the connector's
+    # timestamp, but with "v" -- unlike "time", _move() stamps "v" itself,
+    # so it's already present in what a real heuristic hands to apply_moves).
+    payloads = [{k: m[k] for k in (*moves["required_keys"], "v")} for m in moves["messages"]]
     conn.apply_moves(payloads, tick)
 
     published = [body for _topic, body in conn.producer.published]
@@ -224,7 +226,9 @@ def _placement_plugin():
 def test_allocation_heuristics_emit_the_wire_shape():
     """Every producer of moves must use the one contract shape."""
     plugin, df_indiv, df_meta = _placement_plugin()
-    required = {"container_name", "old_host", "new_host"}
+    # "v" is stamped by _move() itself (unlike "time", added later at
+    # publish time), so every heuristic's raw output already carries it.
+    required = {"v", "container_name", "old_host", "new_host"}
 
     moves = plugin.allocation_ffd(df_indiv, df_meta)
     assert moves, "the toy instance should require at least one move"

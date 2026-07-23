@@ -2,15 +2,18 @@
   "$comment": "SHARED CONTRACT FIXTURE - keep byte-identical in hots and hots-connector. Direction: HOTS -> hots-connector, on the topic named by connector.parameters.topic_moves. Each Kafka message is one object from `messages` below.",
   "direction": "hots_to_connector",
   "topic_config_key": "topic_moves",
+  "schema_version": 1,
   "required_keys": ["container_name", "old_host", "new_host"],
   "messages": [
-    {"container_name": "c_1", "old_host": "n_1", "new_host": "n_2", "time": 12},
-    {"container_name": "c_2", "old_host": "n_2", "new_host": "n_3", "time": 12}
+    {"v": 1, "container_name": "c_1", "old_host": "n_1", "new_host": "n_2", "time": 12},
+    {"v": 1, "container_name": "c_2", "old_host": "n_2", "new_host": "n_3", "time": 12}
   ],
   "notes": [
     "`time` is stamped by the connector at publish time (the tick the move applies from), not by the placement heuristic.",
+    "`v` is stamped by placement._move() itself (the single wire-shape-emitting helper), unlike `time` which is added later at publish time.",
     "The file connector writes these same objects as JSONL, one per line, with `time` as a string.",
     "Every HOTS move producer goes through placement._move(), so this is the only shape emitted; add new heuristics via that helper.",
-    "`old_host` may be null when the container had no prior placement."
+    "`old_host` may be null when the container had no prior placement.",
+    "`v` is the message schema version (currently 1). Consumers must tolerate it being absent (a pre-versioning sender) but should warn on an unrecognized value rather than fail outright."
   ]
 }

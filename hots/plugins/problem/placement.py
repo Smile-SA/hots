@@ -59,14 +59,22 @@ def _safe_first(values: Iterable[Any], default: Any = None) -> Any:
     return default
 
 
+MOVE_SCHEMA_VERSION = 1
+
+
 def _move(container: Any, old_host: Any, new_host: Any) -> dict[str, Any]:
     """Build a move in the single shape connectors consume.
 
     Every heuristic in this module goes through here, so the placement output
     and the HOTS -> connector wire format cannot drift apart. See
     ``tests/contracts/`` for the contract these keys satisfy.
+
+    `v` is the message schema version, stamped here (unlike `time`, which the
+    Kafka/file connectors add later at publish time) since it describes the
+    shape of this dict itself, not when it was sent.
     """
     return {
+        "v": MOVE_SCHEMA_VERSION,
         "container_name": container,
         "old_host": old_host,
         "new_host": new_host,

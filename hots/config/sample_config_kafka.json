@@ -32,6 +32,7 @@
     "type": "kafka",
     "parameters": {
       "sep_time": 30,
+      "_comment_sep_time": "With live Kafka and real Prometheus timestamps (Unix epoch ~1.7e9), any value below 1e9 is satisfied by the very first message — bootstrap always completes on batch 1. Only set this to a meaningful wall-clock value when using the FileConnector.",
       "tick_increment": 10,
       "window_duration": 3,
       "bootstrap.servers": "localhost:9092",
@@ -61,5 +62,8 @@
     "results_folder": "./out",
     "metrics_file": "./out/metrics.csv",
     "plots_folder": "./out/plots"
+  },
+  "visualization": {
+    "enabled": false
   }
 }

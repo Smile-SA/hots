@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import time
 
 import pandas as pd
 from confluent_kafka import Consumer, KafkaError, KafkaException, Producer
 
 from hots.core.interfaces import ConnectorPlugin
+
+logger = logging.getLogger(__name__)
 
 
 class KafkaConnector(ConnectorPlugin):
@@ -175,6 +178,12 @@ class KafkaConnector(ConnectorPlugin):
         """Poll Kafka and return the next batch of telemetry rows."""
         records = self._poll_records(max_messages=self.batch_size)
         if not records:
+            logger.warning(
+                "load_next: no records received within poll_timeout=%.1fs — "
+                "treating source as exhausted and ending the streaming loop. "
+                "If this is unexpected, increase connector.parameters.poll_timeout.",
+                self.poll_timeout,
+            )
             return None
 
         df = pd.DataFrame.from_records(records).sort_values(by=[self.tick_field, self.indiv_field])

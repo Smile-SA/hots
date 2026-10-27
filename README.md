@@ -13,17 +13,25 @@ HOTS works on any platform with Python 3.10 and up.
 The dev Python version must be used to install the package (for example install the package
 python3.10-dev in order to use Python 3.10).
 
-A solver needs to be installed for using HOTS. By default, GLPK is installed with HOTS, but the
-user needs to install the following packages before using HOTS :
- * libglpk-dev
- * glpk-utils
+A solver needs to be installed for using HOTS. HOTS uses GLPK by default, which is not a Python
+package: install it with your system's package manager before using HOTS (on Debian or Ubuntu,
+`sudo apt install glpk-utils libglpk-dev`).
 
-In order to run HOTS with the streaming platform Kafka, you need to install the
-Python package confluent_kafka, and to have a running kafka broker.
+In order to run HOTS with the streaming platform Kafka, you need the `kafka` extra (see below),
+and a running Kafka broker.
 
 ## Installing HOTS
 
-A Makefile is provided, which creates a virtual environment and install HOTS. You can do :
+From PyPI:
+
+```bash
+pip install hots            # file connector only
+pip install "hots[kafka]"   # with the Kafka connector
+hots --version
+```
+
+For development, a Makefile is provided, which creates a virtual environment and installs HOTS
+from the checkout. You can do :
 
 ```bash
 make
@@ -101,47 +109,60 @@ load time rather than silently ignored.
 > populate `data` automatically. Declaring the same key in both places with
 > *different* values is a config error.
 
-For a Kafka-based setup, the structure is the same but the `connector` section uses `"type": "kafka"` and Kafka-specific parameters:
+For a Kafka-based setup, the structure is the same but the `connector` section uses `"type": "kafka"`
+(see `hots/config/sample_config_kafka.json`):
 
 ```json
 "connector": {
   "type": "kafka",
   "parameters": {
-    "connector_url": "http://localhost:8080",
     "bootstrap.servers": "localhost:9092",
-    "topics": ["hots_moves"],
-    "data_folder": "./tests/data/thesis_ex_10",
-    "file_name": "container_usage.csv",
-    "host_field": "machine_id",
-    "individual_field": "container_id",
-    "tick_field": "timestamp",
-    "tick_increment": 3,
+    "topic_data": "hots_data",
+    "topic_moves": "hots_moves",
+    "consumer_conf": {
+      "bootstrap.servers": "localhost:9092",
+      "group.id": "hots",
+      "auto.offset.reset": "earliest"
+    },
+    "tick_increment": 10,
     "window_duration": 3,
-    "sep_time": 10,
-    "metrics": ["cpu"],
-    "outfile": "./out/moves.log"
+    "sep_time": 30,
+    "batch_size": 10,
+    "poll_timeout": 1.0,
+    "bootstrap_timeout_seconds": 120,
+    "node_capacities": {"vm1": 2.0, "vm2": 2.0, "vm3": 2.0}
   }
 }
 ```
-See the User manual in the documentation for a full description of each field.
 
-## Configuring Kafka
+| Parameter | Description |
+| --- | --- |
+| `bootstrap.servers` | Kafka broker HOTS publishes moves to. |
+| `topic_data` | Topic HOTS reads telemetry from. |
+| `topic_moves` | Topic HOTS publishes its moves to. |
+| `consumer_conf` | [librdkafka consumer settings](https://github.com/confluentinc/librdkafka/blob/master/CONFIGURATION.md) for reading `topic_data`; `group.id` is required. |
+| `sep_time` | HOTS reads telemetry until it reaches this tick before it computes its first placement. |
+| `batch_size` | A streaming iteration stops reading once it has this many telemetry rows (one row per container sample). |
+| `poll_timeout` | Seconds to wait for a message. During the run, an iteration that receives nothing in this time **ends the run**: set it above the producer's publish interval. |
+| `bootstrap_timeout_seconds` | Seconds to wait for the first `sep_time` ticks before failing. Default 120. |
+| `node_capacities` | Capacity of each host for the metric in `data.metrics`. When absent, the largest observed load of each host during bootstrap is used instead. |
 
-Before running the application, you need to configure the Kafka broker information and the topic name in the `params.json` file. Open the file and make the following changes:
-```json
-"kafkaConf":{
- "topics":{
-  "docker_topic": "xxxxx"
- },
- "Producer":{
-  "brokers":["<IP>:9092"]
- },
- "Consumer":{
-  "group": "xxxx",
-  "brokers":["<IP>:9092"]
- }
-}
-```
+See the User manual in the documentation for the other sections.
+
+## Running HOTS on a live environment
+
+The Kafka connector exchanges two kinds of messages. It reads **telemetry** batches,
+`{"v": 1, "containers": [{"timestamp", "container_id", "machine_id", "<metric>"}, ...]}`, from
+`topic_data`, and writes one **move** per message,
+`{"v": 1, "container_name", "old_host", "new_host", "time"}`, to `topic_moves`. The examples in
+`tests/contracts/fixtures/` define this contract.
+
+HOTS doesn't observe or move workloads itself:
+
+- [hots-connector](https://github.com/Smile-SA/hots-connector) produces the telemetry from
+  Prometheus and applies the moves on Docker or Kubernetes;
+- the [mums benchmark platform](https://github.com/Smile-SA/mums) runs HOTS and hots-connector
+  together against a Kubernetes cluster, and compares the result with other placement methods.
 
 ## Running HOTS
 
@@ -166,8 +187,10 @@ You can inspect available options with:
 hots --help
 ```
 
-A small test dataset and example configs are provided in the package (see `hots/config/sample_config_file.json` and `hots/config/sample_config_kafka.json`).
-You can quickly test your installation with:
+Example configs are provided in the package (`hots/config/sample_config_file.json` and
+`hots/config/sample_config_kafka.json`). The small dataset the file example reads,
+`tests/data/thesis_ex_10`, is in the source repository, and the path is relative to the working
+directory. From a checkout, you can quickly test your installation with:
 
 ```bash
 hots --config hots/config/sample_config_file.json

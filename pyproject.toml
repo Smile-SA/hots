@@ -1,7 +1,6 @@
 [build-system]
 requires = [
-    "setuptools>=61.2",
-    "wheel"
+    "setuptools>=77",
 ]
 build-backend = "setuptools.build_meta"
 
@@ -17,8 +16,11 @@ keywords = [
 classifiers = [
     "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: Implementation :: CPython",
-    "Development Status :: 2 - Pre-Alpha",
+    "Development Status :: 3 - Alpha",
     "Operating System :: POSIX",
     "Framework :: Matplotlib",
     "Intended Audience :: Science/Research",
@@ -53,6 +55,9 @@ content-type = "text/markdown"
 [project.urls]
 Homepage = "https://github.com/Smile-SA/hots"
 Documentation = "https://hots.readthedocs.io/en/latest/"
+Source = "https://github.com/Smile-SA/hots"
+Issues = "https://github.com/Smile-SA/hots/issues"
+Changelog = "https://hots.readthedocs.io/en/latest/history.html"
 
 [project.optional-dependencies]
 dev = [
@@ -64,9 +69,7 @@ doc = [
   "sphinx-rtd-theme>=2",
 ]
 kafka = [
-    "confluent-kafka",
-    "fastavro",
-    "requests",
+    "confluent-kafka>=2.3",
 ]
 testing = [
     "pytest",
@@ -89,18 +92,13 @@ platforms = [
 where = ["."]
 include = ["hots*"]
 
-[tool.setuptools.data-files]
-"." = [
-    "VERSION.txt",
-]
+[tool.setuptools.package-data]
+"hots.config" = ["*.json"]
 
 [tool.setuptools.dynamic.version]
 file = [
     "VERSION.txt",
 ]
-
-[tool.distutils.bdist_wheel]
-universal = true
 
 [tool.ruff]
 line-length = 100

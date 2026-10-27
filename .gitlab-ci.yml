@@ -20,16 +20,55 @@ cache:
 stages:
   - test
   - build
-  - publish
 
-run-tests-py310:
+tests:
   stage: test
-  image: python:3.10-slim-bullseye
+  image: python:${PYTHON_VERSION}-slim-bookworm
+  parallel:
+    matrix:
+      - PYTHON_VERSION: ["3.10", "3.11", "3.12", "3.13"]
   script:
-    - apt update
-    - apt install -y curl python-dev build-essential libopenblas-dev gfortran libboost-thread-dev
+    - apt-get update
+    - apt-get install -y curl build-essential libopenblas-dev gfortran libboost-thread-dev glpk-utils
     - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
-    - uvx --with tox-uv tox -e py310,ruff,safety
+    - uvx --with tox-uv tox -e "py$(echo "$PYTHON_VERSION" | tr -d .)"
+
+lint:
+  stage: test
+  image: python:3.12-slim-bookworm
+  script:
+    - apt-get update
+    - apt-get install -y curl
+    - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
+    - uvx --with tox-uv tox -e ruff,safety
+
+# Build the sdist and wheel, then install the wheel in a clean venv (outside
+# the checkout) and run the packaged sample config from the repo root, where
+# its ./tests/data dataset resolves.
+package:
+  stage: build
+  image: python:3.12-slim-bookworm
+  services: []
+  variables:
+    MPLBACKEND: Agg
+  script:
+    - apt-get update
+    - apt-get install -y --no-install-recommends glpk-utils
+    - python -m pip install build twine
+    - python -m build
+    - python -m twine check --strict dist/*
+    - python -m venv /tmp/wheel-venv
+    - /tmp/wheel-venv/bin/pip install "$(ls dist/*.whl)"
+    - /tmp/wheel-venv/bin/pip check
+    - test "$(/tmp/wheel-venv/bin/hots --version)" = "hots, version $(cat VERSION.txt)"
+    - test ! -e /tmp/wheel-venv/VERSION.txt
+    - |
+      SAMPLE="$(/tmp/wheel-venv/bin/python -c 'from importlib.resources import files; print(files("hots.config") / "sample_config_file.json")')"
+      /tmp/wheel-venv/bin/hots --config "$SAMPLE"
+  artifacts:
+    paths:
+      - dist/
+    expire_in: 1 week
 
 build-master:
   stage: build
@@ -51,8 +90,5 @@ build:
     refs:
       - main
 
-publish:
-  stage: publish
-  script:
-    - echo "No publish step configured."
-  when: manual
+# Releases are published to PyPI from GitHub, by .github/workflows/release.yml
+# when a v* tag reaches the GitHub mirror.

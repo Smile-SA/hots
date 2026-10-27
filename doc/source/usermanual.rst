@@ -16,6 +16,12 @@ A minimal example using the file connector is the following:
 
    {
      "time_limit": null,
+     "data": {
+       "tick_field": "timestamp",
+       "individual_field": "container_id",
+       "host_field": "machine_id",
+       "metrics": ["cpu"]
+     },
      "clustering": {
        "method": "kmeans",
        "nb_clusters": 3,
@@ -43,13 +49,9 @@ A minimal example using the file connector is the following:
        "parameters": {
          "data_folder": "./tests/data/thesis_ex_10",
          "file_name": "container_usage.csv",
-         "host_field": "machine_id",
-         "individual_field": "container_id",
-         "tick_field": "timestamp",
          "tick_increment": 2,
          "window_duration": 3,
          "sep_time": 3,
-         "metrics": ["cpu"],
          "outfile": "./out/moves.log"
        }
      },
@@ -74,6 +76,15 @@ The top-level keys of the configuration file map to the fields of
 - :code:`time_limit`:
   maximum wall-clock time (in seconds) for the application run.
   If :code:`null`, :term:`hots` processes all available data.
+
+- :code:`data`:
+  names of the columns of the time series, read by every component, whatever the connector.
+
+  - :code:`tick_field`: column holding the timestamps.
+  - :code:`individual_field`: column holding the container IDs.
+  - :code:`host_field`: column holding the host (node) IDs.
+  - :code:`metrics`: list of metric names. Only one metric is supported: a longer list is
+    rejected when the configuration is loaded.
 
 - :code:`clustering`:
   configuration of the clustering plugin.
@@ -113,25 +124,36 @@ The top-level keys of the configuration file map to the fields of
     - :code:`"file"`: read data from CSV files.
     - :code:`"kafka"`: read data from a Kafka topic.
 
-  - :code:`parameters`: connector-specific parameters. For both connectors,
-    the following keys are usually required:
+  - :code:`parameters`: connector-specific parameters. Both connectors use:
 
-    - :code:`data_folder`: folder containing the input data.
-    - :code:`file_name`: CSV file containing container-level metrics.
-    - :code:`individual_field`: column name for container IDs.
-    - :code:`host_field`: column name for host (node) IDs.
-    - :code:`tick_field`: column name for timestamps.
     - :code:`tick_increment`: step between two timestamps in the stream.
     - :code:`window_duration`: window size used for sliding-window analysis.
     - :code:`sep_time`: time separating the analysis period from the running period.
-    - :code:`metrics`: list of metric names to use (e.g. :code:`["cpu"]`).
+
+    The file connector also uses:
+
+    - :code:`data_folder`: folder containing the input data, relative to the working directory.
+    - :code:`file_name`: CSV file containing container-level metrics.
     - :code:`outfile`: file where proposed moves will be written.
 
-    For the Kafka connector, the following additional keys can be used:
+    The Kafka connector (``pip install "hots[kafka]"``) also uses:
 
-    - :code:`bootstrap.servers`: Kafka bootstrap servers string.
-    - :code:`topics`: list of topic names used to publish moves.
-    - :code:`connector_url`: optional URL of an external connector service.
+    - :code:`bootstrap.servers`: Kafka broker the moves are published to.
+    - :code:`topic_data`: topic telemetry is read from.
+    - :code:`topic_moves`: topic moves are published to.
+    - :code:`consumer_conf`: librdkafka consumer settings used to read :code:`topic_data`
+      (:code:`group.id` is required).
+    - :code:`batch_size`: number of telemetry rows after which a streaming iteration stops
+      reading.
+    - :code:`poll_timeout`: seconds to wait for a message. During the run, an iteration that
+      receives nothing in this time ends the run.
+    - :code:`bootstrap_timeout_seconds`: seconds to wait for the first :code:`sep_time` ticks
+      before failing (default 120).
+    - :code:`node_capacities`: capacity of each host for the metric, e.g.
+      :code:`{"vm1": 2.0}`. When absent, the largest load observed on each host during
+      bootstrap is used.
+
+    The message format is described in :ref:`contract`.
 
 - :code:`logging`:
   logging configuration used by :func:`hots.utils.logging_config.setup_logging`.
@@ -147,14 +169,13 @@ The top-level keys of the configuration file map to the fields of
   - :code:`metrics_file`: CSV file for aggregated metrics.
   - :code:`plots_folder`: folder where plots will be saved.
 
-Additional top-level keys
--------------------------
+Older configuration layout
+--------------------------
 
-For convenience, some examples also define :code:`data_folder`,
-:code:`individual_field`, :code:`host_field`, :code:`tick_field` and
-:code:`metrics` at the top level. These are redundant copies of the values
-stored inside :code:`connector.parameters` and are kept for backward
-compatibility.
+Older configurations give :code:`tick_field`, :code:`individual_field`, :code:`host_field` and
+:code:`metrics` inside :code:`connector.parameters` instead of the :code:`data` section. They
+still work: these keys are then used to fill :code:`data`. Giving the same key in both places
+with different values is a configuration error.
 
 Preparing data
 ==============

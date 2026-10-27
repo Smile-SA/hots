@@ -7,7 +7,8 @@ Installation
 Requirements
 ============
 
-:term:`hots` works on any platform with Python 3.8 and up, a graphic display on any \*nix-like OS.
+:term:`hots` works with Python 3.10 to 3.13 on any \*nix-like OS. A graphic display is only
+needed when the :code:`visualization` section of the configuration is enabled.
 
 Due to some needed packages installation, the `dev` Python version is required. Make sure to install
 the `dev` version of Python you will use. For example, if you want to use Python 3.10, you can
@@ -16,8 +17,8 @@ install the package `python3.10-dev`.
 :term:`hots` uses a solver in order to solve some optimization problems, through the use of `Pyomo`
 (see :ref:`pyomo` for more information about its use). The user can use any solver working with
 `Pyomo`, but this solver needs to be installed and indicated to `Pyomo`. By default, :term:`hots`
-uses `GLPK`, an open-source solver which is installed with :term:`hots`. But to use `GLPK`, the 
-user needs to install the following packages (through `apt` for example) :
+uses `GLPK`, an open-source solver. `GLPK` is not a Python package, so it is not installed with
+:term:`hots`: install the following packages (through `apt` for example):
 
 * `libglpk-dev`
 * `glpk-utils`
@@ -33,10 +34,18 @@ Production
 
    pip install hots
 
+To use the Kafka connector, install the :code:`kafka` extra instead:
+
+.. code:: console
+
+   pip install "hots[kafka]"
+
+Check the installation with :code:`hots --version`.
+
 .. hint::
 
-   If this raises a security error, please prefix the command with ``sudo ...`` or login as "root"
-   or system administrator.
+   Install :term:`hots` in a virtual environment rather than system-wide, for example with
+   ``python3 -m venv .venv && . .venv/bin/activate``.
 
 Development
 ===========
@@ -52,7 +61,7 @@ Development
 
 You should create and activate a dedicated Python virtual environment with whatever tool you prefer
 (virtualenv, venv, pew, pyenv, ...). The instruction that follow assume this virtual environment is
-activated unless you may have issues.
+activated.
 
 Clone the source code from the |vcs_server|, then:
 
@@ -71,7 +80,7 @@ immediately active (you don't need to reinstall after each change).
 
    .. code:: console
 
-      pip installe -e .[dev,kafka]
+      pip install -e .[dev,kafka]
 
 .. hint::
 
@@ -79,7 +88,7 @@ immediately active (you don't need to reinstall after each change).
 
    .. code:: console
 
-      pip installe -e .[dev,doc]
+      pip install -e .[dev,doc]
 
 Docker
 ======

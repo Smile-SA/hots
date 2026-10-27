@@ -8,6 +8,7 @@ from hots.utils.logging_config import setup_logging
 
 
 @click.command()
+@click.version_option(package_name="hots")
 @click.option(
     "--config",
     "-c",

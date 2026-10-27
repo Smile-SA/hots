@@ -18,6 +18,7 @@ Contents
    business
    pyomo
    streaming
+   contract
    api/index
    kpis
    legal

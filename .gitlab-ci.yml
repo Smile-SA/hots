@@ -1,8 +1,8 @@
 ---
-image: docker:stable
+image: docker:29
 
 services:
-  - docker:dind
+  - docker:29-dind
 
 variables:
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.uv-cache"

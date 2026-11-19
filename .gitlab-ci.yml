@@ -89,8 +89,10 @@ build:
   stage: build
   script:
     - *docker_login
-    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME" .
-    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_NAME"
+    # Branch names like release/2.1.0 are not valid Docker tags; the slug
+    # (release-2-1-0) is.
+    - docker build --pull -t "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG" .
+    - docker push "$CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG"
   except:
     refs:
       - main

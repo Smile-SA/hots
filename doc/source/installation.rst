@@ -7,12 +7,12 @@ Installation
 Requirements
 ============
 
-:term:`hots` works with Python 3.10 to 3.13 on any \*nix-like OS. A graphic display is only
+:term:`hots` works with Python 3.11 to 3.13 on any \*nix-like OS. A graphic display is only
 needed when the :code:`visualization` section of the configuration is enabled.
 
 Due to some needed packages installation, the `dev` Python version is required. Make sure to install
-the `dev` version of Python you will use. For example, if you want to use Python 3.10, you can
-install the package `python3.10-dev`.
+the `dev` version of Python you will use. For example, if you want to use Python 3.12, you can
+install the package `python3.12-dev`.
 
 :term:`hots` uses a solver in order to solve some optimization problems, through the use of `Pyomo`
 (see :ref:`pyomo` for more information about its use). The user can use any solver working with
@@ -102,10 +102,15 @@ As soon as Docker is setup, you can run the following commands (being at the roo
 
    docker build -t hots .
 
-Once the container is created, you can run it, by running the following :
+The image runs :term:`hots` by default, so arguments go straight to it (see section
+:ref:`usermanual`):
 
 .. code:: console
 
-   docker run -it hots /bin/bash
+   docker run --rm hots --version
 
-You will be prompted to a new shell, in which you can run :term:`hots` (see section :ref:`usermanual`).
+To get a shell instead, in which :code:`hots` is on the :code:`PATH`:
+
+.. code:: console
+
+   docker run -it --rm --entrypoint /bin/bash hots

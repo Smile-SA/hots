@@ -8,10 +8,10 @@
 
 ## Requirements for running HOTS
 
-HOTS works on any platform with Python 3.10 and up.
+HOTS works on any platform with Python 3.11 and up.
 
 The dev Python version must be used to install the package (for example install the package
-python3.10-dev in order to use Python 3.10).
+python3.12-dev in order to use Python 3.12).
 
 A solver needs to be installed for using HOTS. HOTS uses GLPK by default, which is not a Python
 package: install it with your system's package manager before using HOTS (on Debian or Ubuntu,
@@ -207,13 +207,17 @@ As soon as Docker is setup, you can run the following commands (being at the roo
 docker build -t hots .
 ```
 
-Once the container is created, you can run it, by running the following :
+The image runs `hots` by default, so arguments go straight to it:
 
 ```bash
-docker run -it hots /bin/bash
+docker run --rm hots --version
 ```
 
-You will be prompted to a new shell, in which you can follow the same steps as for Python.
+To get a shell instead, in which you can follow the same steps as for Python:
+
+```bash
+docker run -it --rm --entrypoint /bin/bash hots
+```
 
 ## Credits
 

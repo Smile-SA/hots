@@ -4,7 +4,7 @@ import os
 import pathlib
 import random
 import tempfile
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pytest
 
@@ -15,7 +15,7 @@ def frozen_time(monkeypatch):
 
     class _Frozen:
         def __init__(self, dt: datetime):
-            self.dt = dt.replace(tzinfo=timezone.utc)
+            self.dt = dt.replace(tzinfo=UTC)
 
         def __enter__(self):
             import datetime as _dt

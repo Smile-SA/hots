@@ -23,9 +23,12 @@ Release history
 - Message contract with hots-connector, schema :code:`v: 1` (see :ref:`contract`).
 - Placement, evaluation and Pyomo model fixes; the persistent Pyomo model is reused between ticks.
 - :code:`hots --version`; the sample configurations ship with the package.
-- Packaging: Python 3.10 to 3.13; the wheel no longer installs :file:`VERSION.txt` at the root of
-  the environment; the :code:`kafka` extra only installs :code:`confluent-kafka`.
-- Docker image: Python 3.12 on Debian bookworm (was Python 3.10 on bullseye, both end of life).
+- Packaging: Python 3.11 to 3.13 (Python 3.10, end of life, is no longer supported); the wheel no
+  longer installs :file:`VERSION.txt` at the root of the environment; the :code:`kafka` extra only
+  installs :code:`confluent-kafka`.
+- Docker image: Python 3.12 on Debian bookworm (was Python 3.10 on bullseye, both end of life);
+  the image runs :code:`hots` directly from its virtual environment, which is on the
+  :code:`PATH`.
 
 .. rubric:: 2.0.3 - Plugin and configuration fixes, uv-based build and Docker image
 .. rubric:: 2.0.2 - Improved tests

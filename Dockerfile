@@ -30,11 +30,14 @@ COPY pyproject.toml uv.lock VERSION.txt /app/
 COPY hots /app/hots
 
 # Install dependencies from the lockfile (reproducible build)
-# - --frozen: fail if uv.lock doesn't match pyproject.toml
+# - --frozen: install exactly what uv.lock pins, without checking it against pyproject.toml
+#   (the CI `audit` tox env fails when uv.lock is out of date)
 # - --no-editable: install as a normal wheel/site-packages install
 # - extras: include optional runtime bits if needed
 ARG UV_EXTRAS="kafka"
 RUN uv sync --frozen --no-editable --extra "$UV_EXTRAS"
 
-# Run the CLI by default
-ENTRYPOINT ["uv", "run", "--", "hots"]
+# Run the CLI by default, straight from the venv: `uv run` would re-sync the
+# project (rebuilding hots as editable) on every start.
+ENV PATH="/app/.venv/bin:$PATH"
+ENTRYPOINT ["hots"]

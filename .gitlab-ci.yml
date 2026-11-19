@@ -7,6 +7,11 @@ services:
 variables:
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.uv-cache"
   PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PIP_ROOT_USER_ACTION: ignore
+  # The runner only reaches a few hosts (astral.sh does not resolve), so get
+  # tooling from PyPI and use the image's Python instead of letting uv
+  # download interpreters from GitHub.
+  UV_PYTHON_DOWNLOADS: never
 
 cache:
   key: "uv-$CI_COMMIT_REF_SLUG"
@@ -29,18 +34,16 @@ tests:
       - PYTHON_VERSION: ["3.10", "3.11", "3.12", "3.13"]
   script:
     - apt-get update
-    - apt-get install -y curl build-essential libopenblas-dev gfortran libboost-thread-dev glpk-utils
-    - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
-    - uvx --with tox-uv tox -e "py$(echo "$PYTHON_VERSION" | tr -d .)"
+    - apt-get install -y build-essential libopenblas-dev gfortran libboost-thread-dev glpk-utils
+    - python -m pip install tox tox-uv
+    - tox -e "py$(echo "$PYTHON_VERSION" | tr -d .)"
 
 lint:
   stage: test
   image: python:3.12-slim-bookworm
   script:
-    - apt-get update
-    - apt-get install -y curl
-    - curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
-    - uvx --with tox-uv tox -e ruff,safety
+    - python -m pip install tox tox-uv
+    - tox -e ruff,audit
 
 # Build the sdist and wheel, then install the wheel in a clean venv (outside
 # the checkout) and run the packaged sample config from the repo root, where

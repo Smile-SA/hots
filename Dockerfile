@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bullseye
+FROM python:3.12-slim-bookworm
 
 ENV LC_ALL=C.UTF-8
 ENV LANG=C.UTF-8
@@ -6,11 +6,11 @@ ENV LANG=C.UTF-8
 # uv configuration
 ENV UV_LINK_MODE=copy
 ENV UV_CACHE_DIR=/root/.cache/uv
+# Use the image's Python, never download one.
+ENV UV_PYTHON_DOWNLOADS=never
 
 RUN apt-get -qq update \
     && DEBIAN_FRONTEND=noninteractive apt-get -qq install -y --no-install-recommends \
-    curl \
-    python-dev \
     build-essential \
     libopenblas-dev \
     gfortran \
@@ -21,8 +21,8 @@ RUN apt-get -qq update \
     && apt-get clean -y \
     && rm -rf /var/cache/apt/archives/* /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-# Install uv
-RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_UNMANAGED_INSTALL=/usr/local/bin sh
+# Install uv from PyPI (the CI runners cannot reach astral.sh).
+RUN python -m pip install --no-cache-dir --root-user-action=ignore --disable-pip-version-check uv
 
 WORKDIR /app
 
